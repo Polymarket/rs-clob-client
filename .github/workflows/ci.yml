@@ -60,7 +60,7 @@ jobs:
         run: cargo sort --check
 
   test-coverage:
-    name: Coverage
+    name: build-test (ubuntu) with coverage
     runs-on: ubuntu-latest
     permissions:
       contents: read
