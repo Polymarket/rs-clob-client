@@ -1,0 +1,28 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+  - repo: https://github.com/DevinR528/cargo-sort
+    rev: v2.0.2
+    hooks:
+      - id: cargo-sort
+  - repo: local
+    hooks:
+      - id: fmt
+        name: fmt
+        entry: cargo +nightly fmt --all -- --check
+        language: system
+        types: [ rust ]
+        pass_filenames: false
+      - id: clippy
+        name: clippy
+        entry: cargo clippy --workspace --all-features --all-targets -- -D warnings
+        language: system
+        types: [ rust ]
+        pass_filenames: false
