@@ -1,5 +1,9 @@
 ![Polymarket](assets/logo.png)
 
+---
+[![codecov](https://codecov.io/gh/Polymarket/rs-clob-client/graph/badge.svg?token=FW1BYWWFJ2)](https://codecov.io/gh/Polymarket/rs-clob-client)
+[![CI](https://github.com/Polymarket/rs-clob-client/actions/workflows/ci.yml/badge.svg)](https://github.com/Polymarket/rs-clob-client/actions/workflows/ci.yml)
+
 # Polymarket Rust Client
 An ergonomic Rust client for interacting with Polymarket services, primarily the Central Limit Order Book (CLOB).
 This crate provides strongly typed request builders, authenticated endpoints, `alloy` support and more.
