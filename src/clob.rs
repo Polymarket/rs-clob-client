@@ -1309,3 +1309,13 @@ impl<S: Signer> Client<Authenticated<S, Builder>> {
         self.request(request, Some(headers)).await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn client_default_should_succeed() {
+        _ = Client::default();
+    }
+}
