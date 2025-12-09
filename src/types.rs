@@ -562,34 +562,6 @@ pub struct SimplifiedMarketResponse {
 }
 
 #[non_exhaustive]
-#[serde_as]
-#[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(strip_option))]
-pub struct MarketTradeEventResponse {
-    #[builder(setter(into))]
-    pub id: String,
-    #[builder(setter(into))]
-    pub condition_id: String,
-    #[builder(setter(into))]
-    pub question: String,
-    #[builder(setter(into))]
-    pub slug: String,
-    #[builder(setter(into))]
-    pub event_slug: String,
-    #[builder(setter(into))]
-    pub series_slug: String,
-    #[builder(setter(into))]
-    pub icon: String,
-    #[builder(setter(into))]
-    pub image: String,
-    #[builder(default)]
-    #[serde(default)]
-    #[serde_as(deserialize_as = "DefaultOnNull")]
-    pub tags: Vec<String>,
-}
-
-#[non_exhaustive]
 #[derive(Clone, Debug, Default, Deserialize, Builder, PartialEq)]
 #[builder(pattern = "owned", build_fn(error = "Error"))]
 #[builder(setter(strip_option))]

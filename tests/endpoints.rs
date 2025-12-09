@@ -35,12 +35,12 @@ mod unauthenticated {
     use polymarket_client_sdk::types::{
         FeeRateResponseBuilder, LastTradePriceRequestBuilder, LastTradePriceResponseBuilder,
         LastTradesPricesResponseBuilder, MarketResponse, MarketResponseBuilder,
-        MarketTradeEventResponseBuilder, MidpointRequestBuilder, MidpointResponseBuilder,
-        MidpointsResponseBuilder, NegRiskResponseBuilder, OrderBookSummaryRequestBuilder,
-        OrderBookSummaryResponseBuilder, OrderSummaryBuilder, PageBuilder, PriceRequestBuilder,
-        PriceResponseBuilder, PricesResponseBuilder, RewardsBuilder, Side,
-        SimplifiedMarketResponseBuilder, SpreadRequestBuilder, SpreadResponseBuilder,
-        SpreadsResponseBuilder, TickSize, TickSizeResponseBuilder, TokenBuilder,
+        MidpointRequestBuilder, MidpointResponseBuilder, MidpointsResponseBuilder,
+        NegRiskResponseBuilder, OrderBookSummaryRequestBuilder, OrderBookSummaryResponseBuilder,
+        OrderSummaryBuilder, PageBuilder, PriceRequestBuilder, PriceResponseBuilder,
+        PricesResponseBuilder, RewardsBuilder, Side, SimplifiedMarketResponseBuilder,
+        SpreadRequestBuilder, SpreadResponseBuilder, SpreadsResponseBuilder, TickSize,
+        TickSizeResponseBuilder, TokenBuilder,
     };
     use reqwest::Method;
 
@@ -945,59 +945,6 @@ mod unauthenticated {
             .limit(1)
             .count(1)
             .build()?;
-
-        assert_eq!(response, expected);
-        mock.assert();
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn market_trades_events_should_succeed() -> Result<()> {
-        let server = MockServer::start();
-        let client = Client::new(&server.base_url(), Config::default())?;
-
-        let mock = server.mock(|when, then| {
-            when.method(httpmock::Method::GET)
-                .path("/live-activity/events/1");
-            then.status(StatusCode::OK).json_body(json!([
-                {
-                    "id": "evt_12345",
-                    "condition_id": "cond_67890",
-                    "question": "Will BTC close above $60k on July 1?",
-                    "slug": "btc-close-above-60k-july-1",
-                    "event_slug": "bitcoin-price",
-                    "series_slug": "crypto-markets-2025",
-                    "icon": "https://example.com/icon.png",
-                    "image": "https://example.com/image.png",
-                    "tags": [
-                        "crypto",
-                        "bitcoin",
-                        "markets"
-                    ]
-                }
-            ]));
-        });
-
-        let response = client.market_trades_events("1").await?;
-
-        let expected = vec![
-            MarketTradeEventResponseBuilder::default()
-                .id("evt_12345")
-                .condition_id("cond_67890")
-                .question("Will BTC close above $60k on July 1?")
-                .slug("btc-close-above-60k-july-1")
-                .event_slug("bitcoin-price")
-                .series_slug("crypto-markets-2025")
-                .icon("https://example.com/icon.png")
-                .image("https://example.com/image.png")
-                .tags(vec![
-                    "crypto".to_owned(),
-                    "bitcoin".to_owned(),
-                    "markets".to_owned(),
-                ])
-                .build()?,
-        ];
 
         assert_eq!(response, expected);
         mock.assert();

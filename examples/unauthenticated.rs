@@ -81,11 +81,5 @@ async fn main() -> anyhow::Result<()> {
         client.sampling_simplified_markets(None).await
     );
 
-    // Note: this API call might fail depending on whether `condition_id` is currently live
-    println!(
-        "market_trades_events -- {:?}",
-        client.market_trades_events(condition_id).await
-    );
-
     Ok(())
 }

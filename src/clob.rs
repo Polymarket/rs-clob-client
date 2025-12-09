@@ -27,11 +27,11 @@ use crate::types::{
     ApiKeysResponse, BalanceAllowanceRequest, BalanceAllowanceResponse, BanStatusResponse,
     BuilderTradeResponse, CancelMarketOrderRequest, CancelOrdersResponse,
     DeleteNotificationsRequest, FeeRateResponse, LastTradePriceRequest, LastTradePriceResponse,
-    LastTradesPricesResponse, MarketResponse, MarketRewardResponse, MarketTradeEventResponse,
-    MidpointRequest, MidpointResponse, MidpointsResponse, NegRiskResponse, NotificationResponse,
-    OpenOrderResponse, OrderBookSummaryRequest, OrderBookSummaryResponse, OrderScoringResponse,
-    OrdersRequest, OrdersScoringResponse, Page, PostOrderResponse, PriceRequest, PriceResponse,
-    PricesResponse, RewardsPercentagesResponse, SignableOrder, SignatureType, SignedOrder,
+    LastTradesPricesResponse, MarketResponse, MarketRewardResponse, MidpointRequest,
+    MidpointResponse, MidpointsResponse, NegRiskResponse, NotificationResponse, OpenOrderResponse,
+    OrderBookSummaryRequest, OrderBookSummaryResponse, OrderScoringResponse, OrdersRequest,
+    OrdersScoringResponse, Page, PostOrderResponse, PriceRequest, PriceResponse, PricesResponse,
+    RewardsPercentagesResponse, SignableOrder, SignatureType, SignedOrder,
     SimplifiedMarketResponse, SpreadRequest, SpreadResponse, SpreadsResponse, TickSize,
     TickSizeResponse, TotalUserEarningResponse, TradeResponse, TradesRequest,
     UpdateBalanceAllowanceRequest, UserEarningResponse, UserRewardsEarningRequest,
@@ -666,21 +666,6 @@ impl<S: State> Client<S> {
             .request(
                 Method::GET,
                 format!("{}sampling-simplified-markets{cursor}", self.host()),
-            )
-            .build()?;
-
-        self.request(request, None).await
-    }
-
-    pub async fn market_trades_events(
-        &self,
-        condition_id: &str,
-    ) -> Result<Vec<MarketTradeEventResponse>> {
-        let request = self
-            .client()
-            .request(
-                Method::GET,
-                format!("{}live-activity/events/{condition_id}", self.host()),
             )
             .build()?;
 
