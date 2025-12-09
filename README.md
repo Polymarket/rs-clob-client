@@ -2,8 +2,6 @@
 
 # Polymarket Rust Client
 
----
-
 [![CI](https://github.com/Polymarket/rs-clob-client/actions/workflows/ci.yml/badge.svg)](https://github.com/Polymarket/rs-clob-client/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/Polymarket/rs-clob-client/graph/badge.svg?token=FW1BYWWFJ2)](https://codecov.io/gh/Polymarket/rs-clob-client)
 
@@ -63,12 +61,11 @@ Some hand-picked examples. Please see `examples/` for more.
 
 ### Unauthenticated client (read-only)
 ```rust
-use polymarket_client_sdk::Result;
-use polymarket_client_sdk::clob::{Client, Config};
+use polymarket_client_sdk::clob::Client;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let client = Client::new("https://clob.polymarket.com", Config::default())?;
+    let client = Client::default();
 
     let ok = client.ok().await?;
     println!("Ok: {ok}");

@@ -14,7 +14,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::{
     DefaultOnNull, DisplayFromStr, FromInto, TimestampMilliSeconds, TimestampSeconds, serde_as,
 };
-use sha1::{Digest as _, Sha1};
+use sha2::{Digest as _, Sha256};
 use strum_macros::Display;
 use uuid::Uuid;
 
@@ -423,7 +423,7 @@ impl OrderBookSummaryResponse {
     pub fn hash(&self) -> Result<String> {
         let json = serde_json::to_string(&self)?;
 
-        let mut hasher = Sha1::new();
+        let mut hasher = Sha256::new();
         hasher.update(json.as_bytes());
         let result = hasher.finalize();
 

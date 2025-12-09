@@ -21,9 +21,7 @@ rust-version = "1.88.0" # MSRV
 alloy = { version = "1.1.3", default-features = false, features = [
     "dyn-abi",
     "serde",
-    "signer-local",
     "signers",
-    "sol-types"
 ] }
 async-stream = "0.3.6"
 async-trait = "0.1.89"
@@ -42,14 +40,19 @@ sec = { version = "1.0.0", features = ["deserialize"] }
 serde = "1.0.228"
 serde_json = "1.0.145"
 serde_with = { version = "3.16.1", features = ["chrono_0_4"] }
-sha1 = "0.10.6"
 sha2 = "0.10.9"
 strum_macros = "0.27.2"
 url = "2.5.7"
 uuid = { version = "1.19.0", features = ["serde", "v4", "v7"] }
 
 [dev-dependencies]
-alloy = { version = "1.1.3", default-features = false, features = ["contract", "providers", "reqwest", "signer-aws"] }
+alloy = { version = "1.1.3", default-features = false, features = [
+    "contract",
+    "providers",
+    "reqwest",
+    "signer-aws",
+    "signer-local",
+] }
 anyhow = "1.0.100"
 aws-config = "1.8.11"
 aws-sdk-kms = "1.96.0"

@@ -405,7 +405,10 @@ mod unauthenticated {
             .build()?;
 
         assert_eq!(response, expected);
-        assert_eq!(expected.hash()?, "65f223592e75eba89c2de7a22dfb1160a1ba2217");
+        assert_eq!(
+            expected.hash()?,
+            "98800af6a111791440d0936f5bc0fe1ac15da6eda09cc050227fb82ab8ceca7f"
+        );
         mock.assert();
 
         Ok(())
