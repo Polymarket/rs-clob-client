@@ -79,4 +79,13 @@ mod tests {
             address!("0xdFE02Eb6733538f8Ea35D585af8DE5958AD99E40")
         );
     }
+
+    #[test]
+    fn config_contains_80002_neg() {
+        let cfg = contract_config(AMOY, true).expect("missing config");
+        assert_eq!(
+            cfg.exchange,
+            address!("0xd91e80cf2e7be2e162c6513ced06f1dd0da35296")
+        );
+    }
 }

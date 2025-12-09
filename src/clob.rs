@@ -190,11 +190,17 @@ impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, K> {
         }
 
         let credentials = match self.credentials {
-            Some(_) if self.nonce.is_some() => return Err(Error::validation(
-                "Credentials and nonce are both set. If nonce is set, then you must not supply credentials".to_owned()
-            )),
+            Some(_) if self.nonce.is_some() => {
+                return Err(Error::validation(
+                    "Credentials and nonce are both set. If nonce is set, then you must not supply credentials",
+                ));
+            }
             Some(credentials) => credentials,
-            None => inner.create_or_derive_api_key(&self.signer, self.nonce).await?
+            None => {
+                inner
+                    .create_or_derive_api_key(&self.signer, self.nonce)
+                    .await?
+            }
         };
 
         let state = Authenticated {
@@ -392,7 +398,7 @@ impl ClientInner<Unauthenticated> {
 
     async fn create_headers<S: Signer>(&self, signer: &S, nonce: Option<u32>) -> Result<HeaderMap> {
         let chain_id = signer.chain_id().ok_or(Error::validation(
-            "Chain id not set, be sure to provide one on the signer".to_owned(),
+            "Chain id not set, be sure to provide one on the signer",
         ))?;
 
         let timestamp = if self.config.use_server_time {

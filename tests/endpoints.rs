@@ -162,16 +162,15 @@ mod unauthenticated {
             .side(Side::Sell)
             .build()?;
         let err = client.price(&request).await.unwrap_err();
-        let Status {
-            status_code,
-            method,
-            path,
-            ..
-        } = err.downcast_ref::<Status>().unwrap();
+        let status_err = err.downcast_ref::<Status>().unwrap();
 
-        assert_eq!(status_code, &StatusCode::NOT_FOUND);
-        assert_eq!(method, Method::GET);
-        assert_eq!(path, "/price");
+        assert_eq!(
+            status_err.to_string(),
+            r#"error(404 Not Found) making GET call to /price with {"message":"Request did not match any route or mock"}"#
+        );
+        assert_eq!(status_err.status_code, StatusCode::NOT_FOUND);
+        assert_eq!(status_err.method, Method::GET);
+        assert_eq!(status_err.path, "/price");
 
         Ok(())
     }
