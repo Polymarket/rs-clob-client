@@ -949,7 +949,7 @@ mod unauthenticated {
     }
 
     #[tokio::test]
-    async fn stream_markets_should_succeed() -> Result<()> {
+    async fn stream_markets_should_succeed() -> anyhow::Result<()> {
         const TERMINAL_CURSOR: &str = "LTE="; // base64("-1")
 
         let server = MockServer::start();
