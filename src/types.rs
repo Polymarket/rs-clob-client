@@ -19,7 +19,7 @@ use strum_macros::Display;
 use uuid::Uuid;
 
 use crate::Result;
-use crate::errors::Error;
+use crate::error::Error;
 use crate::order_builder::LOT_SIZE;
 
 pub type ApiKey = Uuid;
@@ -105,7 +105,7 @@ impl Amount {
     pub fn shares(value: Decimal) -> Result<Amount> {
         let normalized = value.normalize();
         if normalized.scale() > LOT_SIZE {
-            return Err(Error::Validation(format!(
+            return Err(Error::validation(format!(
                 "Unable to build Amount with {} decimal points, must be <= {LOT_SIZE}",
                 normalized.scale()
             )));
@@ -1232,6 +1232,7 @@ fn format_params_with_cursor(params: &str, next_cursor: Option<&String>) -> Stri
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::Validation;
 
     #[test]
     fn tick_size_decimals_should_succeed() {
@@ -1364,12 +1365,13 @@ mod tests {
 
     #[test]
     fn improper_shares_lot_size_should_fail() {
-        let Err(Error::Validation(msg)) = Amount::shares(dec!(0.23400)) else {
-            panic!("Expected Validation error!")
+        let Err(err) = Amount::shares(dec!(0.23400)) else {
+            panic!()
         };
 
+        let message = err.downcast_ref::<Validation>().unwrap();
         assert_eq!(
-            msg,
+            message.reason,
             format!("Unable to build Amount with 3 decimal points, must be <= {LOT_SIZE}")
         );
     }

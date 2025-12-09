@@ -45,7 +45,6 @@ serde_with = { version = "3.16.1", features = ["chrono_0_4"] }
 sha1 = "0.10.6"
 sha2 = "0.10.9"
 strum_macros = "0.27.2"
-thiserror = "2.0.17"
 url = "2.5.7"
 uuid = { version = "1.19.0", features = ["serde", "v4", "v7"] }
 

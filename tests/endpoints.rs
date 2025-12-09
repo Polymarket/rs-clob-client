@@ -12,9 +12,7 @@ use alloy::primitives::U256;
 use chrono::{DateTime, Utc};
 use httpmock::MockServer;
 use polymarket_client_sdk::POLYGON;
-use polymarket_client_sdk::Result;
 use polymarket_client_sdk::clob::{Client, Config};
-use polymarket_client_sdk::errors::Error;
 use polymarket_client_sdk::types::{SignatureType, TickSize};
 use reqwest::StatusCode;
 use rust_decimal::Decimal;
@@ -32,6 +30,7 @@ mod unauthenticated {
     use chrono::{TimeDelta, TimeZone as _};
     use futures_util::future;
     use futures_util::stream::StreamExt as _;
+    use polymarket_client_sdk::error::Status;
     use polymarket_client_sdk::types::{
         FeeRateResponseBuilder, LastTradePriceRequestBuilder, LastTradePriceResponseBuilder,
         LastTradesPricesResponseBuilder, MarketResponse, MarketResponseBuilder,
@@ -47,7 +46,7 @@ mod unauthenticated {
     use super::*;
 
     #[tokio::test]
-    async fn ok_should_succeed() -> Result<()> {
+    async fn ok_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
@@ -65,7 +64,7 @@ mod unauthenticated {
     }
 
     #[tokio::test]
-    async fn server_time_should_succeed() -> Result<()> {
+    async fn server_time_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
@@ -83,7 +82,7 @@ mod unauthenticated {
     }
 
     #[tokio::test]
-    async fn midpoint_should_succeed() -> Result<()> {
+    async fn midpoint_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
@@ -107,7 +106,7 @@ mod unauthenticated {
     }
 
     #[tokio::test]
-    async fn midpoints_should_succeed() -> Result<()> {
+    async fn midpoints_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
@@ -134,7 +133,7 @@ mod unauthenticated {
     }
 
     #[tokio::test]
-    async fn price_should_succeed() -> Result<()> {
+    async fn price_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
@@ -162,25 +161,22 @@ mod unauthenticated {
             .token_id("1")
             .side(Side::Sell)
             .build()?;
-        let Error::Status {
-            status_code,
-            method,
-            path,
-            ..
-        } = client.price(&request).await.unwrap_err()
-        else {
-            panic!("Expected Error::Status");
-        };
+        let err = client.price(&request).await.unwrap_err();
+        let status_err = err.downcast_ref::<Status>().unwrap();
 
-        assert_eq!(status_code, StatusCode::NOT_FOUND);
-        assert_eq!(method, Method::GET);
-        assert_eq!(path, "/price");
+        assert_eq!(
+            status_err.to_string(),
+            r#"error(404 Not Found) making GET call to /price with {"message":"Request did not match any route or mock"}"#
+        );
+        assert_eq!(status_err.status_code, StatusCode::NOT_FOUND);
+        assert_eq!(status_err.method, Method::GET);
+        assert_eq!(status_err.path, "/price");
 
         Ok(())
     }
 
     #[tokio::test]
-    async fn prices_should_succeed() -> Result<()> {
+    async fn prices_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
@@ -212,7 +208,7 @@ mod unauthenticated {
     }
 
     #[tokio::test]
-    async fn spread_should_succeed() -> Result<()> {
+    async fn spread_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
@@ -236,7 +232,7 @@ mod unauthenticated {
     }
 
     #[tokio::test]
-    async fn spreads_should_succeed() -> Result<()> {
+    async fn spreads_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
@@ -265,7 +261,7 @@ mod unauthenticated {
     }
 
     #[tokio::test]
-    async fn tick_size_should_succeed() -> Result<()> {
+    async fn tick_size_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
@@ -290,7 +286,7 @@ mod unauthenticated {
     }
 
     #[tokio::test]
-    async fn neg_risk_should_succeed() -> Result<()> {
+    async fn neg_risk_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
@@ -313,7 +309,7 @@ mod unauthenticated {
     }
 
     #[tokio::test]
-    async fn fee_rate_should_succeed() -> Result<()> {
+    async fn fee_rate_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
@@ -336,7 +332,7 @@ mod unauthenticated {
     }
 
     #[tokio::test]
-    async fn order_book_should_succeed() -> Result<()> {
+    async fn order_book_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
@@ -416,7 +412,7 @@ mod unauthenticated {
     }
 
     #[tokio::test]
-    async fn order_books_should_succeed() -> Result<()> {
+    async fn order_books_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
@@ -467,7 +463,7 @@ mod unauthenticated {
     }
 
     #[tokio::test]
-    async fn last_trade_price_should_succeed() -> Result<()> {
+    async fn last_trade_price_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
@@ -496,7 +492,7 @@ mod unauthenticated {
     }
 
     #[tokio::test]
-    async fn last_trades_prices_should_succeed() -> Result<()> {
+    async fn last_trades_prices_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
@@ -528,7 +524,7 @@ mod unauthenticated {
     }
 
     #[tokio::test]
-    async fn market_should_succeed() -> Result<()> {
+    async fn market_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
@@ -646,7 +642,7 @@ mod unauthenticated {
     }
 
     #[tokio::test]
-    async fn sampling_markets_should_succeed() -> Result<()> {
+    async fn sampling_markets_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
@@ -777,7 +773,7 @@ mod unauthenticated {
     }
 
     #[tokio::test]
-    async fn simplified_markets_should_succeed() -> Result<()> {
+    async fn simplified_markets_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
@@ -865,7 +861,7 @@ mod unauthenticated {
     }
 
     #[tokio::test]
-    async fn sampling_simplified_markets_should_succeed() -> Result<()> {
+    async fn sampling_simplified_markets_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
@@ -1140,7 +1136,7 @@ mod authenticated {
     };
 
     #[tokio::test]
-    async fn api_keys_should_succeed() -> Result<()> {
+    async fn api_keys_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -1167,7 +1163,7 @@ mod authenticated {
     }
 
     #[tokio::test]
-    async fn delete_api_keys_should_succeed() -> Result<()> {
+    async fn delete_api_keys_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -1188,7 +1184,7 @@ mod authenticated {
     }
 
     #[tokio::test]
-    async fn closed_only_mode_should_succeed() -> Result<()> {
+    async fn closed_only_mode_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -1216,7 +1212,7 @@ mod authenticated {
 
     // Also fills in some other, less often used fields like nonce, and salt generator
     #[tokio::test]
-    async fn sign_order_should_succeed() -> Result<()> {
+    async fn sign_order_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
 
@@ -1304,7 +1300,7 @@ mod authenticated {
     }
 
     #[tokio::test]
-    async fn post_order_should_succeed() -> Result<()> {
+    async fn post_order_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -1369,7 +1365,7 @@ mod authenticated {
     }
 
     #[tokio::test]
-    async fn order_should_succeed() -> Result<()> {
+    async fn order_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -1430,7 +1426,7 @@ mod authenticated {
     }
 
     #[tokio::test]
-    async fn orders_should_succeed() -> Result<()> {
+    async fn orders_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -1506,7 +1502,7 @@ mod authenticated {
     }
 
     #[tokio::test]
-    async fn cancel_order_should_succeed() -> Result<()> {
+    async fn cancel_order_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -1542,7 +1538,7 @@ mod authenticated {
     }
 
     #[tokio::test]
-    async fn cancel_orders_should_succeed() -> Result<()> {
+    async fn cancel_orders_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -1572,7 +1568,7 @@ mod authenticated {
     }
 
     #[tokio::test]
-    async fn cancel_all_orders_should_succeed() -> Result<()> {
+    async fn cancel_all_orders_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -1609,7 +1605,7 @@ mod authenticated {
     }
 
     #[tokio::test]
-    async fn cancel_market_orders_should_succeed() -> Result<()> {
+    async fn cancel_market_orders_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -1638,7 +1634,7 @@ mod authenticated {
     }
 
     #[tokio::test]
-    async fn trades_should_succeed() -> Result<()> {
+    async fn trades_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -1766,7 +1762,7 @@ mod authenticated {
     }
 
     #[tokio::test]
-    async fn notifications_should_succeed() -> Result<()> {
+    async fn notifications_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -1850,7 +1846,7 @@ mod authenticated {
     }
 
     #[tokio::test]
-    async fn delete_notifications_should_succeed() -> Result<()> {
+    async fn delete_notifications_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -1875,7 +1871,7 @@ mod authenticated {
     }
 
     #[tokio::test]
-    async fn balance_allowance_should_succeed() -> Result<()> {
+    async fn balance_allowance_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -1913,7 +1909,7 @@ mod authenticated {
     }
 
     #[tokio::test]
-    async fn update_balance_allowance_should_succeed() -> Result<()> {
+    async fn update_balance_allowance_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -1941,7 +1937,7 @@ mod authenticated {
     }
 
     #[tokio::test]
-    async fn is_order_scoring_should_succeed() -> Result<()> {
+    async fn is_order_scoring_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -1970,7 +1966,7 @@ mod authenticated {
     }
 
     #[tokio::test]
-    async fn are_orders_scoring_should_succeed() -> Result<()> {
+    async fn are_orders_scoring_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -1997,7 +1993,7 @@ mod authenticated {
     }
 
     #[tokio::test]
-    async fn earnings_for_user_for_day_should_succeed() -> Result<()> {
+    async fn earnings_for_user_for_day_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -2052,7 +2048,7 @@ mod authenticated {
     }
 
     #[tokio::test]
-    async fn total_earnings_for_user_for_day_should_succeed() -> Result<()> {
+    async fn total_earnings_for_user_for_day_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -2095,7 +2091,7 @@ mod authenticated {
     }
 
     #[tokio::test]
-    async fn user_earnings_and_markets_config_should_succeed() -> Result<()> {
+    async fn user_earnings_and_markets_config_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -2249,7 +2245,7 @@ mod authenticated {
     }
 
     #[tokio::test]
-    async fn reward_percentages_should_succeed() -> Result<()> {
+    async fn reward_percentages_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -2274,7 +2270,7 @@ mod authenticated {
     }
 
     #[tokio::test]
-    async fn current_rewards_should_succeed() -> Result<()> {
+    async fn current_rewards_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -2387,7 +2383,7 @@ mod authenticated {
     }
 
     #[tokio::test]
-    async fn raw_rewards_for_market_should_succeed() -> Result<()> {
+    async fn raw_rewards_for_market_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -2520,7 +2516,7 @@ mod builder_authenticated {
     };
 
     #[tokio::test]
-    async fn builder_trades_should_succeed() -> Result<()> {
+    async fn builder_trades_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
 
         let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));

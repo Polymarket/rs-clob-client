@@ -373,7 +373,7 @@ mod tests {
     const PRIVATE_KEY: &str = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 
     #[tokio::test]
-    async fn l1_headers_should_succeed() -> Result<()> {
+    async fn l1_headers_should_succeed() -> anyhow::Result<()> {
         let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(AMOY));
 
         let headers = l1::create_headers(&signer, AMOY, 10_000_000, Some(23)).await?;
@@ -397,7 +397,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn l2_headers_should_succeed() -> Result<()> {
+    async fn l2_headers_should_succeed() -> anyhow::Result<()> {
         let signer = LocalSigner::from_str(PRIVATE_KEY)?;
 
         let authenticated = Authenticated {

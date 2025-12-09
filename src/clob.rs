@@ -21,7 +21,7 @@ use url::Url;
 use crate::auth::builder::Config as BuilderConfig;
 use crate::auth::{Builder, Credentials, Kind as AuthKind, Normal};
 use crate::clob::state::{Authenticated, State, Unauthenticated};
-use crate::errors::Error;
+use crate::error::{Error, Synchronization};
 use crate::order_builder::{Limit, Market, OrderBuilder, generate_seed};
 use crate::types::{
     ApiKeysResponse, BalanceAllowanceRequest, BalanceAllowanceResponse, BanStatusResponse,
@@ -37,7 +37,7 @@ use crate::types::{
     UpdateBalanceAllowanceRequest, UserEarningResponse, UserRewardsEarningRequest,
     UserRewardsEarningResponse,
 };
-use crate::{Result, Timestamp, auth, contract_config};
+use crate::{AMOY, POLYGON, Result, Timestamp, auth, contract_config};
 
 const ORDER_NAME: Option<Cow<'static, str>> = Some(Cow::Borrowed("Polymarket CTF Exchange"));
 const VERSION: Option<Cow<'static, str>> = Some(Cow::Borrowed("1"));
@@ -151,17 +151,25 @@ impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, K> {
     /// Attempt to elevate the inner `client` to [`Client<Authenticated<S, K>>`] using the optional
     /// fields supplied in the builder.
     pub async fn authenticate(self) -> Result<Client<Authenticated<S, K>>> {
-        let inner = Arc::into_inner(self.client.inner).ok_or(Error::Synchronization)?;
+        let inner = Arc::into_inner(self.client.inner).ok_or(Synchronization)?;
 
-        if self.signer.chain_id().is_none() {
-            return Err(Error::Validation(
-                "Chain id not set, be sure to provide one on the signer".to_owned(),
-            ));
+        match self.signer.chain_id() {
+            Some(chain) if chain == POLYGON || chain == AMOY => {}
+            Some(chain) => {
+                return Err(Error::validation(format!(
+                    "Only Polygon and AMOY are supported, got {chain}"
+                )));
+            }
+            None => {
+                return Err(Error::validation(
+                    "Chain id not set, be sure to provide one on the signer",
+                ));
+            }
         }
 
         match (self.funder, self.signature_type) {
             (Some(_), Some(sig @ SignatureType::Eoa)) => {
-                return Err(Error::Validation(format!(
+                return Err(Error::validation(format!(
                     "Cannot have a funder address with a {sig} signature type"
                 )));
             }
@@ -169,12 +177,12 @@ impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, K> {
                 Some(Address::ZERO),
                 Some(sig @ (SignatureType::Proxy | SignatureType::GnosisSafe)),
             ) => {
-                return Err(Error::Validation(format!(
+                return Err(Error::validation(format!(
                     "Cannot have a zero funder address with a {sig} signature type"
                 )));
             }
             (None, Some(sig @ (SignatureType::Proxy | SignatureType::GnosisSafe))) => {
-                return Err(Error::Validation(format!(
+                return Err(Error::validation(format!(
                     "Must have a funder address with a {sig} signature type"
                 )));
             }
@@ -182,11 +190,17 @@ impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, K> {
         }
 
         let credentials = match self.credentials {
-            Some(_) if self.nonce.is_some() => return Err(Error::Validation(
-                "Credentials and nonce are both set. If nonce is set, then you must not supply credentials".to_owned()
-            )),
+            Some(_) if self.nonce.is_some() => {
+                return Err(Error::validation(
+                    "Credentials and nonce are both set. If nonce is set, then you must not supply credentials",
+                ));
+            }
             Some(credentials) => credentials,
-            None => inner.create_or_derive_api_key(&self.signer, self.nonce).await?
+            None => {
+                inner
+                    .create_or_derive_api_key(&self.signer, self.nonce)
+                    .await?
+            }
         };
 
         let state = Authenticated {
@@ -246,11 +260,11 @@ impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, K> {
 ///
 /// use alloy::signers::Signer as _;
 /// use alloy::signers::local::LocalSigner;
-/// use polymarket_client_sdk::{Result, POLYGON, PRIVATE_KEY_VAR};
+/// use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 /// use polymarket_client_sdk::clob::{Client, Config};
 ///
 /// #[tokio::main]
-/// async fn main() -> Result<()> {
+/// async fn main() -> anyhow::Result<()> {
 ///     let private_key = std::env::var(PRIVATE_KEY_VAR).expect("Need a private key");
 ///     let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(POLYGON));
 ///     let client = Client::new("https://clob.polymarket.com", Config::default())?
@@ -326,12 +340,7 @@ impl<S: State> ClientInner<S> {
         if !status_code.is_success() {
             let message = response.text().await.unwrap_or_default();
 
-            return Err(Error::Status {
-                status_code,
-                method,
-                path,
-                message,
-            });
+            return Err(Error::status(status_code, method, path, message));
         }
 
         Ok(response.json().await?)
@@ -388,8 +397,8 @@ impl ClientInner<Unauthenticated> {
     }
 
     async fn create_headers<S: Signer>(&self, signer: &S, nonce: Option<u32>) -> Result<HeaderMap> {
-        let chain_id = signer.chain_id().ok_or(Error::Validation(
-            "Chain id not set, be sure to provide one on the signer".to_owned(),
+        let chain_id = signer.chain_id().ok_or(Error::validation(
+            "Chain id not set, be sure to provide one on the signer",
         ))?;
 
         let timestamp = if self.config.use_server_time {
@@ -810,7 +819,7 @@ impl Client<Unauthenticated> {
 impl<S: Signer, K: AuthKind> Client<Authenticated<S, K>> {
     /// Demotes this authenticated [`Client<Authenticated<S, K>>`] to an unauthenticated one
     pub fn deauthenticate(self) -> Result<Client<Unauthenticated>> {
-        let inner = Arc::into_inner(self.inner).ok_or(Error::Synchronization)?;
+        let inner = Arc::into_inner(self.inner).ok_or(Synchronization)?;
         Ok(Client::<Unauthenticated> {
             inner: Arc::new(ClientInner {
                 state: Unauthenticated,
@@ -904,7 +913,7 @@ impl<S: Signer, K: AuthKind> Client<Authenticated<S, K>> {
             .expect("Validated not none in `authenticate`");
 
         let exchange_contract = contract_config(chain_id, neg_risk)
-            .ok_or(Error::MissingContractConfig(chain_id, neg_risk))?
+            .ok_or(Error::missing_contract_config(chain_id, neg_risk))?
             .exchange;
 
         let domain = Eip712Domain {

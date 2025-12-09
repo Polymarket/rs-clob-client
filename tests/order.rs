@@ -10,8 +10,6 @@ use std::str::FromStr as _;
 use alloy::primitives::{Address, U256};
 use chrono::{DateTime, Utc};
 use httpmock::MockServer;
-use polymarket_client_sdk::Result;
-use polymarket_client_sdk::errors::Error;
 use polymarket_client_sdk::types::{
     Amount, OrderSummary, OrderType, Side, SignatureType, TickSize,
 };
@@ -30,13 +28,14 @@ mod lifecycle {
     use alloy::signers::local::LocalSigner;
     use polymarket_client_sdk::POLYGON;
     use polymarket_client_sdk::clob::{Client, Config};
+    use polymarket_client_sdk::error::Validation;
     use serde_json::json;
 
     use super::*;
     use crate::common::{API_KEY, PASSPHRASE, POLY_ADDRESS, PRIVATE_KEY, SECRET};
 
     #[tokio::test]
-    async fn order_parameters_should_reset_on_new_order() -> Result<()> {
+    async fn order_parameters_should_reset_on_new_order() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -70,7 +69,7 @@ mod lifecycle {
     }
 
     #[tokio::test]
-    async fn client_order_fields_should_persist_new_order() -> Result<()> {
+    async fn client_order_fields_should_persist_new_order() -> anyhow::Result<()> {
         let server = MockServer::start();
         let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
 
@@ -122,7 +121,7 @@ mod lifecycle {
     }
 
     #[tokio::test]
-    async fn client_order_fields_should_reset_on_deauthenticate() -> Result<()> {
+    async fn client_order_fields_should_reset_on_deauthenticate() -> anyhow::Result<()> {
         let server = MockServer::start();
         let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
 
@@ -190,7 +189,7 @@ mod lifecycle {
     }
 
     #[tokio::test]
-    async fn client_with_funder_should_succeed() -> Result<()> {
+    async fn client_with_funder_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
 
         let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
@@ -262,7 +261,8 @@ mod lifecycle {
     }
 
     #[tokio::test]
-    async fn client_logged_in_then_out_should_reset_funder_and_signature_type() -> Result<()> {
+    async fn client_logged_in_then_out_should_reset_funder_and_signature_type() -> anyhow::Result<()>
+    {
         let server = MockServer::start();
 
         let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
@@ -337,50 +337,47 @@ mod lifecycle {
     }
 
     #[tokio::test]
-    async fn incompatible_funder_and_signature_types_should_fail() -> Result<()> {
+    async fn incompatible_funder_and_signature_types_should_fail() -> anyhow::Result<()> {
         let server = MockServer::start();
 
         let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
 
         let funder = address!("0xaDEFf2158d668f64308C62ef227C5CcaCAAf976D");
-        let Err(Error::Validation(msg)) = Client::new(&server.base_url(), Config::default())?
+        let err = Client::new(&server.base_url(), Config::default())?
             .authentication_builder(signer.clone())
             .funder(funder)
             .signature_type(SignatureType::Eoa)
             .authenticate()
             .await
-        else {
-            panic!("Expected validation error");
-        };
+            .unwrap_err();
+        let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
         assert_eq!(
             msg,
             "Cannot have a funder address with a Eoa signature type"
         );
 
-        let Err(Error::Validation(msg)) = Client::new(&server.base_url(), Config::default())?
+        let err = Client::new(&server.base_url(), Config::default())?
             .authentication_builder(signer.clone())
             .signature_type(SignatureType::GnosisSafe)
             .authenticate()
             .await
-        else {
-            panic!("Expected validation error");
-        };
+            .unwrap_err();
+        let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
         assert_eq!(
             msg,
             "Must have a funder address with a GnosisSafe signature type"
         );
 
-        let Err(Error::Validation(msg)) = Client::new(&server.base_url(), Config::default())?
+        let err = Client::new(&server.base_url(), Config::default())?
             .authentication_builder(signer.clone())
             .funder(Address::ZERO)
             .signature_type(SignatureType::GnosisSafe)
             .authenticate()
             .await
-        else {
-            panic!("Expected validation error");
-        };
+            .unwrap_err();
+        let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
         assert_eq!(
             msg,
@@ -391,18 +388,17 @@ mod lifecycle {
     }
 
     #[tokio::test]
-    async fn signer_with_no_chain_id_should_fail() -> Result<()> {
+    async fn signer_with_no_chain_id_should_fail() -> anyhow::Result<()> {
         let server = MockServer::start();
 
         let signer = LocalSigner::from_str(PRIVATE_KEY)?;
 
-        let Err(Error::Validation(msg)) = Client::new(&server.base_url(), Config::default())?
+        let err = Client::new(&server.base_url(), Config::default())?
             .authentication_builder(signer.clone())
             .authenticate()
             .await
-        else {
-            panic!("Expected validation error");
-        };
+            .unwrap_err();
+        let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
         assert_eq!(
             msg,
@@ -411,19 +407,39 @@ mod lifecycle {
 
         Ok(())
     }
+
+    #[tokio::test]
+    async fn signer_with_unsupported_chain_id_should_fail() -> anyhow::Result<()> {
+        let server = MockServer::start();
+
+        let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(1));
+
+        let err = Client::new(&server.base_url(), Config::default())?
+            .authentication_builder(signer.clone())
+            .authenticate()
+            .await
+            .unwrap_err();
+        let msg = &err.downcast_ref::<Validation>().unwrap().reason;
+
+        assert_eq!(msg, "Only Polygon and AMOY are supported, got 1");
+
+        Ok(())
+    }
 }
 
 mod limit {
+    use polymarket_client_sdk::error::Validation;
+
     use super::*;
 
     #[tokio::test]
-    async fn should_fail_on_expiration_for_gtc() -> Result<()> {
+    async fn should_fail_on_expiration_for_gtc() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
         ensure_requirements(&server, TOKEN_1, TickSize::Tenth);
 
-        let Err(Error::Validation(msg)) = client
+        let err = client
             .limit_order()
             .token_id(TOKEN_1)
             .price(dec!(0.5))
@@ -433,9 +449,8 @@ mod limit {
             .expiration(DateTime::<Utc>::from_str("1970-01-01T13:53:20Z").unwrap())
             .build()
             .await
-        else {
-            panic!("Expected validation error");
-        };
+            .unwrap_err();
+        let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
         assert_eq!(msg, "Only GTD orders may have a non-zero expiration");
 
@@ -443,13 +458,13 @@ mod limit {
     }
 
     #[tokio::test]
-    async fn should_fail_on_missing_fields() -> Result<()> {
+    async fn should_fail_on_missing_fields() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
         ensure_requirements(&server, TOKEN_1, TickSize::Tenth);
 
-        let Err(Error::Validation(msg)) = client
+        let err = client
             .limit_order()
             .token_id(TOKEN_1)
             .size(dec!(21.04))
@@ -458,13 +473,12 @@ mod limit {
             .expiration(DateTime::<Utc>::from_str("1970-01-01T13:53:20Z").unwrap())
             .build()
             .await
-        else {
-            panic!("Expected validation error");
-        };
+            .unwrap_err();
+        let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
         assert_eq!(msg, "Unable to build Order due to missing price");
 
-        let Err(Error::Validation(msg)) = client
+        let err = client
             .limit_order()
             .token_id(TOKEN_1)
             .price(dec!(0.5))
@@ -473,9 +487,8 @@ mod limit {
             .expiration(DateTime::<Utc>::from_str("1970-01-01T13:53:20Z").unwrap())
             .build()
             .await
-        else {
-            panic!("Expected validation error");
-        };
+            .unwrap_err();
+        let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
         assert_eq!(msg, "Unable to build Order due to missing size");
 
@@ -483,13 +496,13 @@ mod limit {
     }
 
     #[tokio::test]
-    async fn should_fail_on_too_granular_of_a_price() -> Result<()> {
+    async fn should_fail_on_too_granular_of_a_price() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
         ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
 
-        let Err(Error::Validation(msg)) = client
+        let err = client
             .limit_order()
             .token_id(TOKEN_1)
             .price(dec!(0.005))
@@ -499,9 +512,8 @@ mod limit {
             .expiration(DateTime::<Utc>::from_str("1970-01-01T13:53:20Z").unwrap())
             .build()
             .await
-        else {
-            panic!("Expected validation error");
-        };
+            .unwrap_err();
+        let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
         assert_eq!(
             msg,
@@ -512,13 +524,13 @@ mod limit {
     }
 
     #[tokio::test]
-    async fn should_fail_on_negative_price_and_size() -> Result<()> {
+    async fn should_fail_on_negative_price_and_size() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
         ensure_requirements(&server, TOKEN_1, TickSize::Tenth);
 
-        let Err(Error::Validation(msg)) = client
+        let err = client
             .limit_order()
             .token_id(TOKEN_1)
             .price(dec!(-0.5))
@@ -528,13 +540,12 @@ mod limit {
             .expiration(DateTime::<Utc>::from_str("1970-01-01T13:53:20Z").unwrap())
             .build()
             .await
-        else {
-            panic!("Expected validation error");
-        };
+            .unwrap_err();
+        let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
         assert_eq!(msg, "Unable to build Order due to negative price -0.5");
 
-        let Err(Error::Validation(msg)) = client
+        let err = client
             .limit_order()
             .token_id(TOKEN_1)
             .price(dec!(0.5))
@@ -544,9 +555,8 @@ mod limit {
             .expiration(DateTime::<Utc>::from_str("1970-01-01T13:53:20Z").unwrap())
             .build()
             .await
-        else {
-            panic!("Expected validation error");
-        };
+            .unwrap_err();
+        let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
         assert_eq!(msg, "Unable to build Order due to negative size -21.04");
 
@@ -557,7 +567,7 @@ mod limit {
         use super::*;
 
         #[tokio::test]
-        async fn should_succeed_0_1() -> Result<()> {
+        async fn should_succeed_0_1() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -597,7 +607,7 @@ mod limit {
         }
 
         #[tokio::test]
-        async fn should_succeed_0_01() -> Result<()> {
+        async fn should_succeed_0_01() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -637,7 +647,7 @@ mod limit {
         }
 
         #[tokio::test]
-        async fn should_succeed_0_001() -> Result<()> {
+        async fn should_succeed_0_001() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -677,7 +687,7 @@ mod limit {
         }
 
         #[tokio::test]
-        async fn should_succeed_0_0001() -> Result<()> {
+        async fn should_succeed_0_0001() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -717,7 +727,7 @@ mod limit {
         }
 
         #[tokio::test]
-        async fn buy_should_succeed_decimal_accuracy() -> Result<()> {
+        async fn buy_should_succeed_decimal_accuracy() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -739,7 +749,7 @@ mod limit {
         }
 
         #[tokio::test]
-        async fn buy_should_succeed_decimal_accuracy_2() -> Result<()> {
+        async fn buy_should_succeed_decimal_accuracy_2() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -762,7 +772,7 @@ mod limit {
 
         #[tokio::test]
         #[ignore = "Lot size should prevent size from being accepted"]
-        async fn buy_should_succeed_decimal_accuracy_3() -> Result<()> {
+        async fn buy_should_succeed_decimal_accuracy_3() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -784,7 +794,7 @@ mod limit {
         }
 
         #[tokio::test]
-        async fn buy_should_succeed_decimal_accuracy_4() -> Result<()> {
+        async fn buy_should_succeed_decimal_accuracy_4() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -816,7 +826,7 @@ mod limit {
         use super::*;
 
         #[tokio::test]
-        async fn should_succeed_0_1() -> Result<()> {
+        async fn should_succeed_0_1() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -856,7 +866,7 @@ mod limit {
         }
 
         #[tokio::test]
-        async fn should_succeed_0_01() -> Result<()> {
+        async fn should_succeed_0_01() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -896,7 +906,7 @@ mod limit {
         }
 
         #[tokio::test]
-        async fn should_succeed_0_001() -> Result<()> {
+        async fn should_succeed_0_001() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -936,7 +946,7 @@ mod limit {
         }
 
         #[tokio::test]
-        async fn should_succeed_0_0001() -> Result<()> {
+        async fn should_succeed_0_0001() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -976,7 +986,7 @@ mod limit {
         }
 
         #[tokio::test]
-        async fn sell_should_succeed_decimal_accuracy() -> Result<()> {
+        async fn sell_should_succeed_decimal_accuracy() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -998,7 +1008,7 @@ mod limit {
         }
 
         #[tokio::test]
-        async fn sell_should_succeed_decimal_accuracy_2() -> Result<()> {
+        async fn sell_should_succeed_decimal_accuracy_2() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -1021,7 +1031,7 @@ mod limit {
 
         #[tokio::test]
         #[ignore = "Lot size should prevent size from being accepted"]
-        async fn sell_should_succeed_decimal_accuracy_3() -> Result<()> {
+        async fn sell_should_succeed_decimal_accuracy_3() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -1043,7 +1053,7 @@ mod limit {
         }
 
         #[tokio::test]
-        async fn sell_should_succeed_decimal_accuracy_4() -> Result<()> {
+        async fn sell_should_succeed_decimal_accuracy_4() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -1068,7 +1078,7 @@ mod limit {
         }
 
         #[tokio::test]
-        async fn sell_should_succeed_decimal_accuracy_5() -> Result<()> {
+        async fn sell_should_succeed_decimal_accuracy_5() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -1091,7 +1101,7 @@ mod limit {
     }
 
     #[tokio::test]
-    async fn should_succeed() -> Result<()> {
+    async fn should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -1161,6 +1171,7 @@ mod limit {
 }
 
 mod market {
+    use polymarket_client_sdk::error::Validation;
     use polymarket_client_sdk::types::OrderSummaryBuilder;
     use serde_json::json;
 
@@ -1212,16 +1223,18 @@ mod market {
         use super::*;
 
         mod fok {
+            use polymarket_client_sdk::error::Validation;
+
             use super::*;
 
             #[tokio::test]
-            async fn should_fail_on_no_asks() -> Result<()> {
+            async fn should_fail_on_no_asks() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
                 ensure_requirements_for_market_price(&server, TOKEN_1, &[], &[]);
 
-                let Error::Validation(msg) = client
+                let err = client
                     .market_order()
                     .token_id(TOKEN_1)
                     .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
@@ -1229,10 +1242,8 @@ mod market {
                     .order_type(OrderType::FOK)
                     .build()
                     .await
-                    .unwrap_err()
-                else {
-                    panic!("Expected validation error")
-                };
+                    .unwrap_err();
+                let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
                 assert_eq!(
                     msg,
@@ -1243,7 +1254,7 @@ mod market {
             }
 
             #[tokio::test]
-            async fn should_fail_on_insufficient_liquidity() -> Result<()> {
+            async fn should_fail_on_insufficient_liquidity() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
@@ -1263,7 +1274,7 @@ mod market {
                     ],
                 );
 
-                let Error::Validation(msg) = client
+                let err = client
                     .market_order()
                     .token_id(TOKEN_1)
                     .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
@@ -1271,10 +1282,8 @@ mod market {
                     .order_type(OrderType::FOK)
                     .build()
                     .await
-                    .unwrap_err()
-                else {
-                    panic!("Expected validation error")
-                };
+                    .unwrap_err();
+                let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
                 assert_eq!(msg, "Insufficient liquidity to fill order for 1 at 100");
 
@@ -1282,7 +1291,7 @@ mod market {
             }
 
             #[tokio::test]
-            async fn should_succeed() -> Result<()> {
+            async fn should_succeed() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
@@ -1337,7 +1346,7 @@ mod market {
             }
 
             #[tokio::test]
-            async fn should_succeed2() -> Result<()> {
+            async fn should_succeed2() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
@@ -1383,7 +1392,7 @@ mod market {
             }
 
             #[tokio::test]
-            async fn should_succeed_3() -> Result<()> {
+            async fn should_succeed_3() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
@@ -1429,7 +1438,7 @@ mod market {
             }
 
             #[tokio::test]
-            async fn should_succeed_4() -> Result<()> {
+            async fn should_succeed_4() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
@@ -1479,23 +1488,21 @@ mod market {
             use super::*;
 
             #[tokio::test]
-            async fn should_fail_on_no_asks() -> Result<()> {
+            async fn should_fail_on_no_asks() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
                 ensure_requirements_for_market_price(&server, TOKEN_1, &[], &[]);
 
-                let Error::Validation(msg) = client
+                let err = client
                     .market_order()
                     .token_id(TOKEN_1)
                     .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
                     .side(Side::Buy)
                     .build()
                     .await
-                    .unwrap_err()
-                else {
-                    panic!("Expected validation error")
-                };
+                    .unwrap_err();
+                let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
                 assert_eq!(
                     msg,
@@ -1506,7 +1513,7 @@ mod market {
             }
 
             #[tokio::test]
-            async fn should_succeed() -> Result<()> {
+            async fn should_succeed() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
@@ -1556,7 +1563,7 @@ mod market {
             }
 
             #[tokio::test]
-            async fn should_succeed_2() -> Result<()> {
+            async fn should_succeed_2() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
@@ -1601,7 +1608,7 @@ mod market {
             }
 
             #[tokio::test]
-            async fn should_succeed_3() -> Result<()> {
+            async fn should_succeed_3() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
@@ -1646,7 +1653,7 @@ mod market {
             }
 
             #[tokio::test]
-            async fn should_succeed_4() -> Result<()> {
+            async fn should_succeed_4() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
@@ -1691,7 +1698,7 @@ mod market {
             }
 
             #[tokio::test]
-            async fn should_succeed_5() -> Result<()> {
+            async fn should_succeed_5() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
@@ -1737,7 +1744,7 @@ mod market {
         }
 
         #[tokio::test]
-        async fn should_succeed_0_1() -> Result<()> {
+        async fn should_succeed_0_1() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -1786,7 +1793,7 @@ mod market {
 
         #[tokio::test]
         #[ignore = "currently different than python -- should be 178571428"]
-        async fn should_succeed_0_01() -> Result<()> {
+        async fn should_succeed_0_01() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -1836,7 +1843,7 @@ mod market {
 
         #[tokio::test]
         #[ignore = "currently different than python -- should be 1785714285"]
-        async fn should_succeed_0_001() -> Result<()> {
+        async fn should_succeed_0_001() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -1885,7 +1892,7 @@ mod market {
         }
 
         #[tokio::test]
-        async fn should_succeed_0_0001() -> Result<()> {
+        async fn should_succeed_0_0001() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -1944,13 +1951,13 @@ mod market {
             use super::*;
 
             #[tokio::test]
-            async fn should_fail_on_no_bids() -> Result<()> {
+            async fn should_fail_on_no_bids() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
                 ensure_requirements_for_market_price(&server, TOKEN_1, &[], &[]);
 
-                let Error::Validation(msg) = client
+                let err = client
                     .market_order()
                     .token_id(TOKEN_1)
                     .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
@@ -1958,10 +1965,8 @@ mod market {
                     .order_type(OrderType::FOK)
                     .build()
                     .await
-                    .unwrap_err()
-                else {
-                    panic!("Expected validation error")
-                };
+                    .unwrap_err();
+                let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
                 assert_eq!(
                     msg,
@@ -1972,7 +1977,7 @@ mod market {
             }
 
             #[tokio::test]
-            async fn should_fail_on_insufficient_liquidity() -> Result<()> {
+            async fn should_fail_on_insufficient_liquidity() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
@@ -1992,7 +1997,7 @@ mod market {
                     &[],
                 );
 
-                let Error::Validation(msg) = client
+                let err = client
                     .market_order()
                     .token_id(TOKEN_1)
                     .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
@@ -2000,10 +2005,8 @@ mod market {
                     .order_type(OrderType::FOK)
                     .build()
                     .await
-                    .unwrap_err()
-                else {
-                    panic!("Expected validation error")
-                };
+                    .unwrap_err();
+                let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
                 assert_eq!(msg, "Insufficient liquidity to fill order for 1 at 100");
 
@@ -2011,7 +2014,7 @@ mod market {
             }
 
             #[tokio::test]
-            async fn should_succeed() -> Result<()> {
+            async fn should_succeed() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
@@ -2066,7 +2069,7 @@ mod market {
             }
 
             #[tokio::test]
-            async fn should_succeed_2() -> Result<()> {
+            async fn should_succeed_2() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
@@ -2112,7 +2115,7 @@ mod market {
             }
 
             #[tokio::test]
-            async fn should_succeed_3() -> Result<()> {
+            async fn should_succeed_3() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
@@ -2158,7 +2161,7 @@ mod market {
             }
 
             #[tokio::test]
-            async fn should_succeed_4() -> Result<()> {
+            async fn should_succeed_4() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
@@ -2204,7 +2207,7 @@ mod market {
             }
 
             #[tokio::test]
-            async fn should_succeed_5() -> Result<()> {
+            async fn should_succeed_5() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
@@ -2254,23 +2257,21 @@ mod market {
             use super::*;
 
             #[tokio::test]
-            async fn should_fail_on_no_bids() -> Result<()> {
+            async fn should_fail_on_no_bids() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
                 ensure_requirements_for_market_price(&server, TOKEN_1, &[], &[]);
 
-                let Error::Validation(msg) = client
+                let err = client
                     .market_order()
                     .token_id(TOKEN_1)
                     .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
                     .side(Side::Sell)
                     .build()
                     .await
-                    .unwrap_err()
-                else {
-                    panic!("Expected validation error")
-                };
+                    .unwrap_err();
+                let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
                 assert_eq!(
                     msg,
@@ -2281,7 +2282,7 @@ mod market {
             }
 
             #[tokio::test]
-            async fn should_succeed() -> Result<()> {
+            async fn should_succeed() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
@@ -2331,7 +2332,7 @@ mod market {
             }
 
             #[tokio::test]
-            async fn should_succeed_2() -> Result<()> {
+            async fn should_succeed_2() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
@@ -2376,7 +2377,7 @@ mod market {
             }
 
             #[tokio::test]
-            async fn should_succeed_3() -> Result<()> {
+            async fn should_succeed_3() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
@@ -2421,7 +2422,7 @@ mod market {
             }
 
             #[tokio::test]
-            async fn should_succeed_4() -> Result<()> {
+            async fn should_succeed_4() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
@@ -2466,7 +2467,7 @@ mod market {
             }
 
             #[tokio::test]
-            async fn should_succeed_5() -> Result<()> {
+            async fn should_succeed_5() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
@@ -2511,7 +2512,7 @@ mod market {
             }
 
             #[tokio::test]
-            async fn should_succeed_6() -> Result<()> {
+            async fn should_succeed_6() -> anyhow::Result<()> {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
@@ -2557,7 +2558,7 @@ mod market {
         }
 
         #[tokio::test]
-        async fn should_succeed_0_1() -> Result<()> {
+        async fn should_succeed_0_1() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -2605,7 +2606,7 @@ mod market {
         }
 
         #[tokio::test]
-        async fn should_succeed_0_01() -> Result<()> {
+        async fn should_succeed_0_01() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -2654,7 +2655,7 @@ mod market {
         }
 
         #[tokio::test]
-        async fn should_succeed_0_001() -> Result<()> {
+        async fn should_succeed_0_001() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -2703,7 +2704,7 @@ mod market {
         }
 
         #[tokio::test]
-        async fn should_succeed_0_0001() -> Result<()> {
+        async fn should_succeed_0_0001() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
@@ -2753,46 +2754,40 @@ mod market {
     }
 
     #[tokio::test]
-    async fn should_fail_on_missing_required_fields() -> Result<()> {
+    async fn should_fail_on_missing_required_fields() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
-        let Error::Validation(msg) = client
+        let err = client
             .market_order()
             .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
             .side(Side::Buy)
             .build()
             .await
-            .unwrap_err()
-        else {
-            panic!("Expected validation error");
-        };
+            .unwrap_err();
+        let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
         assert_eq!(msg, "Unable to build Order due to missing token ID");
 
-        let Error::Validation(msg) = client
+        let err = client
             .market_order()
             .token_id(TOKEN_1)
             .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
             .build()
             .await
-            .unwrap_err()
-        else {
-            panic!("Expected validation error");
-        };
+            .unwrap_err();
+        let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
         assert_eq!(msg, "Unable to build Order due to missing token side");
 
-        let Error::Validation(msg) = client
+        let err = client
             .market_order()
             .token_id(TOKEN_1)
             .side(Side::Buy)
             .build()
             .await
-            .unwrap_err()
-        else {
-            panic!("Expected validation error");
-        };
+            .unwrap_err();
+        let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
         assert_eq!(msg, "Unable to build Order due to missing amount");
 
@@ -2800,13 +2795,13 @@ mod market {
     }
 
     #[tokio::test]
-    async fn should_fail_on_gtc() -> Result<()> {
+    async fn should_fail_on_gtc() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
         ensure_requirements_for_market_price(&server, TOKEN_1, &[], &[]);
 
-        let Error::Validation(msg) = client
+        let err = client
             .market_order()
             .token_id(TOKEN_1)
             .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
@@ -2814,10 +2809,8 @@ mod market {
             .order_type(OrderType::GTC)
             .build()
             .await
-            .unwrap_err()
-        else {
-            panic!("Expected validation error")
-        };
+            .unwrap_err();
+        let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
         assert_eq!(
             msg,
@@ -2828,40 +2821,36 @@ mod market {
     }
 
     #[tokio::test]
-    async fn mismatched_sides_and_amounts_should_fail() -> Result<()> {
+    async fn mismatched_sides_and_amounts_should_fail() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
         ensure_requirements_for_market_price(&server, TOKEN_1, &[], &[]);
 
-        let Error::Validation(msg) = client
+        let err = client
             .market_order()
             .token_id(TOKEN_1)
             .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
             .side(Side::Buy)
             .build()
             .await
-            .unwrap_err()
-        else {
-            panic!("Expected validation error")
-        };
+            .unwrap_err();
+        let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
         assert_eq!(
             msg,
             "Buy Orders must specify their `amount`s in terms of USDC"
         );
 
-        let Error::Validation(msg) = client
+        let err = client
             .market_order()
             .token_id(TOKEN_1)
             .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
             .side(Side::Sell)
             .build()
             .await
-            .unwrap_err()
-        else {
-            panic!("Expected validation error")
-        };
+            .unwrap_err();
+        let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
         assert_eq!(msg, "Sell Orders must specify their `amount`s in shares");
 
