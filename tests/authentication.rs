@@ -5,17 +5,17 @@ use std::str::FromStr as _;
 use alloy::signers::Signer as _;
 use alloy::signers::local::LocalSigner;
 use httpmock::MockServer;
+use polymarket_client_sdk::POLYGON;
 use polymarket_client_sdk::auth::Credentials;
 use polymarket_client_sdk::clob::{Client, Config};
-use polymarket_client_sdk::errors::Error;
-use polymarket_client_sdk::{POLYGON, Result};
+use polymarket_client_sdk::error::{Synchronization, Validation};
 use reqwest::StatusCode;
 use serde_json::json;
 
 use crate::common::{API_KEY, PASSPHRASE, POLY_ADDRESS, PRIVATE_KEY, SECRET, create_authenticated};
 
 #[tokio::test]
-async fn authenticate_with_explicit_credentials_should_succeed() -> Result<()> {
+async fn authenticate_with_explicit_credentials_should_succeed() -> anyhow::Result<()> {
     let server = MockServer::start();
 
     let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
@@ -31,7 +31,7 @@ async fn authenticate_with_explicit_credentials_should_succeed() -> Result<()> {
 }
 
 #[tokio::test]
-async fn authenticate_with_nonce_should_succeed() -> Result<()> {
+async fn authenticate_with_nonce_should_succeed() -> anyhow::Result<()> {
     let server = MockServer::start();
 
     let mock = server.mock(|when, then| {
@@ -59,33 +59,30 @@ async fn authenticate_with_nonce_should_succeed() -> Result<()> {
 }
 
 #[tokio::test]
-async fn authenticate_with_explicit_credentials_and_nonce_should_fail() -> Result<()> {
+async fn authenticate_with_explicit_credentials_and_nonce_should_fail() -> anyhow::Result<()> {
     let server = MockServer::start();
 
     let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
-    let result = Client::new(&server.base_url(), Config::default())?
+    let err = Client::new(&server.base_url(), Config::default())?
         .authentication_builder(signer.clone())
         .nonce(123)
         .credentials(Credentials::default())
         .authenticate()
-        .await;
+        .await
+        .unwrap_err();
 
-    match result {
-        Ok(_) => panic!("expected failure"),
-        Err(Error::Validation(msg)) => {
-            assert_eq!(
-                msg,
-                "Credentials and nonce are both set. If nonce is set, then you must not supply credentials"
-            );
-        }
-        Err(e) => panic!("unexpected error: {e}"),
-    }
+    let validation_err = err.downcast_ref::<Validation>().unwrap();
+
+    assert_eq!(
+        validation_err.reason,
+        "Credentials and nonce are both set. If nonce is set, then you must not supply credentials"
+    );
 
     Ok(())
 }
 
 #[tokio::test]
-async fn authenticated_to_unauthenticated_should_succeed() -> Result<()> {
+async fn authenticated_to_unauthenticated_should_succeed() -> anyhow::Result<()> {
     let server = MockServer::start();
     let client = create_authenticated(&server).await?;
 
@@ -96,7 +93,7 @@ async fn authenticated_to_unauthenticated_should_succeed() -> Result<()> {
 }
 
 #[tokio::test]
-async fn authenticate_with_multiple_strong_references_should_fail() -> Result<()> {
+async fn authenticate_with_multiple_strong_references_should_fail() -> anyhow::Result<()> {
     let server = MockServer::start();
 
     server.mock(|when, then| {
@@ -114,36 +111,36 @@ async fn authenticate_with_multiple_strong_references_should_fail() -> Result<()
 
     let _client_clone = client.clone();
 
-    let result = client
+    let err = client
         .authentication_builder(signer.clone())
         .authenticate()
-        .await;
+        .await
+        .unwrap_err();
 
-    match result {
-        Ok(_) => panic!("expected failure"),
-        Err(Error::Synchronization) => {}
-        Err(e) => panic!("unexpected error: {e}"),
-    }
+    err.downcast_ref::<Synchronization>().unwrap();
 
     Ok(())
 }
 
 #[tokio::test]
-async fn deauthenticated_with_multiple_strong_references_should_fail() -> Result<()> {
+async fn deauthenticated_with_multiple_strong_references_should_fail() -> anyhow::Result<()> {
     let server = MockServer::start();
     let client = create_authenticated(&server).await?;
 
     let _client_clone = client.clone();
 
-    let Error::Synchronization = client.deauthenticate().unwrap_err() else {
-        panic!("Expected synchronization error");
-    };
+    let err = client.deauthenticate().unwrap_err();
+    let sync_error = err.downcast_ref::<Synchronization>().unwrap();
+    assert_eq!(
+        sync_error.to_string(),
+        "synchronization error: multiple threads are attempting to log in or log out"
+    );
 
     Ok(())
 }
 
 #[tokio::test]
-async fn create_api_key_should_succeed() -> Result<()> {
+async fn create_api_key_should_succeed() -> anyhow::Result<()> {
     let server = MockServer::start();
     let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
     let client = Client::new(&server.base_url(), Config::default())?;
@@ -171,7 +168,7 @@ async fn create_api_key_should_succeed() -> Result<()> {
 }
 
 #[tokio::test]
-async fn derive_api_key_should_succeed() -> Result<()> {
+async fn derive_api_key_should_succeed() -> anyhow::Result<()> {
     let server = MockServer::start();
     let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
     let client = Client::new(&server.base_url(), Config::default())?;
@@ -199,7 +196,7 @@ async fn derive_api_key_should_succeed() -> Result<()> {
 }
 
 #[tokio::test]
-async fn create_or_derive_api_key_should_succeed() -> Result<()> {
+async fn create_or_derive_api_key_should_succeed() -> anyhow::Result<()> {
     let server = MockServer::start();
     let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
     let client = Client::new(&server.base_url(), Config::default())?;

@@ -3347,7 +3347,6 @@ dependencies = [
  "sha1",
  "sha2",
  "strum_macros",
- "thiserror",
  "tokio",
  "url",
  "uuid",

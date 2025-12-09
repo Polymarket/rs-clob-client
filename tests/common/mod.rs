@@ -57,9 +57,7 @@ pub const USDC_DECIMALS: u32 = 6;
 
 pub type TestClient = Client<Authenticated<LocalSigner<SigningKey>, Normal>>;
 
-pub async fn create_authenticated(
-    server: &MockServer,
-) -> polymarket_client_sdk::Result<TestClient> {
+pub async fn create_authenticated(server: &MockServer) -> anyhow::Result<TestClient> {
     let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
 
     let mock = server.mock(|when, then| {

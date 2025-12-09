@@ -13,7 +13,7 @@ use crate::Result;
 use crate::auth::Kind as AuthKind;
 use crate::clob::Client;
 use crate::clob::state::Authenticated;
-use crate::errors::Error;
+use crate::error::Error;
 use crate::types::{
     Amount, AmountInner, Order, OrderBookSummaryRequest, OrderType, Side, SignableOrder,
     SignatureType,
@@ -111,25 +111,25 @@ impl<S: Signer, K: AuthKind> OrderBuilder<S, Limit, K> {
     /// Validates and transforms this limit builder into a [`SignableOrder`]
     pub async fn build(self) -> Result<SignableOrder> {
         let Some(token_id) = self.token_id.clone() else {
-            return Err(Error::Validation(
-                "Unable to build Order due to missing token ID".to_owned(),
+            return Err(Error::validation(
+                "Unable to build Order due to missing token ID",
             ));
         };
 
         let Some(side) = self.side else {
-            return Err(Error::Validation(
-                "Unable to build Order due to missing token side".to_owned(),
+            return Err(Error::validation(
+                "Unable to build Order due to missing token side",
             ));
         };
 
         let Some(price) = self.price else {
-            return Err(Error::Validation(
-                "Unable to build Order due to missing price".to_owned(),
+            return Err(Error::validation(
+                "Unable to build Order due to missing price",
             ));
         };
 
         if price.is_sign_negative() {
-            return Err(Error::Validation(format!(
+            return Err(Error::validation(format!(
                 "Unable to build Order due to negative price {price}"
             )));
         }
@@ -143,7 +143,7 @@ impl<S: Signer, K: AuthKind> OrderBuilder<S, Limit, K> {
             .as_decimal();
 
         if price.scale() > minimum_tick_size.scale() {
-            return Err(Error::Validation(format!(
+            return Err(Error::validation(format!(
                 "Unable to build Order: Price {price} has {} decimal places. Minimum tick size \
                 {minimum_tick_size} has {} decimal places. Price decimal places <= minimum tick size decimal places",
                 price.scale(),
@@ -152,26 +152,26 @@ impl<S: Signer, K: AuthKind> OrderBuilder<S, Limit, K> {
         }
 
         if price < minimum_tick_size || price > Decimal::ONE - minimum_tick_size {
-            return Err(Error::Validation(format!(
+            return Err(Error::validation(format!(
                 "Price {price} is too small or too large for the minimum tick size {minimum_tick_size}"
             )));
         }
 
         let Some(size) = self.size else {
-            return Err(Error::Validation(
-                "Unable to build Order due to missing size".to_owned(),
+            return Err(Error::validation(
+                "Unable to build Order due to missing size",
             ));
         };
 
         if size.scale() > LOT_SIZE {
-            return Err(Error::Validation(format!(
+            return Err(Error::validation(format!(
                 "Unable to build Order: Size {size} has {} decimal places. Maximum step size is {LOT_SIZE}",
                 size.scale()
             )));
         }
 
         if size.is_zero() || size.is_sign_negative() {
-            return Err(Error::Validation(format!(
+            return Err(Error::validation(format!(
                 "Unable to build Order due to negative size {size}"
             )));
         }
@@ -182,8 +182,8 @@ impl<S: Signer, K: AuthKind> OrderBuilder<S, Limit, K> {
         let order_type = self.order_type.unwrap_or(OrderType::GTC);
 
         if !matches!(order_type, OrderType::GTD) && expiration > DateTime::<Utc>::UNIX_EPOCH {
-            return Err(Error::Validation(
-                "Only GTD orders may have a non-zero expiration".to_owned(),
+            return Err(Error::validation(
+                "Only GTD orders may have a non-zero expiration",
             ));
         }
 
@@ -197,7 +197,7 @@ impl<S: Signer, K: AuthKind> OrderBuilder<S, Limit, K> {
         let (taker_amount, maker_amount) = match side {
             Side::Buy => (size, size * price),
             Side::Sell => (size * price, size),
-            Side::Unknown => return Err(Error::Validation("Unknown side".to_owned())),
+            Side::Unknown => return Err(Error::validation("Unknown side")),
         };
 
         let order = Order {
@@ -211,7 +211,7 @@ impl<S: Signer, K: AuthKind> OrderBuilder<S, Limit, K> {
             feeRateBps: U256::from(fee_rate.base_fee),
             nonce: U256::from(nonce),
             signer: self.signer,
-            expiration: U256::from(expiration.timestamp().to_u64().ok_or(Error::Validation(
+            expiration: U256::from(expiration.timestamp().to_u64().ok_or(Error::validation(
                 format!("Unable to represent expiration {expiration} as a u64"),
             ))?),
             signatureType: self.signature_type as u8,
@@ -249,8 +249,8 @@ impl<S: Signer, K: AuthKind> OrderBuilder<S, Market, K> {
             .await?;
 
         if !matches!(order_type, OrderType::FAK | OrderType::FOK) {
-            return Err(Error::Validation(
-                "Cannot set an order type other than FAK/FOK for a market order".to_owned(),
+            return Err(Error::validation(
+                "Cannot set an order type other than FAK/FOK for a market order",
             ));
         }
 
@@ -258,23 +258,21 @@ impl<S: Signer, K: AuthKind> OrderBuilder<S, Market, K> {
             (Side::Buy, a @ AmountInner::Usdc(_)) => (book.asks, a),
             (Side::Sell, a @ AmountInner::Shares(_)) => (book.bids, a),
             (Side::Buy, AmountInner::Shares(_)) => {
-                return Err(Error::Validation(
-                    "Buy Orders must specify their `amount`s in terms of USDC".to_owned(),
+                return Err(Error::validation(
+                    "Buy Orders must specify their `amount`s in terms of USDC",
                 ));
             }
             (Side::Sell, AmountInner::Usdc(_)) => {
-                return Err(Error::Validation(
-                    "Sell Orders must specify their `amount`s in shares".to_owned(),
+                return Err(Error::validation(
+                    "Sell Orders must specify their `amount`s in shares",
                 ));
             }
-            (Side::Unknown, _) => return Err(Error::Validation("Unknown side".to_owned())),
+            (Side::Unknown, _) => return Err(Error::validation("Unknown side")),
         };
 
-        if levels.is_empty() {
-            return Err(Error::Validation(format!(
-                "No opposing orders for {token_id} which means there is no market price"
-            )));
-        }
+        let first = levels.first().ok_or(Error::validation(format!(
+            "No opposing orders for {token_id} which means there is no market price"
+        )))?;
 
         let mut sum = Decimal::ZERO;
         let cutoff_price = levels.iter().rev().find_map(|level| {
@@ -287,37 +285,37 @@ impl<S: Signer, K: AuthKind> OrderBuilder<S, Market, K> {
 
         match cutoff_price {
             Some(price) => Ok(price),
-            None if matches!(order_type, OrderType::FOK) => Err(Error::Validation(format!(
+            None if matches!(order_type, OrderType::FOK) => Err(Error::validation(format!(
                 "Insufficient liquidity to fill order for {token_id} at {}",
                 amount.as_inner()
             ))),
-            None => Ok(levels[0].price),
+            None => Ok(first.price),
         }
     }
 
     /// Validates and transforms this limit builder into a [`SignableOrder`]
     pub async fn build(self) -> Result<SignableOrder> {
         let Some(token_id) = self.token_id.clone() else {
-            return Err(Error::Validation(
-                "Unable to build Order due to missing token ID".to_owned(),
+            return Err(Error::validation(
+                "Unable to build Order due to missing token ID",
             ));
         };
 
         let Some(side) = self.side else {
-            return Err(Error::Validation(
-                "Unable to build Order due to missing token side".to_owned(),
+            return Err(Error::validation(
+                "Unable to build Order due to missing token side",
             ));
         };
 
-        let amount = self.amount.ok_or_else(|| {
-            Error::Validation("Unable to build Order due to missing amount".to_owned())
-        })?;
+        let amount = self
+            .amount
+            .ok_or_else(|| Error::validation("Unable to build Order due to missing amount"))?;
 
         let nonce = self.nonce.unwrap_or(0);
         let taker = self.taker.unwrap_or(Address::ZERO);
 
         if let Some(price) = self.price {
-            return Err(Error::Validation(format!(
+            return Err(Error::validation(format!(
                 "Unable to build Order due to supplied price {price}"
             )));
         }
@@ -338,7 +336,7 @@ impl<S: Signer, K: AuthKind> OrderBuilder<S, Market, K> {
         // Ensure that the market price returned internally is truncated to our tick size
         let price = price.trunc_with_scale(decimals);
         if price < minimum_tick_size || price > Decimal::ONE - minimum_tick_size {
-            return Err(Error::Validation(format!(
+            return Err(Error::validation(format!(
                 "Price {price} is too small or too large for the minimum tick size {minimum_tick_size}"
             )));
         }
@@ -367,7 +365,7 @@ impl<S: Signer, K: AuthKind> OrderBuilder<S, Market, K> {
                 // Product is guaranteed to be at most `USDC` decimals already
                 (raw_amount * price, raw_amount)
             }
-            Side::Unknown => return Err(Error::Validation("Unknown side".to_owned())),
+            Side::Unknown => return Err(Error::validation("Unknown side")),
         };
 
         let order = Order {

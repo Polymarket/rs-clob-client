@@ -2,14 +2,14 @@
 
 pub mod auth;
 pub mod clob;
-pub mod errors;
+pub mod error;
 pub mod order_builder;
 pub mod types;
 
 use alloy::primitives::{Address, ChainId, address};
 use phf::phf_map;
 
-pub type Result<T> = std::result::Result<T, errors::Error>;
+pub type Result<T> = std::result::Result<T, error::Error>;
 
 /// [`ChainId`] for Polygon mainnet
 pub const POLYGON: ChainId = 137;
