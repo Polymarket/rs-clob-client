@@ -367,10 +367,10 @@ impl<S: State> ClientInner<S> {
 }
 
 impl ClientInner<Unauthenticated> {
-    pub async fn create_api_key<Sig: Signer>(
+    pub async fn create_api_key<S: Signer>(
         &self,
         path: &str,
-        signer: &Sig,
+        signer: &S,
         nonce: Option<u32>,
     ) -> Result<Credentials> {
         let request = self
@@ -382,9 +382,9 @@ impl ClientInner<Unauthenticated> {
         self.request(request, Some(headers)).await
     }
 
-    pub async fn derive_api_key<Sig: Signer>(
+    pub async fn derive_api_key<S: Signer>(
         &self,
-        signer: &Sig,
+        signer: &S,
         nonce: Option<u32>,
     ) -> Result<Credentials> {
         let request = self
@@ -396,9 +396,9 @@ impl ClientInner<Unauthenticated> {
         self.request(request, Some(headers)).await
     }
 
-    async fn create_or_derive_api_key<Sig: Signer>(
+    async fn create_or_derive_api_key<S: Signer>(
         &self,
-        signer: &Sig,
+        signer: &S,
         nonce: Option<u32>,
     ) -> Result<Credentials> {
         match self.create_api_key("auth/api-key", signer, nonce).await {
@@ -407,11 +407,7 @@ impl ClientInner<Unauthenticated> {
         }
     }
 
-    async fn create_headers<Sig: Signer>(
-        &self,
-        signer: &Sig,
-        nonce: Option<u32>,
-    ) -> Result<HeaderMap> {
+    async fn create_headers<S: Signer>(&self, signer: &S, nonce: Option<u32>) -> Result<HeaderMap> {
         let chain_id = signer.chain_id().ok_or(Error::validation(
             "Chain id not set, be sure to provide one on the signer",
         ))?;
