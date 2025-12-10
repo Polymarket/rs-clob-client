@@ -35,29 +35,6 @@ impl Credentials {
     }
 }
 
-/// Non-special, generic authentication. Sometimes referred to as L2 authentication.
-#[non_exhaustive]
-#[derive(Clone, Debug)]
-pub struct Normal;
-
-#[async_trait]
-impl Kind for builder::Builder {
-    async fn extra_headers(&self, request: &Request, timestamp: Timestamp) -> Result<HeaderMap> {
-        self.create_headers(request, timestamp).await
-    }
-
-    fn requires_additional_credentials(&self) -> bool {
-        matches!(self.config, builder::Config::Local) && self.credentials.is_none()
-    }
-
-    fn with_additional_credentials(mut self, credentials: Credentials) -> Self {
-        self.credentials = Some(credentials);
-        self
-    }
-}
-
-impl sealed::Sealed for builder::Builder {}
-
 /// Asynchronous authentication enricher
 ///
 /// This trait is used to apply extra headers to authenticated requests. For example, in the case
@@ -84,6 +61,29 @@ pub trait Kind: sealed::Sealed {
         self
     }
 }
+
+/// Non-special, generic authentication. Sometimes referred to as L2 authentication.
+#[non_exhaustive]
+#[derive(Clone, Debug)]
+pub struct Normal;
+
+#[async_trait]
+impl Kind for builder::Builder {
+    async fn extra_headers(&self, request: &Request, timestamp: Timestamp) -> Result<HeaderMap> {
+        self.create_headers(request, timestamp).await
+    }
+
+    fn requires_additional_credentials(&self) -> bool {
+        matches!(self.config, builder::Config::Local) && self.credentials.is_none()
+    }
+
+    fn with_additional_credentials(mut self, credentials: Credentials) -> Self {
+        self.credentials = Some(credentials);
+        self
+    }
+}
+
+impl sealed::Sealed for builder::Builder {}
 
 #[async_trait]
 impl Kind for Normal {
