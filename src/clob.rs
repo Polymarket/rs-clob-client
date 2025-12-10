@@ -791,7 +791,11 @@ impl Client<Unauthenticated> {
             signer,
             credentials: None,
             nonce: None,
-            kind: Builder { config, client },
+            kind: Builder {
+                config,
+                client,
+                credentials: None,
+            },
             funder: self.inner.funder,
             signature_type: Some(self.inner.signature_type),
             client: self,

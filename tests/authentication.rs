@@ -232,7 +232,7 @@ async fn create_or_derive_api_key_should_succeed() -> anyhow::Result<()> {
 async fn builder_authentication_should_succeed() -> anyhow::Result<()> {
     let server = MockServer::start();
     let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
-    let config = BuilderConfig::local(Credentials::default());
+    let config = BuilderConfig::local();
 
     let mock = server.mock(|when, then| {
         when.method(httpmock::Method::POST).path("/auth/api-key");
@@ -248,6 +248,16 @@ async fn builder_authentication_should_succeed() -> anyhow::Result<()> {
             "secret": SECRET
         }));
     });
+    let mock3 = server.mock(|when, then| {
+        when.method(httpmock::Method::POST)
+            .path("/auth/builder-api-key")
+            .header(POLY_ADDRESS, signer.address().to_string().to_lowercase());
+        then.status(StatusCode::OK).json_body(json!({
+            "apiKey": API_KEY.to_string(),
+            "passphrase": PASSPHRASE,
+            "secret": SECRET
+        }));
+    });
 
     let _client = Client::new(&server.base_url(), Config::default())?
         .builder_authentication_builder(signer, config)
@@ -256,6 +266,7 @@ async fn builder_authentication_should_succeed() -> anyhow::Result<()> {
 
     mock.assert();
     mock2.assert();
+    mock3.assert();
 
     Ok(())
 }
