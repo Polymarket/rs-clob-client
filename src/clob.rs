@@ -150,7 +150,7 @@ impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, K> {
 
     /// Attempt to elevate the inner `client` to [`Client<Authenticated<S, K>>`] using the optional
     /// fields supplied in the builder.
-    pub async fn authenticate(mut self) -> Result<Client<Authenticated<S, K>>> {
+    pub async fn authenticate(self) -> Result<Client<Authenticated<S, K>>> {
         let inner = Arc::into_inner(self.client.inner).ok_or(Synchronization)?;
 
         match self.signer.chain_id() {
@@ -204,17 +204,19 @@ impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, K> {
             }
         };
 
-        if self.kind.requires_additional_credentials() {
+        let kind = if self.kind.requires_additional_credentials() {
             let builder_creds = inner
-                .create_builder_api_key(&self.signer, self.nonce)
+                .create_api_key("auth/builder-api-key", &self.signer, self.nonce)
                 .await?;
-            self.kind = self.kind.with_additional_credentials(builder_creds);
-        }
+            self.kind.with_additional_credentials(builder_creds)
+        } else {
+            self.kind
+        };
 
         let state = Authenticated {
             signer: self.signer,
             credentials,
-            kind: self.kind,
+            kind,
         };
 
         Ok(Client {
@@ -367,12 +369,13 @@ impl<S: State> ClientInner<S> {
 impl ClientInner<Unauthenticated> {
     pub async fn create_api_key<Sig: Signer>(
         &self,
+        path: &str,
         signer: &Sig,
         nonce: Option<u32>,
     ) -> Result<Credentials> {
         let request = self
             .client
-            .request(Method::POST, format!("{}auth/api-key", self.host))
+            .request(Method::POST, format!("{}{path}", self.host))
             .build()?;
         let headers = self.create_headers(signer, nonce).await?;
 
@@ -398,24 +401,10 @@ impl ClientInner<Unauthenticated> {
         signer: &Sig,
         nonce: Option<u32>,
     ) -> Result<Credentials> {
-        match self.create_api_key(signer, nonce).await {
+        match self.create_api_key("auth/api-key", signer, nonce).await {
             Ok(creds) => Ok(creds),
             Err(_) => self.derive_api_key(signer, nonce).await,
         }
-    }
-
-    pub async fn create_builder_api_key<Sig: Signer>(
-        &self,
-        signer: &Sig,
-        nonce: Option<u32>,
-    ) -> Result<Credentials> {
-        let request = self
-            .client
-            .request(Method::POST, format!("{}auth/builder-api-key", self.host))
-            .build()?;
-
-        let headers = self.create_headers(signer, nonce).await?;
-        self.request(request, Some(headers)).await
     }
 
     async fn create_headers<Sig: Signer>(
@@ -817,7 +806,9 @@ impl Client<Unauthenticated> {
         signer: &S,
         nonce: Option<u32>,
     ) -> Result<Credentials> {
-        self.inner.create_api_key(signer, nonce).await
+        self.inner
+            .create_api_key("auth/api-key", signer, nonce)
+            .await
     }
 
     /// Attempts to derive an existing set of [`Credentials`] and returns an error if there
