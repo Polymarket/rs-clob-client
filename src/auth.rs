@@ -68,6 +68,15 @@ pub trait Kind: sealed::Sealed {
 pub struct Normal;
 
 #[async_trait]
+impl Kind for Normal {
+    async fn extra_headers(&self, _request: &Request, _timestamp: Timestamp) -> Result<HeaderMap> {
+        Ok(HeaderMap::new())
+    }
+}
+
+impl sealed::Sealed for Normal {}
+
+#[async_trait]
 impl Kind for builder::Builder {
     async fn extra_headers(&self, request: &Request, timestamp: Timestamp) -> Result<HeaderMap> {
         self.create_headers(request, timestamp).await
@@ -84,15 +93,6 @@ impl Kind for builder::Builder {
 }
 
 impl sealed::Sealed for builder::Builder {}
-
-#[async_trait]
-impl Kind for Normal {
-    async fn extra_headers(&self, _request: &Request, _timestamp: Timestamp) -> Result<HeaderMap> {
-        Ok(HeaderMap::new())
-    }
-}
-
-impl sealed::Sealed for Normal {}
 
 mod sealed {
     pub trait Sealed {}
