@@ -204,11 +204,11 @@ impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, K> {
             }
         };
 
-        if self.kind.requires_builder_credentials() {
+        if self.kind.requires_additional_credentials() {
             let builder_creds = inner
                 .create_builder_api_key(&self.signer, self.nonce)
                 .await?;
-            self.kind = self.kind.with_builder_credentials(builder_creds);
+            self.kind = self.kind.with_additional_credentials(builder_creds);
         }
 
         let state = Authenticated {
@@ -362,6 +362,61 @@ impl<S: State> ClientInner<S> {
 
         self.request(request, None).await
     }
+}
+
+impl ClientInner<Unauthenticated> {
+    pub async fn create_api_key<Sig: Signer>(
+        &self,
+        signer: &Sig,
+        nonce: Option<u32>,
+    ) -> Result<Credentials> {
+        let request = self
+            .client
+            .request(Method::POST, format!("{}auth/api-key", self.host))
+            .build()?;
+        let headers = self.create_headers(signer, nonce).await?;
+
+        self.request(request, Some(headers)).await
+    }
+
+    pub async fn derive_api_key<Sig: Signer>(
+        &self,
+        signer: &Sig,
+        nonce: Option<u32>,
+    ) -> Result<Credentials> {
+        let request = self
+            .client
+            .request(Method::GET, format!("{}auth/derive-api-key", self.host))
+            .build()?;
+        let headers = self.create_headers(signer, nonce).await?;
+
+        self.request(request, Some(headers)).await
+    }
+
+    async fn create_or_derive_api_key<Sig: Signer>(
+        &self,
+        signer: &Sig,
+        nonce: Option<u32>,
+    ) -> Result<Credentials> {
+        match self.create_api_key(signer, nonce).await {
+            Ok(creds) => Ok(creds),
+            Err(_) => self.derive_api_key(signer, nonce).await,
+        }
+    }
+
+    pub async fn create_builder_api_key<Sig: Signer>(
+        &self,
+        signer: &Sig,
+        nonce: Option<u32>,
+    ) -> Result<Credentials> {
+        let request = self
+            .client
+            .request(Method::POST, format!("{}auth/builder-api-key", self.host))
+            .build()?;
+
+        let headers = self.create_headers(signer, nonce).await?;
+        self.request(request, Some(headers)).await
+    }
 
     async fn create_headers<Sig: Signer>(
         &self,
@@ -379,61 +434,6 @@ impl<S: State> ClientInner<S> {
         };
 
         auth::l1::create_headers(signer, chain_id, timestamp, nonce).await
-    }
-
-    pub async fn create_builder_api_key<Sig: Signer>(
-        &self,
-        signer: &Sig,
-        nonce: Option<u32>,
-    ) -> Result<Credentials> {
-        let request = self
-            .client
-            .request(Method::POST, format!("{}auth/builder-api-key", self.host))
-            .build()?;
-
-        let headers = self.create_headers(signer, nonce).await?;
-        self.request(request, Some(headers)).await
-    }
-}
-
-impl ClientInner<Unauthenticated> {
-    pub async fn create_api_key<S: Signer>(
-        &self,
-        signer: &S,
-        nonce: Option<u32>,
-    ) -> Result<Credentials> {
-        let request = self
-            .client
-            .request(Method::POST, format!("{}auth/api-key", self.host))
-            .build()?;
-        let headers = self.create_headers(signer, nonce).await?;
-
-        self.request(request, Some(headers)).await
-    }
-
-    pub async fn derive_api_key<S: Signer>(
-        &self,
-        signer: &S,
-        nonce: Option<u32>,
-    ) -> Result<Credentials> {
-        let request = self
-            .client
-            .request(Method::GET, format!("{}auth/derive-api-key", self.host))
-            .build()?;
-        let headers = self.create_headers(signer, nonce).await?;
-
-        self.request(request, Some(headers)).await
-    }
-
-    async fn create_or_derive_api_key<S: Signer>(
-        &self,
-        signer: &S,
-        nonce: Option<u32>,
-    ) -> Result<Credentials> {
-        match self.create_api_key(signer, nonce).await {
-            Ok(creds) => Ok(creds),
-            Err(_) => self.derive_api_key(signer, nonce).await,
-        }
     }
 }
 

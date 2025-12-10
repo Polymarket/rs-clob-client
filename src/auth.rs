@@ -50,24 +50,20 @@ pub struct Builder {
 
 #[async_trait]
 impl Kind for Builder {
-    async fn get_extra_headers(
-        &self,
-        request: &Request,
-        timestamp: Timestamp,
-    ) -> Result<HeaderMap> {
+    async fn extra_headers(&self, request: &Request, timestamp: Timestamp) -> Result<HeaderMap> {
         self.config
             .create_headers(&self.client, request, timestamp)
             .await
     }
 
-    fn requires_builder_credentials(&self) -> bool {
+    fn requires_additional_credentials(&self) -> bool {
         // Only need builder creds for Local; Remote just calls the signing server.
         matches!(self.config, builder::Config::Local(_))
     }
 
-    fn with_builder_credentials(mut self, creds: Credentials) -> Self {
+    fn with_additional_credentials(mut self, credentials: Credentials) -> Self {
         if let builder::Config::Local(ref mut existing) = self.config {
-            *existing = creds;
+            *existing = credentials;
         }
         self
     }
@@ -82,20 +78,19 @@ impl sealed::Sealed for Builder {}
 /// L2 headers.
 #[async_trait]
 pub trait Kind: sealed::Sealed {
-    async fn get_extra_headers(&self, request: &Request, timestamp: Timestamp)
-    -> Result<HeaderMap>;
+    async fn extra_headers(&self, request: &Request, timestamp: Timestamp) -> Result<HeaderMap>;
 
     /// Whether this auth kind needs extra builder credentials
     /// (in addition to normal L2 credentials).
     #[must_use]
-    fn requires_builder_credentials(&self) -> bool {
+    fn requires_additional_credentials(&self) -> bool {
         false
     }
 
     /// Given builder credentials, return an updated Kind.
     /// Default: ignore them.
     #[must_use]
-    fn with_builder_credentials(self, _creds: Credentials) -> Self
+    fn with_additional_credentials(self, _credentials: Credentials) -> Self
     where
         Self: Sized,
     {
@@ -105,11 +100,7 @@ pub trait Kind: sealed::Sealed {
 
 #[async_trait]
 impl Kind for Normal {
-    async fn get_extra_headers(
-        &self,
-        _request: &Request,
-        _timestamp: Timestamp,
-    ) -> Result<HeaderMap> {
+    async fn extra_headers(&self, _request: &Request, _timestamp: Timestamp) -> Result<HeaderMap> {
         Ok(HeaderMap::new())
     }
 }
@@ -225,9 +216,9 @@ pub(crate) mod l2 {
         map.insert(POLY_SIGNATURE, signature.parse()?);
         map.insert(POLY_TIMESTAMP, timestamp.to_string().parse()?);
 
-        let additional_headers = state.kind.get_extra_headers(request, timestamp).await?;
+        let extra_headers = state.kind.extra_headers(request, timestamp).await?;
 
-        map.extend(additional_headers);
+        map.extend(extra_headers);
 
         Ok(map)
     }
