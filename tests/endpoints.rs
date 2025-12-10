@@ -2511,8 +2511,8 @@ mod builder_authenticated {
     use super::*;
     use crate::common::{
         API_KEY, BUILDER_API_KEY, BUILDER_PASSPHRASE, PASSPHRASE, POLY_BUILDER_API_KEY,
-        POLY_BUILDER_PASSPHRASE, POLY_NONCE, POLY_SIGNATURE, POLY_TIMESTAMP, SECRET, SIGNATURE,
-        TIMESTAMP,
+        POLY_BUILDER_PASSPHRASE, POLY_BUILDER_SIGNATURE, POLY_BUILDER_TIMESTAMP, POLY_NONCE,
+        POLY_SIGNATURE, POLY_TIMESTAMP, SECRET, SIGNATURE, TIMESTAMP,
     };
 
     #[tokio::test]
@@ -2553,10 +2553,10 @@ mod builder_authenticated {
                 .header("authorization", "Bearer token");
 
             then.status(StatusCode::OK).json_body(json!({
-                "POLY_BUILDER_API_KEY": Uuid::max().to_string(),
-                "POLY_BUILDER_TIMESTAMP": "1",
-                "POLY_BUILDER_PASSPHRASE": "passphrase",
-                "POLY_BUILDER_SIGNATURE": "signature",
+                POLY_BUILDER_API_KEY: BUILDER_API_KEY,
+                POLY_BUILDER_PASSPHRASE: BUILDER_PASSPHRASE,
+                POLY_BUILDER_SIGNATURE: "signature",
+                POLY_BUILDER_TIMESTAMP: "1",
             }));
         });
 
@@ -2568,6 +2568,8 @@ mod builder_authenticated {
                 .header(POLY_PASSPHRASE, PASSPHRASE)
                 .header(POLY_BUILDER_API_KEY, BUILDER_API_KEY)
                 .header(POLY_BUILDER_PASSPHRASE, BUILDER_PASSPHRASE)
+                .header(POLY_BUILDER_SIGNATURE, "signature")
+                .header(POLY_BUILDER_TIMESTAMP, "1")
                 .query_param("id", "1")
                 .query_param("market", "market");
 
