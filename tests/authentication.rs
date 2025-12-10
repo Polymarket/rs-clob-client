@@ -6,7 +6,7 @@ use alloy::signers::Signer as _;
 use alloy::signers::local::LocalSigner;
 use httpmock::MockServer;
 use polymarket_client_sdk::POLYGON;
-use polymarket_client_sdk::auth::Credentials;
+use polymarket_client_sdk::auth::{Credentials, builder::Config as BuilderConfig};
 use polymarket_client_sdk::clob::{Client, Config};
 use polymarket_client_sdk::error::{Synchronization, Validation};
 use reqwest::StatusCode;
@@ -224,6 +224,49 @@ async fn create_or_derive_api_key_should_succeed() -> anyhow::Result<()> {
     );
     mock.assert();
     mock2.assert();
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn builder_authentication_should_succeed() -> anyhow::Result<()> {
+    let server = MockServer::start();
+    let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
+    let config = BuilderConfig::local();
+
+    let mock = server.mock(|when, then| {
+        when.method(httpmock::Method::POST).path("/auth/api-key");
+        then.status(StatusCode::NOT_FOUND);
+    });
+    let mock2 = server.mock(|when, then| {
+        when.method(httpmock::Method::GET)
+            .path("/auth/derive-api-key")
+            .header(POLY_ADDRESS, signer.address().to_string().to_lowercase());
+        then.status(StatusCode::OK).json_body(json!({
+            "apiKey": API_KEY.to_string(),
+            "passphrase": PASSPHRASE,
+            "secret": SECRET
+        }));
+    });
+    let mock3 = server.mock(|when, then| {
+        when.method(httpmock::Method::POST)
+            .path("/auth/builder-api-key")
+            .header(POLY_ADDRESS, signer.address().to_string().to_lowercase());
+        then.status(StatusCode::OK).json_body(json!({
+            "apiKey": API_KEY.to_string(),
+            "passphrase": PASSPHRASE,
+            "secret": SECRET
+        }));
+    });
+
+    let _client = Client::new(&server.base_url(), Config::default())?
+        .builder_authentication_builder(signer, config)
+        .authenticate()
+        .await?;
+
+    mock.assert();
+    mock2.assert();
+    mock3.assert();
 
     Ok(())
 }
