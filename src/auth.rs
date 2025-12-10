@@ -59,6 +59,18 @@ impl Kind for Builder {
             .create_headers(&self.client, request, timestamp)
             .await
     }
+
+    fn requires_builder_credentials(&self) -> bool {
+        // Only need builder creds for Local; Remote just calls the signing server.
+        matches!(self.config, builder::Config::Local(_))
+    }
+
+    fn with_builder_credentials(mut self, creds: Credentials) -> Self {
+        if let builder::Config::Local(ref mut existing) = self.config {
+            *existing = creds;
+        }
+        self
+    }
 }
 
 impl sealed::Sealed for Builder {}
@@ -72,6 +84,23 @@ impl sealed::Sealed for Builder {}
 pub trait Kind: sealed::Sealed {
     async fn get_extra_headers(&self, request: &Request, timestamp: Timestamp)
     -> Result<HeaderMap>;
+
+    /// Whether this auth kind needs extra builder credentials
+    /// (in addition to normal L2 credentials).
+    #[must_use]
+    fn requires_builder_credentials(&self) -> bool {
+        false
+    }
+
+    /// Given builder credentials, return an updated Kind.
+    /// Default: ignore them.
+    #[must_use]
+    fn with_builder_credentials(self, _creds: Credentials) -> Self
+    where
+        Self: Sized,
+    {
+        self
+    }
 }
 
 #[async_trait]

@@ -150,7 +150,7 @@ impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, K> {
 
     /// Attempt to elevate the inner `client` to [`Client<Authenticated<S, K>>`] using the optional
     /// fields supplied in the builder.
-    pub async fn authenticate(self) -> Result<Client<Authenticated<S, K>>> {
+    pub async fn authenticate(mut self) -> Result<Client<Authenticated<S, K>>> {
         let inner = Arc::into_inner(self.client.inner).ok_or(Synchronization)?;
 
         match self.signer.chain_id() {
@@ -189,19 +189,27 @@ impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, K> {
             _ => {}
         }
 
+        if self.credentials.is_some() && self.nonce.is_some() {
+            return Err(Error::validation(
+                "Credentials and nonce are both set. If nonce is set, then you must not supply credentials",
+            ));
+        }
+
         let credentials = match self.credentials {
-            Some(_) if self.nonce.is_some() => {
-                return Err(Error::validation(
-                    "Credentials and nonce are both set. If nonce is set, then you must not supply credentials",
-                ));
-            }
-            Some(credentials) => credentials,
+            Some(creds) => creds,
             None => {
                 inner
                     .create_or_derive_api_key(&self.signer, self.nonce)
                     .await?
             }
         };
+
+        if self.kind.requires_builder_credentials() {
+            let builder_creds = inner
+                .create_builder_api_key(&self.signer, self.nonce)
+                .await?;
+            self.kind = self.kind.with_builder_credentials(builder_creds);
+        }
 
         let state = Authenticated {
             signer: self.signer,
@@ -354,6 +362,38 @@ impl<S: State> ClientInner<S> {
 
         self.request(request, None).await
     }
+
+    async fn create_headers<Sig: Signer>(
+        &self,
+        signer: &Sig,
+        nonce: Option<u32>,
+    ) -> Result<HeaderMap> {
+        let chain_id = signer.chain_id().ok_or(Error::validation(
+            "Chain id not set, be sure to provide one on the signer",
+        ))?;
+
+        let timestamp = if self.config.use_server_time {
+            self.server_time().await?
+        } else {
+            Utc::now().timestamp()
+        };
+
+        auth::l1::create_headers(signer, chain_id, timestamp, nonce).await
+    }
+
+    pub async fn create_builder_api_key<Sig: Signer>(
+        &self,
+        signer: &Sig,
+        nonce: Option<u32>,
+    ) -> Result<Credentials> {
+        let request = self
+            .client
+            .request(Method::POST, format!("{}auth/builder-api-key", self.host))
+            .build()?;
+
+        let headers = self.create_headers(signer, nonce).await?;
+        self.request(request, Some(headers)).await
+    }
 }
 
 impl ClientInner<Unauthenticated> {
@@ -394,20 +434,6 @@ impl ClientInner<Unauthenticated> {
             Ok(creds) => Ok(creds),
             Err(_) => self.derive_api_key(signer, nonce).await,
         }
-    }
-
-    async fn create_headers<S: Signer>(&self, signer: &S, nonce: Option<u32>) -> Result<HeaderMap> {
-        let chain_id = signer.chain_id().ok_or(Error::validation(
-            "Chain id not set, be sure to provide one on the signer",
-        ))?;
-
-        let timestamp = if self.config.use_server_time {
-            self.server_time().await?
-        } else {
-            Utc::now().timestamp()
-        };
-
-        auth::l1::create_headers(signer, chain_id, timestamp, nonce).await
     }
 }
 
