@@ -203,19 +203,10 @@ impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, K> {
             }
         };
 
-        let kind = if self.kind.requires_additional_credentials() {
-            let builder_creds = inner
-                .create_api_key("auth/builder-api-key", &self.signer, self.nonce)
-                .await?;
-            self.kind.with_additional_credentials(builder_creds)
-        } else {
-            self.kind
-        };
-
         let state = Authenticated {
             signer: self.signer,
             credentials,
-            kind,
+            kind: self.kind,
         };
 
         Ok(Client {
@@ -375,13 +366,12 @@ impl<S: State> ClientInner<S> {
 impl ClientInner<Unauthenticated> {
     pub async fn create_api_key<S: Signer>(
         &self,
-        path: &str,
         signer: &S,
         nonce: Option<u32>,
     ) -> Result<Credentials> {
         let request = self
             .client
-            .request(Method::POST, format!("{}{path}", self.host))
+            .request(Method::POST, format!("{}auth/api-key", self.host))
             .build()?;
         let headers = self.create_headers(signer, nonce).await?;
 
@@ -407,7 +397,7 @@ impl ClientInner<Unauthenticated> {
         signer: &S,
         nonce: Option<u32>,
     ) -> Result<Credentials> {
-        match self.create_api_key("auth/api-key", signer, nonce).await {
+        match self.create_api_key(signer, nonce).await {
             Ok(creds) => Ok(creds),
             Err(_) => self.derive_api_key(signer, nonce).await,
         }
@@ -793,11 +783,7 @@ impl Client<Unauthenticated> {
             signer,
             credentials: None,
             nonce: None,
-            kind: Builder {
-                config,
-                client,
-                credentials: None,
-            },
+            kind: Builder { config, client },
             funder: self.inner.funder,
             signature_type: Some(self.inner.signature_type),
             client: self,
@@ -812,9 +798,7 @@ impl Client<Unauthenticated> {
         signer: &S,
         nonce: Option<u32>,
     ) -> Result<Credentials> {
-        self.inner
-            .create_api_key("auth/api-key", signer, nonce)
-            .await
+        self.inner.create_api_key(signer, nonce).await
     }
 
     /// Attempts to derive an existing set of [`Credentials`] and returns an error if there
