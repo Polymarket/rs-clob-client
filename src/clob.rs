@@ -189,14 +189,13 @@ impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, K> {
             _ => {}
         }
 
-        if self.credentials.is_some() && self.nonce.is_some() {
-            return Err(Error::validation(
-                "Credentials and nonce are both set. If nonce is set, then you must not supply credentials",
-            ));
-        }
-
         let credentials = match self.credentials {
-            Some(creds) => creds,
+            Some(_) if self.nonce.is_some() => {
+                return Err(Error::validation(
+                    "Credentials and nonce are both set. If nonce is set, then you must not supply credentials",
+                ));
+            }
+            Some(credentials) => credentials,
             None => {
                 inner
                     .create_or_derive_api_key(&self.signer, self.nonce)
