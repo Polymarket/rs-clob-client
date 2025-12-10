@@ -8,9 +8,11 @@ use alloy::signers::Signature;
 use chrono::{DateTime, NaiveDate, Utc};
 use derive_builder::Builder;
 use rust_decimal::Decimal;
+use rust_decimal::prelude::ToPrimitive as _;
 use rust_decimal_macros::dec;
 use serde::ser::{Error as _, SerializeStruct as _};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde_json::Value;
 use serde_with::{
     DefaultOnNull, DisplayFromStr, FromInto, TimestampMilliSeconds, TimestampSeconds, serde_as,
 };
@@ -77,7 +79,17 @@ pub enum Side {
     #[serde(alias = "sell")]
     Sell = 1,
     #[serde(other)]
-    Unknown,
+    Unknown, // TODO move so that it's above at -1 i8?
+}
+
+impl From<u8> for Side {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => Side::Buy,
+            1 => Side::Sell,
+            _ => Side::Unknown,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -236,9 +248,8 @@ impl<'de> Deserialize<'de> for TickSize {
 sol! {
     /// Alloy solidity type representing an order in the context of the Polymarket exchange
     ///
-    /// <!-- The CLOB expects all `uint256` types, [`U256`], excluding `salt` and including `side`
-    /// to be presented as a string so we must serialize as Display, which for U256 is lower
-    /// hex-encoded string.
+    /// <!-- The CLOB expects all `uint256` types, [`U256`], excluding `salt`, to be presented as a
+    /// string so we must serialize as Display, which for U256 is lower hex-encoded string.
     /// -->
     #[non_exhaustive]
     #[serde_as]
@@ -261,7 +272,6 @@ sol! {
         uint256 nonce;
         #[serde_as(as = "DisplayFromStr")]
         uint256 feeRateBps;
-        #[serde_as(as = "DisplayFromStr")]
         uint8   side;
         uint8   signatureType;
     }
@@ -936,11 +946,21 @@ impl Serialize for SignedOrder {
         let mut order = serde_json::to_value(&self.order).map_err(serde::ser::Error::custom)?;
 
         // inject signature into order object
-        if let serde_json::Value::Object(ref mut map) = order {
+        if let Value::Object(ref mut map) = order {
             map.insert(
                 "signature".to_owned(),
-                serde_json::Value::String(self.signature.to_string()),
+                Value::String(self.signature.to_string()),
             );
+        }
+
+        // Side has to be serialized as "BUY" or "SELL" when hitting the CLOB, but the actual
+        // signature for a SignedOrder has to be done on the integer representation.
+        if let Some(value) = order.get_mut("side")
+            && let Some(side_numeric) = value.as_u64()
+            && let Some(side_numeric) = side_numeric.to_u8()
+        {
+            let side = Side::from(side_numeric);
+            *value = Value::String(side.to_string());
         }
 
         st.serialize_field("order", &order)?;
@@ -1374,5 +1394,11 @@ mod tests {
             message.reason,
             format!("Unable to build Amount with 3 decimal points, must be <= {LOT_SIZE}")
         );
+    }
+
+    #[test]
+    fn side_to_string_should_succeed() {
+        assert_eq!(Side::Buy.to_string(), "BUY");
+        assert_eq!(Side::Sell.to_string(), "SELL");
     }
 }

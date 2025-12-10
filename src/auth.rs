@@ -18,7 +18,7 @@ use crate::{Result, Timestamp};
 /// sign the [`Request`] when making calls to the API.
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 pub struct Credentials {
-    #[serde(rename = "apiKey")]
+    #[serde(alias = "apiKey")]
     pub(crate) key: ApiKey,
     pub(crate) secret: Secret<String>,
     pub(crate) passphrase: Secret<String>,
