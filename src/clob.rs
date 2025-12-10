@@ -18,8 +18,8 @@ use serde::de::DeserializeOwned;
 use serde_json::json;
 use url::Url;
 
-use crate::auth::builder::Config as BuilderConfig;
-use crate::auth::{Builder, Credentials, Kind as AuthKind, Normal};
+use crate::auth::builder::{Builder, Config as BuilderConfig};
+use crate::auth::{Credentials, Kind as AuthKind, Normal};
 use crate::clob::state::{Authenticated, State, Unauthenticated};
 use crate::error::{Error, Synchronization};
 use crate::order_builder::{Limit, Market, OrderBuilder, generate_seed};
