@@ -17,9 +17,11 @@ async fn main() -> anyhow::Result<()> {
 
     let config = BuilderConfig::local(Credentials::default());
     let client = Client::new("https://clob.polymarket.com", Config::default())?
-        .builder_authentication_builder(signer, config)
+        .authentication_builder(signer)
         .authenticate()
         .await?;
+
+    let client = client.promote_to_builder(config)?.authenticate().await?;
 
     let request = TradesRequestBuilder::default().asset_id("asset").build()?;
     println!(

@@ -94,11 +94,11 @@ pub mod state {
 
 /// The type used to build a request to authenticate the inner [`Client<Unauthorized>`]. Calling
 /// `authenticate` on this will elevate that inner `client` into an [`Client<Authenticated<S, K>>`].
-pub struct AuthenticationBuilder<S: Signer, K: AuthKind = Normal> {
+pub struct AuthenticationBuilder<Si: Signer, St: State, K: AuthKind = Normal> {
     /// The initially unauthenticated client that is "carried forward" into the authenticated client.
-    client: Client<Unauthenticated>,
+    client: Client<St>,
     /// The signer used to generate the L1 headers that will return a set of [`Credentials`].
-    signer: S,
+    signer: Si,
     /// If [`Credentials`] are supplied, then those are used instead of making new calls to obtain one.
     credentials: Option<Credentials>,
     /// An optional `nonce` value, when `credentials` are not present, to pass along to the call to
@@ -117,7 +117,7 @@ pub struct AuthenticationBuilder<S: Signer, K: AuthKind = Normal> {
     salt_generator: Option<fn() -> u64>,
 }
 
-impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, K> {
+impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, Unauthenticated, K> {
     #[must_use]
     pub fn nonce(mut self, nonce: u32) -> Self {
         self.nonce = Some(nonce);
@@ -759,31 +759,15 @@ impl Client<Unauthenticated> {
         })
     }
 
-    pub fn authentication_builder<S: Signer>(self, signer: S) -> AuthenticationBuilder<S, Normal> {
+    pub fn authentication_builder<S: Signer>(
+        self,
+        signer: S,
+    ) -> AuthenticationBuilder<S, Unauthenticated, Normal> {
         AuthenticationBuilder {
             signer,
             credentials: None,
             nonce: None,
             kind: Normal,
-            funder: self.inner.funder,
-            signature_type: Some(self.inner.signature_type),
-            client: self,
-            salt_generator: None,
-        }
-    }
-
-    pub fn builder_authentication_builder<S: Signer>(
-        self,
-        signer: S,
-        config: BuilderConfig,
-    ) -> AuthenticationBuilder<S, Builder> {
-        let client = self.client().clone();
-
-        AuthenticationBuilder {
-            signer,
-            credentials: None,
-            nonce: None,
-            kind: Builder { config, client },
             funder: self.inner.funder,
             signature_type: Some(self.inner.signature_type),
             client: self,
@@ -1256,6 +1240,10 @@ impl<S: Signer, K: AuthKind> Client<Authenticated<S, K>> {
         self.request(request, Some(headers)).await
     }
 
+    pub async fn create_builder_api_key(&self) -> Result<Credentials> {
+        Ok(Credentials::default())
+    }
+
     async fn create_headers(&self, request: &Request) -> Result<HeaderMap> {
         let timestamp = if self.inner.config.use_server_time {
             self.server_time().await?
@@ -1286,6 +1274,60 @@ impl<S: Signer, K: AuthKind> Client<Authenticated<S, K>> {
             },
             _kind: PhantomData,
         }
+    }
+}
+
+impl<S: Signer> Client<Authenticated<S, Normal>> {
+    pub fn promote_to_builder(
+        self,
+        config: BuilderConfig,
+    ) -> Result<AuthenticationBuilder<S, Unauthenticated, Builder>> {
+        let inner = Arc::into_inner(self.inner).ok_or(Synchronization)?;
+
+        let ClientInner {
+            config: client_config,
+            state,
+            host,
+            client,
+            tick_sizes,
+            neg_risk,
+            fee_rate_bps,
+            funder,
+            signature_type,
+            salt_generator,
+        } = inner;
+
+        let Authenticated {
+            signer,
+            credentials,
+            ..
+        } = state;
+
+        let unauth_inner = ClientInner::<Unauthenticated> {
+            config: client_config,
+            state: Unauthenticated,
+            host,
+            client: client.clone(),
+            tick_sizes,
+            neg_risk,
+            fee_rate_bps,
+            funder,
+            signature_type,
+            salt_generator,
+        };
+
+        Ok(AuthenticationBuilder {
+            client: Client {
+                inner: Arc::new(unauth_inner),
+            },
+            signer,
+            credentials: Some(credentials),
+            nonce: None,
+            kind: Builder { config, client },
+            funder,
+            signature_type: Some(signature_type),
+            salt_generator: Some(salt_generator),
+        })
     }
 }
 
