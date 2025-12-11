@@ -4,7 +4,6 @@ use std::str::FromStr as _;
 
 use alloy::signers::Signer as _;
 use alloy::signers::local::LocalSigner;
-use polymarket_client_sdk::auth::Credentials;
 use polymarket_client_sdk::auth::builder::Config as BuilderConfig;
 use polymarket_client_sdk::clob::{Client, Config};
 use polymarket_client_sdk::types::TradesRequestBuilder;
@@ -15,13 +14,15 @@ async fn main() -> anyhow::Result<()> {
     let private_key = std::env::var(PRIVATE_KEY_VAR).expect("Need a private key");
     let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(POLYGON));
 
-    let config = BuilderConfig::local(Credentials::default());
     let client = Client::new("https://clob.polymarket.com", Config::default())?
         .authentication_builder(signer)
         .authenticate()
         .await?;
 
-    let client = client.promote_to_builder(config)?.authenticate().await?;
+    let builder_credentials = client.create_builder_api_key().await?;
+    let config = BuilderConfig::local(builder_credentials);
+
+    let client = client.promote_to_builder(config)?;
 
     let request = TradesRequestBuilder::default().asset_id("asset").build()?;
     println!(

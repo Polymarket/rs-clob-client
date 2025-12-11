@@ -47,6 +47,8 @@ const TERMINAL_CURSOR: &str = "LTE="; // base64("-1")
 /// Each [`Client`] can exist in one state at a time, i.e. [`state::Unauthenticated`] or
 /// [`state::Authenticated`].
 pub mod state {
+    use std::sync::Arc;
+
     use alloy::signers::Signer;
 
     use super::AuthKind;
@@ -69,7 +71,7 @@ pub mod state {
         /// The signer's address is used to populate the L2 headers ([`reqwest::header::HeaderMap`])
         /// `POLY_ADDRESS` field. The signer also signs the [`super::Order`] into a
         /// [`super::SignedOrder`] that is sent to the server.
-        pub(crate) signer: S,
+        pub(crate) signer: Arc<S>,
         /// The [`Credentials`]'s `secret` is used to generate an [`crate::signer::hmac`] which is
         /// passed in the L2 headers ([`super::HeaderMap`]) `POLY_SIGNATURE` field.
         pub(crate) credentials: Credentials,
@@ -98,7 +100,7 @@ pub struct AuthenticationBuilder<Si: Signer, St: State, K: AuthKind = Normal> {
     /// The initially unauthenticated client that is "carried forward" into the authenticated client.
     client: Client<St>,
     /// The signer used to generate the L1 headers that will return a set of [`Credentials`].
-    signer: Si,
+    signer: Arc<Si>,
     /// If [`Credentials`] are supplied, then those are used instead of making new calls to obtain one.
     credentials: Option<Credentials>,
     /// An optional `nonce` value, when `credentials` are not present, to pass along to the call to
@@ -198,7 +200,7 @@ impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, Unauthenticated, K> {
             Some(credentials) => credentials,
             None => {
                 inner
-                    .create_or_derive_api_key(&self.signer, self.nonce)
+                    .create_or_derive_api_key(self.signer.as_ref(), self.nonce)
                     .await?
             }
         };
@@ -764,7 +766,7 @@ impl Client<Unauthenticated> {
         signer: S,
     ) -> AuthenticationBuilder<S, Unauthenticated, Normal> {
         AuthenticationBuilder {
-            signer,
+            signer: Arc::new(signer),
             credentials: None,
             nonce: None,
             kind: Normal,
@@ -1281,7 +1283,7 @@ impl<S: Signer> Client<Authenticated<S, Normal>> {
     pub fn promote_to_builder(
         self,
         config: BuilderConfig,
-    ) -> Result<AuthenticationBuilder<S, Unauthenticated, Builder>> {
+    ) -> Result<Client<Authenticated<S, Builder>>> {
         let inner = Arc::into_inner(self.inner).ok_or(Synchronization)?;
 
         let ClientInner {
@@ -1303,11 +1305,20 @@ impl<S: Signer> Client<Authenticated<S, Normal>> {
             ..
         } = state;
 
-        let unauth_inner = ClientInner::<Unauthenticated> {
+        let state = Authenticated {
+            signer,
+            credentials,
+            kind: Builder {
+                config,
+                client: client.clone(),
+            },
+        };
+
+        let new_inner = ClientInner {
             config: client_config,
-            state: Unauthenticated,
+            state,
             host,
-            client: client.clone(),
+            client,
             tick_sizes,
             neg_risk,
             fee_rate_bps,
@@ -1316,17 +1327,8 @@ impl<S: Signer> Client<Authenticated<S, Normal>> {
             salt_generator,
         };
 
-        Ok(AuthenticationBuilder {
-            client: Client {
-                inner: Arc::new(unauth_inner),
-            },
-            signer,
-            credentials: Some(credentials),
-            nonce: None,
-            kind: Builder { config, client },
-            funder,
-            signature_type: Some(signature_type),
-            salt_generator: Some(salt_generator),
+        Ok(Client {
+            inner: Arc::new(new_inner),
         })
     }
 }

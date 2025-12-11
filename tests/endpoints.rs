@@ -2550,7 +2550,7 @@ mod builder_authenticated {
             .authenticate()
             .await?;
 
-        let client = client.promote_to_builder(builder_config)?.authenticate().await?;
+        let client = client.promote_to_builder(builder_config)?;
 
         let mock3 = server.mock(|when, then| {
             when.method(httpmock::Method::POST)
