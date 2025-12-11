@@ -96,11 +96,11 @@ pub mod state {
 
 /// The type used to build a request to authenticate the inner [`Client<Unauthorized>`]. Calling
 /// `authenticate` on this will elevate that inner `client` into an [`Client<Authenticated<S, K>>`].
-pub struct AuthenticationBuilder<Si: Signer, St: State, K: AuthKind = Normal> {
+pub struct AuthenticationBuilder<S: Signer, K: AuthKind = Normal> {
     /// The initially unauthenticated client that is "carried forward" into the authenticated client.
-    client: Client<St>,
+    client: Client<Unauthenticated>,
     /// The signer used to generate the L1 headers that will return a set of [`Credentials`].
-    signer: Arc<Si>,
+    signer: Arc<S>,
     /// If [`Credentials`] are supplied, then those are used instead of making new calls to obtain one.
     credentials: Option<Credentials>,
     /// An optional `nonce` value, when `credentials` are not present, to pass along to the call to
@@ -119,7 +119,7 @@ pub struct AuthenticationBuilder<Si: Signer, St: State, K: AuthKind = Normal> {
     salt_generator: Option<fn() -> u64>,
 }
 
-impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, Unauthenticated, K> {
+impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, K> {
     #[must_use]
     pub fn nonce(mut self, nonce: u32) -> Self {
         self.nonce = Some(nonce);
@@ -764,7 +764,7 @@ impl Client<Unauthenticated> {
     pub fn authentication_builder<S: Signer>(
         self,
         signer: S,
-    ) -> AuthenticationBuilder<S, Unauthenticated, Normal> {
+    ) -> AuthenticationBuilder<S, Normal> {
         AuthenticationBuilder {
             signer: Arc::new(signer),
             credentials: None,

@@ -2545,7 +2545,7 @@ mod builder_authenticated {
 
         let config = ConfigBuilder::default().use_server_time(true).build()?;
         let builder_config = BuilderConfig::remote(&server.base_url(), Some("token".to_owned()))?;
-        let client = Client::new("https://clob.polymarket.com", config)?
+        let client = Client::new(&server.base_url(), config)?
             .authentication_builder(signer)
             .authenticate()
             .await?;
