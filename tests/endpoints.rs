@@ -1324,7 +1324,7 @@ mod authenticated {
                             "makerAmount": "0",
                             "nonce": "0",
                             "salt": 0,
-                            "side": "0",
+                            "side": Side::Buy,
                             "signature": "0x0d18c04a653d89bf7375636adb7db69cffe362755960dc6ce8a0d46b04355b767958fae51c48e0e4b0908347442cb461e811d2f5a751303f7a8c1f75e17b3e701b",
                             "signatureType": 0,
                             "signer": Address::ZERO,
