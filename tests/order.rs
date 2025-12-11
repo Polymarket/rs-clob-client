@@ -771,24 +771,27 @@ mod limit {
         }
 
         #[tokio::test]
-        #[ignore = "Lot size should prevent size from being accepted"]
-        async fn buy_should_succeed_decimal_accuracy_3() -> anyhow::Result<()> {
+        async fn buy_should_fail_on_too_granular_of_lot_size() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
             ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
 
-            let signable_order = client
+            let err = client
                 .limit_order()
                 .token_id(TOKEN_1)
                 .price(dec!(0.78))
                 .size(dec!(12.8205))
                 .side(Side::Buy)
                 .build()
-                .await?;
+                .await
+                .unwrap_err();
+            let validation_err = err.downcast_ref::<Validation>().unwrap();
 
-            assert_eq!(signable_order.order.makerAmount, U256::from(82_820_000));
-            assert_eq!(signable_order.order.takerAmount, U256::from(101_000_000));
+            assert_eq!(
+                validation_err.reason,
+                "Unable to build Order: Size 12.8205 has 4 decimal places. Maximum lot size is 2"
+            );
 
             Ok(())
         }
@@ -1030,24 +1033,28 @@ mod limit {
         }
 
         #[tokio::test]
-        #[ignore = "Lot size should prevent size from being accepted"]
         async fn sell_should_succeed_decimal_accuracy_3() -> anyhow::Result<()> {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
             ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
 
-            let signable_order = client
+            let err = client
                 .limit_order()
                 .token_id(TOKEN_1)
                 .price(dec!(0.78))
                 .size(dec!(12.8205))
                 .side(Side::Sell)
                 .build()
-                .await?;
+                .await
+                .unwrap_err();
 
-            assert_eq!(signable_order.order.makerAmount, U256::from(101_000_000));
-            assert_eq!(signable_order.order.takerAmount, U256::from(82_820_000));
+            let validation_err = err.downcast_ref::<Validation>().unwrap();
+
+            assert_eq!(
+                validation_err.reason,
+                "Unable to build Order: Size 12.8205 has 4 decimal places. Maximum lot size is 2"
+            );
 
             Ok(())
         }

@@ -19,8 +19,10 @@ use crate::types::{
     SignatureType,
 };
 
-const USDC_DECIMALS: u32 = 6;
-pub(crate) const LOT_SIZE: u32 = 2;
+pub(crate) const USDC_DECIMALS: u32 = 6;
+
+/// Maximum number of decimal places for `size`
+pub(crate) const LOT_SIZE_SCALE: u32 = 2;
 
 /// Placeholder type for compile-time checks on limit order builders
 #[non_exhaustive]
@@ -163,9 +165,9 @@ impl<S: Signer, K: AuthKind> OrderBuilder<S, Limit, K> {
             ));
         };
 
-        if size.scale() > LOT_SIZE {
+        if size.scale() > LOT_SIZE_SCALE {
             return Err(Error::validation(format!(
-                "Unable to build Order: Size {size} has {} decimal places. Maximum step size is {LOT_SIZE}",
+                "Unable to build Order: Size {size} has {} decimal places. Maximum lot size is {LOT_SIZE_SCALE}",
                 size.scale()
             )));
         }
@@ -352,19 +354,16 @@ impl<S: Signer, K: AuthKind> OrderBuilder<S, Market, K> {
         // e.g. User submits a [`kind::Market`] order to [`Side::Sell`] 100 `YES` tokens at the current
         // `market_price` of $0.34. This means that they will take/receive $34, make/give up 100 `YES` tokens.
         // This means that the `taker_amount` is `34000000` and the `maker_amount` is `100000000`.
+        let raw_amount = amount.as_inner();
         let (taker_amount, maker_amount) = match side {
-            Side::Buy => {
-                let raw_amount = amount.as_inner().trunc_with_scale(USDC_DECIMALS);
-                (
-                    (raw_amount / price).trunc_with_scale(USDC_DECIMALS),
-                    raw_amount,
-                )
-            }
-            Side::Sell => {
-                let raw_amount = amount.as_inner().trunc_with_scale(LOT_SIZE);
-                // Product is guaranteed to be at most `USDC` decimals already
-                (raw_amount * price, raw_amount)
-            }
+            Side::Buy => (
+                (raw_amount / price).trunc_with_scale(USDC_DECIMALS),
+                raw_amount,
+            ),
+            // When selling, `raw_amount * price` is guaranteed to be a scale of at most `USDC_DECIMALS`
+            // since `TickSize` has a maximum scale of four (4) and `LOT_SIZE_DECIMALS` is always
+            // two (2).
+            Side::Sell => (raw_amount * price, raw_amount),
             Side::Unknown => return Err(Error::validation("Unknown side")),
         };
 

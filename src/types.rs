@@ -22,7 +22,7 @@ use uuid::Uuid;
 
 use crate::Result;
 use crate::error::Error;
-use crate::order_builder::LOT_SIZE;
+use crate::order_builder::{LOT_SIZE_SCALE, USDC_DECIMALS};
 
 pub type ApiKey = Uuid;
 
@@ -111,14 +111,22 @@ pub struct Amount(pub(crate) AmountInner);
 
 impl Amount {
     pub fn usdc(value: Decimal) -> Result<Amount> {
-        Ok(Amount(AmountInner::Usdc(value.normalize())))
+        let normalized = value.normalize();
+        if normalized.scale() > USDC_DECIMALS {
+            return Err(Error::validation(format!(
+                "Unable to build Amount with {} decimal points, must be <= {USDC_DECIMALS}",
+                normalized.scale()
+            )));
+        }
+
+        Ok(Amount(AmountInner::Usdc(normalized)))
     }
 
     pub fn shares(value: Decimal) -> Result<Amount> {
         let normalized = value.normalize();
-        if normalized.scale() > LOT_SIZE {
+        if normalized.scale() > LOT_SIZE_SCALE {
             return Err(Error::validation(format!(
-                "Unable to build Amount with {} decimal points, must be <= {LOT_SIZE}",
+                "Unable to build Amount with {} decimal points, must be <= {LOT_SIZE_SCALE}",
                 normalized.scale()
             )));
         }
@@ -1392,7 +1400,20 @@ mod tests {
         let message = err.downcast_ref::<Validation>().unwrap();
         assert_eq!(
             message.reason,
-            format!("Unable to build Amount with 3 decimal points, must be <= {LOT_SIZE}")
+            format!("Unable to build Amount with 3 decimal points, must be <= {LOT_SIZE_SCALE}")
+        );
+    }
+
+    #[test]
+    fn improper_usdc_decimal_size_should_fail() {
+        let Err(err) = Amount::usdc(dec!(0.2340011)) else {
+            panic!()
+        };
+
+        let message = err.downcast_ref::<Validation>().unwrap();
+        assert_eq!(
+            message.reason,
+            format!("Unable to build Amount with 7 decimal points, must be <= {USDC_DECIMALS}")
         );
     }
 
