@@ -47,8 +47,6 @@ const TERMINAL_CURSOR: &str = "LTE="; // base64("-1")
 /// Each [`Client`] can exist in one state at a time, i.e. [`state::Unauthenticated`] or
 /// [`state::Authenticated`].
 pub mod state {
-    use std::sync::Arc;
-
     use alloy::signers::Signer;
 
     use super::AuthKind;
@@ -71,7 +69,7 @@ pub mod state {
         /// The signer's address is used to populate the L2 headers ([`reqwest::header::HeaderMap`])
         /// `POLY_ADDRESS` field. The signer also signs the [`super::Order`] into a
         /// [`super::SignedOrder`] that is sent to the server.
-        pub(crate) signer: Arc<S>,
+        pub(crate) signer: S,
         /// The [`Credentials`]'s `secret` is used to generate an [`crate::signer::hmac`] which is
         /// passed in the L2 headers ([`super::HeaderMap`]) `POLY_SIGNATURE` field.
         pub(crate) credentials: Credentials,
@@ -100,7 +98,7 @@ pub struct AuthenticationBuilder<S: Signer, K: AuthKind = Normal> {
     /// The initially unauthenticated client that is "carried forward" into the authenticated client.
     client: Client<Unauthenticated>,
     /// The signer used to generate the L1 headers that will return a set of [`Credentials`].
-    signer: Arc<S>,
+    signer: S,
     /// If [`Credentials`] are supplied, then those are used instead of making new calls to obtain one.
     credentials: Option<Credentials>,
     /// An optional `nonce` value, when `credentials` are not present, to pass along to the call to
@@ -200,7 +198,7 @@ impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, K> {
             Some(credentials) => credentials,
             None => {
                 inner
-                    .create_or_derive_api_key(self.signer.as_ref(), self.nonce)
+                    .create_or_derive_api_key(&self.signer, self.nonce)
                     .await?
             }
         };
@@ -763,7 +761,7 @@ impl Client<Unauthenticated> {
 
     pub fn authentication_builder<S: Signer>(self, signer: S) -> AuthenticationBuilder<S, Normal> {
         AuthenticationBuilder {
-            signer: Arc::new(signer),
+            signer,
             credentials: None,
             nonce: None,
             kind: Normal,

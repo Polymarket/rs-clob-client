@@ -19,6 +19,7 @@ async fn main() -> anyhow::Result<()> {
         .authenticate()
         .await?;
 
+    // Save these credentials for subsequent calls with the builder client
     let builder_credentials = client.create_builder_api_key()?;
     let config = BuilderConfig::local(builder_credentials);
 

@@ -342,7 +342,6 @@ fn hmac(secret: &Secret<String>, message: &str) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use std::str::FromStr as _;
-    use std::sync::Arc;
 
     use alloy::primitives::address;
     use alloy::signers::Signer as _;
@@ -389,7 +388,7 @@ mod tests {
         let signer = LocalSigner::from_str(PRIVATE_KEY)?;
 
         let authenticated = Authenticated {
-            signer: Arc::new(signer),
+            signer,
             credentials: Credentials {
                 key: Uuid::nil(),
                 passphrase: Secret::new(
