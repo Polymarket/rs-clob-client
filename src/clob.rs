@@ -761,10 +761,7 @@ impl Client<Unauthenticated> {
         })
     }
 
-    pub fn authentication_builder<S: Signer>(
-        self,
-        signer: S,
-    ) -> AuthenticationBuilder<S, Normal> {
+    pub fn authentication_builder<S: Signer>(self, signer: S) -> AuthenticationBuilder<S, Normal> {
         AuthenticationBuilder {
             signer: Arc::new(signer),
             credentials: None,
@@ -1242,7 +1239,7 @@ impl<S: Signer, K: AuthKind> Client<Authenticated<S, K>> {
         self.request(request, Some(headers)).await
     }
 
-    pub async fn create_builder_api_key(&self) -> Result<Credentials> {
+    pub fn create_builder_api_key(&self) -> Result<Credentials> {
         Ok(Credentials::default())
     }
 

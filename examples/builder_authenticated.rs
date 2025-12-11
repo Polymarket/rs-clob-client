@@ -19,7 +19,7 @@ async fn main() -> anyhow::Result<()> {
         .authenticate()
         .await?;
 
-    let builder_credentials = client.create_builder_api_key().await?;
+    let builder_credentials = client.create_builder_api_key()?;
     let config = BuilderConfig::local(builder_credentials);
 
     let client = client.promote_to_builder(config)?;
