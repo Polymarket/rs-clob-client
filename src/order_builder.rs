@@ -199,7 +199,6 @@ impl<S: Signer, K: AuthKind> OrderBuilder<S, Limit, K> {
         let (taker_amount, maker_amount) = match side {
             Side::Buy => (size, size * price),
             Side::Sell => (size * price, size),
-            Side::Unknown => return Err(Error::validation("Unknown side")),
         };
 
         let order = Order {
@@ -269,7 +268,6 @@ impl<S: Signer, K: AuthKind> OrderBuilder<S, Market, K> {
                     "Sell Orders must specify their `amount`s in shares",
                 ));
             }
-            (Side::Unknown, _) => return Err(Error::validation("Unknown side")),
         };
 
         let first = levels.first().ok_or(Error::validation(format!(
@@ -364,7 +362,6 @@ impl<S: Signer, K: AuthKind> OrderBuilder<S, Market, K> {
             // since `TickSize` has a maximum scale of four (4) and `LOT_SIZE_DECIMALS` is always
             // two (2).
             Side::Sell => (raw_amount * price, raw_amount),
-            Side::Unknown => return Err(Error::validation("Unknown side")),
         };
 
         let order = Order {

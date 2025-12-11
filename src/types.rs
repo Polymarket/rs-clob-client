@@ -78,16 +78,18 @@ pub enum Side {
     Buy = 0,
     #[serde(alias = "sell")]
     Sell = 1,
-    #[serde(other)]
-    Unknown, // TODO move so that it's above at -1 i8?
 }
 
-impl From<u8> for Side {
-    fn from(value: u8) -> Self {
+impl TryFrom<u8> for Side {
+    type Error = Error;
+
+    fn try_from(value: u8) -> std::result::Result<Self, Self::Error> {
         match value {
-            0 => Side::Buy,
-            1 => Side::Sell,
-            _ => Side::Unknown,
+            0 => Ok(Side::Buy),
+            1 => Ok(Side::Sell),
+            other => Err(Error::validation(format!(
+                "Unable to create Side from {other}"
+            ))),
         }
     }
 }
@@ -966,8 +968,8 @@ impl Serialize for SignedOrder {
         if let Some(value) = order.get_mut("side")
             && let Some(side_numeric) = value.as_u64()
             && let Some(side_numeric) = side_numeric.to_u8()
+            && let Ok(side) = Side::try_from(side_numeric)
         {
-            let side = Side::from(side_numeric);
             *value = Value::String(side.to_string());
         }
 
