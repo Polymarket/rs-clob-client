@@ -18,7 +18,7 @@ use crate::{Result, Timestamp};
 /// sign the [`Request`] when making calls to the API.
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 pub struct Credentials {
-    #[serde(rename = "apiKey")]
+    #[serde(alias = "apiKey")]
     pub(crate) key: ApiKey,
     pub(crate) secret: Secret<String>,
     pub(crate) passphrase: Secret<String>,
@@ -43,23 +43,6 @@ impl Credentials {
 #[async_trait]
 pub trait Kind: sealed::Sealed {
     async fn extra_headers(&self, request: &Request, timestamp: Timestamp) -> Result<HeaderMap>;
-
-    /// Whether this auth kind needs extra builder credentials
-    /// (in addition to normal L2 credentials).
-    #[must_use]
-    fn requires_additional_credentials(&self) -> bool {
-        false
-    }
-
-    /// Given builder credentials, return an updated Kind.
-    /// Default: ignore them.
-    #[must_use]
-    fn with_additional_credentials(self, _credentials: Credentials) -> Self
-    where
-        Self: Sized,
-    {
-        self
-    }
 }
 
 /// Non-special, generic authentication. Sometimes referred to as L2 authentication.
@@ -80,15 +63,6 @@ impl sealed::Sealed for Normal {}
 impl Kind for builder::Builder {
     async fn extra_headers(&self, request: &Request, timestamp: Timestamp) -> Result<HeaderMap> {
         self.create_headers(request, timestamp).await
-    }
-
-    fn requires_additional_credentials(&self) -> bool {
-        matches!(self.config, builder::Config::Local) && self.credentials.is_none()
-    }
-
-    fn with_additional_credentials(mut self, credentials: Credentials) -> Self {
-        self.credentials = Some(credentials);
-        self
     }
 }
 
@@ -216,6 +190,7 @@ pub mod builder {
     use reqwest::header::HeaderMap;
     use reqwest::{Client, Request};
     use serde::{Deserialize, Serialize};
+    use serde_json::json;
     use url::Url;
 
     use crate::auth::{Credentials, body_to_string, hmac, to_message};
@@ -244,14 +219,14 @@ pub mod builder {
     #[non_exhaustive]
     #[derive(Clone, Debug)]
     pub enum Config {
-        Local,
+        Local(Credentials),
         Remote { host: Url, token: Option<String> },
     }
 
     impl Config {
         #[must_use]
-        pub fn local() -> Self {
-            Config::Local
+        pub fn local(credentials: Credentials) -> Self {
+            Config::Local(credentials)
         }
 
         pub fn remote(host: &str, token: Option<String>) -> Result<Self> {
@@ -266,7 +241,6 @@ pub mod builder {
     pub struct Builder {
         pub(crate) config: Config,
         pub(crate) client: Client,
-        pub(crate) credentials: Option<Credentials>,
     }
 
     impl Builder {
@@ -276,23 +250,23 @@ pub mod builder {
             timestamp: Timestamp,
         ) -> Result<HeaderMap> {
             match &self.config {
-                Config::Local => {
-                    let creds = self.credentials.as_ref().expect(
-                        "Builder::Local without credentials; they should be set in `authenticate`",
-                    );
-
-                    let signature = hmac(&creds.secret, &to_message(request, timestamp))?;
+                Config::Local(credentials) => {
+                    let signature = hmac(&credentials.secret, &to_message(request, timestamp))?;
 
                     let mut map = HeaderMap::new();
-                    map.insert(POLY_BUILDER_API_KEY, creds.key.to_string().parse()?);
-                    map.insert(POLY_BUILDER_PASSPHRASE, creds.passphrase.reveal().parse()?);
+
+                    map.insert(POLY_BUILDER_API_KEY, credentials.key.to_string().parse()?);
+                    map.insert(
+                        POLY_BUILDER_PASSPHRASE,
+                        credentials.passphrase.reveal().parse()?,
+                    );
                     map.insert(POLY_BUILDER_SIGNATURE, signature.parse()?);
                     map.insert(POLY_BUILDER_TIMESTAMP, timestamp.to_string().parse()?);
 
                     Ok(map)
                 }
                 Config::Remote { host, token } => {
-                    let payload = serde_json::json!({
+                    let payload = json!({
                         "method": request.method().as_str(),
                         "path": request.url().path(),
                         "body": &request.body().and_then(body_to_string).unwrap_or_default(),
@@ -455,14 +429,13 @@ mod tests {
             ),
             secret: Secret::new("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=".to_owned()),
         };
-        let config = Config::local();
+        let config = Config::local(credentials);
         let request = Request::new(Method::GET, Url::parse("http://localhost/")?);
         let timestamp = 1;
 
         let builder = builder::Builder {
             config,
             client: Client::default(),
-            credentials: Some(credentials),
         };
 
         let headers = builder.create_headers(&request, timestamp).await?;

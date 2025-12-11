@@ -1324,7 +1324,7 @@ mod authenticated {
                             "makerAmount": "0",
                             "nonce": "0",
                             "salt": 0,
-                            "side": "0",
+                            "side": Side::Buy,
                             "signature": "0x0d18c04a653d89bf7375636adb7db69cffe362755960dc6ce8a0d46b04355b767958fae51c48e0e4b0908347442cb461e811d2f5a751303f7a8c1f75e17b3e701b",
                             "signatureType": 0,
                             "signer": Address::ZERO,
@@ -2546,9 +2546,11 @@ mod builder_authenticated {
         let config = ConfigBuilder::default().use_server_time(true).build()?;
         let builder_config = BuilderConfig::remote(&server.base_url(), Some("token".to_owned()))?;
         let client = Client::new(&server.base_url(), config)?
-            .builder_authentication_builder(signer, builder_config)
+            .authentication_builder(signer)
             .authenticate()
             .await?;
+
+        let client = client.promote_to_builder(builder_config)?;
 
         let mock3 = server.mock(|when, then| {
             when.method(httpmock::Method::POST)

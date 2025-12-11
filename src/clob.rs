@@ -203,19 +203,10 @@ impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, K> {
             }
         };
 
-        let kind = if self.kind.requires_additional_credentials() {
-            let builder_creds = inner
-                .create_api_key("auth/builder-api-key", &self.signer, self.nonce)
-                .await?;
-            self.kind.with_additional_credentials(builder_creds)
-        } else {
-            self.kind
-        };
-
         let state = Authenticated {
             signer: self.signer,
             credentials,
-            kind,
+            kind: self.kind,
         };
 
         Ok(Client {
@@ -375,13 +366,12 @@ impl<S: State> ClientInner<S> {
 impl ClientInner<Unauthenticated> {
     pub async fn create_api_key<S: Signer>(
         &self,
-        path: &str,
         signer: &S,
         nonce: Option<u32>,
     ) -> Result<Credentials> {
         let request = self
             .client
-            .request(Method::POST, format!("{}{path}", self.host))
+            .request(Method::POST, format!("{}auth/api-key", self.host))
             .build()?;
         let headers = self.create_headers(signer, nonce).await?;
 
@@ -407,7 +397,7 @@ impl ClientInner<Unauthenticated> {
         signer: &S,
         nonce: Option<u32>,
     ) -> Result<Credentials> {
-        match self.create_api_key("auth/api-key", signer, nonce).await {
+        match self.create_api_key(signer, nonce).await {
             Ok(creds) => Ok(creds),
             Err(_) => self.derive_api_key(signer, nonce).await,
         }
@@ -782,29 +772,6 @@ impl Client<Unauthenticated> {
         }
     }
 
-    pub fn builder_authentication_builder<S: Signer>(
-        self,
-        signer: S,
-        config: BuilderConfig,
-    ) -> AuthenticationBuilder<S, Builder> {
-        let client = self.client().clone();
-
-        AuthenticationBuilder {
-            signer,
-            credentials: None,
-            nonce: None,
-            kind: Builder {
-                config,
-                client,
-                credentials: None,
-            },
-            funder: self.inner.funder,
-            signature_type: Some(self.inner.signature_type),
-            client: self,
-            salt_generator: None,
-        }
-    }
-
     /// Attempts to create a new set of [`Credentials`] and returns an error if there already is one
     /// for the particular L2 header's (signer) `address` and `nonce`.
     pub async fn create_api_key<S: Signer>(
@@ -812,9 +779,7 @@ impl Client<Unauthenticated> {
         signer: &S,
         nonce: Option<u32>,
     ) -> Result<Credentials> {
-        self.inner
-            .create_api_key("auth/api-key", signer, nonce)
-            .await
+        self.inner.create_api_key(signer, nonce).await
     }
 
     /// Attempts to derive an existing set of [`Credentials`] and returns an error if there
@@ -1272,6 +1237,16 @@ impl<S: Signer, K: AuthKind> Client<Authenticated<S, K>> {
         self.request(request, Some(headers)).await
     }
 
+    pub async fn create_builder_api_key(&self) -> Result<Credentials> {
+        let request = self
+            .client()
+            .request(Method::POST, format!("{}auth/builder-api-key", self.host()))
+            .build()?;
+        let headers = self.create_headers(&request).await?;
+
+        self.request(request, Some(headers)).await
+    }
+
     async fn create_headers(&self, request: &Request) -> Result<HeaderMap> {
         let timestamp = if self.inner.config.use_server_time {
             self.server_time().await?
@@ -1302,6 +1277,41 @@ impl<S: Signer, K: AuthKind> Client<Authenticated<S, K>> {
             },
             _kind: PhantomData,
         }
+    }
+}
+
+impl<S: Signer> Client<Authenticated<S, Normal>> {
+    pub fn promote_to_builder(
+        self,
+        config: BuilderConfig,
+    ) -> Result<Client<Authenticated<S, Builder>>> {
+        let inner = Arc::into_inner(self.inner).ok_or(Synchronization)?;
+
+        let state = Authenticated {
+            signer: inner.state.signer,
+            credentials: inner.state.credentials,
+            kind: Builder {
+                config,
+                client: inner.client.clone(),
+            },
+        };
+
+        let new_inner = ClientInner {
+            config: inner.config,
+            state,
+            host: inner.host,
+            client: inner.client,
+            tick_sizes: inner.tick_sizes,
+            neg_risk: inner.neg_risk,
+            fee_rate_bps: inner.fee_rate_bps,
+            funder: inner.funder,
+            signature_type: inner.signature_type,
+            salt_generator: inner.salt_generator,
+        };
+
+        Ok(Client {
+            inner: Arc::new(new_inner),
+        })
     }
 }
 

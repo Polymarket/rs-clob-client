@@ -22,6 +22,7 @@ alloy = { version = "1.1.3", default-features = false, features = [
     "dyn-abi",
     "serde",
     "signers",
+    "sol-types"
 ] }
 async-stream = "0.3.6"
 async-trait = "0.1.89"

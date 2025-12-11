@@ -15,9 +15,15 @@ async fn main() -> anyhow::Result<()> {
     let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(POLYGON));
 
     let client = Client::new("https://clob.polymarket.com", Config::default())?
-        .builder_authentication_builder(signer, BuilderConfig::local())
+        .authentication_builder(signer)
         .authenticate()
         .await?;
+
+    // Save these credentials for subsequent calls with the builder client
+    let builder_credentials = client.create_builder_api_key().await?;
+    let config = BuilderConfig::local(builder_credentials);
+
+    let client = client.promote_to_builder(config)?;
 
     let request = TradesRequestBuilder::default().asset_id("asset").build()?;
     println!(

@@ -229,11 +229,13 @@ async fn main() -> anyhow::Result<()> {
     let funder = address!("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"); // Use your funder address
 
     let client = Client::new("https://clob.polymarket.com", Config::default())?
-        .builder_authentication_builder(signer, builder_config)
+        .authentication_builder(signer)
         .funder(funder)
         .signature_type(SignatureType::Proxy)
         .authenticate()
         .await?;
+
+    let client = client.promote_to_builder(builder_config)?;
 
     let ok = client.ok().await?;
     println!("Ok: {ok}");
