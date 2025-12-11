@@ -1237,8 +1237,14 @@ impl<S: Signer, K: AuthKind> Client<Authenticated<S, K>> {
         self.request(request, Some(headers)).await
     }
 
-    pub fn create_builder_api_key(&self) -> Result<Credentials> {
-        Ok(Credentials::default())
+    pub async fn create_builder_api_key(&self) -> Result<Credentials> {
+        let request = self
+            .client()
+            .request(Method::POST, format!("{}auth/builder-api-key", self.host()))
+            .build()?;
+        let headers = self.create_headers(&request).await?;
+
+        self.request(request, Some(headers)).await
     }
 
     async fn create_headers(&self, request: &Request) -> Result<HeaderMap> {
