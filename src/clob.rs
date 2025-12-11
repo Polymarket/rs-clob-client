@@ -1286,45 +1286,26 @@ impl<S: Signer> Client<Authenticated<S, Normal>> {
     ) -> Result<Client<Authenticated<S, Builder>>> {
         let inner = Arc::into_inner(self.inner).ok_or(Synchronization)?;
 
-        let ClientInner {
-            config: client_config,
-            state,
-            host,
-            client,
-            tick_sizes,
-            neg_risk,
-            fee_rate_bps,
-            funder,
-            signature_type,
-            salt_generator,
-        } = inner;
-
-        let Authenticated {
-            signer,
-            credentials,
-            ..
-        } = state;
-
         let state = Authenticated {
-            signer,
-            credentials,
+            signer: inner.state.signer,
+            credentials: inner.state.credentials,
             kind: Builder {
                 config,
-                client: client.clone(),
+                client: inner.client.clone(),
             },
         };
 
         let new_inner = ClientInner {
-            config: client_config,
+            config: inner.config,
             state,
-            host,
-            client,
-            tick_sizes,
-            neg_risk,
-            fee_rate_bps,
-            funder,
-            signature_type,
-            salt_generator,
+            host: inner.host,
+            client: inner.client,
+            tick_sizes: inner.tick_sizes,
+            neg_risk: inner.neg_risk,
+            fee_rate_bps: inner.fee_rate_bps,
+            funder: inner.funder,
+            signature_type: inner.signature_type,
+            salt_generator: inner.salt_generator,
         };
 
         Ok(Client {
