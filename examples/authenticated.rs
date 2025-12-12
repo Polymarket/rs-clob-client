@@ -22,7 +22,7 @@ async fn main() -> anyhow::Result<()> {
     let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(AMOY));
 
     let config = ConfigBuilder::default().use_server_time(true).build()?;
-    let client = Client::new("https://clob.polymarket.com", config)?
+    let client = Client::new("https://clob-staging.polymarket.com", config)?
         .authentication_builder(signer)
         .authenticate()
         .await?;
@@ -120,6 +120,26 @@ async fn main() -> anyhow::Result<()> {
         "earnings -- {:?}",
         client
             .user_earnings_and_markets_config(&request, None)
+            .await
+    );
+
+    println!(
+        "reward percentages -- {:?}",
+        client.reward_percentages().await
+    );
+
+    println!(
+        "current rewards -- {:?}",
+        client.current_rewards(None).await
+    );
+
+    println!(
+        "raw rewards -- {:?}",
+        client
+            .raw_rewards_for_market(
+                "0x5f65177b394277fd294cd75650044e32ba009a95022d88a0c1d565897d72f8f1",
+                None
+            )
             .await
     );
 

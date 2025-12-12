@@ -1172,7 +1172,7 @@ impl<S: Signer, K: AuthKind> Client<Authenticated<S, K>> {
         &self,
         request: &UserRewardsEarningRequest,
         next_cursor: Option<String>,
-    ) -> Result<Page<UserRewardsEarningResponse>> {
+    ) -> Result<Vec<UserRewardsEarningResponse>> {
         let params = request.as_params(next_cursor.as_ref());
         let request = self
             .client()

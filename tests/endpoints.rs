@@ -2108,8 +2108,8 @@ mod authenticated {
                 .query_param("position", "")
                 .query_param("no_competition", "false")
                 .query_param("signature_type", (SignatureType::Eoa as u8).to_string());
-            then.status(StatusCode::OK).json_body(json!({
-                "data": [
+            then.status(StatusCode::OK).json_body(json!(
+                [
                     {
                         "condition_id": "cond_123",
                         "question": "Will BTC be above $50k on December 31, 2025?",
@@ -2164,11 +2164,8 @@ mod authenticated {
                             }
                         ]
                     }
-                ],
-                "limit": 1,
-                "count": 1,
-                "next_cursor": "next"
-            }));
+                ]
+            ));
         });
 
         let request = UserRewardsEarningRequestBuilder::default()
@@ -2178,66 +2175,62 @@ mod authenticated {
             .user_earnings_and_markets_config(&request, None)
             .await?;
 
-        let user_rewards = UserRewardsEarningResponseBuilder::default()
-            .condition_id("cond_123")
-            .question("Will BTC be above $50k on December 31, 2025?")
-            .market_slug("btc-above-50k-2025-12-31")
-            .event_slug("btc-above-50k-2025")
-            .image("https://example.com/markets/btc.png")
-            .rewards_max_spread(dec!(0.05))
-            .rewards_min_size(dec!(10.0))
-            .market_competitiveness(dec!(0.80))
-            .tokens(vec![
-                TokenBuilder::default()
-                    .token_id("YES_TOKEN")
-                    .outcome("YES")
-                    .price(dec!(0.55))
-                    .winner(true)
-                    .build()?,
-                TokenBuilder::default()
-                    .token_id("NO_TOKEN")
-                    .outcome("NO")
-                    .price(dec!(0.45))
-                    .winner(false)
-                    .build()?,
-            ])
-            .rewards_config(vec![
-                RewardsConfigBuilder::default()
-                    .asset_address(address!("0x0000000000000000000000000000000000000001"))
-                    .start_date("2024-01-01".parse().unwrap())
-                    .end_date("2024-12-31".parse().unwrap())
-                    .rate_per_day(dec!(1.5))
-                    .total_rewards(dec!(500.0))
-                    .build()?,
-                RewardsConfigBuilder::default()
-                    .asset_address(address!("0x0000000000000000000000000000000000000002"))
-                    .start_date("2024-06-01".parse().unwrap())
-                    .end_date("2024-12-31".parse().unwrap())
-                    .rate_per_day(dec!(0.75))
-                    .total_rewards(dec!(250.0))
-                    .build()?,
-            ])
-            .maker_address(address!("0x1111111111111111111111111111111111111111"))
-            .earning_percentage(dec!(0.25))
-            .earnings(vec![
-                EarningBuilder::default()
-                    .asset_address(address!("0x0000000000000000000000000000000000000001"))
-                    .earnings(dec!(125.0))
-                    .asset_rate(dec!(1.5))
-                    .build()?,
-                EarningBuilder::default()
-                    .asset_address(address!("0x0000000000000000000000000000000000000002"))
-                    .earnings(dec!(62.5))
-                    .asset_rate(dec!(0.75))
-                    .build()?,
-            ])
-            .build()?;
-        let expected = PageBuilder::default()
-            .limit(1)
-            .count(1)
-            .next_cursor("next")
-            .data(vec![user_rewards])
-            .build()?;
+        let expected = vec![
+            UserRewardsEarningResponseBuilder::default()
+                .condition_id("cond_123")
+                .question("Will BTC be above $50k on December 31, 2025?")
+                .market_slug("btc-above-50k-2025-12-31")
+                .event_slug("btc-above-50k-2025")
+                .image("https://example.com/markets/btc.png")
+                .rewards_max_spread(dec!(0.05))
+                .rewards_min_size(dec!(10.0))
+                .market_competitiveness(dec!(0.80))
+                .tokens(vec![
+                    TokenBuilder::default()
+                        .token_id("YES_TOKEN")
+                        .outcome("YES")
+                        .price(dec!(0.55))
+                        .winner(true)
+                        .build()?,
+                    TokenBuilder::default()
+                        .token_id("NO_TOKEN")
+                        .outcome("NO")
+                        .price(dec!(0.45))
+                        .winner(false)
+                        .build()?,
+                ])
+                .rewards_config(vec![
+                    RewardsConfigBuilder::default()
+                        .asset_address(address!("0x0000000000000000000000000000000000000001"))
+                        .start_date("2024-01-01".parse().unwrap())
+                        .end_date("2024-12-31".parse().unwrap())
+                        .rate_per_day(dec!(1.5))
+                        .total_rewards(dec!(500.0))
+                        .build()?,
+                    RewardsConfigBuilder::default()
+                        .asset_address(address!("0x0000000000000000000000000000000000000002"))
+                        .start_date("2024-06-01".parse().unwrap())
+                        .end_date("2024-12-31".parse().unwrap())
+                        .rate_per_day(dec!(0.75))
+                        .total_rewards(dec!(250.0))
+                        .build()?,
+                ])
+                .maker_address(address!("0x1111111111111111111111111111111111111111"))
+                .earning_percentage(dec!(0.25))
+                .earnings(vec![
+                    EarningBuilder::default()
+                        .asset_address(address!("0x0000000000000000000000000000000000000001"))
+                        .earnings(dec!(125.0))
+                        .asset_rate(dec!(1.5))
+                        .build()?,
+                    EarningBuilder::default()
+                        .asset_address(address!("0x0000000000000000000000000000000000000002"))
+                        .earnings(dec!(62.5))
+                        .asset_rate(dec!(0.75))
+                        .build()?,
+                ])
+                .build()?,
+        ];
 
         assert_eq!(response, expected);
         mock.assert();
