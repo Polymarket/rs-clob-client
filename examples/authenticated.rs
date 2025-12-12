@@ -10,7 +10,7 @@ use polymarket_client_sdk::types::{
     Amount, BalanceAllowanceRequest, OrderType, OrdersRequest, Side, TradesRequest,
     UpdateBalanceAllowanceRequest, UserRewardsEarningRequestBuilder,
 };
-use polymarket_client_sdk::{AMOY, PRIVATE_KEY_VAR};
+use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 
@@ -19,10 +19,10 @@ async fn main() -> anyhow::Result<()> {
     let token_id = "15871154585880608648532107628464183779895785213830018178010423617714102767076";
 
     let private_key = std::env::var(PRIVATE_KEY_VAR).expect("Need a private key");
-    let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(AMOY));
+    let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(POLYGON));
 
     let config = ConfigBuilder::default().use_server_time(true).build()?;
-    let client = Client::new("https://clob-staging.polymarket.com", config)?
+    let client = Client::new("https://clob.polymarket.com", config)?
         .authentication_builder(signer)
         .authenticate()
         .await?;
