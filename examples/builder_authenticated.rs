@@ -25,6 +25,9 @@ async fn main() -> anyhow::Result<()> {
 
     let client = client.promote_to_builder(config)?;
 
+    let keys = client.builder_api_keys().await?;
+    println!("{keys:#?}");
+
     let request = TradesRequestBuilder::default().asset_id("asset").build()?;
     println!(
         "builder_trades -- {:?}",

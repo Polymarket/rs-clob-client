@@ -1117,13 +1117,15 @@ mod authenticated {
     use alloy::primitives::{Address, Signature, address};
     use alloy::signers::Signer as _;
     use alloy::signers::local::LocalSigner;
+    use chrono::NaiveDate;
     use httpmock::Method::{DELETE, GET, POST};
     use polymarket_client_sdk::clob::ConfigBuilder;
     use polymarket_client_sdk::types::{
         ApiKeysResponseBuilder, AssetType, BalanceAllowanceRequestBuilder,
         BalanceAllowanceResponseBuilder, BanStatusResponseBuilder, CancelMarketOrderRequestBuilder,
-        CancelOrdersResponseBuilder, DeleteNotificationsRequestBuilder, EarningBuilder,
-        MakerOrderBuilder, MarketRewardResponseBuilder, NotificationPayloadBuilder,
+        CancelOrdersResponseBuilder, CurrentRewardResponseBuilder,
+        DeleteNotificationsRequestBuilder, EarningBuilder, MakerOrderBuilder,
+        MarketRewardResponseBuilder, MarketRewardsConfigBuilder, NotificationPayloadBuilder,
         NotificationResponseBuilder, OpenOrderResponseBuilder, OrderScoringResponseBuilder,
         OrderType, OrdersRequestBuilder, PageBuilder, PostOrderResponseBuilder,
         RewardsConfigBuilder, Side, SignableOrder, SignedOrderBuilder, TokenBuilder,
@@ -2000,18 +2002,18 @@ mod authenticated {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
-        let today = Utc::now();
+        let date = NaiveDate::from_ymd_opt(2025, 12, 8).unwrap();
         let mock = server.mock(|when, then| {
             when.method(GET)
                 .path("/rewards/user")
                 .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
                 .header(POLY_API_KEY, API_KEY)
                 .header(POLY_PASSPHRASE, PASSPHRASE)
-                .query_param("date", today.date_naive().to_string())
+                .query_param("date", date.to_string())
                 .query_param("signature_type", (SignatureType::Eoa as u8).to_string());
             then.status(StatusCode::OK).json_body(json!({
                 "data": [{
-                    "date": today.to_string(),
+                    "date": "2025-12-08",
                     "condition_id": "1",
                     "asset_address": "0x0000000000000000000000000000000000000001",
                     "maker_address": "0x0000000000000000000000000000000000000002",
@@ -2030,7 +2032,7 @@ mod authenticated {
             .next_cursor("next")
             .data(vec![
                 UserEarningResponseBuilder::default()
-                    .date(today)
+                    .date(date)
                     .condition_id("1")
                     .asset_address(address!("0x0000000000000000000000000000000000000001"))
                     .maker_address(address!("0x0000000000000000000000000000000000000002"))
@@ -2040,9 +2042,7 @@ mod authenticated {
             ])
             .build()?;
 
-        let response = client
-            .earnings_for_user_for_day(today.date_naive(), None)
-            .await?;
+        let response = client.earnings_for_user_for_day(date, None).await?;
 
         assert_eq!(response, expected);
         mock.assert();
@@ -2055,17 +2055,17 @@ mod authenticated {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
-        let today = Utc::now();
+        let date = NaiveDate::from_ymd_opt(2025, 12, 8).unwrap();
         let mock = server.mock(|when, then| {
             when.method(GET)
                 .path("/rewards/user/total")
                 .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
                 .header(POLY_API_KEY, API_KEY)
                 .header(POLY_PASSPHRASE, PASSPHRASE)
-                .query_param("date", today.date_naive().to_string())
+                .query_param("date", date.to_string())
                 .query_param("signature_type", (SignatureType::Eoa as u8).to_string());
             then.status(StatusCode::OK).json_body(json!([{
-                "date": today.to_string(),
+                "date": "2025-12-08",
                 "asset_address": "0x0000000000000000000000000000000000000001",
                 "maker_address": "0x0000000000000000000000000000000000000002",
                 "earnings": 1,
@@ -2073,13 +2073,11 @@ mod authenticated {
             }]));
         });
 
-        let response = client
-            .total_earnings_for_user_for_day(today.date_naive())
-            .await?;
+        let response = client.total_earnings_for_user_for_day(date).await?;
 
         let expected = vec![
             TotalUserEarningResponseBuilder::default()
-                .date(today)
+                .date(date)
                 .asset_address(address!("0x0000000000000000000000000000000000000001"))
                 .maker_address(address!("0x0000000000000000000000000000000000000002"))
                 .earnings(Decimal::ONE)
@@ -2138,15 +2136,15 @@ mod authenticated {
                         "rewards_config": [
                             {
                                 "asset_address": "0x0000000000000000000000000000000000000001",
-                                "start_date": "2024-01-01T00:00:00Z",
-                                "end_date": "2024-12-31T23:59:59Z",
+                                "start_date": "2024-01-01",
+                                "end_date": "2024-12-31",
                                 "rate_per_day": "1.5",
                                 "total_rewards": "500.0"
                             },
                             {
                                 "asset_address": "0x0000000000000000000000000000000000000002",
-                                "start_date": "2024-06-01T00:00:00Z",
-                                "end_date": "2024-12-31T23:59:59Z",
+                                "start_date": "2024-06-01",
+                                "end_date": "2024-12-31",
                                 "rate_per_day": "0.75",
                                 "total_rewards": "250.0"
                             }
@@ -2206,15 +2204,15 @@ mod authenticated {
             .rewards_config(vec![
                 RewardsConfigBuilder::default()
                     .asset_address(address!("0x0000000000000000000000000000000000000001"))
-                    .start_date("2024-01-01T00:00:00Z".parse().unwrap())
-                    .end_date("2024-12-31T23:59:59Z".parse().unwrap())
+                    .start_date("2024-01-01".parse().unwrap())
+                    .end_date("2024-12-31".parse().unwrap())
                     .rate_per_day(dec!(1.5))
                     .total_rewards(dec!(500.0))
                     .build()?,
                 RewardsConfigBuilder::default()
                     .asset_address(address!("0x0000000000000000000000000000000000000002"))
-                    .start_date("2024-06-01T00:00:00Z".parse().unwrap())
-                    .end_date("2024-12-31T23:59:59Z".parse().unwrap())
+                    .start_date("2024-06-01".parse().unwrap())
+                    .end_date("2024-12-31".parse().unwrap())
                     .rate_per_day(dec!(0.75))
                     .total_rewards(dec!(250.0))
                     .build()?,
@@ -2287,38 +2285,20 @@ mod authenticated {
                 "data": [
                     {
                         "condition_id": "cond_abc123",
-                        "question": "Will ETH be above $4000 on Jan 1, 2026?",
-                        "market_slug": "eth-above-4000-2026",
-                        "event_slug": "eth-2026",
-                        "image": "https://example.com/markets/eth.png",
                         "rewards_max_spread": "0.05",
                         "rewards_min_size": "20.0",
-                        "tokens": [
-                            {
-                                "token_id": "YES_TOKEN",
-                                "outcome": "YES",
-                                "price": "0.62",
-                                "winner": true
-                            },
-                            {
-                                "token_id": "NO_TOKEN",
-                                "outcome": "NO",
-                                "price": "0.38",
-                                "winner": false
-                            }
-                        ],
                         "rewards_config": [
                             {
                                 "asset_address": "0x0000000000000000000000000000000000000001",
-                                "start_date": "2024-01-01T00:00:00Z",
-                                "end_date": "2024-12-31T23:59:59Z",
+                                "start_date": "2024-01-01",
+                                "end_date": "2024-12-31",
                                 "rate_per_day": "2.0",
                                 "total_rewards": "750.0"
                             },
                             {
                                 "asset_address": "0x0000000000000000000000000000000000000002",
-                                "start_date": "2024-06-01T00:00:00Z",
-                                "end_date": "2024-12-31T23:59:59Z",
+                                "start_date": "2024-06-01",
+                                "end_date": "2024-12-31",
                                 "rate_per_day": "1.0",
                                 "total_rewards": "300.0"
                             }
@@ -2333,40 +2313,22 @@ mod authenticated {
 
         let response = client.current_rewards(None).await?;
 
-        let market_reward = MarketRewardResponseBuilder::default()
+        let market_reward = CurrentRewardResponseBuilder::default()
             .condition_id("cond_abc123")
-            .question("Will ETH be above $4000 on Jan 1, 2026?")
-            .market_slug("eth-above-4000-2026")
-            .event_slug("eth-2026")
-            .image("https://example.com/markets/eth.png")
             .rewards_max_spread(dec!(0.05))
             .rewards_min_size(dec!(20.0))
-            .tokens(vec![
-                TokenBuilder::default()
-                    .token_id("YES_TOKEN")
-                    .outcome("YES")
-                    .price(dec!(0.62))
-                    .winner(true)
-                    .build()?,
-                TokenBuilder::default()
-                    .token_id("NO_TOKEN")
-                    .outcome("NO")
-                    .price(dec!(0.38))
-                    .winner(false)
-                    .build()?,
-            ])
             .rewards_config(vec![
                 RewardsConfigBuilder::default()
                     .asset_address(address!("0x0000000000000000000000000000000000000001"))
-                    .start_date("2024-01-01T00:00:00Z".parse().unwrap())
-                    .end_date("2024-12-31T23:59:59Z".parse().unwrap())
+                    .start_date("2024-01-01".parse().unwrap())
+                    .end_date("2024-12-31".parse().unwrap())
                     .rate_per_day(dec!(2.0))
                     .total_rewards(dec!(750.0))
                     .build()?,
                 RewardsConfigBuilder::default()
                     .asset_address(address!("0x0000000000000000000000000000000000000002"))
-                    .start_date("2024-06-01T00:00:00Z".parse().unwrap())
-                    .end_date("2024-12-31T23:59:59Z".parse().unwrap())
+                    .start_date("2024-06-01".parse().unwrap())
+                    .end_date("2024-12-31".parse().unwrap())
                     .rate_per_day(dec!(1.0))
                     .total_rewards(dec!(300.0))
                     .build()?,
@@ -2407,6 +2369,7 @@ mod authenticated {
                         "image": "https://example.com/markets/btc.png",
                         "rewards_max_spread": "0.05",
                         "rewards_min_size": "15.0",
+                        "market_competitiveness": 0.05,
                         "tokens": [
                             {
                                 "token_id": "YES_TOKEN",
@@ -2423,18 +2386,22 @@ mod authenticated {
                         ],
                         "rewards_config": [
                             {
+                                "id": "1",
                                 "asset_address": "0x0000000000000000000000000000000000000001",
-                                "start_date": "2024-01-01T00:00:00Z",
-                                "end_date": "2024-12-31T23:59:59Z",
+                                "start_date": "2024-01-01",
+                                "end_date": "2024-12-31",
                                 "rate_per_day": "1.25",
-                                "total_rewards": "400.0"
+                                "total_rewards": "400.0",
+                                "total_days": 10
                             },
                             {
+                                "id": "2",
                                 "asset_address": "0x0000000000000000000000000000000000000002",
-                                "start_date": "2024-06-01T00:00:00Z",
-                                "end_date": "2024-12-31T23:59:59Z",
+                                "start_date": "2024-06-01",
+                                "end_date": "2024-12-31",
                                 "rate_per_day": "0.80",
-                                "total_rewards": "200.0"
+                                "total_rewards": "200.0",
+                                "total_days": 10
                             }
                         ]
                     }
@@ -2457,6 +2424,7 @@ mod authenticated {
             .image("https://example.com/markets/btc.png")
             .rewards_max_spread(dec!(0.05))
             .rewards_min_size(dec!(15.0))
+            .market_competitiveness(dec!(0.05))
             .tokens(vec![
                 TokenBuilder::default()
                     .token_id("YES_TOKEN")
@@ -2472,19 +2440,23 @@ mod authenticated {
                     .build()?,
             ])
             .rewards_config(vec![
-                RewardsConfigBuilder::default()
+                MarketRewardsConfigBuilder::default()
+                    .id("1")
                     .asset_address(address!("0x0000000000000000000000000000000000000001"))
-                    .start_date("2024-01-01T00:00:00Z".parse().unwrap())
-                    .end_date("2024-12-31T23:59:59Z".parse().unwrap())
+                    .start_date("2024-01-01".parse().unwrap())
+                    .end_date("2024-12-31".parse().unwrap())
                     .rate_per_day(dec!(1.25))
                     .total_rewards(dec!(400.0))
+                    .total_days(Decimal::TEN)
                     .build()?,
-                RewardsConfigBuilder::default()
+                MarketRewardsConfigBuilder::default()
+                    .id("2")
                     .asset_address(address!("0x0000000000000000000000000000000000000002"))
-                    .start_date("2024-06-01T00:00:00Z".parse().unwrap())
-                    .end_date("2024-12-31T23:59:59Z".parse().unwrap())
+                    .start_date("2024-06-01".parse().unwrap())
+                    .end_date("2024-12-31".parse().unwrap())
                     .rate_per_day(dec!(0.80))
                     .total_rewards(dec!(200.0))
+                    .total_days(Decimal::TEN)
                     .build()?,
             ])
             .build()?;
@@ -2505,10 +2477,12 @@ mod authenticated {
 mod builder_authenticated {
     use alloy::signers::Signer as _;
     use alloy::signers::local::LocalSigner;
+    use httpmock::Method::DELETE;
     use polymarket_client_sdk::auth::builder::Config as BuilderConfig;
     use polymarket_client_sdk::clob::ConfigBuilder;
     use polymarket_client_sdk::types::{
-        BuilderTradeResponseBuilder, PageBuilder, Side, TradesRequestBuilder,
+        BuilderApiKeyResponseBuilder, BuilderTradeResponseBuilder, PageBuilder, Side,
+        TradesRequestBuilder,
     };
 
     use super::*;
@@ -2517,6 +2491,163 @@ mod builder_authenticated {
         POLY_BUILDER_PASSPHRASE, POLY_BUILDER_SIGNATURE, POLY_BUILDER_TIMESTAMP, POLY_NONCE,
         POLY_SIGNATURE, POLY_TIMESTAMP, SECRET, SIGNATURE, TIMESTAMP,
     };
+
+    #[tokio::test]
+    async fn builder_api_keys_should_succeed() -> anyhow::Result<()> {
+        let server = MockServer::start();
+
+        let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
+
+        let mock = server.mock(|when, then| {
+            when.method(httpmock::Method::GET)
+                .path("/auth/derive-api-key")
+                .header(POLY_ADDRESS, signer.address().to_string().to_lowercase())
+                .header(POLY_NONCE, "0")
+                .header(POLY_SIGNATURE, SIGNATURE)
+                .header(POLY_TIMESTAMP, TIMESTAMP);
+            then.status(StatusCode::OK).json_body(json!({
+                "apiKey": API_KEY,
+                "passphrase": PASSPHRASE,
+                "secret": SECRET
+            }));
+        });
+        let mock2 = server.mock(|when, then| {
+            when.method(httpmock::Method::GET).path("/time");
+            then.status(StatusCode::OK)
+                .json_body(TIMESTAMP.parse::<i64>().unwrap());
+        });
+
+        let config = ConfigBuilder::default().use_server_time(true).build()?;
+        let builder_config = BuilderConfig::remote(&server.base_url(), Some("token".to_owned()))?;
+        let client = Client::new(&server.base_url(), config)?
+            .authentication_builder(signer)
+            .authenticate()
+            .await?;
+
+        let client = client.promote_to_builder(builder_config)?;
+
+        let mock3 = server.mock(|when, then| {
+            when.method(httpmock::Method::POST)
+                .path("/")
+                .header("authorization", "Bearer token");
+
+            then.status(StatusCode::OK).json_body(json!({
+                POLY_BUILDER_API_KEY: BUILDER_API_KEY,
+                POLY_BUILDER_PASSPHRASE: BUILDER_PASSPHRASE,
+                POLY_BUILDER_SIGNATURE: "signature",
+                POLY_BUILDER_TIMESTAMP: "1",
+            }));
+        });
+
+        let time = Utc::now();
+        let mock4 = server.mock(|when, then| {
+            when.method(httpmock::Method::GET)
+                .path("/auth/builder-api-key")
+                .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
+                .header(POLY_API_KEY, API_KEY)
+                .header(POLY_PASSPHRASE, PASSPHRASE)
+                .header(POLY_BUILDER_API_KEY, BUILDER_API_KEY)
+                .header(POLY_BUILDER_PASSPHRASE, BUILDER_PASSPHRASE)
+                .header(POLY_BUILDER_SIGNATURE, "signature")
+                .header(POLY_BUILDER_TIMESTAMP, "1");
+
+            then.status(StatusCode::OK).json_body(json!(
+                [
+                    {
+                        "key": Uuid::nil(),
+                        "createdAt": time
+                    }
+                ]
+            ));
+        });
+
+        let response = client.builder_api_keys().await?;
+
+        let expected = vec![
+            BuilderApiKeyResponseBuilder::default()
+                .key(Uuid::nil())
+                .created_at(time)
+                .build()?,
+        ];
+
+        assert_eq!(response, expected);
+        mock.assert();
+        mock2.assert_calls(3);
+        mock3.assert();
+        mock4.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn revoke_builder_api_key_should_succeed() -> anyhow::Result<()> {
+        let server = MockServer::start();
+
+        let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
+
+        let mock = server.mock(|when, then| {
+            when.method(httpmock::Method::GET)
+                .path("/auth/derive-api-key")
+                .header(POLY_ADDRESS, signer.address().to_string().to_lowercase())
+                .header(POLY_NONCE, "0")
+                .header(POLY_SIGNATURE, SIGNATURE)
+                .header(POLY_TIMESTAMP, TIMESTAMP);
+            then.status(StatusCode::OK).json_body(json!({
+                "apiKey": API_KEY,
+                "passphrase": PASSPHRASE,
+                "secret": SECRET
+            }));
+        });
+        let mock2 = server.mock(|when, then| {
+            when.method(httpmock::Method::GET).path("/time");
+            then.status(StatusCode::OK)
+                .json_body(TIMESTAMP.parse::<i64>().unwrap());
+        });
+
+        let config = ConfigBuilder::default().use_server_time(true).build()?;
+        let builder_config = BuilderConfig::remote(&server.base_url(), Some("token".to_owned()))?;
+        let client = Client::new(&server.base_url(), config)?
+            .authentication_builder(signer)
+            .authenticate()
+            .await?;
+
+        let client = client.promote_to_builder(builder_config)?;
+
+        let mock3 = server.mock(|when, then| {
+            when.method(httpmock::Method::POST)
+                .path("/")
+                .header("authorization", "Bearer token");
+
+            then.status(StatusCode::OK).json_body(json!({
+                POLY_BUILDER_API_KEY: BUILDER_API_KEY,
+                POLY_BUILDER_PASSPHRASE: BUILDER_PASSPHRASE,
+                POLY_BUILDER_SIGNATURE: "signature",
+                POLY_BUILDER_TIMESTAMP: "1",
+            }));
+        });
+
+        let mock4 = server.mock(|when, then| {
+            when.method(DELETE)
+                .path("/auth/builder-api-key")
+                .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
+                .header(POLY_API_KEY, API_KEY)
+                .header(POLY_PASSPHRASE, PASSPHRASE)
+                .header(POLY_BUILDER_API_KEY, BUILDER_API_KEY)
+                .header(POLY_BUILDER_PASSPHRASE, BUILDER_PASSPHRASE)
+                .header(POLY_BUILDER_SIGNATURE, "signature")
+                .header(POLY_BUILDER_TIMESTAMP, "1");
+            then.status(StatusCode::OK).json_body(json!(null));
+        });
+
+        client.revoke_builder_api_key().await?;
+
+        mock.assert();
+        mock2.assert_calls(3);
+        mock3.assert();
+        mock4.assert();
+
+        Ok(())
+    }
 
     #[tokio::test]
     async fn builder_trades_should_succeed() -> anyhow::Result<()> {

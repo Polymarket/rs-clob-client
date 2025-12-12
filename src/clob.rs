@@ -25,13 +25,13 @@ use crate::error::{Error, Synchronization};
 use crate::order_builder::{Limit, Market, OrderBuilder, generate_seed};
 use crate::types::{
     ApiKeysResponse, BalanceAllowanceRequest, BalanceAllowanceResponse, BanStatusResponse,
-    BuilderTradeResponse, CancelMarketOrderRequest, CancelOrdersResponse,
-    DeleteNotificationsRequest, FeeRateResponse, LastTradePriceRequest, LastTradePriceResponse,
-    LastTradesPricesResponse, MarketResponse, MarketRewardResponse, MidpointRequest,
-    MidpointResponse, MidpointsResponse, NegRiskResponse, NotificationResponse, OpenOrderResponse,
-    OrderBookSummaryRequest, OrderBookSummaryResponse, OrderScoringResponse, OrdersRequest,
-    OrdersScoringResponse, Page, PostOrderResponse, PriceRequest, PriceResponse, PricesResponse,
-    RewardsPercentagesResponse, SignableOrder, SignatureType, SignedOrder,
+    BuilderApiKeyResponse, BuilderTradeResponse, CancelMarketOrderRequest, CancelOrdersResponse,
+    CurrentRewardResponse, DeleteNotificationsRequest, FeeRateResponse, LastTradePriceRequest,
+    LastTradePriceResponse, LastTradesPricesResponse, MarketResponse, MarketRewardResponse,
+    MidpointRequest, MidpointResponse, MidpointsResponse, NegRiskResponse, NotificationResponse,
+    OpenOrderResponse, OrderBookSummaryRequest, OrderBookSummaryResponse, OrderScoringResponse,
+    OrdersRequest, OrdersScoringResponse, Page, PostOrderResponse, PriceRequest, PriceResponse,
+    PricesResponse, RewardsPercentagesResponse, SignableOrder, SignatureType, SignedOrder,
     SimplifiedMarketResponse, SpreadRequest, SpreadResponse, SpreadsResponse, TickSize,
     TickSizeResponse, TotalUserEarningResponse, TradeResponse, TradesRequest,
     UpdateBalanceAllowanceRequest, UserEarningResponse, UserRewardsEarningRequest,
@@ -1046,7 +1046,7 @@ impl<S: Signer, K: AuthKind> Client<Authenticated<S, K>> {
 
     pub async fn delete_notifications(&self, request: &DeleteNotificationsRequest) -> Result<()> {
         let params = request.as_params();
-        let request = self
+        let mut request = self
             .client()
             .request(
                 Method::DELETE,
@@ -1055,8 +1055,13 @@ impl<S: Signer, K: AuthKind> Client<Authenticated<S, K>> {
             .json(&request)
             .build()?;
         let headers = self.create_headers(&request).await?;
+        *request.headers_mut() = headers;
 
-        self.request(request, Some(headers)).await
+        // We have to send the request separately from `self.request` because this endpoint does
+        // not return anything in the response body. Otherwise, we would get an EOF error from reqwest
+        self.client().execute(request).await?;
+
+        Ok(())
     }
 
     pub async fn balance_allowance(
@@ -1093,7 +1098,7 @@ impl<S: Signer, K: AuthKind> Client<Authenticated<S, K>> {
         *request.headers_mut() = headers;
 
         // We have to send the request separately from `self.request` because this endpoint does
-        // not return anything in the response body. Otherwise, we would get a EOF error from reqwest
+        // not return anything in the response body. Otherwise, we would get an EOF error from reqwest
         self.client().execute(request).await?;
 
         Ok(())
@@ -1205,7 +1210,7 @@ impl<S: Signer, K: AuthKind> Client<Authenticated<S, K>> {
     pub async fn current_rewards(
         &self,
         next_cursor: Option<String>,
-    ) -> Result<Page<MarketRewardResponse>> {
+    ) -> Result<Page<CurrentRewardResponse>> {
         let cursor = next_cursor.map_or(String::new(), |c| format!("&next_cursor={c}"));
         let request = self
             .client()
@@ -1316,6 +1321,35 @@ impl<S: Signer> Client<Authenticated<S, Normal>> {
 }
 
 impl<S: Signer> Client<Authenticated<S, Builder>> {
+    pub async fn builder_api_keys(&self) -> Result<Vec<BuilderApiKeyResponse>> {
+        let request = self
+            .client()
+            .request(Method::GET, format!("{}auth/builder-api-key", self.host()))
+            .build()?;
+        let headers = self.create_headers(&request).await?;
+
+        self.request(request, Some(headers)).await
+    }
+
+    pub async fn revoke_builder_api_key(&self) -> Result<()> {
+        let mut request = self
+            .client()
+            .request(
+                Method::DELETE,
+                format!("{}auth/builder-api-key", self.host()),
+            )
+            .build()?;
+        let headers = self.create_headers(&request).await?;
+
+        *request.headers_mut() = headers;
+
+        // We have to send the request separately from `self.request` because this endpoint does
+        // not return anything in the response body. Otherwise, we would get an EOF error from reqwest
+        self.client().execute(request).await?;
+
+        Ok(())
+    }
+
     pub async fn builder_trades(
         &self,
         request: &TradesRequest,

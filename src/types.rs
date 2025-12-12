@@ -556,6 +556,7 @@ pub struct Token {
     pub token_id: String,
     pub outcome: String,
     pub price: Decimal,
+    #[serde(default)]
     pub winner: bool,
 }
 
@@ -1057,7 +1058,7 @@ pub struct MakerOrder {
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[builder(pattern = "owned", build_fn(error = "Error"))]
 pub struct UserEarningResponse {
-    pub date: DateTime<Utc>,
+    pub date: NaiveDate,
     #[builder(setter(into))]
     pub condition_id: String,
     pub asset_address: Address,
@@ -1070,7 +1071,7 @@ pub struct UserEarningResponse {
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[builder(pattern = "owned", build_fn(error = "Error"))]
 pub struct TotalUserEarningResponse {
-    pub date: DateTime<Utc>,
+    pub date: NaiveDate,
     pub asset_address: Address,
     pub maker_address: Address,
     pub earnings: Decimal,
@@ -1142,10 +1143,24 @@ pub struct UserRewardsEarningResponse {
 #[builder(pattern = "owned", build_fn(error = "Error"))]
 pub struct RewardsConfig {
     pub asset_address: Address,
-    pub start_date: DateTime<Utc>,
-    pub end_date: DateTime<Utc>,
+    pub start_date: NaiveDate,
+    pub end_date: NaiveDate,
     pub rate_per_day: Decimal,
     pub total_rewards: Decimal,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
+#[builder(pattern = "owned", build_fn(error = "Error"))]
+pub struct MarketRewardsConfig {
+    #[builder(setter(into))]
+    pub id: String,
+    pub asset_address: Address,
+    pub start_date: NaiveDate,
+    pub end_date: NaiveDate,
+    pub rate_per_day: Decimal,
+    pub total_rewards: Decimal,
+    pub total_days: Decimal,
 }
 
 #[non_exhaustive]
@@ -1158,6 +1173,21 @@ pub struct Earning {
 }
 
 pub type RewardsPercentagesResponse = HashMap<String, Decimal>;
+
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
+#[builder(pattern = "owned", build_fn(error = "Error"))]
+pub struct CurrentRewardResponse {
+    #[builder(setter(into))]
+    pub condition_id: String,
+    #[builder(default)]
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnNull")]
+    pub rewards_config: Vec<RewardsConfig>,
+    pub rewards_max_spread: Decimal,
+    pub rewards_min_size: Decimal,
+}
 
 #[non_exhaustive]
 #[serde_as]
@@ -1176,6 +1206,7 @@ pub struct MarketRewardResponse {
     pub image: String,
     pub rewards_max_spread: Decimal,
     pub rewards_min_size: Decimal,
+    pub market_competitiveness: Decimal,
     #[builder(default)]
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
@@ -1183,7 +1214,24 @@ pub struct MarketRewardResponse {
     #[builder(default)]
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
-    pub rewards_config: Vec<RewardsConfig>,
+    pub rewards_config: Vec<MarketRewardsConfig>,
+}
+
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
+#[serde(rename_all = "camelCase")]
+#[builder(pattern = "owned", build_fn(error = "Error"))]
+pub struct BuilderApiKeyResponse {
+    pub key: ApiKey,
+    #[builder(default)]
+    #[builder(setter(strip_option))]
+    #[serde(default)]
+    pub created_at: Option<DateTime<Utc>>,
+    #[builder(default)]
+    #[builder(setter(strip_option))]
+    #[serde(default)]
+    pub revoked_at: Option<DateTime<Utc>>,
 }
 
 #[non_exhaustive]
