@@ -13,7 +13,7 @@ use dashmap::DashMap;
 use derive_builder::Builder;
 use futures::Stream;
 use reqwest::header::{HeaderMap, HeaderValue};
-use reqwest::{Client as ReqwestClient, Method, Request};
+use reqwest::{Client as ReqwestClient, Method, Request, StatusCode};
 use serde::de::DeserializeOwned;
 use serde_json::json;
 use url::Url;
@@ -350,7 +350,15 @@ impl<S: State> ClientInner<S> {
             return Err(Error::status(status_code, method, path, message));
         }
 
-        Ok(response.json().await?)
+        match response.json::<Option<Response>>().await? {
+            Some(response) => Ok(response),
+            None => Err(Error::status(
+                StatusCode::NOT_FOUND,
+                method,
+                path,
+                "Unable to find requested resource",
+            )),
+        }
     }
 
     pub async fn server_time(&self) -> Result<Timestamp> {
