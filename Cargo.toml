@@ -2,7 +2,10 @@
 name = "polymarket-client-sdk"
 description = "Polymarket CLOB (Central Limit Order Book) API client SDK"
 version = "0.1.0"
-authors = ["Polymarket Engineering <engineering@polymarket.com>"]
+authors = [
+    "Polymarket Engineering <engineering@polymarket.com>",
+    "Chaz Byrnes <chaz@polymarket.com>",
+]
 readme = "README.md"
 repository = "https://github.com/polymarket/rs-clob-client"
 license = "MIT"
