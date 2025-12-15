@@ -144,6 +144,8 @@ impl<S: Signer, K: AuthKind> OrderBuilder<S, Limit, K> {
             .minimum_tick_size
             .as_decimal();
 
+        let decimals = minimum_tick_size.scale();
+
         if price.scale() > minimum_tick_size.scale() {
             return Err(Error::validation(format!(
                 "Unable to build Order: Price {price} has {} decimal places. Minimum tick size \
@@ -189,16 +191,24 @@ impl<S: Signer, K: AuthKind> OrderBuilder<S, Limit, K> {
             ));
         }
 
-        // When [`Side::Buy`]ing `YES` tokens, the user will "make" `size` * `price` USDC and "take"
-        // `size` `YES` tokens, and vice versa for [`Side::Sell`]. The returned values are quantized
-        // to [`USDC_DECIMALS`].
+        // When buying `YES` tokens, the user will "make" `size` * `price` USDC and "take"
+        // `size` `YES` tokens, and vice versa for sells. We have to truncate the notional values
+        // to the combined precision of the tick size _and_ the lot size. This is to ensure that
+        // this order will "snap" to the precision of resting orders on the book. The returned
+        // values are quantized to `USDC_DECIMALS`.
         //
-        // e.g. User submits a [`Limit`] order to [`Side::BUY`] 100 `YES` tokens at $0.34.
+        // e.g. User submits a limit order to buy 100 `YES` tokens at $0.34.
         // This means they will take/receive 100 `YES` tokens, make/give up 34 USDC. This means that
         // the `taker_amount` is `100000000` and the `maker_amount` of `34000000`.
         let (taker_amount, maker_amount) = match side {
-            Side::Buy => (size, size * price),
-            Side::Sell => (size * price, size),
+            Side::Buy => (
+                size,
+                (size * price).trunc_with_scale(decimals + LOT_SIZE_SCALE),
+            ),
+            Side::Sell => (
+                (size * price).trunc_with_scale(decimals + LOT_SIZE_SCALE),
+                size,
+            ),
             side => return Err(Error::validation(format!("Invalid side: {side}"))),
         };
 
@@ -343,29 +353,32 @@ impl<S: Signer, K: AuthKind> OrderBuilder<S, Market, K> {
             )));
         }
 
-        // When buying `YES` tokens, the user will "make" [`Amount::USDC`] dollars and "take"
-        // [`Amount::USDC`] / `price` `YES` tokens.
+        // When buying `YES` tokens, the user will "make" `USDC` dollars and "take"
+        // `USDC` / `price` `YES` tokens. When selling `YES` tokens, the user will "make" `YES`
+        // token shares, and "take" `YES` shares * `price`. We have to truncate the notional values
+        // to the combined precision of the tick size _and_ the lot size. This is to ensure that
+        // this order will "snap" to the precision of resting orders on the book. The returned
+        // values are quantized to `USDC_DECIMALS`.
         //
-        // e.g. User submits a [`kind::Market`] order to [`Side::BUY`] $100 worth of `YES` tokens at
+        // e.g. User submits a market order to buy $100 worth of `YES` tokens at
         // the current `market_price` of $0.34. This means they will take/receive (100/0.34)
-        // 294.117647 `YES` tokens, make/give up $100. This means that the `taker_amount` is `294117647`
-        // and the `maker_amount` of `100000000`.
+        // 294.1176(47) `YES` tokens, make/give up $100. This means that the `taker_amount` is
+        // `294117600` and the `maker_amount` of `100000000`.
         //
-        // e.g. User submits a [`kind::Market`] order to [`Side::Sell`] 100 `YES` tokens at the current
-        // `market_price` of $0.34. This means that they will take/receive $34, make/give up 100 `YES` tokens.
-        // This means that the `taker_amount` is `34000000` and the `maker_amount` is `100000000`.
+        // e.g. User submits a market order to sell 100 `YES` tokens at the current
+        // `market_price` of $0.34. This means that they will take/receive $34, make/give up 100
+        // `YES` tokens. This means that the `taker_amount` is `34000000` and the `maker_amount` is
+        // `100000000`.
         let raw_amount = amount.as_inner();
         let (taker_amount, maker_amount) = match side {
-            Side::Buy => (
-                (raw_amount / price).trunc_with_scale(USDC_DECIMALS),
-                raw_amount,
-            ),
-            // When selling, `raw_amount * price` is guaranteed to be a scale of at most `USDC_DECIMALS`
-            // since `TickSize` has a maximum scale of four (4) and `LOT_SIZE_DECIMALS` is always
-            // two (2).
+            Side::Buy => (raw_amount / price, raw_amount),
             Side::Sell => (raw_amount * price, raw_amount),
             side => return Err(Error::validation(format!("Invalid side: {side}"))),
         };
+
+        // Have to truncate the calculated number of shares the combined precision of the lot size
+        // _and_ the tick size
+        let taker_amount = taker_amount.trunc_with_scale(decimals + LOT_SIZE_SCALE);
 
         let order = Order {
             salt: U256::from((self.salt_generator)()),
