@@ -47,7 +47,7 @@ const TERMINAL_CURSOR: &str = "LTE="; // base64("-1")
 /// Each [`Client`] can exist in one state at a time, i.e. [`state::Unauthenticated`] or
 /// [`state::Authenticated`].
 pub mod state {
-    use alloy::signers::Signer;
+    use alloy::primitives::Address;
 
     use super::AuthKind;
     use crate::auth::Credentials;
@@ -65,11 +65,9 @@ pub mod state {
     /// See `examples/authenticated.rs` for more context.
     #[non_exhaustive]
     #[derive(Clone, Debug)]
-    pub struct Authenticated<S: Signer, K: AuthKind> {
-        /// The signer's address is used to populate the L2 headers ([`reqwest::header::HeaderMap`])
-        /// `POLY_ADDRESS` field. The signer also signs the [`super::Order`] into a
-        /// [`super::SignedOrder`] that is sent to the server.
-        pub(crate) signer: S,
+    pub struct Authenticated<K: AuthKind> {
+        /// The signer's address that created the credentials
+        pub(crate) address: Address,
         /// The [`Credentials`]'s `secret` is used to generate an [`crate::signer::hmac`] which is
         /// passed in the L2 headers ([`super::HeaderMap`]) `POLY_SIGNATURE` field.
         pub(crate) credentials: Credentials,
@@ -84,8 +82,8 @@ pub mod state {
     impl State for Unauthenticated {}
     impl sealed::Sealed for Unauthenticated {}
 
-    impl<S: Signer, K: AuthKind> State for Authenticated<S, K> {}
-    impl<S: Signer, K: AuthKind> sealed::Sealed for Authenticated<S, K> {}
+    impl<K: AuthKind> State for Authenticated<K> {}
+    impl<K: AuthKind> sealed::Sealed for Authenticated<K> {}
 
     mod sealed {
         pub trait Sealed {}
@@ -93,7 +91,7 @@ pub mod state {
 }
 
 /// The type used to build a request to authenticate the inner [`Client<Unauthorized>`]. Calling
-/// `authenticate` on this will elevate that inner `client` into an [`Client<Authenticated<S, K>>`].
+/// `authenticate` on this will elevate that inner `client` into an [`Client<Authenticated<K>>`].
 pub struct AuthenticationBuilder<S: Signer, K: AuthKind = Normal> {
     /// The initially unauthenticated client that is "carried forward" into the authenticated client.
     client: Client<Unauthenticated>,
@@ -148,9 +146,9 @@ impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, K> {
         self
     }
 
-    /// Attempt to elevate the inner `client` to [`Client<Authenticated<S, K>>`] using the optional
+    /// Attempt to elevate the inner `client` to [`Client<Authenticated<K>>`] using the optional
     /// fields supplied in the builder.
-    pub async fn authenticate(self) -> Result<Client<Authenticated<S, K>>> {
+    pub async fn authenticate(self) -> Result<Client<Authenticated<K>>> {
         let inner = Arc::into_inner(self.client.inner).ok_or(Synchronization)?;
 
         match self.signer.chain_id() {
@@ -204,7 +202,7 @@ impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, K> {
         };
 
         let state = Authenticated {
-            signer: self.signer,
+            address: self.signer.address(),
             credentials,
             kind: self.kind,
         };
@@ -430,6 +428,12 @@ impl<S: State> Client<S> {
     #[must_use]
     pub fn host(&self) -> &Url {
         &self.inner.host
+    }
+
+    pub fn invalidate_internal_caches(&self) {
+        self.inner.tick_sizes.clear();
+        self.inner.fee_rate_bps.clear();
+        self.inner.neg_risk.clear();
     }
 
     pub async fn ok(&self) -> Result<String> {
@@ -812,8 +816,8 @@ impl Client<Unauthenticated> {
     }
 }
 
-impl<S: Signer, K: AuthKind> Client<Authenticated<S, K>> {
-    /// Demotes this authenticated [`Client<Authenticated<S, K>>`] to an unauthenticated one
+impl<K: AuthKind> Client<Authenticated<K>> {
+    /// Demotes this authenticated [`Client<Authenticated<K>>`] to an unauthenticated one
     pub fn deauthenticate(self) -> Result<Client<Unauthenticated>> {
         let inner = Arc::into_inner(self.inner).ok_or(Synchronization)?;
         Ok(Client::<Unauthenticated> {
@@ -834,17 +838,17 @@ impl<S: Signer, K: AuthKind> Client<Authenticated<S, K>> {
     }
 
     #[must_use]
-    pub fn state(&self) -> &Authenticated<S, K> {
+    pub fn state(&self) -> &Authenticated<K> {
         &self.inner.state
     }
 
     #[must_use]
     pub fn address(&self) -> Address {
-        self.state().signer.address()
+        self.state().address
     }
 
     /// Return all API keys associated with the address corresponding to the inner signer in
-    /// [`Authenticated<S, K>`].
+    /// [`Authenticated<K>`].
     pub async fn api_keys(&self) -> Result<ApiKeysResponse> {
         let request = self
             .client()
@@ -878,33 +882,32 @@ impl<S: Signer, K: AuthKind> Client<Authenticated<S, K>> {
         self.request(request, Some(headers)).await
     }
 
-    /// Creates an [`OrderBuilder<S, Limit, K>`] used to construct a limit order.
+    /// Creates an [`OrderBuilder<Limit, K>`] used to construct a limit order.
     #[must_use]
-    pub fn limit_order(&self) -> OrderBuilder<S, Limit, K> {
+    pub fn limit_order(&self) -> OrderBuilder<Limit, K> {
         self.order_builder()
     }
 
-    /// Creates an [`OrderBuilder<S, Market, K>`] used to construct a market order.
+    /// Creates an [`OrderBuilder<Market, K>`] used to construct a market order.
     #[must_use]
-    pub fn market_order(&self) -> OrderBuilder<S, Market, K> {
+    pub fn market_order(&self) -> OrderBuilder<Market, K> {
         self.order_builder()
     }
 
-    /// Attempts to sign the provided [`SignableOrder`] using the inner signer of [`Authenticated<S, K>`]
+    /// Attempts to sign the provided [`SignableOrder`] using the inner signer of [`Authenticated<K>`]
     #[expect(
         clippy::missing_panics_doc,
         reason = "No need to publicly document as we are guarded by the typestate pattern. \
         We cannot call `sign` without first calling `authenticate`"
     )]
-    pub async fn sign(
+    pub async fn sign<S: Signer>(
         &self,
+        signer: &S,
         SignableOrder { order, order_type }: SignableOrder,
     ) -> Result<SignedOrder> {
         let token_id = order.tokenId.to_string();
         let neg_risk = self.neg_risk(&token_id).await?.neg_risk;
-        let chain_id = self
-            .state()
-            .signer
+        let chain_id = signer
             .chain_id()
             .expect("Validated not none in `authenticate`");
 
@@ -920,9 +923,7 @@ impl<S: Signer, K: AuthKind> Client<Authenticated<S, K>> {
             ..Eip712Domain::default()
         };
 
-        let signature = self
-            .state()
-            .signer
+        let signature = signer
             .sign_hash(&order.eip712_signing_hash(&domain))
             .await?;
 
@@ -1270,7 +1271,7 @@ impl<S: Signer, K: AuthKind> Client<Authenticated<S, K>> {
         auth::l2::create_headers(self.state(), request, timestamp).await
     }
 
-    fn order_builder<OrderKind>(&self) -> OrderBuilder<S, OrderKind, K> {
+    fn order_builder<OrderKind>(&self) -> OrderBuilder<OrderKind, K> {
         OrderBuilder {
             signer: self.address(),
             signature_type: self.inner.signature_type,
@@ -1293,15 +1294,15 @@ impl<S: Signer, K: AuthKind> Client<Authenticated<S, K>> {
     }
 }
 
-impl<S: Signer> Client<Authenticated<S, Normal>> {
+impl Client<Authenticated<Normal>> {
     pub fn promote_to_builder(
         self,
         config: BuilderConfig,
-    ) -> Result<Client<Authenticated<S, Builder>>> {
+    ) -> Result<Client<Authenticated<Builder>>> {
         let inner = Arc::into_inner(self.inner).ok_or(Synchronization)?;
 
         let state = Authenticated {
-            signer: inner.state.signer,
+            address: inner.state.address,
             credentials: inner.state.credentials,
             kind: Builder {
                 config,
@@ -1328,7 +1329,7 @@ impl<S: Signer> Client<Authenticated<S, Normal>> {
     }
 }
 
-impl<S: Signer> Client<Authenticated<S, Builder>> {
+impl Client<Authenticated<Builder>> {
     pub async fn builder_api_keys(&self) -> Result<Vec<BuilderApiKeyResponse>> {
         let request = self
             .client()

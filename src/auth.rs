@@ -155,8 +155,8 @@ pub(crate) mod l2 {
     pub(crate) const POLY_TIMESTAMP: &str = "POLY_TIMESTAMP";
 
     /// Returns the [`Headers`] needed to interact with any authenticated endpoints.
-    pub(crate) async fn create_headers<S: alloy::signers::Signer, K: Kind>(
-        state: &Authenticated<S, K>,
+    pub(crate) async fn create_headers<K: Kind>(
+        state: &Authenticated<K>,
         request: &Request,
         timestamp: Timestamp,
     ) -> Result<HeaderMap> {
@@ -167,7 +167,7 @@ pub(crate) mod l2 {
 
         map.insert(
             POLY_ADDRESS,
-            state.signer.address().encode_hex_with_prefix().parse()?,
+            state.address.encode_hex_with_prefix().parse()?,
         );
         map.insert(POLY_API_KEY, state.credentials.key.to_string().parse()?);
         map.insert(
@@ -388,7 +388,7 @@ mod tests {
         let signer = LocalSigner::from_str(PRIVATE_KEY)?;
 
         let authenticated = Authenticated {
-            signer,
+            address: signer.address(),
             credentials: Credentials {
                 key: Uuid::nil(),
                 passphrase: Secret::new(

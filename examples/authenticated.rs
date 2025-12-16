@@ -23,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
 
     let config = ConfigBuilder::default().use_server_time(true).build()?;
     let client = Client::new("https://clob.polymarket.com", config)?
-        .authentication_builder(signer)
+        .authentication_builder(signer.clone()) // TODO: use borrow
         .authenticate()
         .await?;
 
@@ -37,7 +37,7 @@ async fn main() -> anyhow::Result<()> {
         .side(Side::Buy)
         .build()
         .await?;
-    let signed_order = client.sign(market_order).await?;
+    let signed_order = client.sign(&signer, market_order).await?;
     println!(
         "market order -- {:?}",
         client.post_order(signed_order).await
@@ -53,7 +53,7 @@ async fn main() -> anyhow::Result<()> {
         .side(Side::Buy)
         .build()
         .await?;
-    let signed_order = client.sign(limit_order).await?;
+    let signed_order = client.sign(&signer, limit_order).await?;
     println!("limit order -- {:?}", client.post_order(signed_order).await);
 
     println!("notifications -- {:?}", client.notifications().await);

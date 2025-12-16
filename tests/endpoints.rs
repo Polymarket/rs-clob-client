@@ -1269,7 +1269,7 @@ mod authenticated {
             .build()
             .await?;
 
-        let signed_order = client.sign(signable_order.clone()).await?;
+        let signed_order = client.sign(&signer, signable_order.clone()).await?;
 
         let expected = SignedOrderBuilder::default()
             .owner(API_KEY)
@@ -1350,7 +1350,8 @@ mod authenticated {
             ]));
         });
 
-        let signed_order = client.sign(SignableOrder::default()).await?;
+        let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
+        let signed_order = client.sign(&signer, SignableOrder::default()).await?;
         let response = client.post_order(signed_order).await?;
 
         let expected = vec![

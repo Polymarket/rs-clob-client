@@ -3,7 +3,6 @@ use std::str::FromStr as _;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use alloy::primitives::{Address, U256};
-use alloy::signers::Signer;
 use chrono::{DateTime, Utc};
 use rand::Rng as _;
 use rust_decimal::Decimal;
@@ -36,8 +35,8 @@ pub struct Market;
 
 /// Used to create an order iteratively and ensure validity with respect to its order kind.
 #[derive(Debug)]
-pub struct OrderBuilder<S: Signer, OrderKind, K: AuthKind> {
-    pub(crate) client: Client<Authenticated<S, K>>,
+pub struct OrderBuilder<OrderKind, K: AuthKind> {
+    pub(crate) client: Client<Authenticated<K>>,
     pub(crate) signer: Address,
     pub(crate) signature_type: SignatureType,
     pub(crate) salt_generator: fn() -> u64,
@@ -54,7 +53,7 @@ pub struct OrderBuilder<S: Signer, OrderKind, K: AuthKind> {
     pub(crate) _kind: PhantomData<OrderKind>,
 }
 
-impl<S: Signer, OrderKind, K: AuthKind> OrderBuilder<S, OrderKind, K> {
+impl<OrderKind, K: AuthKind> OrderBuilder<OrderKind, K> {
     /// Sets the `token_id` for this builder. This is a required field.
     #[must_use]
     pub fn token_id<ID: Into<String>>(mut self, token_id: ID) -> Self {
@@ -95,7 +94,7 @@ impl<S: Signer, OrderKind, K: AuthKind> OrderBuilder<S, OrderKind, K> {
     }
 }
 
-impl<S: Signer, K: AuthKind> OrderBuilder<S, Limit, K> {
+impl<K: AuthKind> OrderBuilder<Limit, K> {
     /// Sets the price for this limit builder. This is a required field.
     #[must_use]
     pub fn price(mut self, price: Decimal) -> Self {
@@ -233,7 +232,7 @@ impl<S: Signer, K: AuthKind> OrderBuilder<S, Limit, K> {
     }
 }
 
-impl<S: Signer, K: AuthKind> OrderBuilder<S, Market, K> {
+impl<K: AuthKind> OrderBuilder<Market, K> {
     /// Sets the [`Amount`] for this market order. This is a required field.
     #[must_use]
     pub fn amount(mut self, amount: Amount) -> Self {
