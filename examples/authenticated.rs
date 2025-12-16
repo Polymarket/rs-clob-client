@@ -23,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
 
     let config = ConfigBuilder::default().use_server_time(true).build()?;
     let client = Client::new("https://clob.polymarket.com", config)?
-        .authentication_builder(signer.clone()) // TODO: use borrow
+        .authentication_builder(&signer) // TODO: use borrow
         .authenticate()
         .await?;
 

@@ -1243,7 +1243,7 @@ mod authenticated {
         let funder = address!("0x995c9b1f779c04e65AF8ea3360F96c43b5e62316");
         let config = ConfigBuilder::default().use_server_time(true).build()?;
         let client = Client::new(&server.base_url(), config)?
-            .authentication_builder(signer.clone())
+            .authentication_builder(&signer)
             .funder(funder)
             .signature_type(SignatureType::Proxy)
             .salt_generator(|| 1) // To ensure determinism
@@ -2514,7 +2514,7 @@ mod builder_authenticated {
         let config = ConfigBuilder::default().use_server_time(true).build()?;
         let builder_config = BuilderConfig::remote(&server.base_url(), Some("token".to_owned()))?;
         let client = Client::new(&server.base_url(), config)?
-            .authentication_builder(signer)
+            .authentication_builder(&signer)
             .authenticate()
             .await?;
 
@@ -2601,7 +2601,7 @@ mod builder_authenticated {
         let config = ConfigBuilder::default().use_server_time(true).build()?;
         let builder_config = BuilderConfig::remote(&server.base_url(), Some("token".to_owned()))?;
         let client = Client::new(&server.base_url(), config)?
-            .authentication_builder(signer)
+            .authentication_builder(&signer)
             .authenticate()
             .await?;
 
@@ -2671,7 +2671,7 @@ mod builder_authenticated {
         let config = ConfigBuilder::default().use_server_time(true).build()?;
         let builder_config = BuilderConfig::remote(&server.base_url(), Some("token".to_owned()))?;
         let client = Client::new(&server.base_url(), config)?
-            .authentication_builder(signer)
+            .authentication_builder(&signer)
             .authenticate()
             .await?;
 

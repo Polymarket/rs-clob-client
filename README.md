@@ -94,7 +94,7 @@ async fn main() -> anyhow::Result<()> {
     let private_key = std::env::var(PRIVATE_KEY_VAR).expect("Need a private key");
     let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(POLYGON));
     let client = Client::new("https://clob.polymarket.com", Config::default())?
-        .authentication_builder(signer)
+        .authentication_builder(&signer)
         .authenticate()
         .await?;
 
@@ -113,7 +113,7 @@ For proxy/Safe wallets, create your client as such:
 
 ```rust,ignore
 let client = Client::new("https://clob.polymarket.com", Config::default())?
-    .authentication_builder(signer)
+    .authentication_builder(&signer)
     .funder(address!("<your-address>"))
     .signature_type(SignatureType::Proxy)
     .authenticate()
@@ -151,7 +151,7 @@ async fn main() -> anyhow::Result<()> {
     let private_key = std::env::var(PRIVATE_KEY_VAR).expect("Need a private key");
     let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(POLYGON));
     let client = Client::new("https://clob.polymarket.com", Config::default())?
-        .authentication_builder(signer)
+        .authentication_builder(&signer)
         .authenticate()
         .await?;
 
@@ -163,7 +163,7 @@ async fn main() -> anyhow::Result<()> {
         .order_type(OrderType::FOK)
         .build()
         .await?;
-    let signed_order = client.sign(order).await?;
+    let signed_order = client.sign(&signer, order).await?;
     let response = client.post_order(signed_order).await?;
 
     Ok(())
@@ -188,7 +188,7 @@ async fn main() -> anyhow::Result<()> {
     let private_key = std::env::var(PRIVATE_KEY_VAR).expect("Need a private key");
     let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(POLYGON));
     let client = Client::new("https://clob.polymarket.com", Config::default())?
-        .authentication_builder(signer)
+        .authentication_builder(&signer)
         .authenticate()
         .await?;
 
@@ -200,7 +200,7 @@ async fn main() -> anyhow::Result<()> {
         .side(Side::Buy)
         .build()
         .await?;
-    let signed_order = client.sign(order).await?;
+    let signed_order = client.sign(&signer, order).await?;
     let response = client.post_order(signed_order).await?;
 
     Ok(())
@@ -229,7 +229,7 @@ async fn main() -> anyhow::Result<()> {
     let funder = address!("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"); // Use your funder address
 
     let client = Client::new("https://clob.polymarket.com", Config::default())?
-        .authentication_builder(signer)
+        .authentication_builder(&signer)
         .funder(funder)
         .signature_type(SignatureType::Proxy)
         .authenticate()

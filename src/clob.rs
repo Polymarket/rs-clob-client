@@ -92,11 +92,11 @@ pub mod state {
 
 /// The type used to build a request to authenticate the inner [`Client<Unauthorized>`]. Calling
 /// `authenticate` on this will elevate that inner `client` into an [`Client<Authenticated<K>>`].
-pub struct AuthenticationBuilder<S: Signer, K: AuthKind = Normal> {
+pub struct AuthenticationBuilder<'signer, S: Signer, K: AuthKind = Normal> {
     /// The initially unauthenticated client that is "carried forward" into the authenticated client.
     client: Client<Unauthenticated>,
     /// The signer used to generate the L1 headers that will return a set of [`Credentials`].
-    signer: S,
+    signer: &'signer S,
     /// If [`Credentials`] are supplied, then those are used instead of making new calls to obtain one.
     credentials: Option<Credentials>,
     /// An optional `nonce` value, when `credentials` are not present, to pass along to the call to
@@ -115,7 +115,7 @@ pub struct AuthenticationBuilder<S: Signer, K: AuthKind = Normal> {
     salt_generator: Option<fn() -> u64>,
 }
 
-impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, K> {
+impl<S: Signer, K: AuthKind> AuthenticationBuilder<'_, S, K> {
     #[must_use]
     pub fn nonce(mut self, nonce: u32) -> Self {
         self.nonce = Some(nonce);
@@ -196,7 +196,7 @@ impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, K> {
             Some(credentials) => credentials,
             None => {
                 inner
-                    .create_or_derive_api_key(&self.signer, self.nonce)
+                    .create_or_derive_api_key(self.signer, self.nonce)
                     .await?
             }
         };
@@ -266,7 +266,7 @@ impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, K> {
 ///     let private_key = std::env::var(PRIVATE_KEY_VAR).expect("Need a private key");
 ///     let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(POLYGON));
 ///     let client = Client::new("https://clob.polymarket.com", Config::default())?
-///         .authentication_builder(signer)
+///         .authentication_builder(&signer)
 ///         .authenticate()
 ///         .await?;
 ///
@@ -771,7 +771,10 @@ impl Client<Unauthenticated> {
         })
     }
 
-    pub fn authentication_builder<S: Signer>(self, signer: S) -> AuthenticationBuilder<S, Normal> {
+    pub fn authentication_builder<S: Signer>(
+        self,
+        signer: &S,
+    ) -> AuthenticationBuilder<'_, S, Normal> {
         AuthenticationBuilder {
             signer,
             credentials: None,

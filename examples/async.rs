@@ -44,7 +44,7 @@ async fn authenticated() -> anyhow::Result<()> {
     let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(POLYGON));
 
     let client = Client::new("https://clob.polymarket.com", Config::default())?
-        .authentication_builder(signer)
+        .authentication_builder(&signer)
         .authenticate()
         .await?;
     let client_clone = client.clone();
