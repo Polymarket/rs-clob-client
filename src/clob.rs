@@ -58,7 +58,6 @@ pub mod state {
     pub struct Unauthenticated;
 
     /// The elevated state of the [`super::Client`]. Calling [`super::Client::authentication_builder`]
-    /// (or [`super::Client::builder_authentication_builder`] for [`super::auth::Builder`] auth)
     /// will return an [`super::AuthenticationBuilder`], which can be turned into
     /// an authenticated client via [`super::AuthenticationBuilder::authenticate`].
     ///
@@ -230,7 +229,7 @@ impl<S: Signer, K: AuthKind> AuthenticationBuilder<S, K> {
 ///
 /// A [`Client`] can either be [`Unauthenticated`] or [`Authenticated`], that is, authenticated
 /// with a particular [`Signer`], `S`, and a particular [`AuthKind`], `K`. That [`AuthKind`] lets
-/// the client know if it's authenticating [`Normal`]ly or as a [`auth::Builder`].
+/// the client know if it's authenticating [`Normal`]ly or as a [`auth::builder::Builder`].
 ///
 /// Only the allowed methods will be available for use when in a particular state, i.e. only
 /// unauthenticated methods will be visible when unauthenticated, same for authenticated/builder

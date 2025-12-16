@@ -38,7 +38,7 @@ impl Credentials {
 /// Asynchronous authentication enricher
 ///
 /// This trait is used to apply extra headers to authenticated requests. For example, in the case
-/// of [`Builder`] authentication, Builder headers are added in addition to the [`Normal`]
+/// of [`builder::Builder`] authentication, Builder headers are added in addition to the [`Normal`]
 /// L2 headers.
 #[async_trait]
 pub trait Kind: sealed::Sealed {
