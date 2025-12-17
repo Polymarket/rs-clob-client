@@ -55,7 +55,7 @@ pub const BUILDER_API_KEY: Uuid = Uuid::max();
 
 pub const USDC_DECIMALS: u32 = 6;
 
-pub type TestClient = Client<Authenticated<LocalSigner<SigningKey>, Normal>>;
+pub type TestClient = Client<Authenticated<Normal>>;
 
 pub async fn create_authenticated(server: &MockServer) -> anyhow::Result<TestClient> {
     let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
@@ -81,7 +81,7 @@ pub async fn create_authenticated(server: &MockServer) -> anyhow::Result<TestCli
 
     let config = ConfigBuilder::default().use_server_time(true).build()?;
     let client = Client::new(&server.base_url(), config)?
-        .authentication_builder(signer.clone())
+        .authentication_builder(&signer)
         .authenticate()
         .await?;
 

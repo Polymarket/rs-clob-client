@@ -17,7 +17,7 @@ async fn main() -> anyhow::Result<()> {
         .with_chain_id(Some(POLYGON));
 
     let client = Client::new("https://clob.polymarket.com", Config::default())?
-        .authentication_builder(alloy_signer)
+        .authentication_builder(&alloy_signer)
         .authenticate()
         .await?;
 

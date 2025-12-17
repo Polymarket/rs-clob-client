@@ -85,7 +85,7 @@ mod lifecycle {
         });
 
         let client = Client::new(&server.base_url(), Config::default())?
-            .authentication_builder(signer.clone())
+            .authentication_builder(&signer)
             .salt_generator(|| 1)
             .authenticate()
             .await?;
@@ -137,7 +137,7 @@ mod lifecycle {
         });
 
         let client = Client::new(&server.base_url(), Config::default())?
-            .authentication_builder(signer.clone())
+            .authentication_builder(&signer)
             .salt_generator(|| 1)
             .funder(address!("0xd1615A7B6146cDbA40a559eC876A3bcca4050890"))
             .signature_type(SignatureType::GnosisSafe)
@@ -164,7 +164,7 @@ mod lifecycle {
 
         let client = client
             .deauthenticate()?
-            .authentication_builder(signer.clone())
+            .authentication_builder(&signer)
             .salt_generator(|| 123)
             .authenticate()
             .await?;
@@ -206,7 +206,7 @@ mod lifecycle {
 
         let funder = address!("0xaDEFf2158d668f64308C62ef227C5CcaCAAf976D");
         let client = Client::new(&server.base_url(), Config::default())?
-            .authentication_builder(signer.clone())
+            .authentication_builder(&signer)
             .funder(funder)
             .signature_type(SignatureType::Proxy)
             .authenticate()
@@ -279,7 +279,7 @@ mod lifecycle {
 
         let funder = address!("0xaDEFf2158d668f64308C62ef227C5CcaCAAf976D");
         let client = Client::new(&server.base_url(), Config::default())?
-            .authentication_builder(signer.clone())
+            .authentication_builder(&signer)
             .funder(funder)
             .signature_type(SignatureType::Proxy)
             .authenticate()
@@ -312,7 +312,7 @@ mod lifecycle {
 
         client.deauthenticate()?;
         let client = Client::new(&server.base_url(), Config::default())?
-            .authentication_builder(signer.clone())
+            .authentication_builder(&signer)
             .authenticate()
             .await?;
 
@@ -344,7 +344,7 @@ mod lifecycle {
 
         let funder = address!("0xaDEFf2158d668f64308C62ef227C5CcaCAAf976D");
         let err = Client::new(&server.base_url(), Config::default())?
-            .authentication_builder(signer.clone())
+            .authentication_builder(&signer)
             .funder(funder)
             .signature_type(SignatureType::Eoa)
             .authenticate()
@@ -358,7 +358,7 @@ mod lifecycle {
         );
 
         let err = Client::new(&server.base_url(), Config::default())?
-            .authentication_builder(signer.clone())
+            .authentication_builder(&signer)
             .signature_type(SignatureType::GnosisSafe)
             .authenticate()
             .await
@@ -371,7 +371,7 @@ mod lifecycle {
         );
 
         let err = Client::new(&server.base_url(), Config::default())?
-            .authentication_builder(signer.clone())
+            .authentication_builder(&signer)
             .funder(Address::ZERO)
             .signature_type(SignatureType::GnosisSafe)
             .authenticate()
@@ -394,7 +394,7 @@ mod lifecycle {
         let signer = LocalSigner::from_str(PRIVATE_KEY)?;
 
         let err = Client::new(&server.base_url(), Config::default())?
-            .authentication_builder(signer.clone())
+            .authentication_builder(&signer)
             .authenticate()
             .await
             .unwrap_err();
@@ -415,7 +415,7 @@ mod lifecycle {
         let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(1));
 
         let err = Client::new(&server.base_url(), Config::default())?
-            .authentication_builder(signer.clone())
+            .authentication_builder(&signer)
             .authenticate()
             .await
             .unwrap_err();

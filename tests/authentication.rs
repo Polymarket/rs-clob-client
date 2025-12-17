@@ -20,7 +20,7 @@ async fn authenticate_with_explicit_credentials_should_succeed() -> anyhow::Resu
 
     let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
     let client = Client::new(&server.base_url(), Config::default())?
-        .authentication_builder(signer.clone())
+        .authentication_builder(&signer)
         .credentials(Credentials::default())
         .authenticate()
         .await?;
@@ -46,7 +46,7 @@ async fn authenticate_with_nonce_should_succeed() -> anyhow::Result<()> {
 
     let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
     let client = Client::new(&server.base_url(), Config::default())?
-        .authentication_builder(signer.clone())
+        .authentication_builder(&signer)
         .nonce(123)
         .authenticate()
         .await?;
@@ -64,7 +64,7 @@ async fn authenticate_with_explicit_credentials_and_nonce_should_fail() -> anyho
 
     let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
     let err = Client::new(&server.base_url(), Config::default())?
-        .authentication_builder(signer.clone())
+        .authentication_builder(&signer)
         .nonce(123)
         .credentials(Credentials::default())
         .authenticate()
@@ -112,7 +112,7 @@ async fn authenticate_with_multiple_strong_references_should_fail() -> anyhow::R
     let _client_clone = client.clone();
 
     let err = client
-        .authentication_builder(signer.clone())
+        .authentication_builder(&signer)
         .authenticate()
         .await
         .unwrap_err();
