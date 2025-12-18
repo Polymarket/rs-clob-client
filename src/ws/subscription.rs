@@ -99,8 +99,12 @@ impl SubscriptionManager {
         // Determine which assets are not yet subscribed
         let new_assets: Vec<String> = asset_ids
             .iter()
-            .filter(|id| self.subscribed_assets.insert((*id).clone()))
-            .cloned()
+            .filter(|id| !self.subscribed_assets.contains(*id))
+            .map(|id| {
+                let owned = id.clone();
+                self.subscribed_assets.insert(owned.clone());
+                owned
+            })
             .collect();
 
         // Only send subscription request for new assets
@@ -109,7 +113,7 @@ impl SubscriptionManager {
         } else {
             debug!(
                 count = new_assets.len(),
-                ?asset_ids,
+                ?new_assets,
                 "Subscribing to new market assets"
             );
             let request = SubscriptionRequest::market(new_assets);
@@ -174,10 +178,15 @@ impl SubscriptionManager {
     ) -> Result<impl Stream<Item = Result<WsMessage>>> {
         self.interest.add(MessageInterest::USER);
 
+        // Determine which markets are not yet subscribed
         let new_markets: Vec<String> = markets
             .iter()
-            .filter(|m| self.subscribed_markets.insert((*m).clone()))
-            .cloned()
+            .filter(|m| !self.subscribed_markets.contains(*m))
+            .map(|m| {
+                let owned = m.clone();
+                self.subscribed_markets.insert(owned.clone());
+                owned
+            })
             .collect();
 
         // Only send subscription request for new markets (or if subscribing to all)

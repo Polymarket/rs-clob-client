@@ -411,7 +411,8 @@ pub struct MidpointUpdate {
 
 /// Parse a raw WebSocket message string into one or more [`WsMessage`] instances.
 ///
-/// Messages that don't match the interest are skipped entirely, avoiding deserialization overhead.
+/// JSON parsing always occurs, but typed deserialization into specific message structs
+/// is skipped for messages that don't match the interest, reducing overhead.
 pub(crate) fn parse_ws_text(
     text: &str,
     interest: MessageInterest,
