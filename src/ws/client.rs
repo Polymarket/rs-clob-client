@@ -15,7 +15,7 @@ use rust_decimal_macros::dec;
 use super::config::WebSocketConfig;
 use super::connection::{ConnectionManager, ConnectionState};
 use super::messages::{
-    AuthPayload, BookUpdate, MidpointUpdate, OrderMessage, PriceChange, TradeMessage, WsMessage,
+    BookUpdate, MidpointUpdate, OrderMessage, PriceChange, TradeMessage, WsMessage,
 };
 use super::subscription::{ChannelType, SubscriptionManager};
 use crate::Result;
@@ -247,7 +247,7 @@ impl<K: AuthKind> WebSocketClient<Authenticated<K>> {
         &self,
         markets: Vec<String>,
     ) -> Result<impl Stream<Item = Result<WsMessage>>> {
-        let auth = AuthPayload::from(self.inner.state.credentials.clone());
+        let auth = self.inner.state.credentials.clone();
 
         let handles = self
             .inner

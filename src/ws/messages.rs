@@ -5,8 +5,11 @@ use serde_with::{DisplayFromStr, serde_as};
 
 use crate::{
     auth::Credentials,
-    types::{ApiKey, Side, TraderSide},
+    types::{Side, TraderSide},
 };
+
+/// Authentication payload for user channel subscriptions.
+pub type AuthPayload = Credentials;
 
 /// Top-level WebSocket message wrapper.
 ///
@@ -55,7 +58,7 @@ pub struct BookUpdate {
     pub asset_id: String,
     /// Market identifier
     pub market: String,
-    /// Unix timestamp in milliseconds (can be string or number)
+    /// Unix timestamp in milliseconds
     #[serde_as(as = "DisplayFromStr")]
     pub timestamp: i64,
     /// Current bid levels (price descending)
@@ -64,7 +67,7 @@ pub struct BookUpdate {
     /// Current ask levels (price ascending)
     #[serde(default)]
     pub asks: Vec<OrderBookLevel>,
-    /// Hash for orderbook validation (if present)
+    /// Hash for orderbook validation
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hash: Option<String>,
 }
@@ -95,7 +98,7 @@ pub struct PriceChange {
     pub size: Option<Decimal>,
     /// Side of the price change (BUY or SELL)
     pub side: Side,
-    /// Unix timestamp in milliseconds (can be string or number)
+    /// Unix timestamp in milliseconds
     #[serde_as(as = "DisplayFromStr")]
     pub timestamp: i64,
     /// Hash for validation (if present)
@@ -179,7 +182,7 @@ pub struct TickSizeChange {
     pub old_tick_size: Decimal,
     /// New tick size
     pub new_tick_size: Decimal,
-    /// Unix timestamp in milliseconds (can be string or number)
+    /// Unix timestamp in milliseconds
     #[serde_as(as = "DisplayFromStr")]
     pub timestamp: i64,
 }
@@ -198,7 +201,7 @@ pub struct LastTradePrice {
     /// Side of the last trade
     #[serde(skip_serializing_if = "Option::is_none")]
     pub side: Option<Side>,
-    /// Unix timestamp in milliseconds (can be string or number)
+    /// Unix timestamp in milliseconds
     #[serde_as(as = "DisplayFromStr")]
     pub timestamp: i64,
 }
@@ -388,29 +391,6 @@ impl SubscriptionRequest {
     }
 }
 
-/// Authentication payload for user channel subscriptions.
-#[non_exhaustive]
-#[derive(Debug, Clone, Serialize)]
-pub struct AuthPayload {
-    /// API key (UUID)
-    #[serde(rename = "apiKey")]
-    pub api_key: ApiKey,
-    /// API secret (base64-encoded)
-    pub secret: String,
-    /// API passphrase
-    pub passphrase: String,
-}
-
-impl From<Credentials> for AuthPayload {
-    fn from(creds: Credentials) -> Self {
-        Self {
-            api_key: creds.key,
-            secret: creds.secret.reveal().clone(),
-            passphrase: creds.passphrase.reveal().clone(),
-        }
-    }
-}
-
 /// Calculated midpoint update (derived from orderbook).
 #[non_exhaustive]
 #[serde_as]
@@ -581,11 +561,11 @@ mod tests {
     fn serialize_user_subscription_request() {
         let request = SubscriptionRequest::user(
             vec!["market1".to_owned()],
-            AuthPayload {
-                api_key: ApiKey::nil(),
-                secret: "test-secret".to_owned(),
-                passphrase: "test-pass".to_owned(),
-            },
+            Credentials::new(
+                ApiKey::nil(),
+                "test-secret".to_owned(),
+                "test-pass".to_owned(),
+            ),
         );
 
         let json = serde_json::to_string(&request).unwrap();
