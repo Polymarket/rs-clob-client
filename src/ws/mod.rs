@@ -19,3 +19,4 @@ pub use messages::{
     AuthPayload, BookUpdate, LastTradePrice, MakerOrder, OrderMessage, OrderStatus, PriceChange,
     SubscriptionRequest, TickSizeChange, TradeMessage, WsMessage,
 };
+pub use subscription::{ChannelType, SubscriptionInfo, SubscriptionTarget};

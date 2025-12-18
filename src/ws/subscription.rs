@@ -19,16 +19,43 @@ use super::interest::{InterestTracker, MessageInterest};
 use super::messages::{AuthPayload, SubscriptionRequest, WsMessage};
 use crate::Result;
 
+/// What a subscription is targeting.
+#[non_exhaustive]
+#[derive(Debug, Clone)]
+pub enum SubscriptionTarget {
+    /// Subscribed to market data for specific assets.
+    Assets(Vec<String>),
+    /// Subscribed to user events for specific markets.
+    Markets(Vec<String>),
+}
+
+impl SubscriptionTarget {
+    /// Returns the channel type this target belongs to.
+    #[must_use]
+    pub const fn channel(&self) -> ChannelType {
+        match self {
+            Self::Assets(_) => ChannelType::Market,
+            Self::Markets(_) => ChannelType::User,
+        }
+    }
+}
+
 /// Information about an active subscription.
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct SubscriptionInfo {
-    /// Channel type subscribed to
-    pub channel: ChannelType,
-    /// Asset IDs subscribed to
-    pub asset_ids: Vec<String>,
-    /// When the subscription was created
+    /// What this subscription is targeting.
+    pub target: SubscriptionTarget,
+    /// When the subscription was created.
     pub created_at: Instant,
+}
+
+impl SubscriptionInfo {
+    /// Returns the channel type for this subscription.
+    #[must_use]
+    pub const fn channel(&self) -> ChannelType {
+        self.target.channel()
+    }
 }
 
 #[non_exhaustive]
@@ -94,8 +121,7 @@ impl SubscriptionManager {
         self.active_subs.insert(
             sub_id,
             SubscriptionInfo {
-                channel: ChannelType::Market,
-                asset_ids: asset_ids.clone(),
+                target: SubscriptionTarget::Assets(asset_ids.clone()),
                 created_at: Instant::now(),
             },
         );
@@ -148,16 +174,11 @@ impl SubscriptionManager {
     ) -> Result<impl Stream<Item = Result<WsMessage>>> {
         self.interest.add(MessageInterest::USER);
 
-        // Determine which markets are not yet subscribed
-        let new_markets: Vec<String> = if markets.is_empty() {
-            markets.clone()
-        } else {
-            markets
-                .iter()
-                .filter(|m| self.subscribed_markets.insert((*m).clone()))
-                .cloned()
-                .collect()
-        };
+        let new_markets: Vec<String> = markets
+            .iter()
+            .filter(|m| self.subscribed_markets.insert((*m).clone()))
+            .cloned()
+            .collect();
 
         // Only send subscription request for new markets (or if subscribing to all)
         if !markets.is_empty() && new_markets.is_empty() {
@@ -177,8 +198,7 @@ impl SubscriptionManager {
         self.active_subs.insert(
             sub_id,
             SubscriptionInfo {
-                channel: ChannelType::User,
-                asset_ids: markets,
+                target: SubscriptionTarget::Markets(markets),
                 created_at: Instant::now(),
             },
         );
@@ -221,7 +241,7 @@ impl SubscriptionManager {
 
         for entry in self.active_subs.iter() {
             grouped
-                .entry(entry.value().channel)
+                .entry(entry.value().channel())
                 .or_default()
                 .push(entry.value().clone());
         }

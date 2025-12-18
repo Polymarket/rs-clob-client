@@ -22,7 +22,7 @@ use super::subscription::{ChannelType, SubscriptionManager};
 use crate::Result;
 use crate::auth::{Credentials, Kind as AuthKind, Normal};
 use crate::clob::state::{Authenticated, State, Unauthenticated};
-use crate::error::{Error, Synchronization};
+use crate::error::Error;
 
 /// WebSocket client for real-time market data and user updates.
 ///
@@ -100,13 +100,19 @@ impl WebSocketClient<Unauthenticated> {
 
     /// Authenticate this client and elevate to authenticated state.
     ///
-    /// Returns an error if another thread is currently authenticating or deauthenticating.
+    /// Returns an error if there are other references to this client (e.g., from clones).
+    /// Ensure all clones are dropped before calling this method.
     pub fn authenticate(
         self,
         credentials: Credentials,
         address: Address,
     ) -> Result<WebSocketClient<Authenticated<Normal>>> {
-        let inner = Arc::try_unwrap(self.inner).map_err(|_e| Synchronization)?;
+        let inner = Arc::try_unwrap(self.inner).map_err(|_e| {
+            Error::validation(
+                "Cannot authenticate while other references to this client exist; \
+                 drop all clones before calling authenticate",
+            )
+        })?;
         let WsClientInner {
             config,
             base_endpoint,
@@ -292,8 +298,16 @@ impl<K: AuthKind> WebSocketClient<Authenticated<K>> {
     }
 
     /// Deauthenticate and return to unauthenticated state.
+    ///
+    /// Returns an error if there are other references to this client (e.g., from clones).
+    /// Ensure all clones are dropped before calling this method.
     pub fn deauthenticate(self) -> Result<WebSocketClient<Unauthenticated>> {
-        let inner = Arc::try_unwrap(self.inner).map_err(|_e| Synchronization)?;
+        let inner = Arc::try_unwrap(self.inner).map_err(|_e| {
+            Error::validation(
+                "Cannot deauthenticate while other references to this client exist; \
+                 drop all clones before calling deauthenticate",
+            )
+        })?;
         let WsClientInner {
             config,
             base_endpoint,

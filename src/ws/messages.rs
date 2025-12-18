@@ -356,8 +356,9 @@ pub struct SubscriptionRequest {
     pub r#type: String,
     /// List of market IDs
     pub markets: Vec<String>,
-    /// List of asset IDs
-    pub assets_ids: Vec<String>,
+    /// List of asset IDs (the API uses `assets_ids`)
+    #[serde(rename = "assets_ids")]
+    pub asset_ids: Vec<String>,
     /// Request initial state dump
     #[serde(skip_serializing_if = "Option::is_none")]
     pub initial_dump: Option<bool>,
@@ -369,11 +370,11 @@ pub struct SubscriptionRequest {
 impl SubscriptionRequest {
     /// Create a market subscription request.
     #[must_use]
-    pub fn market(assets_ids: Vec<String>) -> Self {
+    pub fn market(asset_ids: Vec<String>) -> Self {
         Self {
             r#type: "market".to_owned(),
             markets: vec![],
-            assets_ids,
+            asset_ids,
             initial_dump: Some(true),
             auth: None,
         }
@@ -385,7 +386,7 @@ impl SubscriptionRequest {
         Self {
             r#type: "user".to_owned(),
             markets,
-            assets_ids: vec![],
+            asset_ids: vec![],
             initial_dump: Some(true),
             auth: Some(auth),
         }
