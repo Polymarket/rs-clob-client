@@ -379,8 +379,11 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         // _and_ the tick size
         let taker_amount = taker_amount.trunc_with_scale(decimals + LOT_SIZE_SCALE);
 
+        // Mask the salt to be strictly less than 2^53 - 1, the backend parses as an IEEE 754.
+        let salt = (self.salt_generator)() & ((1 << 53) - 1);
+
         let order = Order {
-            salt: U256::from((self.salt_generator)()),
+            salt: U256::from(salt),
             maker: self.funder.unwrap_or(self.signer),
             taker,
             tokenId: U256::from_str(&token_id)?,
