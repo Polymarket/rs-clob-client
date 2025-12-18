@@ -461,7 +461,7 @@ mod tests {
     }
 
     #[test]
-    fn order_salt_should_be_less_than_2_to_the_53_minus_1() {
+    fn order_salt_should_be_less_than_or_equal_to_2_to_the_53_minus_1() {
         let raw_salt = u64::MAX;
         let masked_salt = to_ieee_754_int(raw_salt);
 
