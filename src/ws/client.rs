@@ -108,12 +108,10 @@ impl WebSocketClient<Unauthenticated> {
         credentials: Credentials,
         address: Address,
     ) -> Result<WebSocketClient<Authenticated<Normal>>> {
-        let inner = Arc::into_inner(self.inner).ok_or_else(|| {
-            Error::validation(
-                "Cannot authenticate while other references to this client exist; \
+        let inner = Arc::into_inner(self.inner).ok_or(Error::validation(
+            "Cannot authenticate while other references to this client exist; \
                  drop all clones before calling authenticate",
-            )
-        })?;
+        ))?;
         let WsClientInner {
             config,
             base_endpoint,
@@ -289,12 +287,10 @@ impl<K: AuthKind> WebSocketClient<Authenticated<K>> {
     /// Returns an error if there are other references to this client (e.g., from clones).
     /// Ensure all clones are dropped before calling this method.
     pub fn deauthenticate(self) -> Result<WebSocketClient<Unauthenticated>> {
-        let inner = Arc::into_inner(self.inner).ok_or_else(|| {
-            Error::validation(
-                "Cannot deauthenticate while other references to this client exist; \
+        let inner = Arc::into_inner(self.inner).ok_or(Error::validation(
+            "Cannot deauthenticate while other references to this client exist; \
                  drop all clones before calling deauthenticate",
-            )
-        })?;
+        ))?;
         let WsClientInner {
             config,
             base_endpoint,

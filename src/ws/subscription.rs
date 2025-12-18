@@ -234,7 +234,7 @@ impl SubscriptionManager {
                             .map_err(|e| WsError::InvalidMessage(e.to_string()))?;
 
                         // Filter messages by asset_id
-                        let dominated = match msg {
+                        let should_yield = match msg {
                             WsMessage::Book(book) => asset_ids_set.contains(&book.asset_id),
                             WsMessage::PriceChange(price) => asset_ids_set.contains(&price.asset_id),
                             WsMessage::LastTradePrice(ltp) => asset_ids_set.contains(&ltp.asset_id),
@@ -242,7 +242,7 @@ impl SubscriptionManager {
                             _ => false,
                         };
 
-                        if dominated {
+                        if should_yield {
                             yield msg.clone();
                         }
                     }
@@ -267,8 +267,13 @@ impl SubscriptionManager {
         self.interest.add(MessageInterest::USER);
 
         // Store auth for potential re-subscription on reconnect
-        if let Ok(mut guard) = self.last_auth.write() {
-            *guard = Some(auth.clone());
+        match self.last_auth.write() {
+            Ok(mut guard) => {
+                *guard = Some(auth.clone());
+            }
+            Err(e) => {
+                warn!(%e, "Failed to store auth payload for re-subscription: cannot acquire write lock");
+            }
         }
 
         // Determine which markets are not yet subscribed
