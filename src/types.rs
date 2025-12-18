@@ -1511,3 +1511,135 @@ mod tests {
         assert_eq!(Side::Sell.to_string(), "SELL");
     }
 }
+
+// ==================== WebSocket Types ====================
+
+/// Represents an order book level with price and size
+#[non_exhaustive]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct BookLevel {
+    pub price: String,
+    pub size: String,
+}
+
+/// Book message containing order book snapshot or updates
+#[non_exhaustive]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct BookMessage {
+    // #[serde(rename = "event_type", default)]
+    // pub event_type: String,
+    #[serde(rename = "asset_id")]
+    pub asset_id: String,
+    pub market: String,
+    pub timestamp: String,
+    #[serde(default)]
+    pub bids: Vec<BookLevel>,
+    #[serde(default)]
+    pub asks: Vec<BookLevel>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hash: Option<String>,
+}
+
+/// Represents a price change for a single asset
+#[non_exhaustive]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct PriceChange {
+    pub asset_id: String,
+    pub price: String,
+    pub size: String,
+    pub hash: String,
+    pub side: Side,
+    pub best_bid: String,
+    pub best_ask: String,
+}
+
+/// Price change message containing multiple price updates
+#[non_exhaustive]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct PriceChangeMessage {
+    #[serde(default)]
+    pub event_type: String,
+    pub market: String,
+    pub timestamp: String,
+    pub price_changes: Vec<PriceChange>,
+}
+
+/// Union type for market WebSocket messages
+#[non_exhaustive]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "event_type")]
+pub enum MarketWebSocketMessage {
+    #[serde(rename = "book")]
+    Book(BookMessage),
+    #[serde(rename = "price_change")]
+    PriceChange(PriceChangeMessage),
+    #[serde(rename = "last_trade_price")]
+    LastTradePrice(BookMessage),
+    #[serde(other)]
+    Unknown,
+}
+
+/// Trade event from user WebSocket
+#[non_exhaustive]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct TradeMessage {
+    pub id: String,
+    pub order_id: String,
+    pub market: String,
+    pub asset_id: String,
+    pub side: String,
+    pub size: String,
+    pub price: String,
+    pub status: String,
+    pub fee_rate_bps: String,
+    pub timestamp: String,
+    #[serde(rename = "match_time", skip_serializing_if = "Option::is_none")]
+    pub match_time: Option<String>,
+    #[serde(rename = "trader_side", skip_serializing_if = "Option::is_none")]
+    pub trader_side: Option<String>,
+}
+
+/// Order event from user WebSocket
+#[non_exhaustive]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct OrderMessage {
+    pub msg_type: String,
+    pub id: String,
+    pub market: String,
+    pub asset_id: String,
+    pub side: String,
+    pub price: String,
+    pub original_size: String,
+    #[serde(rename = "size_matched", skip_serializing_if = "Option::is_none")]
+    pub size_matched: Option<String>,
+    pub timestamp: String,
+    #[serde(rename = "order_type", skip_serializing_if = "Option::is_none")]
+    pub order_type: Option<String>,
+}
+
+/// Union type for user WebSocket messages
+#[non_exhaustive]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "event_type")]
+pub enum UserWebSocketMessage {
+    #[serde(rename = "trade")]
+    Trade(TradeMessage),
+    #[serde(rename = "order")]
+    Order(OrderMessage),
+    #[serde(other)]
+    Unknown,
+}
+
+/// Trade status constants
+pub const STATUS_MATCHED: &str = "MATCHED";
+pub const STATUS_MINED: &str = "MINED";
+pub const STATUS_CONFIRMED: &str = "CONFIRMED";
+
+/// Order message type constants
+pub const MSG_PLACEMENT: &str = "PLACEMENT";
+pub const MSG_UPDATE: &str = "UPDATE";
+pub const MSG_CANCELLATION: &str = "CANCELLATION";
+
+/// Side constants for string comparison
+pub const SIDE_BUY: &str = "BUY";
+pub const SIDE_SELL: &str = "SELL";

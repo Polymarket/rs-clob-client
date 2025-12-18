@@ -37,6 +37,7 @@ use crate::types::{
     UpdateBalanceAllowanceRequest, UserEarningResponse, UserRewardsEarningRequest,
     UserRewardsEarningResponse,
 };
+use crate::websocket::{MarketWebSocket, UserWebSocket};
 use crate::{AMOY, POLYGON, Result, Timestamp, auth, contract_config};
 
 const ORDER_NAME: Option<Cow<'static, str>> = Some(Cow::Borrowed("Polymarket CTF Exchange"));
@@ -816,6 +817,38 @@ impl Client<Unauthenticated> {
     ) -> Result<Credentials> {
         self.inner.create_or_derive_api_key(signer, nonce).await
     }
+
+    /// Creates a new market WebSocket connection for receiving real-time market data
+    ///
+    /// The market WebSocket provides order book updates, price changes, and last trade prices
+    /// for subscribed assets. This connection is unauthenticated.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use polymarket_client_sdk::clob::{Client, Config};
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> anyhow::Result<()> {
+    ///     let client = Client::new("https://clob.polymarket.com", Config::default())?;
+    ///     let mut ws = client.market_websocket().await?;
+    ///     
+    ///     ws.subscribe(&["asset_id_1", "asset_id_2"]).await?;
+    ///     
+    ///     while let Some(msg) = ws.next().await {
+    ///         println!("Market update: {:?}", msg);
+    ///     }
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the WebSocket connection cannot be established
+    pub async fn market_websocket(&self) -> Result<MarketWebSocket> {
+        MarketWebSocket::new().await
+    }
 }
 
 impl<K: AuthKind> Client<Authenticated<K>> {
@@ -1293,6 +1326,46 @@ impl<K: AuthKind> Client<Authenticated<K>> {
             },
             _kind: PhantomData,
         }
+    }
+
+    /// Creates a new user WebSocket connection for receiving authenticated user events
+    ///
+    /// The user WebSocket provides real-time notifications about trade executions,
+    /// order updates, and other user-specific events. This connection requires authentication.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use polymarket_client_sdk::clob::{Client, Config};
+    /// use alloy::signers::local::LocalSigner;
+    /// use std::str::FromStr;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> anyhow::Result<()> {
+    ///     let client = Client::new("https://clob.polymarket.com", Config::default())?;
+    ///     let signer = LocalSigner::from_str("private_key")?;
+    ///     
+    ///     let authenticated_client = client
+    ///         .authentication_builder(&signer)
+    ///         .authenticate()
+    ///         .await?;
+    ///     
+    ///     let mut ws = authenticated_client.user_websocket().await?;
+    ///     
+    ///     while let Some(msg) = ws.next().await {
+    ///         println!("User event: {:?}", msg);
+    ///     }
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the WebSocket connection cannot be established or authentication fails
+    pub async fn user_websocket(&self) -> Result<UserWebSocket> {
+        let credentials = self.state().credentials.clone();
+        UserWebSocket::new(credentials).await
     }
 }
 

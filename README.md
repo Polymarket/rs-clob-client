@@ -14,6 +14,7 @@ This crate provides strongly typed request builders, authenticated endpoints, `a
 - [Overview](#overview)
 - [Getting Started](#getting-started)
 - [Examples](#examples)
+- [WebSocket Support](#websocket-support)
 - [Setting Token Allowances](#token-allowances)
 - [Minimum Supported Rust Version (MSRV)](#minimum-supported-rust-version-msrv)
 - [Contributing](#contributing)
@@ -22,6 +23,9 @@ This crate provides strongly typed request builders, authenticated endpoints, `a
 ## Overview
 
 - **Typed CLOB requests** (orders, trades, markets, balances, and more)
+- **WebSocket support** for real-time market data and user events
+    - Market WebSocket (unauthenticated) for order book updates and price changes
+    - User WebSocket (authenticated) for trade executions and order updates
 - **Dual authentication flows**
     - Normal authenticated flow
     - [Builder](https://docs.polymarket.com/developers/builders/builder-intro) authentication flow
@@ -250,6 +254,77 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 ```
+
+## WebSocket Support
+
+The SDK provides WebSocket connectivity for real-time market data and user events.
+
+### Market WebSocket (Unauthenticated)
+
+Subscribe to real-time order book updates and price changes:
+
+```rust,no_run
+use polymarket_client_sdk::clob::{Client, Config};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let client = Client::new("https://clob.polymarket.com", Config::default())?;
+    let mut ws = client.market_websocket().await?;
+    
+    // Subscribe to specific assets
+    ws.subscribe(&["asset_id_1", "asset_id_2"]).await?;
+    
+    // Receive updates
+    while let Some(msg) = ws.next().await {
+        println!("Market update: {:?}", msg);
+    }
+    
+    Ok(())
+}
+```
+
+See the complete example at [examples/websocket_market.rs](examples/websocket_market.rs).
+
+### User WebSocket (Authenticated)
+
+Receive real-time notifications about your trades and orders:
+
+```rust,no_run
+use std::str::FromStr;
+use alloy::signers::Signer as _;
+use alloy::signers::local::LocalSigner;
+use polymarket_client_sdk::clob::{Client, Config};
+use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let private_key = std::env::var(PRIVATE_KEY_VAR)?;
+    let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(POLYGON));
+    
+    let client = Client::new("https://clob.polymarket.com", Config::default())?
+        .authentication_builder(&signer)
+        .authenticate()
+        .await?;
+    
+    let mut ws = client.user_websocket().await?;
+    
+    // Receive user events
+    while let Some(msg) = ws.next().await {
+        println!("User event: {:?}", msg);
+    }
+    
+    Ok(())
+}
+```
+
+See the complete example at [examples/websocket_user.rs](examples/websocket_user.rs).
+
+### Features
+
+- **Automatic reconnection** with exponential backoff
+- **Ping/pong handling** for connection health
+- **Type-safe messages** with strongly-typed event parsing
+- **Graceful shutdown** with proper connection cleanup
 
 ## Token Allowances
 
