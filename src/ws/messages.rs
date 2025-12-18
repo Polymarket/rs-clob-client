@@ -356,7 +356,7 @@ pub struct SubscriptionRequest {
     pub r#type: String,
     /// List of market IDs
     pub markets: Vec<String>,
-    /// List of asset IDs (the API uses `assets_ids`)
+    /// List of asset IDs (serialized as `assets_ids` to match the API)
     #[serde(rename = "assets_ids")]
     pub asset_ids: Vec<String>,
     /// Request initial state dump

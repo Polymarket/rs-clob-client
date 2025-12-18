@@ -357,6 +357,9 @@ impl ChannelHandles {
         let connection = Arc::new(ConnectionManager::new(endpoint, config.clone(), &interest)?);
         let subscriptions = Arc::new(SubscriptionManager::new(Arc::clone(&connection), interest));
 
+        // Start reconnection handler to re-subscribe on connection recovery
+        subscriptions.start_reconnection_handler();
+
         Ok(Self {
             connection,
             subscriptions,

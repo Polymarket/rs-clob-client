@@ -52,6 +52,14 @@ pub enum ConnectionState {
     },
 }
 
+impl ConnectionState {
+    /// Check if the connection is currently active.
+    #[must_use]
+    pub const fn is_connected(self) -> bool {
+        matches!(self, Self::Connected { .. })
+    }
+}
+
 type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
 type WsSink = SplitSink<WsStream, Message>;
 type WsStreamRead = SplitStream<WsStream>;
@@ -60,6 +68,8 @@ type WsStreamRead = SplitStream<WsStream>;
 pub struct ConnectionManager {
     /// Current connection state
     state: Arc<RwLock<ConnectionState>>,
+    /// Watch channel sender for state changes (enables reconnection detection)
+    state_tx: watch::Sender<ConnectionState>,
     /// Sender channel for outgoing messages
     sender_tx: mpsc::UnboundedSender<String>,
     /// Broadcast sender for incoming messages
@@ -78,6 +88,7 @@ impl ConnectionManager {
     ) -> Result<Self> {
         let (sender_tx, sender_rx) = mpsc::unbounded_channel();
         let (broadcast_tx, _) = broadcast::channel(BROADCAST_CAPACITY);
+        let (state_tx, _) = watch::channel(ConnectionState::Disconnected);
 
         let state = Arc::new(RwLock::new(ConnectionState::Disconnected));
 
@@ -87,6 +98,7 @@ impl ConnectionManager {
         let connection_endpoint = endpoint;
         let broadcast_tx_clone = broadcast_tx.clone();
         let connection_interest = Arc::clone(interest);
+        let state_tx_clone = state_tx.clone();
 
         tokio::spawn(async move {
             Self::connection_loop(
@@ -96,12 +108,14 @@ impl ConnectionManager {
                 sender_rx,
                 broadcast_tx_clone,
                 connection_interest,
+                state_tx_clone,
             )
             .await;
         });
 
         Ok(Self {
             state,
+            state_tx,
             sender_tx,
             broadcast_tx,
         })
@@ -115,20 +129,25 @@ impl ConnectionManager {
         mut sender_rx: mpsc::UnboundedReceiver<String>,
         broadcast_tx: broadcast::Sender<BroadcastMessage>,
         interest: Arc<InterestTracker>,
+        state_tx: watch::Sender<ConnectionState>,
     ) {
         let mut attempt = 0;
 
         loop {
             // Update state to connecting
-            *state.write().await = ConnectionState::Connecting;
+            let connecting = ConnectionState::Connecting;
+            *state.write().await = connecting;
+            let _: StdResult<_, _> = state_tx.send(connecting);
 
             // Attempt connection
             match connect_async(&endpoint).await {
                 Ok((ws_stream, _)) => {
                     attempt = 0; // Reset on successful connection
-                    *state.write().await = ConnectionState::Connected {
+                    let connected = ConnectionState::Connected {
                         since: Instant::now(),
                     };
+                    *state.write().await = connected;
+                    let _: StdResult<_, _> = state_tx.send(connected);
 
                     // Handle connection
                     match Self::handle_connection(
@@ -158,12 +177,16 @@ impl ConnectionManager {
             if let Some(max) = config.reconnect.max_attempts
                 && attempt >= max
             {
-                *state.write().await = ConnectionState::Disconnected;
+                let disconnected = ConnectionState::Disconnected;
+                *state.write().await = disconnected;
+                let _: StdResult<_, _> = state_tx.send(disconnected);
                 break;
             }
 
             // Update state and calculate backoff
-            *state.write().await = ConnectionState::Reconnecting { attempt };
+            let reconnecting = ConnectionState::Reconnecting { attempt };
+            *state.write().await = reconnecting;
+            let _: StdResult<_, _> = state_tx.send(reconnecting);
 
             let backoff = config.reconnect.calculate_backoff(attempt);
             sleep(backoff).await;
@@ -378,6 +401,15 @@ impl ConnectionManager {
     #[must_use]
     pub fn subscribe(&self) -> broadcast::Receiver<BroadcastMessage> {
         self.broadcast_tx.subscribe()
+    }
+
+    /// Subscribe to connection state changes.
+    ///
+    /// Returns a receiver that notifies when the connection state changes.
+    /// This is useful for detecting reconnections and re-establishing subscriptions.
+    #[must_use]
+    pub fn state_receiver(&self) -> watch::Receiver<ConnectionState> {
+        self.state_tx.subscribe()
     }
 }
 

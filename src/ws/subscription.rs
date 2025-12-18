@@ -4,7 +4,7 @@
 )]
 
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::Instant;
 
 use async_stream::stream;
@@ -13,7 +13,7 @@ use futures::Stream;
 use tokio::sync::broadcast::error::RecvError;
 use tracing::{debug, warn};
 
-use super::connection::ConnectionManager;
+use super::connection::{ConnectionManager, ConnectionState};
 use super::error::WsError;
 use super::interest::{InterestTracker, MessageInterest};
 use super::messages::{AuthPayload, SubscriptionRequest, WsMessage};
@@ -72,8 +72,9 @@ pub struct SubscriptionManager {
     connection: Arc<ConnectionManager>,
     active_subs: Arc<DashMap<String, SubscriptionInfo>>,
     interest: Arc<InterestTracker>,
-    subscribed_assets: DashSet<String>,
-    subscribed_markets: DashSet<String>,
+    subscribed_assets: Arc<DashSet<String>>,
+    subscribed_markets: Arc<DashSet<String>>,
+    last_auth: Arc<RwLock<Option<AuthPayload>>>,
 }
 
 impl SubscriptionManager {
@@ -84,16 +85,108 @@ impl SubscriptionManager {
             connection,
             active_subs: Arc::new(DashMap::new()),
             interest,
-            subscribed_assets: DashSet::new(),
-            subscribed_markets: DashSet::new(),
+            subscribed_assets: Arc::new(DashSet::new()),
+            subscribed_markets: Arc::new(DashSet::new()),
+            last_auth: Arc::new(RwLock::new(None)),
+        }
+    }
+
+    /// Start the reconnection handler that re-subscribes on connection recovery.
+    pub fn start_reconnection_handler(self: &Arc<Self>) {
+        let this = Arc::clone(self);
+        tokio::spawn(async move {
+            this.reconnection_loop().await;
+        });
+    }
+
+    /// Monitor connection state and re-subscribe when reconnection occurs.
+    async fn reconnection_loop(&self) {
+        let mut state_rx = self.connection.state_receiver();
+        let mut was_connected = state_rx.borrow().is_connected();
+
+        loop {
+            // Wait for next state change
+            if state_rx.changed().await.is_err() {
+                // Channel closed, connection manager is gone
+                break;
+            }
+
+            let state = *state_rx.borrow_and_update();
+
+            match state {
+                ConnectionState::Connected { .. } => {
+                    if was_connected {
+                        // Reconnect to subscriptions
+                        debug!("WebSocket reconnected, re-establishing subscriptions");
+                        self.resubscribe_all();
+                    }
+                    was_connected = true;
+                }
+                ConnectionState::Disconnected => {
+                    // Connection permanently closed
+                    break;
+                }
+                _ => {
+                    // Other states are noop
+                }
+            }
+        }
+    }
+
+    /// Re-send subscription requests for all tracked assets and markets.
+    fn resubscribe_all(&self) {
+        // Collect all subscribed assets
+        let assets: Vec<String> = self
+            .subscribed_assets
+            .iter()
+            .map(|r| r.key().clone())
+            .collect();
+
+        if !assets.is_empty() {
+            debug!(count = assets.len(), "Re-subscribing to market assets");
+            let request = SubscriptionRequest::market(assets);
+            if let Err(e) = self.connection.send(&request) {
+                warn!(%e, "Failed to re-subscribe to market channel");
+            }
+        }
+
+        // Collect all subscribed markets and re-subscribe with stored auth
+        let markets: Vec<String> = self
+            .subscribed_markets
+            .iter()
+            .map(|r| r.key().clone())
+            .collect();
+
+        // Read auth once to avoid TOCTOU race
+        let auth = self.last_auth.read().ok().and_then(|g| g.clone());
+
+        if !markets.is_empty() || auth.is_some() {
+            if let Some(auth) = auth {
+                debug!(
+                    markets_count = markets.len(),
+                    "Re-subscribing to user channel"
+                );
+                let request = SubscriptionRequest::user(markets, auth);
+                if let Err(e) = self.connection.send(&request) {
+                    warn!(%e, "Failed to re-subscribe to user channel");
+                }
+            } else {
+                warn!("Cannot re-subscribe to user channel: no stored auth");
+            }
         }
     }
 
     /// Subscribe to public market data channel.
+    ///
+    /// This will fail if `asset_ids` is empty.
     pub fn subscribe_market(
         &self,
         asset_ids: Vec<String>,
     ) -> Result<impl Stream<Item = Result<WsMessage>>> {
+        if asset_ids.is_empty() {
+            return Err(WsError::SubscriptionFailed("asset_ids cannot be empty".to_owned()).into());
+        }
+
         self.interest.add(MessageInterest::MARKET);
 
         // Determine which assets are not yet subscribed
@@ -101,9 +194,8 @@ impl SubscriptionManager {
             .iter()
             .filter(|id| !self.subscribed_assets.contains(*id))
             .map(|id| {
-                let owned = id.clone();
-                self.subscribed_assets.insert(owned.clone());
-                owned
+                self.subscribed_assets.insert(id.clone());
+                id.clone()
             })
             .collect();
 
@@ -177,6 +269,11 @@ impl SubscriptionManager {
         auth: AuthPayload,
     ) -> Result<impl Stream<Item = Result<WsMessage>>> {
         self.interest.add(MessageInterest::USER);
+
+        // Store auth for potential re-subscription on reconnect
+        if let Ok(mut guard) = self.last_auth.write() {
+            *guard = Some(auth.clone());
+        }
 
         // Determine which markets are not yet subscribed
         let new_markets: Vec<String> = markets
