@@ -11,10 +11,10 @@ use futures::{
     stream::{SplitSink, SplitStream},
 };
 use tokio::net::TcpStream;
-use tokio::sync::{Mutex, RwLock, mpsc};
-use tokio::time::{interval, sleep};
+use tokio::sync::{Mutex, RwLock, mpsc, watch};
+use tokio::time::{interval, sleep, timeout};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message};
-use tracing::warn;
+use tracing::{debug, warn};
 
 use super::config::WebSocketConfig;
 use super::error::WsError;
@@ -166,6 +166,9 @@ impl ConnectionManager {
     ) -> Result<()> {
         let (write, read) = ws_stream.split();
 
+        // Channel to notify heartbeat loop when PONG is received
+        let (pong_tx, pong_rx) = watch::channel(Instant::now());
+
         // Spawn heartbeat task
         let heartbeat_config = config.clone();
         let write_for_heartbeat = Arc::new(Mutex::new(write));
@@ -173,12 +176,25 @@ impl ConnectionManager {
         let heartbeat_state = Arc::clone(&state);
 
         let heartbeat_handle = tokio::spawn(async move {
-            Self::heartbeat_loop(write_for_heartbeat, heartbeat_state, &heartbeat_config).await;
+            Self::heartbeat_loop(
+                write_for_heartbeat,
+                heartbeat_state,
+                &heartbeat_config,
+                pong_rx,
+            )
+            .await;
         });
 
         // Message handling loop
-        let result =
-            Self::message_loop(read, write_for_messages, sender_rx, receiver_tx, &state).await;
+        let result = Self::message_loop(
+            read,
+            write_for_messages,
+            sender_rx,
+            receiver_tx,
+            &state,
+            pong_tx,
+        )
+        .await;
 
         // Cleanup
         heartbeat_handle.abort();
@@ -193,6 +209,7 @@ impl ConnectionManager {
         sender_rx: &mut mpsc::UnboundedReceiver<String>,
         receiver_tx: &mpsc::UnboundedSender<Result<WsMessage>>,
         _state: &Arc<RwLock<ConnectionState>>,
+        pong_tx: watch::Sender<Instant>,
     ) -> Result<()> {
         loop {
             tokio::select! {
@@ -200,8 +217,9 @@ impl ConnectionManager {
                 Some(msg) = read.next() => {
                     match msg {
                         Ok(Message::Text(text)) => {
-                            // Skip PONG messages in text form
+                            // Notify heartbeat loop when PONG is received
                             if text == "PONG" {
+                                let _: std::result::Result<(), _> = pong_tx.send(Instant::now());
                                 continue;
                             }
 
@@ -263,11 +281,12 @@ impl ConnectionManager {
         Ok(())
     }
 
-    /// Heartbeat loop that sends PING messages periodically.
+    /// Heartbeat loop that sends PING messages and monitors PONG responses.
     async fn heartbeat_loop(
         write: Arc<Mutex<WsSink>>,
         state: Arc<RwLock<ConnectionState>>,
         config: &WebSocketConfig,
+        mut pong_rx: watch::Receiver<Instant>,
     ) {
         let mut ping_interval = interval(config.heartbeat_interval);
 
@@ -280,13 +299,41 @@ impl ConnectionManager {
             }
 
             // Send PING
-            let mut write_guard = write.lock().await;
-            if write_guard
-                .send(Message::Text("PING".into()))
-                .await
-                .is_err()
+            let ping_sent = Instant::now();
             {
-                break;
+                let mut write_guard = write.lock().await;
+                if write_guard
+                    .send(Message::Text("PING".into()))
+                    .await
+                    .is_err()
+                {
+                    break;
+                }
+            }
+
+            // Wait for PONG within timeout
+            let pong_result = timeout(config.heartbeat_timeout, pong_rx.changed()).await;
+
+            match pong_result {
+                Ok(Ok(())) => {
+                    let last_pong = *pong_rx.borrow();
+                    if last_pong < ping_sent {
+                        debug!("PONG received but older than last PING, connection may be stale");
+                        break;
+                    }
+                }
+                Ok(Err(_)) => {
+                    // Channel closed, connection is terminating
+                    break;
+                }
+                Err(_) => {
+                    // Timeout waiting for PONG
+                    warn!(
+                        "Heartbeat timeout: no PONG received within {:?}",
+                        config.heartbeat_timeout
+                    );
+                    break;
+                }
             }
         }
     }
