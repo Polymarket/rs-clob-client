@@ -379,8 +379,8 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         // _and_ the tick size
         let taker_amount = taker_amount.trunc_with_scale(decimals + LOT_SIZE_SCALE);
 
-        // Mask the salt to be strictly less than 2^53 - 1, the backend parses as an IEEE 754.
-        let salt = (self.salt_generator)() & ((1 << 53) - 1);
+        // Mask the salt to be <= 2^53 - 1, as the backend parses as an IEEE 754.
+        let salt = to_ieee_754_int((self.salt_generator)());
 
         let order = Order {
             salt: U256::from(salt),
@@ -409,6 +409,11 @@ fn to_fixed_u128(d: Decimal) -> u128 {
         .mantissa()
         .to_u128()
         .expect("The `build` call in `OrderBuilder<S, OrderKind, K>` ensures that only positive values are being multiplied/divided")
+}
+
+/// Masks the salt to be <= 2^53 - 1.
+fn to_ieee_754_int(salt: u64) -> u64 {
+    salt & ((1 << 53) - 1)
 }
 
 #[must_use]
@@ -453,5 +458,13 @@ mod tests {
     )]
     fn to_fixed_u128_panics() {
         to_fixed_u128(dec!(-123.456));
+    }
+
+    #[test]
+    fn order_salt_should_be_less_than_2_to_the_53_minus_1() {
+        let raw_salt = u64::MAX;
+        let masked_salt = to_ieee_754_int(raw_salt);
+
+        assert!(masked_salt <= (1 << 53) - 1);
     }
 }
