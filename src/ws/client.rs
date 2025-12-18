@@ -242,11 +242,11 @@ impl<S: State> WebSocketClient<S> {
 
 // Methods only available for authenticated clients
 impl<K: AuthKind> WebSocketClient<Authenticated<K>> {
-    /// Subscribe to user's order updates.
-    pub fn subscribe_orders(
+    /// Subscribe to raw user channel events (orders and trades).
+    pub fn subscribe_user_events(
         &self,
         markets: Vec<String>,
-    ) -> Result<impl Stream<Item = Result<OrderMessage>>> {
+    ) -> Result<impl Stream<Item = Result<WsMessage>>> {
         let auth = AuthPayload {
             api_key: self.inner.state.credentials.key.to_string(),
             secret: self.inner.state.credentials.secret.reveal().clone(),
@@ -257,7 +257,16 @@ impl<K: AuthKind> WebSocketClient<Authenticated<K>> {
             .inner
             .channel(ChannelType::User)
             .ok_or_else(|| Error::validation("User channel unavailable; authenticate first"))?;
-        let stream = handles.subscriptions.subscribe_user(markets, auth)?;
+
+        handles.subscriptions.subscribe_user(markets, auth)
+    }
+
+    /// Subscribe to user's order updates.
+    pub fn subscribe_orders(
+        &self,
+        markets: Vec<String>,
+    ) -> Result<impl Stream<Item = Result<OrderMessage>>> {
+        let stream = self.subscribe_user_events(markets)?;
 
         Ok(stream.filter_map(|msg_result| async move {
             match msg_result {
@@ -273,17 +282,7 @@ impl<K: AuthKind> WebSocketClient<Authenticated<K>> {
         &self,
         markets: Vec<String>,
     ) -> Result<impl Stream<Item = Result<TradeMessage>>> {
-        let auth = AuthPayload {
-            api_key: self.inner.state.credentials.key.to_string(),
-            secret: self.inner.state.credentials.secret.reveal().clone(),
-            passphrase: self.inner.state.credentials.passphrase.reveal().clone(),
-        };
-
-        let handles = self
-            .inner
-            .channel(ChannelType::User)
-            .ok_or_else(|| Error::validation("User channel unavailable; authenticate first"))?;
-        let stream = handles.subscriptions.subscribe_user(markets, auth)?;
+        let stream = self.subscribe_user_events(markets)?;
 
         Ok(stream.filter_map(|msg_result| async move {
             match msg_result {

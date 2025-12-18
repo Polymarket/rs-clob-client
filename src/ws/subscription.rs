@@ -58,9 +58,7 @@ impl SubscriptionManager {
         asset_ids: Vec<String>,
     ) -> Result<impl Stream<Item = Result<WsMessage>>> {
         // Send subscription request
-        let request = SubscriptionRequest::Market {
-            assets_ids: asset_ids.clone(),
-        };
+        let request = SubscriptionRequest::market(asset_ids.clone());
         self.connection.send(&request)?;
 
         // Register subscription
@@ -112,7 +110,7 @@ impl SubscriptionManager {
         auth: AuthPayload,
     ) -> Result<impl Stream<Item = Result<WsMessage>>> {
         // Send authenticated subscription request
-        let request = SubscriptionRequest::User { markets, auth };
+        let request = SubscriptionRequest::user(markets, auth);
         self.connection.send(&request)?;
 
         // Register subscription

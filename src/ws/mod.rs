@@ -15,6 +15,6 @@ pub use client::WebSocketClient;
 pub use config::{ReconnectConfig, WebSocketConfig};
 pub use error::WsError;
 pub use messages::{
-    AuthPayload, BookUpdate, LastTradePrice, OrderMessage, OrderStatus, PriceChange,
+    AuthPayload, BookUpdate, LastTradePrice, MakerOrder, OrderMessage, OrderStatus, PriceChange,
     SubscriptionRequest, TickSizeChange, TradeMessage, WsMessage,
 };

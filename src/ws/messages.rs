@@ -3,28 +3,27 @@ use serde::{Deserialize, Serialize};
 use serde_json::{self, Value};
 use serde_with::{DisplayFromStr, serde_as};
 
-use crate::types::{OrderType, Side, TraderSide};
+use crate::types::{Side, TraderSide};
 
 /// Top-level WebSocket message wrapper.
 ///
 /// All messages received from the WebSocket connection are deserialized into this enum.
-/// The message type is determined by the `event_type` field in the JSON.
 #[non_exhaustive]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
 pub enum WsMessage {
-    /// Full or incremental orderbook update
-    Book(BookUpdate),
+    /// User trade execution (authenticated channel)
+    Trade(TradeMessage),
+    /// User order update (authenticated channel)
+    Order(OrderMessage),
     /// Price change notification
     PriceChange(PriceChange),
     /// Tick size change notification
     TickSizeChange(TickSizeChange),
     /// Last trade price update
     LastTradePrice(LastTradePrice),
-    /// User trade execution (authenticated channel)
-    Trade(TradeMessage),
-    /// User order update (authenticated channel)
-    Order(OrderMessage),
+    /// Full or incremental orderbook update
+    Book(BookUpdate),
 }
 
 /// Orderbook update message (full snapshot or delta).
@@ -187,67 +186,124 @@ pub struct LastTradePrice {
     pub timestamp: i64,
 }
 
+/// Maker order details within a trade message.
+#[non_exhaustive]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MakerOrder {
+    /// Asset/token identifier of the maker order
+    pub asset_id: String,
+    /// Amount of maker order matched in trade
+    pub matched_amount: String,
+    /// Maker order ID
+    pub order_id: String,
+    /// Outcome (Yes/No)
+    pub outcome: String,
+    /// Owner (API key) of maker order
+    pub owner: String,
+    /// Price of maker order
+    pub price: String,
+}
+
 /// User trade execution message (authenticated channel only).
 #[non_exhaustive]
-#[serde_as]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TradeMessage {
     /// Trade identifier
     pub id: String,
-    /// Order identifier that was filled
-    pub order_id: String,
-    /// Market identifier
+    /// Market identifier (condition ID)
     pub market: String,
     /// Asset/token identifier
     pub asset_id: String,
     /// Side of the trade (BUY or SELL)
     pub side: Side,
     /// Size of the trade
-    pub size: Decimal,
+    pub size: String,
     /// Execution price
-    pub price: Decimal,
-    /// Fee rate in basis points
-    pub fee_rate_bps: u32,
-    /// Fee amount
-    pub fee: Decimal,
-    /// Whether user was maker or taker
-    pub trader_side: TraderSide,
-    /// Unix timestamp in milliseconds (can be string or number)
-    #[serde_as(as = "DisplayFromStr")]
-    pub timestamp: i64,
+    pub price: String,
     /// Trade status (MATCHED, MINED, CONFIRMED, etc.)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub status: Option<String>,
+    pub status: String,
+    /// Event type (always "trade")
+    #[serde(default)]
+    pub event_type: Option<String>,
+    /// Message type (always "TRADE")
+    #[serde(rename = "type", default)]
+    pub msg_type: Option<String>,
+    /// Timestamp of last trade modification
+    #[serde(default)]
+    pub last_update: Option<String>,
+    /// Time trade was matched
+    #[serde(default)]
+    pub matchtime: Option<String>,
+    /// Unix timestamp of event
+    #[serde(default)]
+    pub timestamp: Option<String>,
+    /// Outcome (Yes/No)
+    #[serde(default)]
+    pub outcome: Option<String>,
+    /// API key of event owner
+    #[serde(default)]
+    pub owner: Option<String>,
+    /// API key of trade owner
+    #[serde(default)]
+    pub trade_owner: Option<String>,
+    /// ID of taker order
+    #[serde(default)]
+    pub taker_order_id: Option<String>,
+    /// Array of maker order details
+    #[serde(default)]
+    pub maker_orders: Vec<MakerOrder>,
+    /// Fee rate in basis points (string in API response)
+    #[serde(default)]
+    pub fee_rate_bps: Option<String>,
+    /// Transaction hash
+    #[serde(default)]
+    pub transaction_hash: Option<String>,
+    /// Whether user was maker or taker
+    #[serde(default)]
+    pub trader_side: Option<TraderSide>,
 }
 
 /// User order update message (authenticated channel only).
 #[non_exhaustive]
-#[serde_as]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct OrderMessage {
     /// Order identifier
     pub id: String,
-    /// Market identifier
+    /// Market identifier (condition ID)
     pub market: String,
     /// Asset/token identifier
     pub asset_id: String,
     /// Side of the order (BUY or SELL)
     pub side: Side,
+    /// Order price
+    pub price: String,
+    /// Event type (always "order")
+    #[serde(default)]
+    pub event_type: Option<String>,
+    /// Message type (PLACEMENT, UPDATE, or CANCELLATION)
+    #[serde(rename = "type", default)]
+    pub msg_type: Option<String>,
+    /// Outcome (Yes/No)
+    #[serde(default)]
+    pub outcome: Option<String>,
+    /// Owner (API key)
+    #[serde(default)]
+    pub owner: Option<String>,
+    /// Order owner (API key of order originator)
+    #[serde(default)]
+    pub order_owner: Option<String>,
     /// Original order size
-    pub size: Decimal,
-    /// Order price (None for market orders)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub price: Option<Decimal>,
-    /// Order type (GTC, FOK, etc.)
-    pub order_type: OrderType,
-    /// Current order status
-    pub status: OrderStatus,
-    /// Unix timestamp in milliseconds (can be string or number)
-    #[serde_as(as = "DisplayFromStr")]
-    pub timestamp: i64,
+    #[serde(default)]
+    pub original_size: Option<String>,
     /// Amount matched so far
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub matched_amount: Option<Decimal>,
+    #[serde(default)]
+    pub size_matched: Option<String>,
+    /// Unix timestamp of event
+    #[serde(default)]
+    pub timestamp: Option<String>,
+    /// Associated trade IDs
+    #[serde(default)]
+    pub associate_trades: Option<Vec<String>>,
 }
 
 /// Order status for WebSocket order messages.
@@ -275,20 +331,45 @@ pub enum OrderStatus {
 /// Subscription request message sent to the WebSocket server.
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize)]
-#[serde(tag = "type", rename_all = "lowercase")]
-pub enum SubscriptionRequest {
-    /// Subscribe to public market data channel
-    Market {
-        /// List of asset IDs to subscribe to
-        assets_ids: Vec<String>,
-    },
-    /// Subscribe to authenticated user channel
-    User {
-        /// List of market IDs to subscribe to (empty for all markets)
-        markets: Vec<String>,
-        /// Authentication credentials
-        auth: AuthPayload,
-    },
+pub struct SubscriptionRequest {
+    /// Subscription type ("market" or "user")
+    pub r#type: String,
+    /// List of market IDs (for user subscriptions)
+    pub markets: Vec<String>,
+    /// List of asset IDs (for market subscriptions)
+    pub assets_ids: Vec<String>,
+    /// Request initial state dump
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub initial_dump: Option<bool>,
+    /// Authentication credentials (for user subscriptions)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auth: Option<AuthPayload>,
+}
+
+impl SubscriptionRequest {
+    /// Create a market subscription request.
+    #[must_use]
+    pub fn market(assets_ids: Vec<String>) -> Self {
+        Self {
+            r#type: "market".to_owned(),
+            markets: vec![],
+            assets_ids,
+            initial_dump: Some(true),
+            auth: None,
+        }
+    }
+
+    /// Create a user subscription request.
+    #[must_use]
+    pub fn user(markets: Vec<String>, auth: AuthPayload) -> Self {
+        Self {
+            r#type: "user".to_owned(),
+            markets,
+            assets_ids: vec![],
+            initial_dump: Some(true),
+            auth: Some(auth),
+        }
+    }
 }
 
 /// Authentication payload for user channel subscriptions.
@@ -370,7 +451,7 @@ mod tests {
             "event_type": "book",
             "asset_id": "123",
             "market": "market1",
-            "timestamp": 1234567890,
+            "timestamp": "1234567890",
             "bids": [{"price": "0.5", "size": "100"}],
             "asks": [{"price": "0.51", "size": "50"}]
         }"#;
@@ -395,7 +476,7 @@ mod tests {
             "price": "0.52",
             "size": "10",
             "side": "BUY",
-            "timestamp": 1234567890
+            "timestamp": "1234567890"
         }"#;
 
         let msg: WsMessage = serde_json::from_str(json).unwrap();
@@ -460,13 +541,31 @@ mod tests {
     }
 
     #[test]
-    fn serialize_subscription_request() {
-        let request = SubscriptionRequest::Market {
-            assets_ids: vec!["asset1".to_owned(), "asset2".to_owned()],
-        };
+    fn serialize_market_subscription_request() {
+        let request = SubscriptionRequest::market(vec!["asset1".to_owned(), "asset2".to_owned()]);
 
         let json = serde_json::to_string(&request).unwrap();
         assert!(json.contains("\"type\":\"market\""));
         assert!(json.contains("\"assets_ids\""));
+        assert!(json.contains("\"initial_dump\":true"));
+    }
+
+    #[test]
+    fn serialize_user_subscription_request() {
+        let request = SubscriptionRequest::user(
+            vec!["market1".to_owned()],
+            AuthPayload {
+                api_key: "test-key".to_owned(),
+                secret: "test-secret".to_owned(),
+                passphrase: "test-pass".to_owned(),
+            },
+        );
+
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(json.contains("\"type\":\"user\""));
+        assert!(json.contains("\"markets\""));
+        assert!(json.contains("\"auth\""));
+        assert!(json.contains("\"apiKey\":\"test-key\""));
+        assert!(json.contains("\"initial_dump\":true"));
     }
 }
