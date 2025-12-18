@@ -5,7 +5,7 @@ use hmac::{Hmac, Mac as _};
 use reqwest::header::HeaderMap;
 use reqwest::{Body, Request};
 use sec::Secret;
-use serde::{Deserialize, Serialize, Serializer, ser::SerializeStruct as _};
+use serde::Deserialize;
 use sha2::Sha256;
 use uuid::Uuid;
 
@@ -33,15 +33,31 @@ impl Credentials {
             passphrase: Secret::from(passphrase),
         }
     }
-}
 
-impl Serialize for Credentials {
-    fn serialize<S: Serializer>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> {
-        let mut state = serializer.serialize_struct("Credentials", 3)?;
-        state.serialize_field("apiKey", &self.key)?;
-        state.serialize_field("secret", self.secret.reveal())?;
-        state.serialize_field("passphrase", self.passphrase.reveal())?;
-        state.end()
+    /// Returns the API key.
+    #[must_use]
+    pub fn key(&self) -> ApiKey {
+        self.key
+    }
+
+    /// Returns the secret (revealed).
+    ///
+    /// # Security
+    ///
+    /// This method reveals the secret. Use with caution.
+    #[must_use]
+    pub fn secret(&self) -> &str {
+        self.secret.reveal()
+    }
+
+    /// Returns the passphrase (revealed).
+    ///
+    /// # Security
+    ///
+    /// This method reveals the passphrase. Use with caution.
+    #[must_use]
+    pub fn passphrase(&self) -> &str {
+        self.passphrase.reveal()
     }
 }
 

@@ -8,15 +8,15 @@ pub mod config;
 pub mod connection;
 pub mod error;
 pub mod interest;
-pub mod messages;
 pub mod subscription;
+pub mod types;
 
 // Re-export commonly used types
 pub use client::WebSocketClient;
 pub use config::{ReconnectConfig, WebSocketConfig};
 pub use error::WsError;
-pub use messages::{
+pub use subscription::{ChannelType, SubscriptionInfo, SubscriptionTarget};
+pub use types::{
     AuthPayload, BookUpdate, LastTradePrice, MakerOrder, OrderMessage, OrderStatus, PriceChange,
     SubscriptionRequest, TickSizeChange, TradeMessage, WsMessage,
 };
-pub use subscription::{ChannelType, SubscriptionInfo, SubscriptionTarget};

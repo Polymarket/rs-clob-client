@@ -15,10 +15,10 @@ use rust_decimal_macros::dec;
 use super::config::WebSocketConfig;
 use super::connection::{ConnectionManager, ConnectionState};
 use super::interest::InterestTracker;
-use super::messages::{
-    BookUpdate, MidpointUpdate, OrderMessage, PriceChange, TradeMessage, WsMessage,
-};
 use super::subscription::{ChannelType, SubscriptionManager};
+use super::types::{
+    AuthPayload, BookUpdate, MidpointUpdate, OrderMessage, PriceChange, TradeMessage, WsMessage,
+};
 use crate::Result;
 use crate::auth::{Credentials, Kind as AuthKind, Normal};
 use crate::clob::state::{Authenticated, State, Unauthenticated};
@@ -255,7 +255,7 @@ impl<K: AuthKind> WebSocketClient<Authenticated<K>> {
         &self,
         markets: Vec<String>,
     ) -> Result<impl Stream<Item = Result<WsMessage>>> {
-        let auth = self.inner.state.credentials.clone();
+        let auth = AuthPayload::from_credentials(&self.inner.state.credentials);
 
         let handles = self
             .inner
@@ -324,14 +324,6 @@ impl<K: AuthKind> WebSocketClient<Authenticated<K>> {
                 channels,
             }),
         })
-    }
-}
-
-impl<S: State> Clone for WebSocketClient<S> {
-    fn clone(&self) -> Self {
-        Self {
-            inner: Arc::clone(&self.inner),
-        }
     }
 }
 

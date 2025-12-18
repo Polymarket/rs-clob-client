@@ -16,7 +16,7 @@ use tracing::{debug, warn};
 use super::connection::{ConnectionManager, ConnectionState};
 use super::error::WsError;
 use super::interest::{InterestTracker, MessageInterest};
-use super::messages::{AuthPayload, SubscriptionRequest, WsMessage};
+use super::types::{AuthPayload, SubscriptionRequest, WsMessage};
 use crate::Result;
 
 /// What a subscription is targeting.

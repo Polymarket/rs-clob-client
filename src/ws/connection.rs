@@ -20,7 +20,7 @@ use tracing::{debug, warn};
 use super::config::WebSocketConfig;
 use super::error::WsError;
 use super::interest::InterestTracker;
-use super::messages::{SubscriptionRequest, WsMessage, parse_ws_text};
+use super::types::{SubscriptionRequest, WsMessage, parse_ws_text};
 use crate::{
     Result,
     error::{Error, Kind},
