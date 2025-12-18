@@ -6,6 +6,7 @@
 mod common;
 
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::{SinkExt as _, StreamExt as _};
@@ -574,6 +575,45 @@ mod user_channel {
     }
 
     #[tokio::test]
+    async fn multiplexing_does_not_send_duplicate_subscription() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = WebSocketClient::new(&endpoint, WebSocketConfig::default()).unwrap();
+
+        let asset_id = payloads::ASSET_ID;
+        let other_asset = "99999999999999999999999999999999999999999999999999999999999999999";
+
+        // First subscription - should send request
+        let _stream1 = client
+            .subscribe_orderbook(vec![asset_id.to_owned()])
+            .unwrap();
+        let sub1 = server.recv_subscription().await.unwrap();
+        assert!(sub1.contains(asset_id));
+
+        // Second subscription to SAME asset - should NOT send request (multiplexed)
+        let _stream2 = client
+            .subscribe_orderbook(vec![asset_id.to_owned()])
+            .unwrap();
+
+        // Third subscription to DIFFERENT asset - should send request
+        let _stream3 = client
+            .subscribe_orderbook(vec![other_asset.to_owned()])
+            .unwrap();
+
+        // The next message we receive should be for other_asset only
+        let sub2 = server.recv_subscription().await.unwrap();
+        assert!(
+            sub2.contains(other_asset),
+            "Should receive subscription for new asset"
+        );
+        assert!(
+            !sub2.contains(asset_id),
+            "Should NOT contain duplicate of already-subscribed asset"
+        );
+    }
+
+    #[tokio::test]
     async fn deauthenticate_returns_to_unauthenticated_state() {
         let mut server = MockWsServer::start().await;
         let base_endpoint = format!("ws://{}", server.addr);
@@ -602,6 +642,203 @@ mod user_channel {
 
         let result = timeout(Duration::from_secs(2), stream.next()).await;
         result.unwrap().unwrap().unwrap();
+    }
+}
+
+mod reconnection {
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    use super::*;
+
+    /// Mock WebSocket server that can simulate disconnections and send messages.
+    struct ReconnectableMockServer {
+        addr: SocketAddr,
+        subscription_rx: mpsc::UnboundedReceiver<String>,
+        message_tx: broadcast::Sender<String>,
+        disconnect_signal: Arc<AtomicBool>,
+    }
+
+    impl ReconnectableMockServer {
+        async fn start() -> Self {
+            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let addr = listener.local_addr().unwrap();
+
+            let (message_tx, _) = broadcast::channel::<String>(100);
+            let (subscription_tx, subscription_rx) = mpsc::unbounded_channel::<String>();
+            let disconnect_signal = Arc::new(AtomicBool::new(false));
+
+            let broadcast_tx = message_tx.clone();
+            let disconnect = Arc::clone(&disconnect_signal);
+
+            tokio::spawn(async move {
+                loop {
+                    let Ok((stream, _)) = listener.accept().await else {
+                        break;
+                    };
+
+                    let Ok(ws_stream) = tokio_tungstenite::accept_async(stream).await else {
+                        continue;
+                    };
+
+                    let (mut write, mut read) = ws_stream.split();
+                    let sub_tx = subscription_tx.clone();
+                    let mut msg_rx = broadcast_tx.subscribe();
+                    let disconnect_clone = Arc::clone(&disconnect);
+
+                    tokio::spawn(async move {
+                        loop {
+                            if disconnect_clone.load(Ordering::SeqCst) {
+                                break;
+                            }
+
+                            tokio::select! {
+                                msg = read.next() => {
+                                    match msg {
+                                        Some(Ok(Message::Text(text))) if text != "PING" => {
+                                            drop(sub_tx.send(text.to_string()));
+                                        }
+                                        Some(Ok(_)) => {}
+                                        _ => break,
+                                    }
+                                }
+                                msg = msg_rx.recv() => {
+                                    match msg {
+                                        Ok(text) => {
+                                            if write.send(Message::Text(text.into())).await.is_err() {
+                                                break;
+                                            }
+                                        }
+                                        Err(_) => break,
+                                    }
+                                }
+                                () = tokio::time::sleep(Duration::from_millis(50)) => {
+                                    if disconnect_clone.load(Ordering::SeqCst) {
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+
+            Self {
+                addr,
+                subscription_rx,
+                message_tx,
+                disconnect_signal,
+            }
+        }
+
+        fn ws_url(&self, path: &str) -> String {
+            format!("ws://{}{}", self.addr, path)
+        }
+
+        fn disconnect_all(&self) {
+            self.disconnect_signal.store(true, Ordering::SeqCst);
+        }
+
+        fn allow_reconnect(&self) {
+            self.disconnect_signal.store(false, Ordering::SeqCst);
+        }
+
+        fn send(&self, message: &str) {
+            drop(self.message_tx.send(message.to_owned()));
+        }
+
+        async fn recv_subscription(&mut self) -> Option<String> {
+            timeout(Duration::from_secs(2), self.subscription_rx.recv())
+                .await
+                .ok()
+                .flatten()
+        }
+    }
+
+    fn config() -> WebSocketConfig {
+        let mut config = WebSocketConfig::default();
+        config.reconnect.max_attempts = Some(5);
+        config.reconnect.initial_backoff = Duration::from_millis(50);
+        config.reconnect.max_backoff = Duration::from_millis(200);
+        config
+    }
+
+    #[tokio::test]
+    async fn resubscribes_and_receives_messages_after_reconnect() {
+        let mut server = ReconnectableMockServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = WebSocketClient::new(&endpoint, config()).unwrap();
+
+        let asset_id = payloads::ASSET_ID;
+        let stream = client
+            .subscribe_orderbook(vec![asset_id.to_owned()])
+            .unwrap();
+        let mut stream = Box::pin(stream);
+
+        // Verify initial subscription
+        let sub_request = server.recv_subscription().await.unwrap();
+        assert!(sub_request.contains(asset_id));
+
+        // Verify we can receive messages before disconnect
+        server.send(&payloads::book().to_string());
+        let msg1 = timeout(Duration::from_secs(2), stream.next()).await;
+        assert!(msg1.is_ok(), "Should receive message before disconnect");
+
+        // Simulate disconnect
+        server.disconnect_all();
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        // Allow reconnection and wait for re-subscription
+        server.allow_reconnect();
+
+        // Wait for re-subscription request (proves reconnection happened)
+        let resub = server.recv_subscription().await;
+        assert!(
+            resub.is_some(),
+            "Should receive re-subscription after reconnect"
+        );
+        assert!(resub.unwrap().contains(asset_id));
+
+        // Send message after reconnection and verify it's received
+        server.send(&payloads::book().to_string());
+        let msg2 = timeout(Duration::from_secs(2), stream.next()).await;
+        assert!(
+            msg2.is_ok(),
+            "Should receive message after reconnection - proves subscription is active"
+        );
+    }
+
+    #[tokio::test]
+    async fn resubscribes_all_assets_after_reconnect() {
+        let mut server = ReconnectableMockServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = WebSocketClient::new(&endpoint, config()).unwrap();
+
+        let asset1 = payloads::ASSET_ID;
+        let asset2 = "99999999999999999999999999999999999999999999999999999999999999999";
+
+        // Subscribe to both assets
+        let _stream1 = client.subscribe_orderbook(vec![asset1.to_owned()]).unwrap();
+        let _: Option<String> = server.recv_subscription().await;
+
+        let _stream2 = client.subscribe_orderbook(vec![asset2.to_owned()]).unwrap();
+        let sub2 = server.recv_subscription().await.unwrap();
+        assert!(sub2.contains(asset2));
+
+        // Disconnect and reconnect
+        server.disconnect_all();
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        server.allow_reconnect();
+
+        // Verify re-subscription contains BOTH assets
+        let resub = server.recv_subscription().await;
+        assert!(resub.is_some(), "Should receive re-subscription");
+        let resub_str = resub.unwrap();
+        assert!(
+            resub_str.contains(asset1) && resub_str.contains(asset2),
+            "Re-subscription should contain all tracked assets, got: {resub_str}"
+        );
     }
 }
 
