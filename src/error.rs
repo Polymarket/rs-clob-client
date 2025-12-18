@@ -19,6 +19,8 @@ pub enum Kind {
     Synchronization,
     /// Internal error from dependencies
     Internal,
+    /// Error related to WebSocket connections
+    WebSocket,
 }
 
 #[derive(Debug)]
