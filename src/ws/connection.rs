@@ -30,6 +30,10 @@ use crate::{
 /// Broadcast message type.
 pub type BroadcastMessage = Arc<Result<WsMessage>>;
 
+type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
+type WsSink = SplitSink<WsStream, Message>;
+type WsStreamRead = SplitStream<WsStream>;
+
 /// Broadcast channel capacity for incoming messages.
 const BROADCAST_CAPACITY: usize = 1024;
 
@@ -60,10 +64,6 @@ impl ConnectionState {
         matches!(self, Self::Connected { .. })
     }
 }
-
-type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
-type WsSink = SplitSink<WsStream, Message>;
-type WsStreamRead = SplitStream<WsStream>;
 
 /// Manages WebSocket connection lifecycle, reconnection, and heartbeat.
 pub struct ConnectionManager {

@@ -10,7 +10,7 @@ use alloy::primitives::Address;
 use async_stream::stream;
 use futures::Stream;
 use futures::StreamExt as _;
-use rust_decimal_macros::dec;
+use rust_decimal::Decimal;
 
 use super::config::WebSocketConfig;
 use super::connection::{ConnectionManager, ConnectionState};
@@ -107,7 +107,7 @@ impl WebSocketClient<Unauthenticated> {
         credentials: Credentials,
         address: Address,
     ) -> Result<WebSocketClient<Authenticated<Normal>>> {
-        let inner = Arc::try_unwrap(self.inner).map_err(|_e| {
+        let inner = Arc::into_inner(self.inner).ok_or_else(|| {
             Error::validation(
                 "Cannot authenticate while other references to this client exist; \
                  drop all clones before calling authenticate",
@@ -200,7 +200,7 @@ impl<S: State> WebSocketClient<S> {
 
                         match (best_bid, best_ask) {
                             (Some(bid), Some(ask)) => {
-                                let midpoint = (bid.price + ask.price) / dec!(2);
+                                let midpoint = (bid.price + ask.price) / Decimal::TWO;
                                 yield Ok(MidpointUpdate {
                                     asset_id: book.asset_id,
                                     market: book.market,
@@ -302,7 +302,7 @@ impl<K: AuthKind> WebSocketClient<Authenticated<K>> {
     /// Returns an error if there are other references to this client (e.g., from clones).
     /// Ensure all clones are dropped before calling this method.
     pub fn deauthenticate(self) -> Result<WebSocketClient<Unauthenticated>> {
-        let inner = Arc::try_unwrap(self.inner).map_err(|_e| {
+        let inner = Arc::into_inner(self.inner).ok_or_else(|| {
             Error::validation(
                 "Cannot deauthenticate while other references to this client exist; \
                  drop all clones before calling deauthenticate",
