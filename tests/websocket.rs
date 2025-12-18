@@ -330,6 +330,69 @@ mod market_channel {
         let book = result.unwrap().unwrap().unwrap();
         assert_eq!(book.asset_id, subscribed_asset);
     }
+
+    #[tokio::test]
+    async fn subscribe_midpoints_calculates_midpoint() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let config = WebSocketConfig::default();
+        let client = WebSocketClient::new(&endpoint, config).unwrap();
+
+        let stream = client
+            .subscribe_midpoints(vec![payloads::ASSET_ID.to_owned()])
+            .unwrap();
+        let mut stream = Box::pin(stream);
+
+        let _: Option<String> = server.recv_subscription().await;
+
+        // Send book with bids at 0.48, 0.49, 0.50 and asks at 0.52, 0.53, 0.54
+        // Best bid = 0.48, best ask = 0.52 (from payloads::book())
+        // Midpoint = (0.48 + 0.52) / 2 = 0.50
+        server.send(&payloads::book().to_string());
+
+        let result = timeout(Duration::from_secs(2), stream.next()).await;
+        let midpoint = result.unwrap().unwrap().unwrap();
+
+        assert_eq!(midpoint.asset_id, payloads::ASSET_ID);
+        assert_eq!(midpoint.market, payloads::MARKET);
+        assert_eq!(midpoint.midpoint, dec!(0.50));
+    }
+
+    #[tokio::test]
+    async fn subscribe_midpoints_skips_empty_orderbook() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let config = WebSocketConfig::default();
+        let client = WebSocketClient::new(&endpoint, config).unwrap();
+
+        let stream = client
+            .subscribe_midpoints(vec![payloads::ASSET_ID.to_owned()])
+            .unwrap();
+        let mut stream = Box::pin(stream);
+
+        let _: Option<String> = server.recv_subscription().await;
+
+        // Send book with no bids (should be skipped)
+        let empty_book = json!({
+            "event_type": "book",
+            "asset_id": payloads::ASSET_ID,
+            "market": payloads::MARKET,
+            "bids": [],
+            "asks": [{ "price": ".52", "size": "25" }],
+            "timestamp": "123456789000"
+        });
+        server.send(&empty_book.to_string());
+
+        // Send valid book
+        server.send(&payloads::book().to_string());
+
+        // Should only receive the valid midpoint (empty book skipped)
+        let result = timeout(Duration::from_secs(2), stream.next()).await;
+        let midpoint = result.unwrap().unwrap().unwrap();
+        assert_eq!(midpoint.midpoint, dec!(0.50));
+    }
 }
 
 mod user_channel {
@@ -477,6 +540,68 @@ mod user_channel {
             order.id,
             "0xff354cd7ca7539dfa9c28d90943ab5779a4eac34b9b37a757d7b32bdfb11790b"
         );
+    }
+
+    #[tokio::test]
+    async fn subscribe_trades_filters_to_trades_only() {
+        let mut server = MockWsServer::start().await;
+        let base_endpoint = format!("ws://{}", server.addr);
+
+        let config = WebSocketConfig::default();
+        let client = WebSocketClient::new(&base_endpoint, config)
+            .unwrap()
+            .authenticate(test_credentials(), Address::ZERO)
+            .unwrap();
+
+        // Wait for connections to establish
+        sleep(Duration::from_millis(100)).await;
+
+        let stream = client.subscribe_trades(vec![]).unwrap();
+        let mut stream = Box::pin(stream);
+
+        let _: Option<String> = server.recv_subscription().await;
+
+        // Send an order (should be filtered)
+        server.send(&payloads::order().to_string());
+
+        // Send a trade
+        server.send(&payloads::trade().to_string());
+
+        // Should only receive the trade
+        let result = timeout(Duration::from_secs(2), stream.next()).await;
+        let trade = result.unwrap().unwrap().unwrap();
+        assert_eq!(trade.id, "28c4d2eb-bbea-40e7-a9f0-b2fdb56b2c2e");
+    }
+
+    #[tokio::test]
+    async fn deauthenticate_returns_to_unauthenticated_state() {
+        let mut server = MockWsServer::start().await;
+        let base_endpoint = format!("ws://{}", server.addr);
+
+        let config = WebSocketConfig::default();
+        let client = WebSocketClient::new(&base_endpoint, config)
+            .unwrap()
+            .authenticate(test_credentials(), Address::ZERO)
+            .unwrap();
+
+        // Wait for connection to establish
+        sleep(Duration::from_millis(100)).await;
+
+        // Deauthenticate should succeed and return unauthenticated client
+        let unauth_client = client.deauthenticate().unwrap();
+
+        // Should still be able to subscribe to market data
+        let stream = unauth_client
+            .subscribe_orderbook(vec![payloads::ASSET_ID.to_owned()])
+            .unwrap();
+        let mut stream = Box::pin(stream);
+
+        let _: Option<String> = server.recv_subscription().await;
+
+        server.send(&payloads::book().to_string());
+
+        let result = timeout(Duration::from_secs(2), stream.next()).await;
+        result.unwrap().unwrap().unwrap();
     }
 }
 
