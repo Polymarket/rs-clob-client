@@ -3,6 +3,7 @@
     reason = "Connection types expose their domain in the name for clarity"
 )]
 
+use std::result::Result as StdResult;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -11,7 +12,7 @@ use futures::{
     stream::{SplitSink, SplitStream},
 };
 use tokio::net::TcpStream;
-use tokio::sync::{Mutex, RwLock, mpsc, watch};
+use tokio::sync::{Mutex, RwLock, broadcast, mpsc, watch};
 use tokio::time::{interval, sleep, timeout};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message};
 use tracing::{debug, warn};
@@ -19,9 +20,16 @@ use tracing::{debug, warn};
 use super::config::WebSocketConfig;
 use super::error::WsError;
 use super::messages::{SubscriptionRequest, WsMessage, parse_ws_text};
-use crate::{Result, error::Error};
+use crate::{
+    Result,
+    error::{Error, Kind},
+};
 
-type IncomingMessageReceiver = Arc<Mutex<mpsc::UnboundedReceiver<Result<WsMessage>>>>;
+/// Broadcast message type.
+pub type BroadcastMessage = Arc<Result<WsMessage>>;
+
+/// Broadcast channel capacity for incoming messages.
+const BROADCAST_CAPACITY: usize = 1024;
 
 /// Connection state tracking.
 #[non_exhaustive]
@@ -53,15 +61,15 @@ pub struct ConnectionManager {
     state: Arc<RwLock<ConnectionState>>,
     /// Sender channel for outgoing messages
     sender_tx: mpsc::UnboundedSender<String>,
-    /// Receiver channel for incoming messages
-    receiver_rx: IncomingMessageReceiver,
+    /// Broadcast sender for incoming messages
+    broadcast_tx: broadcast::Sender<BroadcastMessage>,
 }
 
 impl ConnectionManager {
     /// Create a new connection manager and start the connection loop.
     pub fn new(endpoint: String, config: WebSocketConfig) -> Result<Self> {
         let (sender_tx, sender_rx) = mpsc::unbounded_channel();
-        let (receiver_tx, receiver_rx) = mpsc::unbounded_channel();
+        let (broadcast_tx, _) = broadcast::channel(BROADCAST_CAPACITY);
 
         let state = Arc::new(RwLock::new(ConnectionState::Disconnected));
 
@@ -69,6 +77,7 @@ impl ConnectionManager {
         let connection_state = Arc::clone(&state);
         let connection_config = config;
         let connection_endpoint = endpoint;
+        let broadcast_tx_clone = broadcast_tx.clone();
 
         tokio::spawn(async move {
             Self::connection_loop(
@@ -76,7 +85,7 @@ impl ConnectionManager {
                 connection_state,
                 connection_config,
                 sender_rx,
-                receiver_tx,
+                broadcast_tx_clone,
             )
             .await;
         });
@@ -84,7 +93,7 @@ impl ConnectionManager {
         Ok(Self {
             state,
             sender_tx,
-            receiver_rx: Arc::new(Mutex::new(receiver_rx)),
+            broadcast_tx,
         })
     }
 
@@ -94,7 +103,7 @@ impl ConnectionManager {
         state: Arc<RwLock<ConnectionState>>,
         config: WebSocketConfig,
         mut sender_rx: mpsc::UnboundedReceiver<String>,
-        receiver_tx: mpsc::UnboundedSender<Result<WsMessage>>,
+        broadcast_tx: broadcast::Sender<BroadcastMessage>,
     ) {
         let mut attempt = 0;
 
@@ -114,7 +123,7 @@ impl ConnectionManager {
                     match Self::handle_connection(
                         ws_stream,
                         &mut sender_rx,
-                        &receiver_tx,
+                        &broadcast_tx,
                         Arc::clone(&state),
                         &config,
                     )
@@ -122,20 +131,13 @@ impl ConnectionManager {
                     {
                         Ok(()) => {}
                         Err(e) => {
-                            if receiver_tx.send(Err(e)).is_err() {
-                                *state.write().await = ConnectionState::Disconnected;
-                                break;
-                            }
+                            let _: StdResult<_, _> = broadcast_tx.send(Arc::new(Err(e)));
                         }
                     }
                 }
                 Err(e) => {
-                    let error =
-                        Error::with_source(crate::error::Kind::WebSocket, WsError::Connection(e));
-                    if receiver_tx.send(Err(error)).is_err() {
-                        *state.write().await = ConnectionState::Disconnected;
-                        break;
-                    }
+                    let error = Error::with_source(Kind::WebSocket, WsError::Connection(e));
+                    let _: StdResult<_, _> = broadcast_tx.send(Arc::new(Err(error)));
                     attempt += 1;
                 }
             }
@@ -160,7 +162,7 @@ impl ConnectionManager {
     async fn handle_connection(
         ws_stream: WsStream,
         sender_rx: &mut mpsc::UnboundedReceiver<String>,
-        receiver_tx: &mpsc::UnboundedSender<Result<WsMessage>>,
+        broadcast_tx: &broadcast::Sender<BroadcastMessage>,
         state: Arc<RwLock<ConnectionState>>,
         config: &WebSocketConfig,
     ) -> Result<()> {
@@ -190,7 +192,7 @@ impl ConnectionManager {
             read,
             write_for_messages,
             sender_rx,
-            receiver_tx,
+            broadcast_tx,
             &state,
             pong_tx,
         )
@@ -207,7 +209,7 @@ impl ConnectionManager {
         mut read: WsStreamRead,
         write: Arc<Mutex<WsSink>>,
         sender_rx: &mut mpsc::UnboundedReceiver<String>,
-        receiver_tx: &mpsc::UnboundedSender<Result<WsMessage>>,
+        broadcast_tx: &broadcast::Sender<BroadcastMessage>,
         _state: &Arc<RwLock<ConnectionState>>,
         pong_tx: watch::Sender<Instant>,
     ) -> Result<()> {
@@ -219,42 +221,40 @@ impl ConnectionManager {
                         Ok(Message::Text(text)) => {
                             // Notify heartbeat loop when PONG is received
                             if text == "PONG" {
-                                let _: std::result::Result<(), _> = pong_tx.send(Instant::now());
+                                let _: StdResult<(), _> = pong_tx.send(Instant::now());
                                 continue;
                             }
 
                             match parse_ws_text(&text) {
                                 Ok(messages) => {
                                     for ws_msg in messages {
-                                        if receiver_tx.send(Ok(ws_msg)).is_err() {
-                                            break; // Receiver dropped
-                                        }
+                                        let _: StdResult<_, _> = broadcast_tx.send(Arc::new(Ok(ws_msg)));
                                     }
                                 }
                                 Err(e) => {
                                     warn!(%text, error = %e, "Failed to parse WebSocket message");
                                     let err = Error::with_source(
-                                        crate::error::Kind::WebSocket,
+                                        Kind::WebSocket,
                                         WsError::MessageParse(e),
                                     );
-                                    drop(receiver_tx.send(Err(err)));
+                                    let _: StdResult<_, _> = broadcast_tx.send(Arc::new(Err(err)));
                                 }
                             }
                         }
                         Ok(Message::Close(_)) => {
                             let err = Error::with_source(
-                                crate::error::Kind::WebSocket,
+                                Kind::WebSocket,
                                 WsError::ConnectionClosed,
                             );
-                            drop(receiver_tx.send(Err(err)));
+                            let _: StdResult<_, _> = broadcast_tx.send(Arc::new(Err(err)));
                             break;
                         }
                         Err(e) => {
                             let err = Error::with_source(
-                                crate::error::Kind::WebSocket,
+                                Kind::WebSocket,
                                 WsError::Connection(e),
                             );
-                            drop(receiver_tx.send(Err(err)));
+                            let _: StdResult<_, _> = broadcast_tx.send(Arc::new(Err(err)));
                             break;
                         }
                         _ => {
@@ -353,10 +353,13 @@ impl ConnectionManager {
         *self.state.read().await
     }
 
-    /// Get a reference to the receiver channel for incoming messages.
+    /// Subscribe to incoming messages.
+    ///
+    /// Each call returns a new independent receiver. Multiple subscribers can
+    /// receive messages concurrently without blocking each other.
     #[must_use]
-    pub fn receiver(&self) -> IncomingMessageReceiver {
-        Arc::clone(&self.receiver_rx)
+    pub fn subscribe(&self) -> broadcast::Receiver<BroadcastMessage> {
+        self.broadcast_tx.subscribe()
     }
 }
 

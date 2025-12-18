@@ -29,6 +29,20 @@ pub enum WsMessage {
     Book(BookUpdate),
 }
 
+impl WsMessage {
+    /// Check if the message is a user-specific message.
+    #[must_use]
+    pub const fn is_user(&self) -> bool {
+        matches!(self, WsMessage::Trade(_) | WsMessage::Order(_))
+    }
+
+    /// Check if the message is a market data message.
+    #[must_use]
+    pub const fn is_market(&self) -> bool {
+        !self.is_user()
+    }
+}
+
 /// Orderbook update message (full snapshot or delta).
 ///
 /// When first subscribing or when trades occur, this message contains the current

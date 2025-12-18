@@ -10,10 +10,13 @@ use std::time::Instant;
 use async_stream::stream;
 use dashmap::DashMap;
 use futures::Stream;
+use tokio::sync::broadcast::error::RecvError;
+use tracing::warn;
 
 use super::connection::ConnectionManager;
 use super::messages::{AuthPayload, SubscriptionRequest, WsMessage};
 use crate::Result;
+use crate::error::Error;
 
 /// Information about an active subscription.
 #[non_exhaustive]
@@ -72,31 +75,39 @@ impl SubscriptionManager {
             },
         );
 
-        // Create filtered stream
-        let receiver = self.connection.receiver();
+        // Create filtered stream with its own receiver
+        let mut rx = self.connection.subscribe();
         let asset_ids_set: HashSet<String> = asset_ids.into_iter().collect();
 
         Ok(stream! {
-            let mut rx = receiver.lock().await;
+            loop {
+                match rx.recv().await {
+                    Ok(arc_result) => {
+                        match arc_result.as_ref() {
+                            Ok(msg) => {
+                                // Filter messages by asset_id
+                                let should_yield = match msg {
+                                    WsMessage::Book(book) => asset_ids_set.contains(&book.asset_id),
+                                    WsMessage::PriceChange(price) => asset_ids_set.contains(&price.asset_id),
+                                    WsMessage::LastTradePrice(ltp) => asset_ids_set.contains(&ltp.asset_id),
+                                    WsMessage::TickSizeChange(tsc) => asset_ids_set.contains(&tsc.asset_id),
+                                    _ => false,
+                                };
 
-            while let Some(msg_result) = rx.recv().await {
-                match msg_result {
-                    Ok(msg) => {
-                        // Filter messages by asset_id
-                        let should_yield = match &msg {
-                            WsMessage::Book(book) => asset_ids_set.contains(&book.asset_id),
-                            WsMessage::PriceChange(price) => asset_ids_set.contains(&price.asset_id),
-                            WsMessage::LastTradePrice(ltp) => asset_ids_set.contains(&ltp.asset_id),
-                            WsMessage::TickSizeChange(tsc) => asset_ids_set.contains(&tsc.asset_id),
-                            _ => false,
-                        };
-
-                        if should_yield {
-                            yield Ok(msg);
+                                if should_yield {
+                                    yield Ok(msg.clone());
+                                }
+                            }
+                            Err(e) => {
+                                yield Err(Error::validation(e.to_string()));
+                            }
                         }
                     }
-                    Err(e) => {
-                        yield Err(e);
+                    Err(RecvError::Lagged(n)) => {
+                        warn!("Subscription lagged, missed {n} messages");
+                    }
+                    Err(RecvError::Closed) => {
+                        break;
                     }
                 }
             }
@@ -125,26 +136,29 @@ impl SubscriptionManager {
         );
 
         // Create stream for user messages
-        let receiver = self.connection.receiver();
+        let mut rx = self.connection.subscribe();
 
         Ok(stream! {
-            let mut rx = receiver.lock().await;
-
-            while let Some(msg_result) = rx.recv().await {
-                match msg_result {
-                    Ok(msg) => {
-                        // Only yield user-specific messages
-                        let is_user_msg = matches!(
-                            msg,
-                            WsMessage::Trade(_) | WsMessage::Order(_)
-                        );
-
-                        if is_user_msg {
-                            yield Ok(msg);
+            loop {
+                match rx.recv().await {
+                    Ok(arc_result) => {
+                        match arc_result.as_ref() {
+                            Ok(msg) => {
+                                // Only yield user messages
+                                if msg.is_user() {
+                                    yield Ok(msg.clone());
+                                }
+                            }
+                            Err(e) => {
+                                yield Err(Error::validation(e.to_string()));
+                            }
                         }
                     }
-                    Err(e) => {
-                        yield Err(e);
+                    Err(RecvError::Lagged(n)) => {
+                        warn!("Subscription lagged, missed {n} messages");
+                    }
+                    Err(RecvError::Closed) => {
+                        break;
                     }
                 }
             }
