@@ -465,6 +465,6 @@ mod tests {
         let raw_salt = u64::MAX;
         let masked_salt = to_ieee_754_int(raw_salt);
 
-        assert!(masked_salt <= (1 << 53) - 1);
+        assert!(masked_salt < (1 << 53));
     }
 }
