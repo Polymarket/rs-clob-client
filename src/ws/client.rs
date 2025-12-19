@@ -320,7 +320,7 @@ impl<S: State> WsClientInner<S> {
 #[derive(Clone)]
 struct ChannelHandles {
     /// Manages the WebSocket connection.
-    connection: Arc<ConnectionManager>,
+    connection: ConnectionManager,
     /// Manages active subscriptions on this channel.
     subscriptions: Arc<SubscriptionManager>,
 }
@@ -329,8 +329,8 @@ impl ChannelHandles {
     fn connect(endpoint: String, config: &WebSocketConfig) -> Result<Self> {
         // Create shared interest tracker for lazy deserialization
         let interest = Arc::new(InterestTracker::new());
-        let connection = Arc::new(ConnectionManager::new(endpoint, config.clone(), &interest)?);
-        let subscriptions = Arc::new(SubscriptionManager::new(Arc::clone(&connection), interest));
+        let connection = ConnectionManager::new(endpoint, config.clone(), &interest)?;
+        let subscriptions = Arc::new(SubscriptionManager::new(connection.clone(), interest));
 
         // Start reconnection handler to re-subscribe on connection recovery
         subscriptions.start_reconnection_handler();

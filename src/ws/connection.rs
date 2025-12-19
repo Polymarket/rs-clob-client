@@ -3,7 +3,6 @@
     reason = "Connection types expose their domain in the name for clarity"
 )]
 
-use std::result::Result as StdResult;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -58,6 +57,7 @@ impl ConnectionState {
 }
 
 /// Manages WebSocket connection lifecycle, reconnection, and heartbeat.
+#[derive(Clone)]
 pub struct ConnectionManager {
     /// Current connection state
     state: Arc<RwLock<ConnectionState>>,
@@ -131,7 +131,7 @@ impl ConnectionManager {
             // Update state to connecting
             let connecting = ConnectionState::Connecting;
             *state.write().await = connecting;
-            let _: StdResult<_, _> = state_tx.send(connecting);
+            _ = state_tx.send(connecting);
 
             // Attempt connection
             match connect_async(&endpoint).await {
@@ -142,7 +142,7 @@ impl ConnectionManager {
                         since: Instant::now(),
                     };
                     *state.write().await = connected;
-                    let _: StdResult<_, _> = state_tx.send(connected);
+                    _ = state_tx.send(connected);
 
                     // Handle connection
                     if let Err(e) = Self::handle_connection(
@@ -171,14 +171,14 @@ impl ConnectionManager {
             {
                 let disconnected = ConnectionState::Disconnected;
                 *state.write().await = disconnected;
-                let _: StdResult<_, _> = state_tx.send(disconnected);
+                _ = state_tx.send(disconnected);
                 break;
             }
 
             // Update state and wait with exponential backoff
             let reconnecting = ConnectionState::Reconnecting { attempt };
             *state.write().await = reconnecting;
-            let _: StdResult<_, _> = state_tx.send(reconnecting);
+            _ = state_tx.send(reconnecting);
 
             if let Some(duration) = backoff.next_backoff() {
                 sleep(duration).await;
@@ -214,7 +214,7 @@ impl ConnectionManager {
                         Ok(Message::Text(text)) => {
                             // Notify heartbeat loop when PONG is received
                             if text == "PONG" {
-                                let _: StdResult<(), _> = pong_tx.send(Instant::now());
+                                _ = pong_tx.send(Instant::now());
                                 continue;
                             }
 
@@ -222,7 +222,7 @@ impl ConnectionManager {
                             match parse_ws_text(&text, interest.get()) {
                                 Ok(messages) => {
                                     for ws_msg in messages {
-                                        let _: StdResult<_, _> = broadcast_tx.send(ws_msg);
+                                        _ = broadcast_tx.send(ws_msg);
                                     }
                                 }
                                 Err(e) => {

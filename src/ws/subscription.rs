@@ -69,7 +69,7 @@ pub enum ChannelType {
 
 /// Manages active subscriptions and routes messages to subscribers.
 pub struct SubscriptionManager {
-    connection: Arc<ConnectionManager>,
+    connection: ConnectionManager,
     active_subs: DashMap<String, SubscriptionInfo>,
     interest: Arc<InterestTracker>,
     subscribed_assets: DashSet<String>,
@@ -80,7 +80,7 @@ pub struct SubscriptionManager {
 impl SubscriptionManager {
     /// Create a new subscription manager.
     #[must_use]
-    pub fn new(connection: Arc<ConnectionManager>, interest: Arc<InterestTracker>) -> Self {
+    pub fn new(connection: ConnectionManager, interest: Arc<InterestTracker>) -> Self {
         Self {
             connection,
             active_subs: DashMap::new(),
