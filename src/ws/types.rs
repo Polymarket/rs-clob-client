@@ -224,9 +224,6 @@ pub struct TradeMessage {
     pub price: String,
     /// Trade status (MATCHED, MINED, CONFIRMED, etc.)
     pub status: String,
-    /// Event type (always "trade")
-    #[serde(default)]
-    pub event_type: Option<String>,
     /// Message type (always "TRADE")
     #[serde(rename = "type", default)]
     pub msg_type: Option<String>,
@@ -279,9 +276,6 @@ pub struct OrderMessage {
     pub side: Side,
     /// Order price
     pub price: String,
-    /// Event type (always "order")
-    #[serde(default)]
-    pub event_type: Option<String>,
     /// Message type (PLACEMENT, UPDATE, or CANCELLATION)
     #[serde(rename = "type", default)]
     pub msg_type: Option<String>,
