@@ -218,13 +218,16 @@ impl ConnectionManager {
                                 continue;
                             }
 
+                            trace!(%text, "Received WebSocket text message");
+
                             // Only deserialize message types that have active consumers
                             match parse_if_interested(text.as_bytes(), &interest.get()) {
-                                Ok(Some(message)) => {
-                                    trace!(?message, "Received WebSocket message");
-                                    _ = broadcast_tx.send(message);
+                                Ok(messages) => {
+                                    for message in messages {
+                                        trace!(?message, "Parsed WebSocket message");
+                                        _ = broadcast_tx.send(message);
+                                    }
                                 }
-                                Ok(None) => {},
                                 Err(e) => {
                                     warn!(%text, error = %e, "Failed to parse WebSocket message");
                                 }

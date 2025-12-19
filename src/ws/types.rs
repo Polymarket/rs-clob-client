@@ -1,7 +1,7 @@
 use std::fmt;
 
 use rust_decimal::Decimal;
-use serde::de::{IgnoredAny, MapAccess, Visitor};
+use serde::de::{IgnoredAny, MapAccess, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer as _, Serialize};
 use serde_json::Deserializer;
 use serde_with::{DisplayFromStr, serde_as};
@@ -409,21 +409,30 @@ pub struct MidpointUpdate {
     pub timestamp: i64,
 }
 
-fn extract_event_type(bytes: &[u8]) -> Result<Option<String>, serde_json::Error> {
-    struct EventTypeOnly;
+/// Result of peeking at the message structure without full deserialization.
+enum MessageShape {
+    /// Single object with the given `event_type` (if present).
+    Single(Option<String>),
+    /// Array of messages requiring full deserialization.
+    Array,
+}
 
-    impl<'de> Visitor<'de> for EventTypeOnly {
-        type Value = Option<String>;
+/// Peeks at the JSON structure to determine if it's a single object or array,
+/// and extracts the `event_type` for single objects without full deserialization.
+fn peek_message_shape(bytes: &[u8]) -> Result<MessageShape, serde_json::Error> {
+    struct ShapePeeker;
+
+    impl<'de> Visitor<'de> for ShapePeeker {
+        type Value = MessageShape;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("a JSON object with an event_type field")
+            formatter.write_str("a JSON object or array")
         }
 
         fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
         where
             A: MapAccess<'de>,
         {
-            // Only parse the `event_type` out of the byte slice, ignoring _everything_ else
             let mut event_type: Option<String> = None;
             while let Some(key) = map.next_key::<&str>()? {
                 if key == "event_type" {
@@ -432,36 +441,63 @@ fn extract_event_type(bytes: &[u8]) -> Result<Option<String>, serde_json::Error>
                     map.next_value::<IgnoredAny>()?;
                 }
             }
-            Ok(event_type)
+            Ok(MessageShape::Single(event_type))
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+        where
+            A: SeqAccess<'de>,
+        {
+            // Consume the entire sequence to avoid "trailing characters" error
+            while seq.next_element::<IgnoredAny>()?.is_some() {}
+            Ok(MessageShape::Array)
         }
     }
 
     let mut de = Deserializer::from_slice(bytes);
-    de.deserialize_any(EventTypeOnly)
+    de.deserialize_any(ShapePeeker)
 }
 
-/// Deserialize from the byte slice _only_ if there is corresponding `interest` for the "`event_type`"
-/// contained therein. This is done as an optimization technique so that only data that subscribers
-/// care about is deserialized.
+/// Check if a message matches the interest filter.
+fn matches_interest(msg: &WsMessage, interest: MessageInterest) -> bool {
+    match msg {
+        WsMessage::Book(_) => interest.contains(MessageInterest::BOOK),
+        WsMessage::PriceChange(_) => interest.contains(MessageInterest::PRICE_CHANGE),
+        WsMessage::TickSizeChange(_) => interest.contains(MessageInterest::TICK_SIZE),
+        WsMessage::LastTradePrice(_) => interest.contains(MessageInterest::LAST_TRADE_PRICE),
+        WsMessage::Trade(_) => interest.contains(MessageInterest::TRADE),
+        WsMessage::Order(_) => interest.contains(MessageInterest::ORDER),
+    }
+}
+
+/// Deserialize messages from the byte slice, filtering by interest.
+///
+/// For single objects, the `event_type` is extracted first to skip uninteresting messages
+/// without full deserialization. For arrays, all messages are deserialized and filtered.
 pub fn parse_if_interested(
     bytes: &[u8],
     interest: &MessageInterest,
-) -> crate::Result<Option<WsMessage>> {
-    // Attempt to retrieve the `event_type` from the JSON bytes
-    let event_type = extract_event_type(bytes)
+) -> crate::Result<Vec<WsMessage>> {
+    let shape = peek_message_shape(bytes)
         .map_err(|e| crate::error::Error::with_source(Kind::Internal, Box::new(e)))?;
 
-    // If there is no `event_type`, then skip
-    let Some(event_type) = event_type else {
-        return Ok(None);
-    };
-
-    // If there is an `event_type` and there is no interest in that particular value, then skip
-    if !interest.is_interested_in_event(&event_type) {
-        return Ok(None);
+    match shape {
+        MessageShape::Single(None) => Ok(vec![]),
+        MessageShape::Single(Some(event_type)) => {
+            if !interest.is_interested_in_event(&event_type) {
+                return Ok(vec![]);
+            }
+            let msg: WsMessage = serde_json::from_slice(bytes)?;
+            Ok(vec![msg])
+        }
+        MessageShape::Array => {
+            let messages: Vec<WsMessage> = serde_json::from_slice(bytes)?;
+            Ok(messages
+                .into_iter()
+                .filter(|msg| matches_interest(msg, *interest))
+                .collect())
+        }
     }
-
-    Ok(Some(serde_json::from_slice(bytes)?))
 }
 
 #[cfg(test)]
@@ -544,11 +580,10 @@ mod tests {
             ]
         }"#;
 
-        let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::ALL)
-            .unwrap()
-            .unwrap();
+        let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::ALL).unwrap();
+        assert_eq!(msgs.len(), 1);
 
-        match msgs {
+        match &msgs[0] {
             WsMessage::PriceChange(price) => {
                 assert_eq!(price.market, "market3");
 
@@ -567,6 +602,82 @@ mod tests {
             }
             _ => panic!("Expected first price change"),
         }
+    }
+
+    #[test]
+    fn parse_batch_messages() {
+        let json = r#"[
+            {
+                "event_type": "book",
+                "asset_id": "asset1",
+                "market": "market1",
+                "timestamp": "1234567890",
+                "bids": [{"price": "0.5", "size": "100"}],
+                "asks": []
+            },
+            {
+                "event_type": "price_change",
+                "market": "market1",
+                "timestamp": "1234567891",
+                "price_changes": [{
+                    "asset_id": "asset1",
+                    "price": "0.51",
+                    "side": "BUY"
+                }]
+            },
+            {
+                "event_type": "last_trade_price",
+                "asset_id": "asset2",
+                "market": "market1",
+                "price": "0.6",
+                "timestamp": "1234567892"
+            }
+        ]"#;
+
+        let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::ALL).unwrap();
+        assert_eq!(msgs.len(), 3);
+
+        assert!(matches!(&msgs[0], WsMessage::Book(b) if b.asset_id == "asset1"));
+        assert!(matches!(&msgs[1], WsMessage::PriceChange(p) if p.market == "market1"));
+        assert!(matches!(&msgs[2], WsMessage::LastTradePrice(l) if l.asset_id == "asset2"));
+    }
+
+    #[test]
+    fn parse_batch_filters_by_interest() {
+        let json = r#"[
+            {
+                "event_type": "book",
+                "asset_id": "asset1",
+                "market": "market1",
+                "timestamp": "1234567890",
+                "bids": [],
+                "asks": []
+            },
+            {
+                "event_type": "trade",
+                "id": "trade1",
+                "market": "market1",
+                "asset_id": "asset1",
+                "side": "BUY",
+                "size": "10",
+                "price": "0.5",
+                "status": "MATCHED"
+            }
+        ]"#;
+
+        // Only interested in BOOK, not TRADE
+        let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::BOOK).unwrap();
+        assert_eq!(msgs.len(), 1);
+        assert!(matches!(&msgs[0], WsMessage::Book(_)));
+
+        // Only interested in TRADE, not BOOK
+        let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::TRADE).unwrap();
+        assert_eq!(msgs.len(), 1);
+        assert!(matches!(&msgs[0], WsMessage::Trade(_)));
+
+        // Interested in both
+        let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::ALL).unwrap();
+        assert_eq!(msgs.len(), 2);
     }
 
     #[test]
