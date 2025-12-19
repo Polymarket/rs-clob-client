@@ -4,7 +4,7 @@
 )]
 
 use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, PoisonError, RwLock};
 use std::time::Instant;
 
 use async_stream::try_stream;
@@ -150,28 +150,27 @@ impl SubscriptionManager {
             }
         }
 
-        // Collect all subscribed markets and re-subscribe with stored auth
-        let markets: Vec<String> = self
-            .subscribed_markets
-            .iter()
-            .map(|r| r.key().clone())
-            .collect();
+        // Store auth for re-subscription on reconnect.
+        // We can recover from poisoned lock because Option<AuthPayload> has no inconsistent intermediate state.
+        let auth = self
+            .last_auth
+            .read()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
+        if let Some(auth) = auth {
+            let markets: Vec<String> = self
+                .subscribed_markets
+                .iter()
+                .map(|r| r.key().clone())
+                .collect();
 
-        // Read auth once to avoid TOCTOU race
-        let auth = self.last_auth.read().ok().and_then(|g| g.clone());
-
-        if !markets.is_empty() || auth.is_some() {
-            if let Some(auth) = auth {
-                debug!(
-                    markets_count = markets.len(),
-                    "Re-subscribing to user channel"
-                );
-                let request = SubscriptionRequest::user(markets, auth);
-                if let Err(e) = self.connection.send(&request) {
-                    warn!(%e, "Failed to re-subscribe to user channel");
-                }
-            } else {
-                warn!("Cannot re-subscribe to user channel: no stored auth");
+            debug!(
+                markets_count = markets.len(),
+                "Re-subscribing to user channel"
+            );
+            let request = SubscriptionRequest::user(markets, auth);
+            if let Err(e) = self.connection.send(&request) {
+                warn!(%e, "Failed to re-subscribe to user channel");
             }
         }
     }
@@ -267,15 +266,12 @@ impl SubscriptionManager {
     ) -> Result<impl Stream<Item = Result<WsMessage>>> {
         self.interest.add(MessageInterest::USER);
 
-        // Store auth for potential re-subscription on reconnect
-        match self.last_auth.write() {
-            Ok(mut guard) => {
-                *guard = Some(auth.clone());
-            }
-            Err(e) => {
-                warn!(%e, "Failed to store auth payload for re-subscription: cannot acquire write lock");
-            }
-        }
+        // Store auth for re-subscription on reconnect.
+        // We can recover from poisoned lock because Option<AuthPayload> has no inconsistent intermediate state.
+        *self
+            .last_auth
+            .write()
+            .unwrap_or_else(PoisonError::into_inner) = Some(auth.clone());
 
         // Determine which markets are not yet subscribed
         let new_markets: Vec<String> = markets
