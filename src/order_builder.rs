@@ -241,6 +241,10 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
     }
 
     // Attempts to calculate the market price from the top of the book for the particular token.
+    // - Uses an orderbook depth search to find the cutoff price:
+    //   - BUY + USDC: walk asks until notional >= USDC
+    //   - BUY + Shares: walk asks until shares >= N
+    //   - SELL + Shares: walk bids until shares >= N
     async fn calculate_price(&self, order_type: OrderType) -> Result<Decimal> {
         let token_id = self
             .token_id
@@ -267,12 +271,8 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
 
         let (levels, amount) = match (side, amount.0) {
             (Side::Buy, a @ AmountInner::Usdc(_)) => (book.asks, a),
+            (Side::Buy, a @ AmountInner::Shares(_)) => (book.asks, a),
             (Side::Sell, a @ AmountInner::Shares(_)) => (book.bids, a),
-            (Side::Buy, AmountInner::Shares(_)) => {
-                return Err(Error::validation(
-                    "Buy Orders must specify their `amount`s in terms of USDC",
-                ));
-            }
             (Side::Sell, AmountInner::Usdc(_)) => {
                 return Err(Error::validation(
                     "Sell Orders must specify their `amount`s in shares",
@@ -369,15 +369,37 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         // `YES` tokens. This means that the `taker_amount` is `34000000` and the `maker_amount` is
         // `100000000`.
         let raw_amount = amount.as_inner();
-        let (taker_amount, maker_amount) = match side {
-            Side::Buy => (raw_amount / price, raw_amount),
-            Side::Sell => (raw_amount * price, raw_amount),
-            side => return Err(Error::validation(format!("Invalid side: {side}"))),
+
+        let (taker_amount, maker_amount) = match (side, amount.0) {
+            // Spend USDC to buy shares
+            (Side::Buy, AmountInner::Usdc(_)) => {
+                let shares = (raw_amount / price).trunc_with_scale(decimals + LOT_SIZE_SCALE);
+                (shares, raw_amount)
+            }
+
+            // Buy N shares: use cutoff `price` derived from ask depth
+            (Side::Buy, AmountInner::Shares(_)) => {
+                let usdc = (raw_amount * price).trunc_with_scale(decimals + LOT_SIZE_SCALE);
+                (raw_amount, usdc)
+            }
+
+            // Sell N shares for USDC
+            (Side::Sell, AmountInner::Shares(_)) => {
+                let usdc = (raw_amount * price).trunc_with_scale(decimals + LOT_SIZE_SCALE);
+                (usdc, raw_amount)
+            }
+
+            (Side::Sell, AmountInner::Usdc(_)) => {
+                return Err(Error::validation(
+                    "Sell Orders must specify their `amount`s in shares",
+                ));
+            }
+
+            (side, _) => return Err(Error::validation(format!("Invalid side: {side}"))),
         };
 
-        // Have to truncate the calculated number of shares the combined precision of the lot size
-        // _and_ the tick size
-        let taker_amount = taker_amount.trunc_with_scale(decimals + LOT_SIZE_SCALE);
+        // Mask the salt to be <= 2^53 - 1, as the backend parses as an IEEE 754.
+        let salt = to_ieee_754_int((self.salt_generator)());
 
         // Mask the salt to be <= 2^53 - 1, as the backend parses as an IEEE 754.
         let salt = to_ieee_754_int((self.salt_generator)());

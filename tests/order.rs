@@ -1947,6 +1947,107 @@ mod market {
 
             Ok(())
         }
+
+        #[tokio::test]
+        async fn market_buy_with_shares_fok_should_fail_on_no_asks() -> anyhow::Result<()> {
+            let server = MockServer::start();
+            let client = create_authenticated(&server).await?;
+
+            ensure_requirements_for_market_price(&server, TOKEN_1, &[], &[]);
+
+            let err = client
+                .market_order()
+                .token_id(TOKEN_1)
+                .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
+                .side(Side::Buy)
+                .order_type(OrderType::FOK)
+                .build()
+                .await
+                .unwrap_err();
+
+            let msg = &err
+                .downcast_ref::<polymarket_client_sdk::error::Validation>()
+                .unwrap()
+                .reason;
+            assert_eq!(
+                msg,
+                "No opposing orders for 1 which means there is no market price"
+            );
+            Ok(())
+        }
+
+        #[tokio::test]
+        async fn market_buy_with_shares_fok_should_fail_on_insufficient_liquidity()
+        -> anyhow::Result<()> {
+            let server = MockServer::start();
+            let client = create_authenticated(&server).await?;
+
+            // only 50 shares available on asks
+            ensure_requirements_for_market_price(
+                &server,
+                TOKEN_1,
+                &[],
+                &[OrderSummaryBuilder::default()
+                    .price(dec!(0.5))
+                    .size(dec!(50))
+                    .build()?],
+            );
+
+            let err = client
+                .market_order()
+                .token_id(TOKEN_1)
+                .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
+                .side(Side::Buy)
+                .order_type(OrderType::FOK)
+                .build()
+                .await
+                .unwrap_err();
+
+            let msg = &err
+                .downcast_ref::<polymarket_client_sdk::error::Validation>()
+                .unwrap()
+                .reason;
+            assert_eq!(msg, "Insufficient liquidity to fill order for 1 at 100");
+            Ok(())
+        }
+
+        #[tokio::test]
+        async fn market_buy_with_shares_should_succeed_and_encode_maker_as_usdc()
+        -> anyhow::Result<()> {
+            let server = MockServer::start();
+            let client = create_authenticated(&server).await?;
+
+            // cutoff price should end at 0.4 for 250 shares
+            ensure_requirements_for_market_price(
+                &server,
+                TOKEN_1,
+                &[],
+                &[
+                    OrderSummaryBuilder::default()
+                        .price(dec!(0.5))
+                        .size(dec!(100))
+                        .build()?,
+                    OrderSummaryBuilder::default()
+                        .price(dec!(0.4))
+                        .size(dec!(300))
+                        .build()?,
+                ],
+            );
+
+            let signable_order = client
+                .market_order()
+                .token_id(TOKEN_1)
+                .amount(Amount::shares(dec!(250))?)
+                .side(Side::Buy)
+                .order_type(OrderType::FOK)
+                .build()
+                .await?;
+
+            // maker = USDC, taker = shares
+            assert_eq!(signable_order.order.makerAmount, U256::from(100_000_000)); // 250 * 0.4 = 100
+            assert_eq!(signable_order.order.takerAmount, U256::from(250_000_000));
+            Ok(())
+        }
     }
 
     mod sell {
@@ -2826,26 +2927,11 @@ mod market {
     }
 
     #[tokio::test]
-    async fn mismatched_sides_and_amounts_should_fail() -> anyhow::Result<()> {
+    async fn market_sell_with_usdc_should_fail() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
         ensure_requirements_for_market_price(&server, TOKEN_1, &[], &[]);
-
-        let err = client
-            .market_order()
-            .token_id(TOKEN_1)
-            .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
-            .side(Side::Buy)
-            .build()
-            .await
-            .unwrap_err();
-        let msg = &err.downcast_ref::<Validation>().unwrap().reason;
-
-        assert_eq!(
-            msg,
-            "Buy Orders must specify their `amount`s in terms of USDC"
-        );
 
         let err = client
             .market_order()
@@ -2855,10 +2941,12 @@ mod market {
             .build()
             .await
             .unwrap_err();
-        let msg = &err.downcast_ref::<Validation>().unwrap().reason;
+        let msg = &err
+            .downcast_ref::<polymarket_client_sdk::error::Validation>()
+            .unwrap()
+            .reason;
 
         assert_eq!(msg, "Sell Orders must specify their `amount`s in shares");
-
         Ok(())
     }
 }
