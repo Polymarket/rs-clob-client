@@ -211,8 +211,10 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
             side => return Err(Error::validation(format!("Invalid side: {side}"))),
         };
 
+        let salt = to_ieee_754_int((self.salt_generator)());
+
         let order = Order {
-            salt: U256::from((self.salt_generator)()),
+            salt: U256::from(salt),
             maker: self.funder.unwrap_or(self.signer),
             taker,
             tokenId: U256::from_str(&token_id)?,
@@ -379,7 +381,6 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         // _and_ the tick size
         let taker_amount = taker_amount.trunc_with_scale(decimals + LOT_SIZE_SCALE);
 
-        // Mask the salt to be <= 2^53 - 1, as the backend parses as an IEEE 754.
         let salt = to_ieee_754_int((self.salt_generator)());
 
         let order = Order {
@@ -411,7 +412,7 @@ fn to_fixed_u128(d: Decimal) -> u128 {
         .expect("The `build` call in `OrderBuilder<S, OrderKind, K>` ensures that only positive values are being multiplied/divided")
 }
 
-/// Masks the salt to be <= 2^53 - 1.
+/// Mask the salt to be <= 2^53 - 1, as the backend parses as an IEEE 754.
 fn to_ieee_754_int(salt: u64) -> u64 {
     salt & ((1 << 53) - 1)
 }
