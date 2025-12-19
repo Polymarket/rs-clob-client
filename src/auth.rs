@@ -33,32 +33,6 @@ impl Credentials {
             passphrase: Secret::from(passphrase),
         }
     }
-
-    /// Returns the API key.
-    #[must_use]
-    pub fn key(&self) -> ApiKey {
-        self.key
-    }
-
-    /// Returns the secret (revealed).
-    ///
-    /// # Security
-    ///
-    /// This method reveals the secret. Use with caution.
-    #[must_use]
-    pub fn secret(&self) -> &str {
-        self.secret.reveal()
-    }
-
-    /// Returns the passphrase (revealed).
-    ///
-    /// # Security
-    ///
-    /// This method reveals the passphrase. Use with caution.
-    #[must_use]
-    pub fn passphrase(&self) -> &str {
-        self.passphrase.reveal()
-    }
 }
 
 /// Asynchronous authentication enricher

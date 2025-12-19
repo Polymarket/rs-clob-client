@@ -17,7 +17,7 @@ use super::connection::{ConnectionManager, ConnectionState};
 use super::interest::InterestTracker;
 use super::subscription::{ChannelType, SubscriptionManager};
 use super::types::{
-    AuthPayload, BookUpdate, MidpointUpdate, OrderMessage, PriceChange, TradeMessage, WsMessage,
+    BookUpdate, MidpointUpdate, OrderMessage, PriceChange, TradeMessage, WsMessage,
 };
 use crate::Result;
 use crate::auth::{Credentials, Kind as AuthKind, Normal};
@@ -240,14 +240,14 @@ impl<K: AuthKind> WebSocketClient<Authenticated<K>> {
         &self,
         markets: Vec<String>,
     ) -> Result<impl Stream<Item = Result<WsMessage>>> {
-        let auth = AuthPayload::from(&self.inner.state.credentials);
-
         let handles = self
             .inner
             .channel(ChannelType::User)
             .ok_or_else(|| Error::validation("User channel unavailable; authenticate first"))?;
 
-        handles.subscriptions.subscribe_user(markets, auth)
+        handles
+            .subscriptions
+            .subscribe_user(markets, self.inner.state.credentials.clone())
     }
 
     /// Subscribe to user's order updates.

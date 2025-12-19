@@ -8,6 +8,7 @@ use std::time::Instant;
 
 use backoff::backoff::Backoff as _;
 use futures::{SinkExt as _, StreamExt as _};
+use serde_json::{Value, json};
 use tokio::net::TcpStream;
 use tokio::sync::{RwLock, broadcast, mpsc, watch};
 use tokio::time::{interval, sleep, timeout};
@@ -337,7 +338,23 @@ impl ConnectionManager {
 
     /// Send a subscription request to the WebSocket server.
     pub fn send(&self, message: &SubscriptionRequest) -> Result<()> {
-        let json = serde_json::to_string(message)?;
+        let mut v = serde_json::to_value(message)?;
+
+        // Only expose credentials when serializing on the wire, otherwise do not include
+        // credentials in other serialization contexts
+        if let Some(creds) = message.auth.as_ref() {
+            let auth = json!({
+                "apiKey": creds.key.to_string(),
+                "secret": creds.secret.reveal(),
+                "passphrase": creds.passphrase.reveal(),
+            });
+
+            if let Value::Object(ref mut obj) = v {
+                obj.insert("auth".to_owned(), auth);
+            }
+        }
+
+        let json = serde_json::to_string(&v)?;
         self.sender_tx
             .send(json)
             .map_err(|_e| WsError::ConnectionClosed)?;

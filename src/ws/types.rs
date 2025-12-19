@@ -13,29 +13,6 @@ use crate::{
     types::{Side, TraderSide},
 };
 
-/// Authentication payload for user channel subscriptions.
-///
-/// This is a dedicated struct for WebSocket authentication that intentionally
-/// serializes credential secrets. It is separate from [`Credentials`] to prevent
-/// accidental serialization of secrets in other contexts (logging, errors, etc.).
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AuthPayload {
-    api_key: String,
-    secret: String,
-    passphrase: String,
-}
-
-impl From<&Credentials> for AuthPayload {
-    fn from(credentials: &Credentials) -> Self {
-        Self {
-            api_key: credentials.key().to_string(),
-            secret: credentials.secret().to_owned(),
-            passphrase: credentials.passphrase().to_owned(),
-        }
-    }
-}
-
 /// Top-level WebSocket message wrapper.
 ///
 /// All messages received from the WebSocket connection are deserialized into this enum.
@@ -325,7 +302,7 @@ pub enum OrderStatus {
 
 /// Subscription request message sent to the WebSocket server.
 #[non_exhaustive]
-#[derive(Clone, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct SubscriptionRequest {
     /// Subscription type ("market" or "user")
     pub r#type: String,
@@ -338,27 +315,8 @@ pub struct SubscriptionRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub initial_dump: Option<bool>,
     /// Authentication credentials
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub auth: Option<AuthPayload>,
-}
-
-impl std::fmt::Debug for SubscriptionRequest {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("SubscriptionRequest")
-            .field("type", &self.r#type)
-            .field("markets", &self.markets)
-            .field("asset_ids", &self.asset_ids)
-            .field("initial_dump", &self.initial_dump)
-            .field(
-                "auth",
-                if self.auth.is_some() {
-                    &"Some(AuthPayload { ... })"
-                } else {
-                    &"None"
-                },
-            )
-            .finish()
-    }
+    #[serde(skip)]
+    pub auth: Option<Credentials>,
 }
 
 impl SubscriptionRequest {
@@ -376,7 +334,7 @@ impl SubscriptionRequest {
 
     /// Create a user subscription request.
     #[must_use]
-    pub fn user(markets: Vec<String>, auth: AuthPayload) -> Self {
+    pub fn user(markets: Vec<String>, auth: Credentials) -> Self {
         Self {
             r#type: "user".to_owned(),
             markets,
@@ -691,14 +649,11 @@ mod tests {
             "test-secret".to_owned(),
             "test-pass".to_owned(),
         );
-        let request =
-            SubscriptionRequest::user(vec!["market1".to_owned()], AuthPayload::from(&credentials));
+        let request = SubscriptionRequest::user(vec!["market1".to_owned()], credentials);
 
         let json = serde_json::to_string(&request).unwrap();
         assert!(json.contains("\"type\":\"user\""));
         assert!(json.contains("\"markets\""));
-        assert!(json.contains("\"auth\""));
-        assert!(json.contains(&format!("\"apiKey\":\"{}\"", ApiKey::nil())));
         assert!(json.contains("\"initial_dump\":true"));
     }
 }

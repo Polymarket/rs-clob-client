@@ -17,6 +17,6 @@ pub use config::{ReconnectConfig, WebSocketConfig};
 pub use error::WsError;
 pub use subscription::{ChannelType, SubscriptionInfo, SubscriptionTarget};
 pub use types::{
-    AuthPayload, BookUpdate, LastTradePrice, MakerOrder, MidpointUpdate, OrderMessage, OrderStatus,
-    PriceChange, SubscriptionRequest, TickSizeChange, TradeMessage, WsMessage,
+    BookUpdate, LastTradePrice, MakerOrder, MidpointUpdate, OrderMessage, OrderStatus, PriceChange,
+    SubscriptionRequest, TickSizeChange, TradeMessage, WsMessage,
 };

@@ -16,8 +16,9 @@ use tracing::{debug, warn};
 use super::connection::{ConnectionManager, ConnectionState};
 use super::error::WsError;
 use super::interest::{InterestTracker, MessageInterest};
-use super::types::{AuthPayload, SubscriptionRequest, WsMessage};
+use super::types::{SubscriptionRequest, WsMessage};
 use crate::Result;
+use crate::auth::Credentials;
 
 /// What a subscription is targeting.
 #[non_exhaustive]
@@ -74,7 +75,7 @@ pub struct SubscriptionManager {
     interest: Arc<InterestTracker>,
     subscribed_assets: DashSet<String>,
     subscribed_markets: DashSet<String>,
-    last_auth: Arc<RwLock<Option<AuthPayload>>>,
+    last_auth: Arc<RwLock<Option<Credentials>>>,
 }
 
 impl SubscriptionManager {
@@ -267,7 +268,7 @@ impl SubscriptionManager {
     pub fn subscribe_user(
         &self,
         markets: Vec<String>,
-        auth: AuthPayload,
+        auth: Credentials,
     ) -> Result<impl Stream<Item = Result<WsMessage>>> {
         self.interest.add(MessageInterest::USER);
 
