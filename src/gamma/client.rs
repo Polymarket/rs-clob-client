@@ -9,20 +9,20 @@ use url::Url;
 use crate::error::Error;
 
 #[derive(Clone, Debug)]
-pub struct GammaClient {
+pub struct Client {
     host: Url,
     client: ReqwestClient,
 }
 
-impl Default for GammaClient {
+impl Default for Client {
     fn default() -> Self {
-        GammaClient::new("https://gamma-api.polymarket.com")
+        Client::new("https://gamma-api.polymarket.com")
             .expect("Client with default endpoint should succeed")
     }
 }
 
-impl GammaClient {
-    pub fn new(host: &str) -> Result<GammaClient> {
+impl Client {
+    pub fn new(host: &str) -> Result<Client> {
         let mut headers = HeaderMap::new();
 
         headers.insert("User-Agent", HeaderValue::from_static("rs_clob_client"));
