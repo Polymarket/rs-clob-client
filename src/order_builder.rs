@@ -401,9 +401,6 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         // Mask the salt to be <= 2^53 - 1, as the backend parses as an IEEE 754.
         let salt = to_ieee_754_int((self.salt_generator)());
 
-        // Mask the salt to be <= 2^53 - 1, as the backend parses as an IEEE 754.
-        let salt = to_ieee_754_int((self.salt_generator)());
-
         let order = Order {
             salt: U256::from(salt),
             maker: self.funder.unwrap_or(self.signer),
