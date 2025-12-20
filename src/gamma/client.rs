@@ -1,0 +1,81 @@
+use crate::Result;
+use reqwest::{
+    Client as ReqwestClient, Method, Request, StatusCode,
+    header::{HeaderMap, HeaderValue},
+};
+use serde::de::DeserializeOwned;
+use url::Url;
+
+use crate::error::Error;
+
+#[derive(Clone, Debug)]
+pub struct GammaClient {
+    host: Url,
+    client: ReqwestClient,
+}
+
+impl Default for GammaClient {
+    fn default() -> Self {
+        GammaClient::new("https://gamma-api.polymarket.com")
+            .expect("Client with default endpoint should succeed")
+    }
+}
+
+impl GammaClient {
+    pub fn new(host: &str) -> Result<GammaClient> {
+        let mut headers = HeaderMap::new();
+
+        headers.insert("User-Agent", HeaderValue::from_static("rs_clob_client"));
+        headers.insert("Accept", HeaderValue::from_static("*/*"));
+        headers.insert("Connection", HeaderValue::from_static("keep-alive"));
+        headers.insert("Content-Type", HeaderValue::from_static("application/json"));
+        let client = ReqwestClient::builder().default_headers(headers).build()?;
+
+        Ok(Self {
+            host: Url::parse(host)?,
+            client,
+        })
+    }
+
+    async fn request<Response: DeserializeOwned>(
+        &self,
+        mut request: Request,
+        headers: Option<HeaderMap>,
+    ) -> Result<Response> {
+        let method = request.method().clone();
+        let path = request.url().path().to_owned();
+
+        if let Some(h) = headers {
+            *request.headers_mut() = h;
+        }
+
+        let response = self.client.execute(request).await?;
+        let status_code = response.status();
+
+        if !status_code.is_success() {
+            let message = response.text().await.unwrap_or_default();
+
+            return Err(Error::status(status_code, method, path, message));
+        }
+
+        match response.json::<Option<Response>>().await? {
+            Some(response) => Ok(response),
+            None => Err(Error::status(
+                StatusCode::NOT_FOUND,
+                method,
+                path,
+                "Unable to find requested resource",
+            )),
+        }
+    }
+
+    #[must_use]
+    pub fn host(&self) -> &Url {
+        &self.host
+    }
+
+    #[must_use]
+    fn client(&self) -> &ReqwestClient {
+        &self.client
+    }
+}
