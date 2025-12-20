@@ -48,7 +48,7 @@ mod sports {
 
         let expected: ListTeamsResponse = vec![
             ListedTeamBuilder::default()
-                .id(1u32)
+                .id(1_u32)
                 .name("Lakers")
                 .league("NBA")
                 .record("45-37")
@@ -59,7 +59,7 @@ mod sports {
                 .updated_at("2024-06-20T14:45:00Z".parse::<DateTime<Utc>>().unwrap())
                 .build()?,
             ListedTeamBuilder::default()
-                .id(2u32)
+                .id(2_u32)
                 .name("Celtics")
                 .league("NBA")
                 .record("64-18")
@@ -131,9 +131,9 @@ mod sports {
 
         let expected = SportsMarketTypesResponseBuilder::default()
             .market_types(vec![
-                "moneyline".to_string(),
-                "spreads".to_string(),
-                "totals".to_string(),
+                "moneyline".to_owned(),
+                "spreads".to_owned(),
+                "totals".to_owned(),
             ])
             .build()?;
 

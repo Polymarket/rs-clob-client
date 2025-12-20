@@ -1,7 +1,8 @@
-use crate::error::Error;
 use chrono::{DateTime, Utc};
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
+
+use crate::error::Error;
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Builder, Default)]

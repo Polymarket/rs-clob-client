@@ -3,7 +3,6 @@
     reason = "Public Gamma types intentionally include the module name for clarity"
 )]
 
-use crate::Result;
 use reqwest::{
     Client as ReqwestClient, Method, Request, StatusCode,
     header::{HeaderMap, HeaderValue},
@@ -11,11 +10,11 @@ use reqwest::{
 use serde::de::DeserializeOwned;
 use url::Url;
 
-use crate::error::Error;
-
 use super::types::{
     ListTeamsRequest, ListTeamsResponse, SportsMarketTypesResponse, SportsMetadataResponse,
 };
+use crate::Result;
+use crate::error::Error;
 
 #[derive(Clone, Debug)]
 pub struct GammaClient {
