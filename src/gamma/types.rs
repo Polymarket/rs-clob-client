@@ -53,14 +53,14 @@ pub struct ListedTeam {
     pub updated_at: Option<DateTime<Utc>>,
 }
 
-pub type SportsMetadataResponse = Vec<SportsMetadata>;
+pub type SportsMetadataResponse = Vec<Sport>;
 
 #[non_exhaustive]
 #[derive(Debug, Deserialize, Builder, PartialEq, Clone)]
 #[builder(pattern = "owned", build_fn(error = "Error"))]
 #[builder(setter(into))]
 #[serde(rename_all = "camelCase")]
-pub struct SportsMetadata {
+pub struct Sport {
     pub sport: String,
     pub image: String,
     pub resolution: String,

@@ -98,7 +98,7 @@ impl GammaClient {
         self.request(request, None).await
     }
 
-    pub async fn sports_metadata(&self) -> Result<SportsMetadataResponse> {
+    pub async fn sports(&self) -> Result<SportsMetadataResponse> {
         let request = self
             .client()
             .request(Method::GET, format!("{}sports", self.host()))
