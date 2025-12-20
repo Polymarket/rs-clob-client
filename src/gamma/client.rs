@@ -8,6 +8,10 @@ use url::Url;
 
 use crate::error::Error;
 
+use super::types::{
+    ListTeamsRequest, ListTeamsResponse, SportsMarketTypesResponse, SportsMetadataResponse,
+};
+
 #[derive(Clone, Debug)]
 pub struct Client {
     host: Url,
@@ -77,5 +81,33 @@ impl Client {
     #[must_use]
     fn client(&self) -> &ReqwestClient {
         &self.client
+    }
+
+    pub async fn teams(&self, request: &ListTeamsRequest) -> Result<ListTeamsResponse> {
+        let request = self
+            .client()
+            .request(Method::GET, format!("{}teams", self.host()))
+            .query(&request)
+            .build()?;
+
+        self.request(request, None).await
+    }
+
+    pub async fn sports_metadata(&self) -> Result<SportsMetadataResponse> {
+        let request = self
+            .client()
+            .request(Method::GET, format!("{}sports", self.host()))
+            .build()?;
+
+        self.request(request, None).await
+    }
+
+    pub async fn sports_market_types(&self) -> Result<SportsMarketTypesResponse> {
+        let request = self
+            .client()
+            .request(Method::GET, format!("{}sports/market-types", self.host()))
+            .build()?;
+
+        self.request(request, None).await
     }
 }
