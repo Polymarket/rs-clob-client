@@ -271,16 +271,21 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
             ));
         }
 
-        let (levels, amount) = match (side, amount.0) {
-            (Side::Buy, a @ AmountInner::Usdc(_)) => (book.asks, a),
-            (Side::Buy, a @ AmountInner::Shares(_)) => (book.asks, a),
-            (Side::Sell, a @ AmountInner::Shares(_)) => (book.bids, a),
-            (Side::Sell, AmountInner::Usdc(_)) => {
-                return Err(Error::validation(
-                    "Sell Orders must specify their `amount`s in shares",
-                ));
-            }
-            (side, _) => return Err(Error::validation(format!("Invalid side: {side}"))),
+        let (levels, amount) = match side {
+            Side::Buy => match amount.0 {
+                a @ (AmountInner::Usdc(_) | AmountInner::Shares(_)) => (book.asks, a),
+            },
+
+            Side::Sell => match amount.0 {
+                a @ AmountInner::Shares(_) => (book.bids, a),
+                AmountInner::Usdc(_) => {
+                    return Err(Error::validation(
+                        "Sell Orders must specify their `amount`s in shares",
+                    ));
+                }
+            },
+
+            side => return Err(Error::validation(format!("Invalid side: {side}"))),
         };
 
         let first = levels.first().ok_or(Error::validation(format!(
