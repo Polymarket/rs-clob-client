@@ -1,3 +1,8 @@
+#![expect(
+    clippy::module_name_repetitions,
+    reason = "Public Gamma types intentionally include the module name for clarity"
+)]
+
 use crate::Result;
 use reqwest::{
     Client as ReqwestClient, Method, Request, StatusCode,
@@ -13,20 +18,20 @@ use super::types::{
 };
 
 #[derive(Clone, Debug)]
-pub struct Client {
+pub struct GammaClient {
     host: Url,
     client: ReqwestClient,
 }
 
-impl Default for Client {
+impl Default for GammaClient {
     fn default() -> Self {
-        Client::new("https://gamma-api.polymarket.com")
+        GammaClient::new("https://gamma-api.polymarket.com")
             .expect("Client with default endpoint should succeed")
     }
 }
 
-impl Client {
-    pub fn new(host: &str) -> Result<Client> {
+impl GammaClient {
+    pub fn new(host: &str) -> Result<GammaClient> {
         let mut headers = HeaderMap::new();
 
         headers.insert("User-Agent", HeaderValue::from_static("rs_clob_client"));
