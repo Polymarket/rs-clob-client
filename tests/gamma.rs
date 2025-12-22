@@ -143,3 +143,290 @@ mod sports {
         Ok(())
     }
 }
+
+mod tags {
+    use chrono::{DateTime, Utc};
+    use httpmock::{Method::GET, MockServer};
+    use polymarket_client_sdk::gamma::{
+        GammaClient,
+        types::{
+            RelatedTagsByIdRequestBuilder, RelatedTagsBySlugRequestBuilder, TagBuilder,
+            TagRelationshipBuilder, TagsRequest,
+        },
+    };
+    use reqwest::StatusCode;
+    use serde_json::json;
+
+    #[tokio::test]
+    async fn tags_should_succeed() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = GammaClient::new(&server.base_url())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(GET).path("/tags");
+            then.status(StatusCode::OK).json_body(json!([
+                {
+                    "id": "1",
+                    "label": "Politics",
+                    "slug": "politics",
+                    "forceShow": true,
+                    "publishedAt": "2024-01-15T10:30:00Z",
+                    "createdBy": 1,
+                    "updatedBy": 2,
+                    "createdAt": "2024-01-15T10:30:00Z",
+                    "updatedAt": "2024-06-20T14:45:00Z",
+                    "forceHide": false,
+                    "isCarousel": true
+                }
+            ]));
+        });
+
+        let response = client.tags(&TagsRequest::default()).await?;
+
+        let expected = vec![
+            TagBuilder::default()
+                .id("1")
+                .label("Politics")
+                .slug("politics")
+                .force_show(true)
+                .published_at("2024-01-15T10:30:00Z")
+                .created_by(1_i64)
+                .updated_by(2_i64)
+                .created_at("2024-01-15T10:30:00Z".parse::<DateTime<Utc>>().unwrap())
+                .updated_at("2024-06-20T14:45:00Z".parse::<DateTime<Utc>>().unwrap())
+                .force_hide(false)
+                .is_carousel(true)
+                .build()?,
+        ];
+
+        assert_eq!(response, expected);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn tag_by_id_should_succeed() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = GammaClient::new(&server.base_url())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(GET).path("/tags/42");
+            then.status(StatusCode::OK).json_body(json!({
+                "id": "42",
+                "label": "Sports",
+                "slug": "sports",
+                "forceShow": false,
+                "forceHide": false,
+                "isCarousel": false
+            }));
+        });
+
+        let response = client.tag_by_id(42, None).await?;
+
+        let expected = TagBuilder::default()
+            .id("42")
+            .label("Sports")
+            .slug("sports")
+            .force_show(false)
+            .force_hide(false)
+            .is_carousel(false)
+            .build()?;
+
+        assert_eq!(response, expected);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn tag_by_slug_should_succeed() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = GammaClient::new(&server.base_url())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(GET).path("/tags/slug/crypto");
+            then.status(StatusCode::OK).json_body(json!({
+                "id": "99",
+                "label": "Crypto",
+                "slug": "crypto",
+                "forceShow": true,
+                "forceHide": false,
+                "isCarousel": true
+            }));
+        });
+
+        let response = client.tag_by_slug("crypto", None).await?;
+
+        let expected = TagBuilder::default()
+            .id("99")
+            .label("Crypto")
+            .slug("crypto")
+            .force_show(true)
+            .force_hide(false)
+            .is_carousel(true)
+            .build()?;
+
+        assert_eq!(response, expected);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn tag_relationships_by_id_should_succeed() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = GammaClient::new(&server.base_url())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(GET).path("/tags/42/related-tags");
+            then.status(StatusCode::OK).json_body(json!([
+                {
+                    "id": "1",
+                    "tagID": 42,
+                    "relatedTagID": 99,
+                    "rank": 1
+                }
+            ]));
+        });
+
+        let request = RelatedTagsByIdRequestBuilder::default()
+            .id(42_u64)
+            .build()?;
+        let response = client.tag_relationships_by_id(&request).await?;
+
+        let expected = vec![
+            TagRelationshipBuilder::default()
+                .id("1")
+                .tag_id(42_i64)
+                .related_tag_id(99_u64)
+                .rank(1_u64)
+                .build()?,
+        ];
+
+        assert_eq!(response, expected);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn tag_relationships_by_slug_should_succeed() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = GammaClient::new(&server.base_url())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(GET).path("/tags/slug/politics/related-tags");
+            then.status(StatusCode::OK).json_body(json!([
+                {
+                    "id": "2",
+                    "tagID": 10,
+                    "relatedTagID": 20,
+                    "rank": 5
+                }
+            ]));
+        });
+
+        let request = RelatedTagsBySlugRequestBuilder::default()
+            .slug("politics")
+            .build()?;
+        let response = client.tag_relationships_by_slug(&request).await?;
+
+        let expected = vec![
+            TagRelationshipBuilder::default()
+                .id("2")
+                .tag_id(10_i64)
+                .related_tag_id(20_u64)
+                .rank(5_u64)
+                .build()?,
+        ];
+
+        assert_eq!(response, expected);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn related_tags_by_id_should_succeed() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = GammaClient::new(&server.base_url())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(GET).path("/tags/42/related-tags/tags");
+            then.status(StatusCode::OK).json_body(json!([
+                {
+                    "id": "99",
+                    "label": "Related Tag",
+                    "slug": "related-tag",
+                    "forceShow": false,
+                    "forceHide": false,
+                    "isCarousel": false
+                }
+            ]));
+        });
+
+        let request = RelatedTagsByIdRequestBuilder::default()
+            .id(42_u64)
+            .build()?;
+        let response = client.related_tags_by_id(&request).await?;
+
+        let expected = vec![
+            TagBuilder::default()
+                .id("99")
+                .label("Related Tag")
+                .slug("related-tag")
+                .force_show(false)
+                .force_hide(false)
+                .is_carousel(false)
+                .build()?,
+        ];
+
+        assert_eq!(response, expected);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn related_tags_by_slug_should_succeed() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = GammaClient::new(&server.base_url())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(GET)
+                .path("/tags/slug/politics/related-tags/tags");
+            then.status(StatusCode::OK).json_body(json!([
+                {
+                    "id": "50",
+                    "label": "Elections",
+                    "slug": "elections",
+                    "forceShow": true,
+                    "forceHide": false,
+                    "isCarousel": true
+                }
+            ]));
+        });
+
+        let request = RelatedTagsBySlugRequestBuilder::default()
+            .slug("politics")
+            .build()?;
+        let response = client.related_tags_by_slug(&request).await?;
+
+        let expected = vec![
+            TagBuilder::default()
+                .id("50")
+                .label("Elections")
+                .slug("elections")
+                .force_show(true)
+                .force_hide(false)
+                .is_carousel(true)
+                .build()?,
+        ];
+
+        assert_eq!(response, expected);
+        mock.assert();
+
+        Ok(())
+    }
+}
