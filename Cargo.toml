@@ -36,7 +36,7 @@ futures = "0.3.31"
 hmac = "0.12.1"
 phf = { version = "0.13.1", features = ["macros"] }
 rand = "0.9.2"
-reqwest = { version = "0.12.26", features = ["json"] }
+reqwest = { version = "0.12.27", features = ["json"] }
 rust_decimal = { version = "1.39.0", features = ["serde"] }
 rust_decimal_macros = "1.39.0"
 sec = { version = "1.0.0", features = ["deserialize"] }
