@@ -1,12 +1,16 @@
 #![allow(clippy::print_stdout, reason = "Examples are okay to print to stdout")]
 
 use polymarket_client_sdk::gamma::GammaClient;
-use polymarket_client_sdk::gamma::types::{ListTeamsRequest, ListTeamsRequestBuilder};
+use polymarket_client_sdk::gamma::types::{
+    ListTeamsRequest, ListTeamsRequestBuilder, RelatedTagsByIdRequestBuilder,
+    RelatedTagsBySlugRequestBuilder, TagsRequestBuilder,
+};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let client = GammaClient::default();
 
+    //---- sports endpoints
     println!(
         "teams default -- {:?}",
         client.teams(&ListTeamsRequest::default()).await
@@ -26,6 +30,45 @@ async fn main() -> anyhow::Result<()> {
     println!(
         "sports_market_types -- {:?}",
         client.sports_market_types().await
+    );
+
+    //---- tag endpoints
+    let request = TagsRequestBuilder::default().build()?;
+    println!("tags -- {:?}", client.tags(&request).await);
+
+    println!("tag_by_id -- {:?}", client.tag_by_id(1, None).await);
+
+    println!(
+        "tag_by_slug -- {:?}",
+        client.tag_by_slug("politics", None).await
+    );
+
+    let request = RelatedTagsByIdRequestBuilder::default().id(1_u64).build()?;
+    println!(
+        "tag_relationships_by_id -- {:?}",
+        client.tag_relationships_by_id(&request).await
+    );
+
+    let request = RelatedTagsBySlugRequestBuilder::default()
+        .slug("politics")
+        .build()?;
+    println!(
+        "tag_relationships_by_slug -- {:?}",
+        client.tag_relationships_by_slug(&request).await
+    );
+
+    let request = RelatedTagsByIdRequestBuilder::default().id(1_u64).build()?;
+    println!(
+        "related_tags_by_id -- {:?}",
+        client.related_tags_by_id(&request).await
+    );
+
+    let request = RelatedTagsBySlugRequestBuilder::default()
+        .slug("politics")
+        .build()?;
+    println!(
+        "related_tags_by_slug -- {:?}",
+        client.related_tags_by_slug(&request).await
     );
 
     Ok(())
