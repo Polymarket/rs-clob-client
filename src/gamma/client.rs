@@ -11,7 +11,8 @@ use serde::de::DeserializeOwned;
 use url::Url;
 
 use super::types::{
-    ListTeamsRequest, ListTeamsResponse, SportsMarketTypesResponse, SportsMetadataResponse,
+    ListTeamsRequest, ListTeamsResponse, RelatedTagsByIdRequest, RelatedTagsBySlugRequest,
+    SportsMarketTypesResponse, SportsMetadataResponse, Tag, TagRelationship, TagsRequest,
 };
 use crate::Result;
 use crate::error::Error;
@@ -110,6 +111,105 @@ impl GammaClient {
         let request = self
             .client()
             .request(Method::GET, format!("{}sports/market-types", self.host()))
+            .build()?;
+
+        self.request(request, None).await
+    }
+
+    pub async fn tags(&self, request: &TagsRequest) -> Result<Vec<Tag>> {
+        let request = self
+            .client()
+            .request(Method::GET, format!("{}tags", self.host()))
+            .query(request)
+            .build()?;
+
+        self.request(request, None).await
+    }
+
+    pub async fn tag_by_id(&self, id: u32, include_template: Option<bool>) -> Result<Tag> {
+        let mut request = self
+            .client()
+            .request(Method::GET, format!("{}tags/{}", self.host(), id));
+
+        if let Some(include) = include_template {
+            request = request.query(&[("include_template", include)]);
+        }
+
+        self.request(request.build()?, None).await
+    }
+
+    pub async fn tag_by_slug(&self, slug: &str, include_template: Option<bool>) -> Result<Tag> {
+        let mut request = self
+            .client()
+            .request(Method::GET, format!("{}tags/slug/{}", self.host(), slug));
+
+        if let Some(include) = include_template {
+            request = request.query(&[("include_template", include)]);
+        }
+
+        self.request(request.build()?, None).await
+    }
+
+    pub async fn tag_relationships_by_id(
+        &self,
+        request: &RelatedTagsByIdRequest,
+    ) -> Result<Vec<TagRelationship>> {
+        let request = self
+            .client()
+            .request(
+                Method::GET,
+                format!("{}tags/{}/related-tags", self.host(), request.id),
+            )
+            .query(request)
+            .build()?;
+
+        self.request(request, None).await
+    }
+
+    pub async fn tag_relationships_by_slug(
+        &self,
+        request: &RelatedTagsBySlugRequest,
+    ) -> Result<Vec<TagRelationship>> {
+        let request = self
+            .client()
+            .request(
+                Method::GET,
+                format!("{}tags/slug/{}/related-tags", self.host(), request.slug),
+            )
+            .query(request)
+            .build()?;
+
+        self.request(request, None).await
+    }
+
+    pub async fn related_tags_by_id(&self, request: &RelatedTagsByIdRequest) -> Result<Vec<Tag>> {
+        let request = self
+            .client()
+            .request(
+                Method::GET,
+                format!("{}tags/{}/related-tags/tags", self.host(), request.id),
+            )
+            .query(request)
+            .build()?;
+
+        self.request(request, None).await
+    }
+
+    pub async fn related_tags_by_slug(
+        &self,
+        request: &RelatedTagsBySlugRequest,
+    ) -> Result<Vec<Tag>> {
+        let request = self
+            .client()
+            .request(
+                Method::GET,
+                format!(
+                    "{}tags/slug/{}/related-tags/tags",
+                    self.host(),
+                    request.slug
+                ),
+            )
+            .query(request)
             .build()?;
 
         self.request(request, None).await
