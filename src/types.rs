@@ -164,8 +164,8 @@ pub enum OrderStatusType {
     #[serde(alias = "matched")]
     Matched,
 
-    #[serde(alias = "cancelled")]
-    Cancelled,
+    #[serde(alias = "canceled")]
+    Canceled,
 
     #[serde(alias = "delayed")]
     Delayed,
