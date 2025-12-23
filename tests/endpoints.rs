@@ -12,8 +12,8 @@ use alloy::primitives::U256;
 use chrono::{DateTime, Utc};
 use httpmock::MockServer;
 use polymarket_client_sdk::POLYGON;
+use polymarket_client_sdk::clob::types::{SignatureType, TickSize};
 use polymarket_client_sdk::clob::{Client, Config};
-use polymarket_client_sdk::types::{SignatureType, TickSize};
 use reqwest::StatusCode;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
@@ -30,8 +30,7 @@ mod unauthenticated {
     use chrono::{TimeDelta, TimeZone as _};
     use futures_util::future;
     use futures_util::stream::StreamExt as _;
-    use polymarket_client_sdk::error::Status;
-    use polymarket_client_sdk::types::{
+    use polymarket_client_sdk::clob::types::{
         FeeRateResponseBuilder, LastTradePriceRequestBuilder, LastTradePriceResponseBuilder,
         LastTradesPricesResponseBuilder, MarketResponse, MarketResponseBuilder,
         MidpointRequestBuilder, MidpointResponseBuilder, MidpointsResponseBuilder,
@@ -41,6 +40,7 @@ mod unauthenticated {
         SpreadRequestBuilder, SpreadResponseBuilder, SpreadsResponseBuilder, TickSize,
         TickSizeResponseBuilder, TokenBuilder,
     };
+    use polymarket_client_sdk::error::Status;
     use reqwest::Method;
 
     use super::*;
@@ -1120,7 +1120,7 @@ mod authenticated {
     use chrono::NaiveDate;
     use httpmock::Method::{DELETE, GET, POST};
     use polymarket_client_sdk::clob::ConfigBuilder;
-    use polymarket_client_sdk::types::{
+    use polymarket_client_sdk::clob::types::{
         ApiKeysResponseBuilder, AssetType, BalanceAllowanceRequestBuilder,
         BalanceAllowanceResponseBuilder, BanStatusResponseBuilder, CancelMarketOrderRequestBuilder,
         CancelOrdersResponseBuilder, CurrentRewardResponseBuilder,
@@ -2474,7 +2474,7 @@ mod builder_authenticated {
     use httpmock::Method::DELETE;
     use polymarket_client_sdk::auth::builder::Config as BuilderConfig;
     use polymarket_client_sdk::clob::ConfigBuilder;
-    use polymarket_client_sdk::types::{
+    use polymarket_client_sdk::clob::types::{
         BuilderApiKeyResponseBuilder, BuilderTradeResponseBuilder, OrderStatusType, PageBuilder,
         Side, TradesRequestBuilder,
     };

@@ -19,11 +19,10 @@ use serde_json::json;
 use url::Url;
 
 use crate::auth::builder::{Builder, Config as BuilderConfig};
-use crate::auth::{Credentials, Kind as AuthKind, Normal};
-use crate::clob::state::{Authenticated, State, Unauthenticated};
-use crate::error::{Error, Synchronization};
-use crate::order_builder::{Limit, Market, OrderBuilder, generate_seed};
-use crate::types::{
+use crate::auth::state::{Authenticated, State, Unauthenticated};
+use crate::auth::{Credentials, Kind, Normal};
+use crate::clob::order_builder::{Limit, Market, OrderBuilder, generate_seed};
+use crate::clob::types::{
     ApiKeysResponse, BalanceAllowanceRequest, BalanceAllowanceResponse, BanStatusResponse,
     BuilderApiKeyResponse, BuilderTradeResponse, CancelMarketOrderRequest, CancelOrdersResponse,
     CurrentRewardResponse, DeleteNotificationsRequest, FeeRateResponse, LastTradePriceRequest,
@@ -37,6 +36,7 @@ use crate::types::{
     UpdateBalanceAllowanceRequest, UserEarningResponse, UserRewardsEarningRequest,
     UserRewardsEarningResponse,
 };
+use crate::error::{Error, Synchronization};
 use crate::{AMOY, POLYGON, Result, Timestamp, auth, contract_config};
 
 const ORDER_NAME: Option<Cow<'static, str>> = Some(Cow::Borrowed("Polymarket CTF Exchange"));
@@ -44,54 +44,9 @@ const VERSION: Option<Cow<'static, str>> = Some(Cow::Borrowed("1"));
 
 const TERMINAL_CURSOR: &str = "LTE="; // base64("-1")
 
-/// Each [`Client`] can exist in one state at a time, i.e. [`state::Unauthenticated`] or
-/// [`state::Authenticated`].
-pub mod state {
-    use alloy::primitives::Address;
-
-    use super::AuthKind;
-    use crate::auth::Credentials;
-
-    /// The initial state of the [`super::Client`]
-    #[non_exhaustive]
-    #[derive(Clone, Debug)]
-    pub struct Unauthenticated;
-
-    /// The elevated state of the [`super::Client`]. Calling [`super::Client::authentication_builder`]
-    /// will return an [`super::AuthenticationBuilder`], which can be turned into
-    /// an authenticated client via [`super::AuthenticationBuilder::authenticate`].
-    ///
-    /// See `examples/authenticated.rs` for more context.
-    #[non_exhaustive]
-    #[derive(Clone, Debug)]
-    pub struct Authenticated<K: AuthKind> {
-        /// The signer's address that created the credentials
-        pub(crate) address: Address,
-        /// The [`Credentials`]'s `secret` is used to generate an [`crate::signer::hmac`] which is
-        /// passed in the L2 headers ([`super::HeaderMap`]) `POLY_SIGNATURE` field.
-        pub(crate) credentials: Credentials,
-        /// The [`Kind`] that this [`Authenticated`] exhibits. Used to generate additional headers
-        /// for different types of authentication, e.g. Builder.
-        pub(crate) kind: K,
-    }
-
-    /// The client state can only be [`Unauthenticated`] or [`Authenticated`].
-    pub trait State: sealed::Sealed {}
-
-    impl State for Unauthenticated {}
-    impl sealed::Sealed for Unauthenticated {}
-
-    impl<K: AuthKind> State for Authenticated<K> {}
-    impl<K: AuthKind> sealed::Sealed for Authenticated<K> {}
-
-    mod sealed {
-        pub trait Sealed {}
-    }
-}
-
 /// The type used to build a request to authenticate the inner [`Client<Unauthorized>`]. Calling
 /// `authenticate` on this will elevate that inner `client` into an [`Client<Authenticated<K>>`].
-pub struct AuthenticationBuilder<'signer, S: Signer, K: AuthKind = Normal> {
+pub struct AuthenticationBuilder<'signer, S: Signer, K: Kind = Normal> {
     /// The initially unauthenticated client that is "carried forward" into the authenticated client.
     client: Client<Unauthenticated>,
     /// The signer used to generate the L1 headers that will return a set of [`Credentials`].
@@ -114,7 +69,7 @@ pub struct AuthenticationBuilder<'signer, S: Signer, K: AuthKind = Normal> {
     salt_generator: Option<fn() -> u64>,
 }
 
-impl<S: Signer, K: AuthKind> AuthenticationBuilder<'_, S, K> {
+impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
     #[must_use]
     pub fn nonce(mut self, nonce: u32) -> Self {
         self.nonce = Some(nonce);
@@ -818,7 +773,7 @@ impl Client<Unauthenticated> {
     }
 }
 
-impl<K: AuthKind> Client<Authenticated<K>> {
+impl<K: Kind> Client<Authenticated<K>> {
     /// Demotes this authenticated [`Client<Authenticated<K>>`] to an unauthenticated one
     pub fn deauthenticate(self) -> Result<Client<Unauthenticated>> {
         let inner = Arc::into_inner(self.inner).ok_or(Synchronization)?;

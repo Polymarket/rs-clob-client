@@ -15,7 +15,7 @@ pub enum Kind {
     Status,
     /// Error related to invalid state within polymarket-client-sdk
     Validation,
-    /// Error related to synchronization of [`crate::clob::Client`] logging in and out
+    /// Error related to synchronization of authenticated clients logging in and out
     Synchronization,
     /// Internal error from dependencies
     Internal,

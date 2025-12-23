@@ -9,8 +9,9 @@ use serde::Deserialize;
 use sha2::Sha256;
 use uuid::Uuid;
 
-use crate::types::ApiKey;
 use crate::{Result, Timestamp};
+
+pub type ApiKey = Uuid;
 
 /// Generic set of credentials used to authenticate to the Polymarket API. These credentials are
 /// returned when calling [`crate::clob::Client::create_or_derive_api_key`], [`crate::clob::Client::derive_api_key`], or
@@ -32,6 +33,50 @@ impl Credentials {
             secret: Secret::from(secret),
             passphrase: Secret::from(passphrase),
         }
+    }
+}
+
+/// Each [`Client`] can exist in one state at a time, i.e. [`state::Unauthenticated`] or
+/// [`state::Authenticated`].
+pub mod state {
+    use alloy::primitives::Address;
+
+    use crate::auth::{Credentials, Kind};
+
+    /// The initial state of the [`super::Client`]
+    #[non_exhaustive]
+    #[derive(Clone, Debug)]
+    pub struct Unauthenticated;
+
+    /// The elevated state of the [`super::Client`]. Calling [`super::Client::authentication_builder`]
+    /// will return an [`super::AuthenticationBuilder`], which can be turned into
+    /// an authenticated clob via [`super::AuthenticationBuilder::authenticate`].
+    ///
+    /// See `examples/authenticated.rs` for more context.
+    #[non_exhaustive]
+    #[derive(Clone, Debug)]
+    pub struct Authenticated<K: Kind> {
+        /// The signer's address that created the credentials
+        pub(crate) address: Address,
+        /// The [`Credentials`]'s `secret` is used to generate an [`crate::signer::hmac`] which is
+        /// passed in the L2 headers ([`super::HeaderMap`]) `POLY_SIGNATURE` field.
+        pub(crate) credentials: Credentials,
+        /// The [`Kind`] that this [`Authenticated`] exhibits. Used to generate additional headers
+        /// for different types of authentication, e.g. Builder.
+        pub(crate) kind: K,
+    }
+
+    /// The clob state can only be [`Unauthenticated`] or [`Authenticated`].
+    pub trait State: sealed::Sealed {}
+
+    impl State for Unauthenticated {}
+    impl sealed::Sealed for Unauthenticated {}
+
+    impl<K: Kind> State for Authenticated<K> {}
+    impl<K: Kind> sealed::Sealed for Authenticated<K> {}
+
+    mod sealed {
+        pub trait Sealed {}
     }
 }
 
@@ -144,8 +189,8 @@ pub(crate) mod l2 {
     use reqwest::Request;
     use reqwest::header::HeaderMap;
 
+    use crate::auth::state::Authenticated;
     use crate::auth::{Kind, hmac, to_message};
-    use crate::clob::state::Authenticated;
     use crate::{Result, Timestamp};
 
     pub(crate) const POLY_ADDRESS: &str = "POLY_ADDRESS";
@@ -353,7 +398,7 @@ mod tests {
 
     use super::*;
     use crate::auth::builder::Config;
-    use crate::clob::state::Authenticated;
+    use crate::auth::state::Authenticated;
     use crate::{AMOY, Result};
 
     // publicly known private key

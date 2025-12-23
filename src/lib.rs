@@ -3,9 +3,8 @@
 pub mod auth;
 pub mod clob;
 pub mod error;
+#[cfg(feature = "gamma")]
 pub mod gamma;
-pub mod order_builder;
-pub mod types;
 
 use alloy::primitives::{Address, ChainId, address};
 use phf::phf_map;

@@ -10,13 +10,13 @@ use rust_decimal::prelude::ToPrimitive as _;
 
 use crate::Result;
 use crate::auth::Kind as AuthKind;
+use crate::auth::state::Authenticated;
 use crate::clob::Client;
-use crate::clob::state::Authenticated;
-use crate::error::Error;
-use crate::types::{
+use crate::clob::types::{
     Amount, AmountInner, Order, OrderBookSummaryRequest, OrderType, Side, SignableOrder,
     SignatureType,
 };
+use crate::error::Error;
 
 pub(crate) const USDC_DECIMALS: u32 = 6;
 

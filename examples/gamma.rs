@@ -1,14 +1,20 @@
 #![allow(clippy::print_stdout, reason = "Examples are okay to print to stdout")]
+#[cfg(not(feature = "gamma"))]
+fn main() {}
 
-use polymarket_client_sdk::gamma::GammaClient;
-use polymarket_client_sdk::gamma::types::{
-    ListTeamsRequest, ListTeamsRequestBuilder, RelatedTagsByIdRequestBuilder,
-    RelatedTagsBySlugRequestBuilder, TagsRequestBuilder,
+#[cfg(feature = "gamma")]
+use {
+    polymarket_client_sdk::gamma::Client,
+    polymarket_client_sdk::gamma::types::{
+        ListTeamsRequest, ListTeamsRequestBuilder, RelatedTagsByIdRequestBuilder,
+        RelatedTagsBySlugRequestBuilder, TagsRequestBuilder,
+    },
 };
 
+#[cfg(feature = "gamma")]
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let client = GammaClient::default();
+    let client = Client::default();
 
     //---- sports endpoints
     println!(

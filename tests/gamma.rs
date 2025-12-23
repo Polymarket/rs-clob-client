@@ -1,8 +1,10 @@
+#![cfg(feature = "gamma")]
+
 mod sports {
     use chrono::{DateTime, Utc};
     use httpmock::{Method::GET, MockServer};
     use polymarket_client_sdk::gamma::{
-        GammaClient,
+        Client,
         types::{
             ListTeamsRequest, ListTeamsResponse, ListedTeamBuilder, SportBuilder,
             SportsMarketTypesResponseBuilder, SportsMetadataResponse,
@@ -14,7 +16,7 @@ mod sports {
     #[tokio::test]
     async fn teams_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
-        let client = GammaClient::new(&server.base_url())?;
+        let client = Client::new(&server.base_url())?;
 
         let mock = server.mock(|when, then| {
             when.method(GET).path("/teams");
@@ -80,7 +82,7 @@ mod sports {
     #[tokio::test]
     async fn sports_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
-        let client = GammaClient::new(&server.base_url())?;
+        let client = Client::new(&server.base_url())?;
 
         let mock = server.mock(|when, then| {
             when.method(GET).path("/sports");
@@ -118,7 +120,7 @@ mod sports {
     #[tokio::test]
     async fn sports_market_types_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
-        let client = GammaClient::new(&server.base_url())?;
+        let client = Client::new(&server.base_url())?;
 
         let mock = server.mock(|when, then| {
             when.method(GET).path("/sports/market-types");
@@ -148,7 +150,7 @@ mod tags {
     use chrono::{DateTime, Utc};
     use httpmock::{Method::GET, MockServer};
     use polymarket_client_sdk::gamma::{
-        GammaClient,
+        Client,
         types::{
             RelatedTagsByIdRequestBuilder, RelatedTagsBySlugRequestBuilder, TagBuilder,
             TagRelationshipBuilder, TagsRequest,
@@ -160,7 +162,7 @@ mod tags {
     #[tokio::test]
     async fn tags_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
-        let client = GammaClient::new(&server.base_url())?;
+        let client = Client::new(&server.base_url())?;
 
         let mock = server.mock(|when, then| {
             when.method(GET).path("/tags");
@@ -208,7 +210,7 @@ mod tags {
     #[tokio::test]
     async fn tag_by_id_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
-        let client = GammaClient::new(&server.base_url())?;
+        let client = Client::new(&server.base_url())?;
 
         let mock = server.mock(|when, then| {
             when.method(GET).path("/tags/42");
@@ -242,7 +244,7 @@ mod tags {
     #[tokio::test]
     async fn tag_by_slug_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
-        let client = GammaClient::new(&server.base_url())?;
+        let client = Client::new(&server.base_url())?;
 
         let mock = server.mock(|when, then| {
             when.method(GET).path("/tags/slug/crypto");
@@ -276,7 +278,7 @@ mod tags {
     #[tokio::test]
     async fn tag_relationships_by_id_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
-        let client = GammaClient::new(&server.base_url())?;
+        let client = Client::new(&server.base_url())?;
 
         let mock = server.mock(|when, then| {
             when.method(GET).path("/tags/42/related-tags");
@@ -313,7 +315,7 @@ mod tags {
     #[tokio::test]
     async fn tag_relationships_by_slug_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
-        let client = GammaClient::new(&server.base_url())?;
+        let client = Client::new(&server.base_url())?;
 
         let mock = server.mock(|when, then| {
             when.method(GET).path("/tags/slug/politics/related-tags");
@@ -350,7 +352,7 @@ mod tags {
     #[tokio::test]
     async fn related_tags_by_id_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
-        let client = GammaClient::new(&server.base_url())?;
+        let client = Client::new(&server.base_url())?;
 
         let mock = server.mock(|when, then| {
             when.method(GET).path("/tags/42/related-tags/tags");
@@ -391,7 +393,7 @@ mod tags {
     #[tokio::test]
     async fn related_tags_by_slug_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
-        let client = GammaClient::new(&server.base_url())?;
+        let client = Client::new(&server.base_url())?;
 
         let mock = server.mock(|when, then| {
             when.method(GET)

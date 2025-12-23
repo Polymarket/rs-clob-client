@@ -22,10 +22,9 @@ use strum_macros::Display;
 use uuid::Uuid;
 
 use crate::Result;
+use crate::auth::ApiKey;
+use crate::clob::order_builder::{LOT_SIZE_SCALE, USDC_DECIMALS};
 use crate::error::Error;
-use crate::order_builder::{LOT_SIZE_SCALE, USDC_DECIMALS};
-
-pub type ApiKey = Uuid;
 
 type OrderId = String;
 type TradeId = String;

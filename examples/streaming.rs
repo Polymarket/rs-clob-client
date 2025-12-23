@@ -5,8 +5,8 @@ use std::str::FromStr as _;
 use alloy::signers::Signer as _;
 use alloy::signers::local::LocalSigner;
 use futures::{StreamExt as _, future};
+use polymarket_client_sdk::clob::types::TradesRequestBuilder;
 use polymarket_client_sdk::clob::{Client, Config};
-use polymarket_client_sdk::types::TradesRequestBuilder;
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 use tokio::join;
 

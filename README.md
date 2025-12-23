@@ -133,7 +133,7 @@ The **signature_type** parameter tells the system how to verify your signatures:
 - `signature_type=1`: Email/Magic wallet signatures (delegated signing)
 - `signature_type=2`: Browser wallet proxy signatures (when using a proxy contract, not direct wallet connections)
 
-See [SignatureType](src/types.rs#L115) for more information.
+See [SignatureType](src/clob/types.rs#L115) for more information.
 
 **Place a market order**
 
@@ -144,7 +144,7 @@ use alloy::signers::Signer as _;
 use alloy::signers::local::LocalSigner;
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 use polymarket_client_sdk::clob::{Client, Config};
-use polymarket_client_sdk::types::{Amount, OrderType, Side};
+use polymarket_client_sdk::clob::types::{Amount, OrderType, Side};
 use rust_decimal::Decimal;
 
 #[tokio::main]
@@ -180,7 +180,7 @@ use alloy::signers::Signer as _;
 use alloy::signers::local::LocalSigner;
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 use polymarket_client_sdk::clob::{Client, Config};
-use polymarket_client_sdk::types::{Amount, OrderType, Side};
+use polymarket_client_sdk::clob::types::{Amount, OrderType, Side};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 
@@ -220,7 +220,7 @@ use alloy::signers::local::LocalSigner;
 use polymarket_client_sdk::auth::builder::Config as BuilderConfig;
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 use polymarket_client_sdk::clob::{Client, Config};
-use polymarket_client_sdk::types::{SignatureType, TradesRequest};
+use polymarket_client_sdk::clob::types::{SignatureType, TradesRequest};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

@@ -10,7 +10,7 @@ use std::str::FromStr as _;
 use alloy::primitives::{Address, U256};
 use chrono::{DateTime, Utc};
 use httpmock::MockServer;
-use polymarket_client_sdk::types::{
+use polymarket_client_sdk::clob::types::{
     Amount, OrderSummary, OrderType, Side, SignatureType, TickSize,
 };
 use reqwest::StatusCode;
@@ -1178,8 +1178,8 @@ mod limit {
 }
 
 mod market {
+    use polymarket_client_sdk::clob::types::OrderSummaryBuilder;
     use polymarket_client_sdk::error::Validation;
-    use polymarket_client_sdk::types::OrderSummaryBuilder;
     use serde_json::json;
 
     use super::*;
