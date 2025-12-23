@@ -154,6 +154,30 @@ pub enum SignatureType {
 }
 
 #[non_exhaustive]
+#[derive(Clone, Copy, Display, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[serde(rename_all = "UPPERCASE")]
+#[strum(serialize_all = "UPPERCASE")]
+pub enum OrderStatusType {
+    #[serde(alias = "live")]
+    Live,
+
+    #[serde(alias = "matched")]
+    Matched,
+
+    #[serde(alias = "canceled")]
+    Canceled,
+
+    #[serde(alias = "delayed")]
+    Delayed,
+
+    #[serde(alias = "unmatched")]
+    Unmatched,
+
+    #[serde(other)]
+    Unknown,
+}
+
+#[non_exhaustive]
 #[derive(
     Clone, Copy, Debug, Default, Display, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
 )]
@@ -606,8 +630,7 @@ pub struct PostOrderResponse {
     #[serde(rename = "orderID")]
     #[builder(setter(into))]
     pub order_id: String,
-    #[builder(setter(into))]
-    pub status: String,
+    pub status: OrderStatusType,
     pub success: bool,
     #[builder(default)]
     #[serde(default)]
@@ -639,8 +662,7 @@ where
 pub struct OpenOrderResponse {
     #[builder(setter(into))]
     pub id: OrderId,
-    #[builder(setter(into))]
-    pub status: String,
+    pub status: OrderStatusType,
     pub owner: ApiKey,
     pub maker_address: Address,
     #[builder(setter(into))]
@@ -744,8 +766,7 @@ pub struct TradeResponse {
     pub size: Decimal,
     pub fee_rate_bps: Decimal,
     pub price: Decimal,
-    #[builder(setter(into))]
-    pub status: String,
+    pub status: OrderStatusType,
     #[serde_as(as = "TimestampSeconds<String>")]
     pub match_time: DateTime<Utc>,
     #[serde_as(as = "TimestampSeconds<String>")]
@@ -1249,8 +1270,7 @@ pub struct BuilderTradeResponse {
     pub size: Decimal,
     pub size_usdc: Decimal,
     pub price: Decimal,
-    #[builder(setter(into))]
-    pub status: String,
+    pub status: OrderStatusType,
     #[builder(setter(into))]
     pub outcome: String,
     pub outcome_index: u32,
