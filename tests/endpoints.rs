@@ -1127,7 +1127,7 @@ mod authenticated {
         DeleteNotificationsRequestBuilder, EarningBuilder, MakerOrderBuilder,
         MarketRewardResponseBuilder, MarketRewardsConfigBuilder, NotificationPayloadBuilder,
         NotificationResponseBuilder, OpenOrderResponseBuilder, OrderScoringResponseBuilder,
-        OrderType, OrdersRequestBuilder, PageBuilder, PostOrderResponseBuilder,
+        OrderStatusType, OrderType, OrdersRequestBuilder, PageBuilder, PostOrderResponseBuilder,
         RewardsConfigBuilder, Side, SignableOrder, SignedOrderBuilder, TokenBuilder,
         TotalUserEarningResponseBuilder, TradeResponseBuilder, TraderSide, TradesRequestBuilder,
         UserEarningResponseBuilder, UserRewardsEarningRequestBuilder,
@@ -1359,7 +1359,7 @@ mod authenticated {
                 .making_amount(Decimal::ZERO)
                 .taking_amount(Decimal::ZERO)
                 .order_id("0x23b457271bce9fa09b4f79125c9ec09e968235a462de82e318ef4eb6fe0ffeb0")
-                .status("live")
+                .status(OrderStatusType::Live)
                 .success(true)
                 .build()?,
         ];
@@ -1377,7 +1377,7 @@ mod authenticated {
 
         let json = json!({
             "id": "1",
-            "status": "open",
+            "status": "LIVE",
             "owner": "ffffffff-ffff-ffff-ffff-ffffffffffff",
             "maker_address": "0x2222222222222222222222222222222222222222",
             "market": "market_abc",
@@ -1409,7 +1409,7 @@ mod authenticated {
 
         let expected = OpenOrderResponseBuilder::default()
             .id("1")
-            .status("open")
+            .status(OrderStatusType::Live)
             .owner(Uuid::max())
             .maker_address(address!("0x2222222222222222222222222222222222222222"))
             .market("market_abc")
@@ -1440,7 +1440,7 @@ mod authenticated {
             "data": [
                 {
                     "id": "1",
-                    "status": "open",
+                    "status": "LIVE",
                     "owner": "ffffffff-ffff-ffff-ffff-ffffffffffff",
                     "maker_address": "0x2222222222222222222222222222222222222222",
                     "market": "market_abc",
@@ -1479,7 +1479,7 @@ mod authenticated {
 
         let order = OpenOrderResponseBuilder::default()
             .id("1")
-            .status("open")
+            .status(OrderStatusType::Live)
             .owner(Uuid::max())
             .maker_address(address!("0x2222222222222222222222222222222222222222"))
             .market("market_abc")
@@ -1664,7 +1664,7 @@ mod authenticated {
                         "size": "12.5",
                         "fee_rate_bps": "5",
                         "price": "0.42",
-                        "status": "filled",
+                        "status": "MATCHED",
                         "match_time": "1705322096",
                         "last_update": "1705322130",
                         "outcome": "YES",
@@ -1720,7 +1720,7 @@ mod authenticated {
             .size(dec!(12.5))
             .fee_rate_bps(dec!(5))
             .price(dec!(0.42))
-            .status("filled")
+            .status(OrderStatusType::Matched)
             .match_time("2024-01-15T12:34:56Z".parse().unwrap())
             .last_update("2024-01-15T12:35:30Z".parse().unwrap())
             .outcome("YES")
@@ -2475,8 +2475,8 @@ mod builder_authenticated {
     use polymarket_client_sdk::auth::builder::Config as BuilderConfig;
     use polymarket_client_sdk::clob::ConfigBuilder;
     use polymarket_client_sdk::types::{
-        BuilderApiKeyResponseBuilder, BuilderTradeResponseBuilder, PageBuilder, Side,
-        TradesRequestBuilder,
+        BuilderApiKeyResponseBuilder, BuilderTradeResponseBuilder, OrderStatusType, PageBuilder,
+        Side, TradesRequestBuilder,
     };
 
     use super::*;
@@ -2716,7 +2716,7 @@ mod builder_authenticated {
                         "size": "10.0",
                         "sizeUsdc": "100.0",
                         "price": "0.45",
-                        "status": "filled",
+                        "status": "MATCHED",
                         "outcome": "YES",
                         "outcomeIndex": 0,
                         "owner": "ffffffff-ffff-ffff-ffff-ffffffffffff",
@@ -2754,7 +2754,7 @@ mod builder_authenticated {
             .size(dec!(10.0))
             .size_usdc(dec!(100.0))
             .price(dec!(0.45))
-            .status("filled")
+            .status(OrderStatusType::Matched)
             .outcome("YES")
             .outcome_index(0)
             .owner(Uuid::max())

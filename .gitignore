@@ -75,6 +75,13 @@ cmake-build-*/
 # IntelliJ
 out/
 
+# Since we use pre-commit we should ignore python enviroment
+.venv/
+lib/
+include/
+bin/
+pyvenv.cfg
+
 # mpeltonen/sbt-idea plugin
 .idea_modules/
 
