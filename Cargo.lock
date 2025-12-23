@@ -3340,6 +3340,7 @@ dependencies = [
  "sha2",
  "strum_macros",
  "tokio",
+ "tracing",
  "url",
  "uuid",
 ]

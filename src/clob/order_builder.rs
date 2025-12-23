@@ -110,6 +110,10 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
     }
 
     /// Validates and transforms this limit builder into a [`SignableOrder`]
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(skip(self), err(level = "warn"))
+    )]
     pub async fn build(self) -> Result<SignableOrder> {
         let Some(token_id) = self.token_id.clone() else {
             return Err(Error::validation(
@@ -230,6 +234,9 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
             signatureType: self.signature_type as u8,
         };
 
+        #[cfg(feature = "tracing")]
+        tracing::debug!(token_id = %token_id, side = ?side, price = %price, size = %size, "limit order built");
+
         Ok(SignableOrder { order, order_type })
     }
 }
@@ -312,6 +319,10 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
     }
 
     /// Validates and transforms this limit builder into a [`SignableOrder`]
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(skip(self), err(level = "warn"))
+    )]
     pub async fn build(self) -> Result<SignableOrder> {
         let Some(token_id) = self.token_id.clone() else {
             return Err(Error::validation(
@@ -421,6 +432,9 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
             expiration: U256::ZERO,
             signatureType: self.signature_type as u8,
         };
+
+        #[cfg(feature = "tracing")]
+        tracing::debug!(token_id = %token_id, side = ?side, price = %price, amount = %amount.as_inner(), "market order built");
 
         Ok(SignableOrder { order, order_type })
     }

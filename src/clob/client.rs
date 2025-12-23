@@ -281,6 +281,14 @@ struct ClientInner<S: State> {
 }
 
 impl<S: State> ClientInner<S> {
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            level = "debug",
+            skip(self, request, headers),
+            fields(method, path, status_code)
+        )
+    )]
     async fn request<Response: DeserializeOwned>(
         &self,
         mut request: Request,
@@ -289,6 +297,13 @@ impl<S: State> ClientInner<S> {
         let method = request.method().clone();
         let path = request.url().path().to_owned();
 
+        #[cfg(feature = "tracing")]
+        {
+            let span = tracing::Span::current();
+            span.record("method", method.as_str());
+            span.record("path", path.as_str());
+        }
+
         if let Some(h) = headers {
             *request.headers_mut() = h;
         }
@@ -296,20 +311,35 @@ impl<S: State> ClientInner<S> {
         let response = self.client.execute(request).await?;
         let status_code = response.status();
 
+        #[cfg(feature = "tracing")]
+        tracing::Span::current().record("status_code", status_code.as_u16());
+
         if !status_code.is_success() {
             let message = response.text().await.unwrap_or_default();
+
+            #[cfg(feature = "tracing")]
+            tracing::warn!(
+                status = %status_code,
+                method = %method,
+                path = %path,
+                message = %message,
+                "CLOB API request failed"
+            );
 
             return Err(Error::status(status_code, method, path, message));
         }
 
-        match response.json::<Option<Response>>().await? {
-            Some(response) => Ok(response),
-            None => Err(Error::status(
+        if let Some(response) = response.json::<Option<Response>>().await? {
+            Ok(response)
+        } else {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(method = %method, path = %path, "CLOB API resource not found");
+            Err(Error::status(
                 StatusCode::NOT_FOUND,
                 method,
                 path,
                 "Unable to find requested resource",
-            )),
+            ))
         }
     }
 
@@ -468,10 +498,15 @@ impl<S: State> Client<S> {
 
     pub async fn tick_size(&self, token_id: &str) -> Result<TickSizeResponse> {
         if let Some(tick_size) = self.inner.tick_sizes.get(token_id) {
+            #[cfg(feature = "tracing")]
+            tracing::trace!(token_id = %token_id, tick_size = ?tick_size.value(), "cache hit: tick_size");
             return Ok(TickSizeResponse {
                 minimum_tick_size: *tick_size,
             });
         }
+
+        #[cfg(feature = "tracing")]
+        tracing::trace!(token_id = %token_id, "cache miss: tick_size");
 
         let request = self
             .client()
@@ -485,15 +520,23 @@ impl<S: State> Client<S> {
             .tick_sizes
             .insert(token_id.to_owned(), response.minimum_tick_size);
 
+        #[cfg(feature = "tracing")]
+        tracing::trace!(token_id = %token_id, "cached tick_size");
+
         Ok(response)
     }
 
     pub async fn neg_risk(&self, token_id: &str) -> Result<NegRiskResponse> {
         if let Some(neg_risk) = self.inner.neg_risk.get(token_id) {
+            #[cfg(feature = "tracing")]
+            tracing::trace!(token_id = %token_id, neg_risk = *neg_risk, "cache hit: neg_risk");
             return Ok(NegRiskResponse {
                 neg_risk: *neg_risk,
             });
         }
+
+        #[cfg(feature = "tracing")]
+        tracing::trace!(token_id = %token_id, "cache miss: neg_risk");
 
         let request = self
             .client()
@@ -507,15 +550,23 @@ impl<S: State> Client<S> {
             .neg_risk
             .insert(token_id.to_owned(), response.neg_risk);
 
+        #[cfg(feature = "tracing")]
+        tracing::trace!(token_id = %token_id, "cached neg_risk");
+
         Ok(response)
     }
 
     pub async fn fee_rate_bps(&self, token_id: &str) -> Result<FeeRateResponse> {
         if let Some(base_fee) = self.inner.fee_rate_bps.get(token_id) {
+            #[cfg(feature = "tracing")]
+            tracing::trace!(token_id = %token_id, base_fee = *base_fee, "cache hit: fee_rate_bps");
             return Ok(FeeRateResponse {
                 base_fee: *base_fee,
             });
         }
+
+        #[cfg(feature = "tracing")]
+        tracing::trace!(token_id = %token_id, "cache miss: fee_rate_bps");
 
         let request = self
             .client()
@@ -528,6 +579,9 @@ impl<S: State> Client<S> {
         self.inner
             .fee_rate_bps
             .insert(token_id.to_owned(), response.base_fee);
+
+        #[cfg(feature = "tracing")]
+        tracing::trace!(token_id = %token_id, "cached fee_rate_bps");
 
         Ok(response)
     }

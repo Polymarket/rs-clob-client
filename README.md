@@ -13,6 +13,7 @@ This crate provides strongly typed request builders, authenticated endpoints, `a
 
 - [Overview](#overview)
 - [Getting Started](#getting-started)
+- [Features](#features)
 - [Examples](#examples)
 - [Setting Token Allowances](#token-allowances)
 - [Minimum Supported Rust Version (MSRV)](#minimum-supported-rust-version-msrv)
@@ -55,6 +56,21 @@ Then run any of the examples
 ```bash
 cargo run --example unauthenticated
 ```
+
+## Features
+
+### Tracing
+
+This crate supports optional structured logging via the [`tracing`](https://docs.rs/tracing) crate. When enabled, it provides detailed instrumentation for HTTP requests, authentication flows, caching, and order building.
+
+To enable tracing:
+
+```toml
+[dependencies]
+polymarket-client-sdk = { version = "0.1", features = ["tracing"] }
+```
+
+When the `tracing` feature is disabled (the default), all logging code is compiled out with zero runtime overhead.
 
 ## Examples
 
