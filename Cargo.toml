@@ -67,6 +67,39 @@ futures-util = "0.3.31"
 httpmock = "0.8.2"
 tokio = { version = "1.48.0", features = ["rt-multi-thread", "macros"] }
 
+[[example]]
+name = "async"
+path = "examples/clob/async.rs"
+
+[[example]]
+name = "authenticated"
+path = "examples/clob/authenticated.rs"
+
+[[example]]
+name = "aws_authenticated"
+path = "examples/clob/aws_authenticated.rs"
+
+[[example]]
+name = "builder_authenticated"
+path = "examples/clob/builder_authenticated.rs"
+
+[[example]]
+name = "streaming"
+path = "examples/clob/streaming.rs"
+
+[[example]]
+name = "unauthenticated"
+path = "examples/clob/unauthenticated.rs"
+
+[[example]]
+name = "approvals"
+path = "examples/approvals.rs"
+
+[[example]]
+name = "gamma"
+path = "examples/gamma.rs"
+required-features = ["gamma"]
+
 # https://rust-lang.github.io/rust-clippy/master/index.html?versions=lte%3A88
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }
