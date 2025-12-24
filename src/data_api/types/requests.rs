@@ -9,7 +9,7 @@ use bon::Builder;
 /// Formats a float for use in query parameters, avoiding scientific notation.
 fn format_query_float(v: f64) -> String {
     let s = format!("{v:.15}");
-    s.trim_end_matches('0').trim_end_matches('.').to_string()
+    s.trim_end_matches('0').trim_end_matches('.').to_owned()
 }
 
 use super::common::{
