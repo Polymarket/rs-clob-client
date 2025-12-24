@@ -6,6 +6,12 @@
 
 use bon::Builder;
 
+/// Formats a float for use in query parameters, avoiding scientific notation.
+fn format_query_float(v: f64) -> String {
+    let s = format!("{v:.15}");
+    s.trim_end_matches('0').trim_end_matches('.').to_string()
+}
+
 use super::common::{
     ActivityLimit, ActivityOffset, ActivitySortBy, ActivityType, Address, BuilderLeaderboardLimit,
     BuilderLeaderboardOffset, ClosedPositionSortBy, ClosedPositionsLimit, ClosedPositionsOffset,
@@ -92,7 +98,7 @@ impl QueryParams for PositionsRequest {
             f.append_to_params(&mut params);
         }
         if let Some(v) = self.size_threshold {
-            params.push(("sizeThreshold", v.to_string()));
+            params.push(("sizeThreshold", format_query_float(v)));
         }
         if let Some(v) = self.redeemable {
             params.push(("redeemable", v.to_string()));
@@ -184,7 +190,7 @@ impl QueryParams for TradesRequest {
         }
         if let Some(f) = &self.trade_filter {
             params.push(("filterType", f.filter_type.to_string()));
-            params.push(("filterAmount", f.filter_amount.to_string()));
+            params.push(("filterAmount", format_query_float(f.filter_amount)));
         }
         if let Some(v) = self.side {
             params.push(("side", v.to_string()));
