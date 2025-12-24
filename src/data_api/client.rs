@@ -1,3 +1,28 @@
+//! Client for the Polymarket Data API.
+//!
+//! This module provides an HTTP client for interacting with the Polymarket Data API,
+//! which offers endpoints for querying user positions, trades, activity, and market data.
+//!
+//! # Example
+//!
+//! ```no_run
+//! use polymarket_client_sdk::data_api::{Client, types::{PositionsRequest, Address}};
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let client = Client::default();
+//!
+//! let request = PositionsRequest::builder()
+//!     .user(Address::new("0x56687bf447db6ffa42ffe2204a05edaa20f55839")?)
+//!     .build();
+//!
+//! let positions = client.positions(&request).await?;
+//! for position in positions {
+//!     println!("{}: {} tokens", position.title, position.size);
+//! }
+//! # Ok(())
+//! # }
+//! ```
+
 use reqwest::{
     Client as ReqwestClient, Method, Request, StatusCode,
     header::{HeaderMap, HeaderValue},
@@ -26,6 +51,26 @@ fn to_query_string(params: &[(&'static str, String)]) -> String {
     }
 }
 
+/// HTTP client for the Polymarket Data API.
+///
+/// Provides methods for querying user positions, trades, activity, market holders,
+/// open interest, volume data, and leaderboards.
+///
+/// # API Base URL
+///
+/// The default API endpoint is `https://data-api.polymarket.com`.
+///
+/// # Example
+///
+/// ```no_run
+/// use polymarket_client_sdk::data_api::Client;
+///
+/// // Create client with default endpoint
+/// let client = Client::default();
+///
+/// // Or with a custom endpoint
+/// let client = Client::new("https://custom-api.example.com").unwrap();
+/// ```
 #[derive(Clone, Debug)]
 pub struct Client {
     host: Url,
@@ -40,6 +85,15 @@ impl Default for Client {
 }
 
 impl Client {
+    /// Creates a new Data API client with a custom host URL.
+    ///
+    /// # Arguments
+    ///
+    /// * `host` - The base URL for the Data API (e.g., `https://data-api.polymarket.com`).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the URL is invalid or the HTTP client cannot be created.
     pub fn new(host: &str) -> Result<Client> {
         let mut headers = HeaderMap::new();
 
@@ -117,6 +171,7 @@ impl Client {
         }
     }
 
+    /// Returns the base URL of the API.
     #[must_use]
     pub fn host(&self) -> &Url {
         &self.host
@@ -135,30 +190,80 @@ impl Client {
         self.request(request, None).await
     }
 
+    /// Performs a health check on the API.
+    ///
+    /// Returns "OK" when the API is healthy and operational.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails or the API returns an error response.
     pub async fn health(&self) -> Result<HealthResponse> {
         self.get("", &()).await
     }
 
+    /// Fetches current (open) positions for a user.
+    ///
+    /// Positions represent holdings of outcome tokens in prediction markets.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails or the API returns an error response.
     pub async fn positions(&self, req: &PositionsRequest) -> Result<Vec<Position>> {
         self.get("positions", req).await
     }
 
+    /// Fetches trade history for a user or markets.
+    ///
+    /// Trades represent executed orders where outcome tokens were bought or sold.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails or the API returns an error response.
     pub async fn trades(&self, req: &TradesRequest) -> Result<Vec<Trade>> {
         self.get("trades", req).await
     }
 
+    /// Fetches on-chain activity for a user.
+    ///
+    /// Returns various on-chain operations including trades, splits, merges,
+    /// redemptions, rewards, and conversions.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails or the API returns an error response.
     pub async fn activity(&self, req: &ActivityRequest) -> Result<Vec<Activity>> {
         self.get("activity", req).await
     }
 
+    /// Fetches top token holders for specified markets.
+    ///
+    /// Returns holders grouped by token (outcome) for each market.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails or the API returns an error response.
     pub async fn holders(&self, req: &HoldersRequest) -> Result<Vec<MetaHolder>> {
         self.get("holders", req).await
     }
 
+    /// Fetches the total value of a user's positions.
+    ///
+    /// Optionally filtered by specific markets.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails or the API returns an error response.
     pub async fn value(&self, req: &ValueRequest) -> Result<Vec<Value>> {
         self.get("value", req).await
     }
 
+    /// Fetches closed (historical) positions for a user.
+    ///
+    /// These are positions that have been fully sold or redeemed.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails or the API returns an error response.
     pub async fn closed_positions(
         &self,
         req: &ClosedPositionsRequest,
@@ -166,6 +271,13 @@ impl Client {
         self.get("closed-positions", req).await
     }
 
+    /// Fetches trader leaderboard rankings.
+    ///
+    /// Returns trader rankings filtered by category, time period, and ordering.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails or the API returns an error response.
     pub async fn leaderboard(
         &self,
         req: &TraderLeaderboardRequest,
@@ -173,18 +285,45 @@ impl Client {
         self.get("v1/leaderboard", req).await
     }
 
+    /// Fetches the total count of unique markets a user has traded.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails or the API returns an error response.
     pub async fn traded(&self, req: &TradedRequest) -> Result<Traded> {
         self.get("traded", req).await
     }
 
+    /// Fetches open interest for markets.
+    ///
+    /// Open interest represents the total value of outstanding positions in a market.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails or the API returns an error response.
     pub async fn open_interest(&self, req: &OpenInterestRequest) -> Result<Vec<OpenInterest>> {
         self.get("oi", req).await
     }
 
+    /// Fetches live trading volume for an event.
+    ///
+    /// Includes total volume and per-market breakdown.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails or the API returns an error response.
     pub async fn live_volume(&self, req: &LiveVolumeRequest) -> Result<Vec<LiveVolume>> {
         self.get("live-volume", req).await
     }
 
+    /// Fetches aggregated builder leaderboard rankings.
+    ///
+    /// Builders are third-party applications that integrate with Polymarket.
+    /// Returns one entry per builder with aggregated totals for the specified time period.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails or the API returns an error response.
     pub async fn builder_leaderboard(
         &self,
         req: &BuilderLeaderboardRequest,
@@ -192,6 +331,13 @@ impl Client {
         self.get("v1/builders/leaderboard", req).await
     }
 
+    /// Fetches daily time-series volume data for builders.
+    ///
+    /// Returns multiple entries per builder (one per day), each including a timestamp.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails or the API returns an error response.
     pub async fn builder_volume(
         &self,
         req: &BuilderVolumeRequest,
