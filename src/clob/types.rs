@@ -824,8 +824,14 @@ impl BalanceAllowanceRequest {
 }
 
 #[non_exhaustive]
-#[allow(clippy::allow_attributes)]
-#[allow(clippy::allow_attributes_without_reason)]
+#[allow(
+    clippy::allow_attributes,
+    reason = "Bon will generate code that has an allow attribute for some reason on the `allowances` field"
+)]
+#[allow(
+    clippy::allow_attributes_without_reason,
+    reason = "Bon will generate code that has an allow attribute for some reason on the `allowances` field"
+)]
 #[derive(Debug, Default, Clone, Deserialize, Builder, PartialEq)]
 pub struct BalanceAllowanceResponse {
     pub balance: Decimal,
