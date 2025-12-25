@@ -1,22 +1,20 @@
 #![cfg(feature = "data-api")]
 
-use polymarket_client_sdk::data_api::types::{Address, Hash64};
-
 const TEST_USER_STR: &str = "0x1234567890abcdef1234567890abcdef12345678";
 const TEST_CONDITION_ID_STR: &str =
     "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
 const TEST_ASSET_STR: &str = "0x1111111111111111111111111111111111111111111111111111111111111111";
 
-fn test_user() -> Address {
-    Address::new(TEST_USER_STR).expect("valid test user address")
+fn test_user() -> String {
+    TEST_USER_STR.to_owned()
 }
 
-fn test_condition_id() -> Hash64 {
-    Hash64::new(TEST_CONDITION_ID_STR).expect("valid test condition id")
+fn test_condition_id() -> String {
+    TEST_CONDITION_ID_STR.to_owned()
 }
 
-fn test_asset() -> Hash64 {
-    Hash64::new(TEST_ASSET_STR).expect("valid test asset")
+fn test_asset() -> String {
+    TEST_ASSET_STR.to_owned()
 }
 
 mod health {
@@ -273,10 +271,7 @@ mod activity {
 
 mod holders {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::data_api::{
-        Client,
-        types::{Address, HoldersRequest},
-    };
+    use polymarket_client_sdk::data_api::{Client, types::HoldersRequest};
     use reqwest::StatusCode;
     use serde_json::json;
 
@@ -287,7 +282,7 @@ mod holders {
         let server = MockServer::start();
         let client = Client::new(&server.base_url())?;
 
-        let holder2 = Address::new("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")?;
+        let holder2 = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_owned();
 
         let mock = server.mock(|when, then| {
             when.method(GET)
@@ -444,7 +439,7 @@ mod leaderboard {
     use polymarket_client_sdk::data_api::{
         Client,
         types::{
-            Address, LeaderboardCategory, LeaderboardOrderBy, TimePeriod, TraderLeaderboardLimit,
+            LeaderboardCategory, LeaderboardOrderBy, TimePeriod, TraderLeaderboardLimit,
             TraderLeaderboardRequest,
         },
     };
@@ -458,7 +453,7 @@ mod leaderboard {
         let server = MockServer::start();
         let client = Client::new(&server.base_url())?;
 
-        let second_user = Address::new("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")?;
+        let second_user = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_owned();
 
         let mock = server.mock(|when, then| {
             when.method(GET).path("/v1/leaderboard");
@@ -568,10 +563,7 @@ mod traded {
 
 mod open_interest {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::data_api::{
-        Client,
-        types::{Hash64, OpenInterestRequest},
-    };
+    use polymarket_client_sdk::data_api::{Client, types::OpenInterestRequest};
     use reqwest::StatusCode;
     use serde_json::json;
 
@@ -583,7 +575,7 @@ mod open_interest {
         let client = Client::new(&server.base_url())?;
 
         let market2 =
-            Hash64::new("0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc")?;
+            "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc".to_owned();
 
         let mock = server.mock(|when, then| {
             when.method(GET).path("/oi");
@@ -646,10 +638,7 @@ mod open_interest {
 
 mod live_volume {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::data_api::{
-        Client,
-        types::{EventId, Hash64, LiveVolumeRequest},
-    };
+    use polymarket_client_sdk::data_api::{Client, types::LiveVolumeRequest};
     use reqwest::StatusCode;
     use serde_json::json;
 
@@ -661,7 +650,7 @@ mod live_volume {
         let client = Client::new(&server.base_url())?;
 
         let market2 =
-            Hash64::new("0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd")?;
+            "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd".to_owned();
 
         let mock = server.mock(|when, then| {
             when.method(GET)
@@ -684,7 +673,7 @@ mod live_volume {
             ]));
         });
 
-        let request = LiveVolumeRequest::builder().id(EventId::new(123)?).build();
+        let request = LiveVolumeRequest::builder().id(123).build();
 
         let response = client.live_volume(&request).await?;
 
@@ -960,44 +949,11 @@ mod client {
 
 mod types {
     use polymarket_client_sdk::data_api::types::{
-        ActivityRequest, ActivityType, Address, BuilderLeaderboardLimit, EventId, Hash64,
-        HoldersLimit, LeaderboardCategory, LeaderboardOrderBy, LiveVolumeRequest, MarketFilter,
-        PositionSortBy, PositionsLimit, PositionsRequest, QueryParams as _, Side, SortDirection,
-        TimePeriod, Title, TradeFilter, TradedRequest, TraderLeaderboardLimit,
-        TraderLeaderboardRequest, TradesRequest,
+        ActivityRequest, ActivityType, BuilderLeaderboardLimit, HoldersLimit, LeaderboardCategory,
+        LeaderboardOrderBy, LiveVolumeRequest, MarketFilter, PositionSortBy, PositionsLimit,
+        PositionsRequest, QueryParams as _, Side, SortDirection, TimePeriod, TradeFilter,
+        TradedRequest, TraderLeaderboardLimit, TraderLeaderboardRequest, TradesRequest,
     };
-
-    #[test]
-    fn address_validation() {
-        // Valid
-        Address::new("0x56687bf447db6ffa42ffe2204a05edaa20f55839").unwrap();
-        Address::new("0x56687BF447DB6FFA42FFE2204A05EDAA20F55839").unwrap(); // uppercase ok
-
-        // Invalid
-        Address::new("56687bf447db6ffa42ffe2204a05edaa20f55839").unwrap_err(); // no 0x
-        Address::new("0x56687bf447db6ffa42ffe2204a05edaa20f5583").unwrap_err(); // too short
-        Address::new("0x56687bf447db6ffa42ffe2204a05edaa20f558399").unwrap_err(); // too long
-        Address::new("0x56687bf447db6ffa42ffe2204a05edaa20f5583Z").unwrap_err(); // invalid char
-    }
-
-    #[test]
-    fn hash64_validation() {
-        // Valid
-        Hash64::new("0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917").unwrap();
-
-        // Invalid
-        Hash64::new("dd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917")
-            .unwrap_err(); // no 0x
-        Hash64::new("0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead11091")
-            .unwrap_err(); // too short
-    }
-
-    #[test]
-    fn event_id_validation() {
-        EventId::new(1).unwrap();
-        EventId::new(12345).unwrap();
-        EventId::new(0).unwrap_err();
-    }
 
     #[test]
     fn bounded_limits() {
@@ -1024,74 +980,47 @@ mod types {
     }
 
     #[test]
-    fn title_validation() {
-        Title::new("Short title").unwrap();
-        Title::new("a".repeat(100)).unwrap();
-        Title::new("a".repeat(101)).unwrap_err();
-    }
-
-    #[test]
-    fn positions_request_query_params() {
+    fn positions_request_query_string() {
         let req = PositionsRequest::builder()
-            .user(Address::new("0x56687bf447db6ffa42ffe2204a05edaa20f55839").unwrap())
+            .user("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
             .limit(PositionsLimit::new(50).unwrap())
             .sort_by(PositionSortBy::CashPnl)
             .sort_direction(SortDirection::Desc)
             .build();
 
-        let params = req.query_params();
-        assert!(
-            params
-                .iter()
-                .any(|(k, v)| *k == "user" && v.starts_with("0x"))
-        );
-        assert!(params.iter().any(|(k, v)| *k == "limit" && v == "50"));
-        assert!(params.iter().any(|(k, v)| *k == "sortBy" && v == "CASHPNL"));
-        assert!(
-            params
-                .iter()
-                .any(|(k, v)| *k == "sortDirection" && v == "DESC")
-        );
+        let qs = req.query_string();
+        assert!(qs.contains("user=0x"));
+        assert!(qs.contains("limit=50"));
+        assert!(qs.contains("sortBy=CASHPNL"));
+        assert!(qs.contains("sortDirection=DESC"));
     }
 
     #[test]
-    fn market_filter_query_params() {
-        let hash1 =
-            Hash64::new("0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917")
-                .unwrap();
-        let hash2 =
-            Hash64::new("0xaa22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917")
-                .unwrap();
+    fn market_filter_query_string() {
+        let hash1 = "0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917".to_owned();
+        let hash2 = "0xaa22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917".to_owned();
 
         let req = PositionsRequest::builder()
-            .user(Address::new("0x56687bf447db6ffa42ffe2204a05edaa20f55839").unwrap())
+            .user("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
             .filter(MarketFilter::markets([hash1, hash2]))
             .build();
 
-        let params = req.query_params();
-        let market_param = params.iter().find(|(k, _)| *k == "market");
-        assert!(market_param.is_some());
-        let (_, value) = market_param.unwrap();
-        assert!(value.contains(','));
-        assert!(!params.iter().any(|(k, _)| *k == "eventId"));
+        let qs = req.query_string();
+        assert!(qs.contains("market="));
+        assert!(qs.contains("%2C")); // URL-encoded comma
+        assert!(!qs.contains("eventId="));
     }
 
     #[test]
-    fn event_id_filter_query_params() {
+    fn event_id_filter_query_string() {
         let req = PositionsRequest::builder()
-            .user(Address::new("0x56687bf447db6ffa42ffe2204a05edaa20f55839").unwrap())
-            .filter(MarketFilter::event_ids([
-                EventId::new(1).unwrap(),
-                EventId::new(2).unwrap(),
-            ]))
+            .user("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
+            .filter(MarketFilter::event_ids([1, 2]))
             .build();
 
-        let params = req.query_params();
-        let event_param = params.iter().find(|(k, _)| *k == "eventId");
-        assert!(event_param.is_some());
-        let (_, value) = event_param.unwrap();
-        assert_eq!(value, "1,2");
-        assert!(!params.iter().any(|(k, _)| *k == "market"));
+        let qs = req.query_string();
+        assert!(qs.contains("eventId=1%2C2")); // URL-encoded "1,2"
+        assert!(!qs.contains("market="));
     }
 
     #[test]
@@ -1107,53 +1036,38 @@ mod types {
             .trade_filter(TradeFilter::cash(100.0).unwrap())
             .build();
 
-        let params = req.query_params();
-        assert!(
-            params
-                .iter()
-                .any(|(k, v)| *k == "filterType" && v == "CASH")
-        );
-        assert!(
-            params
-                .iter()
-                .any(|(k, v)| *k == "filterAmount" && v == "100")
-        );
+        let qs = req.query_string();
+        assert!(qs.contains("filterType=CASH"));
+        assert!(qs.contains("filterAmount=100"));
     }
 
     #[test]
-    fn activity_types_query_params() {
+    fn activity_types_query_string() {
         let req = ActivityRequest::builder()
-            .user(Address::new("0x56687bf447db6ffa42ffe2204a05edaa20f55839").unwrap())
+            .user("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
             .activity_types(vec![ActivityType::Trade, ActivityType::Redeem])
             .build();
 
-        let params = req.query_params();
-        let type_param = params.iter().find(|(k, _)| *k == "type");
-        assert!(type_param.is_some());
-        let (_, value) = type_param.unwrap();
-        assert_eq!(value, "TRADE,REDEEM");
+        let qs = req.query_string();
+        assert!(qs.contains("type=TRADE%2CREDEEM")); // URL-encoded "TRADE,REDEEM"
     }
 
     #[test]
     fn live_volume_request() {
-        let req = LiveVolumeRequest::builder()
-            .id(EventId::new(123).unwrap())
-            .build();
+        let req = LiveVolumeRequest::builder().id(123).build();
 
-        let params = req.query_params();
-        assert_eq!(params.len(), 1);
-        assert!(params.iter().any(|(k, v)| *k == "id" && v == "123"));
+        let qs = req.query_string();
+        assert!(qs.contains("id=123"));
     }
 
     #[test]
     fn traded_request() {
         let req = TradedRequest::builder()
-            .user(Address::new("0x56687bf447db6ffa42ffe2204a05edaa20f55839").unwrap())
+            .user("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
             .build();
 
-        let params = req.query_params();
-        assert_eq!(params.len(), 1);
-        assert!(params.iter().any(|(k, _)| *k == "user"));
+        let qs = req.query_string();
+        assert!(qs.contains("user=0x"));
     }
 
     #[test]
@@ -1165,19 +1079,11 @@ mod types {
             .limit(TraderLeaderboardLimit::new(10).unwrap())
             .build();
 
-        let params = req.query_params();
-        assert!(
-            params
-                .iter()
-                .any(|(k, v)| *k == "category" && v == "POLITICS")
-        );
-        assert!(
-            params
-                .iter()
-                .any(|(k, v)| *k == "timePeriod" && v == "WEEK")
-        );
-        assert!(params.iter().any(|(k, v)| *k == "orderBy" && v == "PNL"));
-        assert!(params.iter().any(|(k, v)| *k == "limit" && v == "10"));
+        let qs = req.query_string();
+        assert!(qs.contains("category=POLITICS"));
+        assert!(qs.contains("timePeriod=WEEK"));
+        assert!(qs.contains("orderBy=PNL"));
+        assert!(qs.contains("limit=10"));
     }
 
     #[test]
@@ -1244,52 +1150,13 @@ mod types {
 }
 
 mod error_display {
-    use polymarket_client_sdk::data_api::types::{
-        Address, EventId, Hash64, PositionsLimit, Title, TradeFilter,
-    };
-
-    #[test]
-    fn address_error_display() {
-        let err = Address::new("invalid").unwrap_err();
-        assert!(err.to_string().contains("0x"));
-
-        let err = Address::new("0x123").unwrap_err();
-        assert!(err.to_string().contains("42"));
-
-        let err = Address::new("0x56687bf447db6ffa42ffe2204a05edaa20f5583Z").unwrap_err();
-        assert!(err.to_string().contains("hex"));
-    }
-
-    #[test]
-    fn hash64_error_display() {
-        let err = Hash64::new("invalid").unwrap_err();
-        assert!(err.to_string().contains("0x"));
-
-        let err = Hash64::new("0x123").unwrap_err();
-        assert!(err.to_string().contains("66"));
-
-        let err = Hash64::new("0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead11091Z")
-            .unwrap_err();
-        assert!(err.to_string().contains("hex"));
-    }
-
-    #[test]
-    fn event_id_error_display() {
-        let err = EventId::new(0).unwrap_err();
-        assert!(err.to_string().contains('0'));
-    }
+    use polymarket_client_sdk::data_api::types::{PositionsLimit, TradeFilter};
 
     #[test]
     fn bounded_int_error_display() {
         let err = PositionsLimit::new(501).unwrap_err();
         assert!(err.to_string().contains("500"));
         assert!(err.to_string().contains("501"));
-    }
-
-    #[test]
-    fn title_error_display() {
-        let err = Title::new("a".repeat(101)).unwrap_err();
-        assert!(err.to_string().contains("100"));
     }
 
     #[test]
@@ -1300,35 +1167,7 @@ mod error_display {
 }
 
 mod conversions {
-    use polymarket_client_sdk::data_api::types::{Address, EventId, Hash64, PositionsLimit, Title};
-
-    #[test]
-    fn address_try_from_string() {
-        let addr: Address = "0x56687bf447db6ffa42ffe2204a05edaa20f55839"
-            .to_owned()
-            .try_into()
-            .expect("valid address");
-        let s: String = addr.into();
-        assert!(s.starts_with("0x"));
-    }
-
-    #[test]
-    fn hash64_try_from_string() {
-        let hash: Hash64 = "0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917"
-            .to_owned()
-            .try_into()
-            .expect("valid hash");
-        let s: String = hash.into();
-        assert!(s.starts_with("0x"));
-    }
-
-    #[test]
-    fn event_id_try_from_u64() {
-        let id: EventId = 123_u64.try_into().expect("valid id");
-        let v: u64 = id.into();
-        assert_eq!(v, 123);
-        assert_eq!(id.value(), 123);
-    }
+    use polymarket_client_sdk::data_api::types::PositionsLimit;
 
     #[test]
     fn positions_limit_try_from_u32() {
@@ -1339,31 +1178,9 @@ mod conversions {
     }
 
     #[test]
-    fn title_try_from_string() {
-        let title: Title = "My Title".to_owned().try_into().expect("valid title");
-        assert_eq!(title.as_str(), "My Title");
-        let s: String = title.into();
-        assert_eq!(s, "My Title");
-    }
-
-    #[test]
     fn display_implementations() {
-        let addr = Address::new("0x56687bf447db6ffa42ffe2204a05edaa20f55839").unwrap();
-        assert!(addr.to_string().starts_with("0x"));
-
-        let hash =
-            Hash64::new("0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917")
-                .unwrap();
-        assert!(hash.to_string().starts_with("0x"));
-
-        let id = EventId::new(42).unwrap();
-        assert_eq!(id.to_string(), "42");
-
         let limit = PositionsLimit::new(100).unwrap();
         assert_eq!(limit.to_string(), "100");
-
-        let title = Title::new("Test").unwrap();
-        assert_eq!(title.to_string(), "Test");
     }
 
     #[test]
@@ -1372,23 +1189,22 @@ mod conversions {
     }
 }
 
-mod request_query_params_extended {
+mod request_query_string_extended {
     use polymarket_client_sdk::data_api::types::{
-        ActivityLimit, ActivityRequest, ActivitySortBy, Address, BuilderLeaderboardOffset,
+        ActivityLimit, ActivityRequest, ActivitySortBy, BuilderLeaderboardOffset,
         BuilderLeaderboardRequest, ClosedPositionSortBy, ClosedPositionsLimit,
-        ClosedPositionsRequest, EventId, Hash64, HoldersMinBalance, HoldersRequest, MarketFilter,
+        ClosedPositionsRequest, HoldersMinBalance, HoldersRequest, MarketFilter,
         OpenInterestRequest, PositionSortBy, PositionsRequest, QueryParams as _, Side,
-        SortDirection, Title, TradeFilter, TraderLeaderboardRequest, TradesLimit, TradesOffset,
+        SortDirection, TradeFilter, TraderLeaderboardRequest, TradesLimit, TradesOffset,
         TradesRequest, ValueRequest,
     };
 
-    fn test_addr() -> Address {
-        Address::new("0x56687bf447db6ffa42ffe2204a05edaa20f55839").expect("valid test address")
+    fn test_addr() -> String {
+        "0x56687bf447db6ffa42ffe2204a05edaa20f55839".to_owned()
     }
 
-    fn test_hash() -> Hash64 {
-        Hash64::new("0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917")
-            .expect("valid test hash")
+    fn test_hash() -> String {
+        "0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917".to_owned()
     }
 
     #[test]
@@ -1398,14 +1214,14 @@ mod request_query_params_extended {
             .size_threshold(100.0)
             .mergeable(true)
             .sort_by(PositionSortBy::Current)
-            .title(Title::new("test").unwrap())
+            .title("test")
             .build();
 
-        let params = req.query_params();
-        assert!(params.iter().any(|(k, _)| *k == "sizeThreshold"));
-        assert!(params.iter().any(|(k, _)| *k == "mergeable"));
-        assert!(params.iter().any(|(k, _)| *k == "sortBy"));
-        assert!(params.iter().any(|(k, _)| *k == "title"));
+        let qs = req.query_string();
+        assert!(qs.contains("sizeThreshold="));
+        assert!(qs.contains("mergeable="));
+        assert!(qs.contains("sortBy="));
+        assert!(qs.contains("title="));
     }
 
     #[test]
@@ -1418,19 +1234,19 @@ mod request_query_params_extended {
             .side(Side::Buy)
             .build();
 
-        let params = req.query_params();
-        assert!(params.iter().any(|(k, _)| *k == "user"));
-        assert!(params.iter().any(|(k, _)| *k == "market"));
-        assert!(params.iter().any(|(k, _)| *k == "limit"));
-        assert!(params.iter().any(|(k, _)| *k == "takerOnly"));
-        assert!(params.iter().any(|(k, _)| *k == "side"));
+        let qs = req.query_string();
+        assert!(qs.contains("user="));
+        assert!(qs.contains("market="));
+        assert!(qs.contains("limit="));
+        assert!(qs.contains("takerOnly="));
+        assert!(qs.contains("side="));
     }
 
     #[test]
     fn activity_request_full() {
         let req = ActivityRequest::builder()
             .user(test_addr())
-            .filter(MarketFilter::event_ids([EventId::new(1).unwrap()]))
+            .filter(MarketFilter::event_ids([1]))
             .limit(ActivityLimit::new(50).unwrap())
             .start(1000)
             .end(2000)
@@ -1439,13 +1255,13 @@ mod request_query_params_extended {
             .side(Side::Sell)
             .build();
 
-        let params = req.query_params();
-        assert!(params.iter().any(|(k, _)| *k == "eventId"));
-        assert!(params.iter().any(|(k, _)| *k == "start"));
-        assert!(params.iter().any(|(k, _)| *k == "end"));
-        assert!(params.iter().any(|(k, _)| *k == "sortBy"));
-        assert!(params.iter().any(|(k, _)| *k == "sortDirection"));
-        assert!(params.iter().any(|(k, _)| *k == "side"));
+        let qs = req.query_string();
+        assert!(qs.contains("eventId="));
+        assert!(qs.contains("start="));
+        assert!(qs.contains("end="));
+        assert!(qs.contains("sortBy="));
+        assert!(qs.contains("sortDirection="));
+        assert!(qs.contains("side="));
     }
 
     #[test]
@@ -1455,8 +1271,8 @@ mod request_query_params_extended {
             .min_balance(HoldersMinBalance::new(10).unwrap())
             .build();
 
-        let params = req.query_params();
-        assert!(params.iter().any(|(k, _)| *k == "minBalance"));
+        let qs = req.query_string();
+        assert!(qs.contains("minBalance="));
     }
 
     #[test]
@@ -1466,8 +1282,8 @@ mod request_query_params_extended {
             .markets(vec![test_hash()])
             .build();
 
-        let params = req.query_params();
-        assert!(params.iter().any(|(k, _)| *k == "market"));
+        let qs = req.query_string();
+        assert!(qs.contains("market="));
     }
 
     #[test]
@@ -1475,17 +1291,17 @@ mod request_query_params_extended {
         let req = ClosedPositionsRequest::builder()
             .user(test_addr())
             .filter(MarketFilter::markets([test_hash()]))
-            .title(Title::new("test").unwrap())
+            .title("test")
             .limit(ClosedPositionsLimit::new(10).unwrap())
             .sort_by(ClosedPositionSortBy::RealizedPnl)
             .sort_direction(SortDirection::Desc)
             .build();
 
-        let params = req.query_params();
-        assert!(params.iter().any(|(k, _)| *k == "market"));
-        assert!(params.iter().any(|(k, _)| *k == "title"));
-        assert!(params.iter().any(|(k, _)| *k == "sortBy"));
-        assert!(params.iter().any(|(k, _)| *k == "sortDirection"));
+        let qs = req.query_string();
+        assert!(qs.contains("market="));
+        assert!(qs.contains("title="));
+        assert!(qs.contains("sortBy="));
+        assert!(qs.contains("sortDirection="));
     }
 
     #[test]
@@ -1494,8 +1310,8 @@ mod request_query_params_extended {
             .offset(BuilderLeaderboardOffset::new(10).unwrap())
             .build();
 
-        let params = req.query_params();
-        assert!(params.iter().any(|(k, _)| *k == "offset"));
+        let qs = req.query_string();
+        assert!(qs.contains("offset="));
     }
 
     #[test]
@@ -1505,9 +1321,9 @@ mod request_query_params_extended {
             .user_name("testuser".to_owned())
             .build();
 
-        let params = req.query_params();
-        assert!(params.iter().any(|(k, _)| *k == "user"));
-        assert!(params.iter().any(|(k, _)| *k == "userName"));
+        let qs = req.query_string();
+        assert!(qs.contains("user="));
+        assert!(qs.contains("userName="));
     }
 
     #[test]
@@ -1516,12 +1332,8 @@ mod request_query_params_extended {
             .trade_filter(TradeFilter::tokens(50.0).unwrap())
             .build();
 
-        let params = req.query_params();
-        assert!(
-            params
-                .iter()
-                .any(|(k, v)| *k == "filterType" && v == "TOKENS")
-        );
+        let qs = req.query_string();
+        assert!(qs.contains("filterType=TOKENS"));
     }
 
     #[test]
@@ -1531,8 +1343,8 @@ mod request_query_params_extended {
             .filter(MarketFilter::markets([]))
             .build();
 
-        let params = req.query_params();
-        assert!(!params.iter().any(|(k, _)| *k == "market"));
+        let qs = req.query_string();
+        assert!(!qs.contains("market="));
     }
 
     #[test]
@@ -1542,8 +1354,8 @@ mod request_query_params_extended {
             .filter(MarketFilter::event_ids([]))
             .build();
 
-        let params = req.query_params();
-        assert!(!params.iter().any(|(k, _)| *k == "eventId"));
+        let qs = req.query_string();
+        assert!(!qs.contains("eventId="));
     }
 
     #[test]
@@ -1553,16 +1365,16 @@ mod request_query_params_extended {
             .activity_types(vec![])
             .build();
 
-        let params = req.query_params();
-        assert!(!params.iter().any(|(k, _)| *k == "type"));
+        let qs = req.query_string();
+        assert!(!qs.contains("type="));
     }
 
     #[test]
     fn empty_holders_markets_not_added() {
         let req = HoldersRequest::builder().markets(vec![]).build();
 
-        let params = req.query_params();
-        assert!(!params.iter().any(|(k, _)| *k == "market"));
+        let qs = req.query_string();
+        assert!(!qs.contains("market="));
     }
 
     #[test]
@@ -1572,8 +1384,8 @@ mod request_query_params_extended {
             .markets(vec![])
             .build();
 
-        let params = req.query_params();
-        assert!(!params.iter().any(|(k, _)| *k == "market"));
+        let qs = req.query_string();
+        assert!(!qs.contains("market="));
     }
 
     #[test]
@@ -1599,9 +1411,10 @@ mod request_query_params_extended {
     }
 
     #[test]
-    fn unit_query_params() {
-        let params = ().query_params();
-        assert!(params.is_empty());
+    fn empty_request_query_string() {
+        let req = TradesRequest::default();
+        let qs = req.query_string();
+        assert!(qs.is_empty());
     }
 
     #[test]
@@ -1610,8 +1423,8 @@ mod request_query_params_extended {
             .offset(TradesOffset::new(100).unwrap())
             .build();
 
-        let params = req.query_params();
-        assert!(params.iter().any(|(k, v)| *k == "offset" && v == "100"));
+        let qs = req.query_string();
+        assert!(qs.contains("offset=100"));
     }
 
     #[test]
@@ -1620,16 +1433,16 @@ mod request_query_params_extended {
             .markets(vec![test_hash()])
             .build();
 
-        let params = req.query_params();
-        assert!(params.iter().any(|(k, _)| *k == "market"));
+        let qs = req.query_string();
+        assert!(qs.contains("market="));
     }
 
     #[test]
     fn open_interest_request_empty_markets() {
         let req = OpenInterestRequest::builder().markets(vec![]).build();
 
-        let params = req.query_params();
-        assert!(!params.iter().any(|(k, _)| *k == "market"));
+        let qs = req.query_string();
+        assert!(!qs.contains("market="));
     }
 
     #[test]

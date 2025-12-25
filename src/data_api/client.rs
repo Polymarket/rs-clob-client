@@ -6,13 +6,13 @@
 //! # Example
 //!
 //! ```no_run
-//! use polymarket_client_sdk::data_api::{Client, types::{PositionsRequest, Address}};
+//! use polymarket_client_sdk::data_api::{Client, types::PositionsRequest};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let client = Client::default();
 //!
 //! let request = PositionsRequest::builder()
-//!     .user(Address::new("0x56687bf447db6ffa42ffe2204a05edaa20f55839")?)
+//!     .user("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
 //!     .build();
 //!
 //! let positions = client.positions(&request).await?;
@@ -39,17 +39,6 @@ use super::types::{
 };
 use crate::Result;
 use crate::error::Error;
-
-fn to_query_string(params: &[(&'static str, String)]) -> String {
-    if params.is_empty() {
-        String::new()
-    } else {
-        let encoded: String = url::form_urlencoded::Serializer::new(String::new())
-            .extend_pairs(params.iter().map(|(k, v)| (*k, v.as_str())))
-            .finish();
-        format!("?{encoded}")
-    }
-}
 
 /// HTTP client for the Polymarket Data API.
 ///
@@ -182,10 +171,10 @@ impl Client {
         path: &str,
         req: &Req,
     ) -> Result<Res> {
-        let params = to_query_string(&req.query_params());
+        let query = req.query_string();
         let request = self
             .client
-            .request(Method::GET, format!("{}{path}{params}", self.host))
+            .request(Method::GET, format!("{}{path}{query}", self.host))
             .build()?;
         self.request(request, None).await
     }

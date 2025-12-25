@@ -2,11 +2,11 @@
 
 use polymarket_client_sdk::data_api::Client;
 use polymarket_client_sdk::data_api::types::{
-    ActivityLimit, ActivityRequest, Address, BuilderLeaderboardLimit, BuilderLeaderboardRequest,
-    BuilderVolumeRequest, ClosedPositionsLimit, ClosedPositionsRequest, EventId, Hash64,
-    HoldersLimit, HoldersRequest, LeaderboardCategory, LiveVolumeRequest, OpenInterestRequest,
-    PositionsLimit, PositionsRequest, TimePeriod, TradedRequest, TraderLeaderboardLimit,
-    TraderLeaderboardRequest, TradesRequest, ValueRequest,
+    ActivityLimit, ActivityRequest, BuilderLeaderboardLimit, BuilderLeaderboardRequest,
+    BuilderVolumeRequest, ClosedPositionsLimit, ClosedPositionsRequest, HoldersLimit,
+    HoldersRequest, LeaderboardCategory, LiveVolumeRequest, OpenInterestRequest, PositionsLimit,
+    PositionsRequest, TimePeriod, TradedRequest, TraderLeaderboardLimit, TraderLeaderboardRequest,
+    TradesRequest, ValueRequest,
 };
 
 const EXAMPLE_USER: &str = "0x56687bf447db6ffa42ffe2204a05edaa20f55839";
@@ -17,8 +17,8 @@ const EXAMPLE_MARKET: &str = "0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a
 async fn main() -> anyhow::Result<()> {
     let client = Client::default();
 
-    let user = Address::new(EXAMPLE_USER)?;
-    let market = Hash64::new(EXAMPLE_MARKET)?;
+    let user = EXAMPLE_USER.to_owned();
+    let market = EXAMPLE_MARKET.to_owned();
 
     println!("health -- {:?}", client.health().await);
 
@@ -72,7 +72,7 @@ async fn main() -> anyhow::Result<()> {
         client.open_interest(&OpenInterestRequest::default()).await
     );
 
-    let request = LiveVolumeRequest::builder().id(EventId::new(1)?).build();
+    let request = LiveVolumeRequest::builder().id(1).build();
     println!("live_volume -- {:?}", client.live_volume(&request).await);
 
     let request = BuilderLeaderboardRequest::builder()

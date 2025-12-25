@@ -30,7 +30,7 @@
 //! # Example
 //!
 //! ```no_run
-//! use polymarket_client_sdk::data_api::{Client, types::{PositionsRequest, Address}};
+//! use polymarket_client_sdk::data_api::{Client, types::PositionsRequest};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // Create a client with the default endpoint
@@ -38,7 +38,7 @@
 //!
 //! // Build a request for user positions
 //! let request = PositionsRequest::builder()
-//!     .user(Address::new("0x56687bf447db6ffa42ffe2204a05edaa20f55839")?)
+//!     .user("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
 //!     .build();
 //!
 //! // Fetch positions
@@ -60,6 +60,7 @@
 //! The default API endpoint is `https://data-api.polymarket.com`.
 
 pub mod client;
+pub(crate) mod ser;
 pub mod types;
 
 pub use client::Client;
