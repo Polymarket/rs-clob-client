@@ -8,9 +8,9 @@ use alloy::primitives::{Address, U256};
 use alloy::signers::Signer;
 use alloy::sol_types::SolStruct as _;
 use async_stream::try_stream;
+use bon::Builder;
 use chrono::{NaiveDate, Utc};
 use dashmap::DashMap;
-use derive_builder::Builder;
 use futures::Stream;
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::{Client as ReqwestClient, Method, Request, StatusCode};
@@ -247,8 +247,6 @@ impl Default for Client<Unauthenticated> {
 
 /// Configuration for [`Client`]
 #[derive(Clone, Debug, Default, Builder)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(default)]
 pub struct Config {
     /// Whether the [`Client`] will use the server time provided by Polymarket when creating auth
     /// headers. This adds another round trip to the requests.

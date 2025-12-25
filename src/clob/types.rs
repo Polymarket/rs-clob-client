@@ -5,8 +5,8 @@ use std::hash::Hash;
 use alloy::core::sol;
 use alloy::primitives::{Address, U256};
 use alloy::signers::Signature;
+use bon::Builder;
 use chrono::{DateTime, NaiveDate, Utc};
-use derive_builder::Builder;
 use rust_decimal::Decimal;
 use rust_decimal::prelude::ToPrimitive as _;
 use rust_decimal_macros::dec;
@@ -25,9 +25,6 @@ use crate::Result;
 use crate::auth::ApiKey;
 use crate::clob::order_builder::{LOT_SIZE_SCALE, USDC_DECIMALS};
 use crate::error::Error;
-
-type OrderId = String;
-type TradeId = String;
 
 #[non_exhaustive]
 #[derive(
@@ -313,8 +310,6 @@ fn ser_salt<S: Serializer>(value: &U256, serializer: S) -> std::result::Result<S
 
 #[non_exhaustive]
 #[derive(Clone, Debug, Default, Serialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into))]
 pub struct SignableOrder {
     pub order: Order,
     pub order_type: OrderType,
@@ -322,23 +317,19 @@ pub struct SignableOrder {
 
 #[non_exhaustive]
 #[derive(Debug, Serialize, Builder)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into))]
+#[builder(on(String, into))]
 pub struct MidpointRequest {
     pub token_id: String,
 }
 
 #[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into))]
 pub struct MidpointResponse {
     pub mid: Decimal,
 }
 
 #[non_exhaustive]
 #[derive(Clone, Debug, Default, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
 #[serde(transparent)]
 pub struct MidpointsResponse {
     pub midpoints: HashMap<String, Decimal>,
@@ -346,8 +337,7 @@ pub struct MidpointsResponse {
 
 #[non_exhaustive]
 #[derive(Debug, Serialize, Builder)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into))]
+#[builder(on(String, into))]
 pub struct PriceRequest {
     pub token_id: String,
     pub side: Side,
@@ -355,16 +345,12 @@ pub struct PriceRequest {
 
 #[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into))]
 pub struct PriceResponse {
     pub price: Decimal,
 }
 
 #[non_exhaustive]
 #[derive(Clone, Debug, Default, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(strip_option))]
 #[serde(transparent)]
 pub struct PricesResponse {
     pub prices: Option<HashMap<String, HashMap<Side, Decimal>>>,
@@ -372,55 +358,45 @@ pub struct PricesResponse {
 
 #[non_exhaustive]
 #[derive(Debug, Serialize, Builder)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into))]
+#[builder(on(String, into))]
 pub struct SpreadRequest {
     pub token_id: String,
 }
 
 #[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into))]
 pub struct SpreadResponse {
     pub spread: Decimal,
 }
 
 #[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(strip_option))]
 pub struct SpreadsResponse {
     pub spreads: Option<HashMap<String, Decimal>>,
 }
 
 #[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into))]
+#[builder(on(TickSize, into))]
 pub struct TickSizeResponse {
     pub minimum_tick_size: TickSize,
 }
 
 #[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into))]
 pub struct NegRiskResponse {
     pub neg_risk: bool,
 }
 
 #[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
 pub struct FeeRateResponse {
     pub base_fee: u32,
 }
 
 #[non_exhaustive]
 #[derive(Debug, Serialize, Builder)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into))]
+#[builder(on(String, into))]
 pub struct OrderBookSummaryRequest {
     pub token_id: String,
 }
@@ -428,16 +404,13 @@ pub struct OrderBookSummaryRequest {
 #[non_exhaustive]
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into))]
+#[builder(on(String, into))]
 pub struct OrderBookSummaryResponse {
     pub market: String,
     pub asset_id: String,
     #[serde_as(as = "TimestampMilliSeconds<String>")]
     pub timestamp: DateTime<Utc>,
     #[serde(default)]
-    #[builder(default)]
-    #[builder(setter(into, strip_option))]
     pub hash: Option<String>,
     #[builder(default)]
     #[serde(default)]
@@ -467,8 +440,6 @@ impl OrderBookSummaryResponse {
 
 #[non_exhaustive]
 #[derive(Clone, Debug, Serialize, Deserialize, Hash, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into))]
 pub struct OrderSummary {
     pub price: Decimal,
     pub size: Decimal,
@@ -476,15 +447,13 @@ pub struct OrderSummary {
 
 #[non_exhaustive]
 #[derive(Debug, Serialize, Builder)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into))]
+#[builder(on(String, into))]
 pub struct LastTradePriceRequest {
     pub token_id: String,
 }
 
 #[non_exhaustive]
 #[derive(Debug, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
 pub struct LastTradePriceResponse {
     pub price: Decimal,
     pub side: Side,
@@ -492,7 +461,7 @@ pub struct LastTradePriceResponse {
 
 #[non_exhaustive]
 #[derive(Debug, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
+#[builder(on(String, into))]
 pub struct LastTradesPricesResponse {
     pub token_id: String,
     pub price: Decimal,
@@ -506,57 +475,38 @@ pub struct LastTradesPricesResponse {
 #[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Deserialize, Clone, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(strip_option))]
+#[builder(on(String, into))]
 pub struct MarketResponse {
     pub enable_order_book: bool,
     pub active: bool,
     pub closed: bool,
     pub archived: bool,
     pub accepting_orders: bool,
-    #[builder(setter(into))]
-    #[builder(default)]
     pub accepting_order_timestamp: Option<DateTime<Utc>>,
     pub minimum_order_size: Decimal,
     pub minimum_tick_size: Decimal,
-    #[builder(setter(into))]
     pub condition_id: String,
-    #[builder(setter(into))]
     pub question_id: String,
-    #[builder(setter(into))]
     pub question: String,
-    #[builder(setter(into))]
     pub description: String,
-    #[builder(setter(into))]
     pub market_slug: String,
-    #[builder(setter(into))]
-    #[builder(default)]
     pub end_date_iso: Option<DateTime<Utc>>,
-    #[builder(setter(into))]
-    #[builder(default)]
     pub game_start_time: Option<DateTime<Utc>>,
     pub seconds_delay: u64,
-    #[builder(setter(into))]
     pub fpmm: String,
     pub maker_base_fee: Decimal,
     pub taker_base_fee: Decimal,
     pub notifications_enabled: bool,
     pub neg_risk: bool,
-    #[builder(setter(into))]
     pub neg_risk_market_id: String,
-    #[builder(setter(into))]
     pub neg_risk_request_id: String,
-    #[builder(setter(into))]
     pub icon: String,
-    #[builder(setter(into))]
     pub image: String,
     pub rewards: Rewards,
     pub is_50_50_outcome: bool,
-    #[builder(default)]
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
     pub tokens: Vec<Token>,
-    #[builder(default)]
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
     pub tags: Vec<String>,
@@ -564,8 +514,7 @@ pub struct MarketResponse {
 
 #[non_exhaustive]
 #[derive(Debug, Serialize, Deserialize, Clone, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into, strip_option))]
+#[builder(on(String, into))]
 pub struct Token {
     pub token_id: String,
     pub outcome: String,
@@ -581,11 +530,9 @@ pub struct Token {
 #[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Default, Deserialize, Clone, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into, strip_option))]
+#[builder(on(String, into))]
 pub struct SimplifiedMarketResponse {
     pub condition_id: String,
-    #[builder(default)]
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
     pub tokens: Vec<Token>,
@@ -598,9 +545,6 @@ pub struct SimplifiedMarketResponse {
 
 #[non_exhaustive]
 #[derive(Clone, Debug, Default, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(strip_option))]
-#[builder(default)]
 pub struct ApiKeysResponse {
     #[serde(rename = "apiKeys")]
     keys: Option<Vec<Uuid>>,
@@ -608,7 +552,6 @@ pub struct ApiKeysResponse {
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
 pub struct BanStatusResponse {
     pub closed_only: bool,
 }
@@ -617,17 +560,14 @@ pub struct BanStatusResponse {
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[serde(rename_all = "camelCase")]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
+#[builder(on(String, into))]
 pub struct PostOrderResponse {
-    #[builder(default)]
-    #[builder(setter(into, strip_option))]
     pub error_msg: Option<String>,
     #[serde(deserialize_with = "empty_string_as_zero")]
     pub making_amount: Decimal,
     #[serde(deserialize_with = "empty_string_as_zero")]
     pub taking_amount: Decimal,
     #[serde(rename = "orderID")]
-    #[builder(setter(into))]
     pub order_id: String,
     pub status: OrderStatusType,
     pub success: bool,
@@ -657,26 +597,21 @@ where
 #[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
+#[builder(on(String, into))]
 pub struct OpenOrderResponse {
-    #[builder(setter(into))]
-    pub id: OrderId,
+    pub id: String,
     pub status: OrderStatusType,
     pub owner: ApiKey,
     pub maker_address: Address,
-    #[builder(setter(into))]
     pub market: String,
-    #[builder(setter(into))]
     pub asset_id: String,
     pub side: Side,
     pub original_size: Decimal,
     pub size_matched: Decimal,
     pub price: Decimal,
-    #[builder(default)]
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
     pub associate_trades: Vec<String>,
-    #[builder(setter(into))]
     pub outcome: String,
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
@@ -689,24 +624,20 @@ pub struct OpenOrderResponse {
 #[serde_as]
 #[derive(Debug, Default, Deserialize, Builder, PartialEq)]
 #[serde(rename_all = "camelCase")]
-#[builder(default)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
 pub struct CancelOrdersResponse {
     #[builder(default)]
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
-    pub canceled: Vec<OrderId>,
+    pub canceled: Vec<String>,
     #[builder(default)]
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
-    pub not_canceled: HashMap<OrderId, String>,
+    pub not_canceled: HashMap<String, String>,
 }
 
 #[non_exhaustive]
 #[derive(Debug, Default, Serialize, Builder)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into, strip_option))]
-#[builder(default)]
+#[builder(on(String, into))]
 pub struct CancelMarketOrderRequest {
     pub market: Option<String>,
     pub asset_id: Option<String>,
@@ -714,9 +645,7 @@ pub struct CancelMarketOrderRequest {
 
 #[non_exhaustive]
 #[derive(Debug, Default, Clone, Builder)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into, strip_option))]
-#[builder(default)]
+#[builder(on(String, into))]
 pub struct TradesRequest {
     pub id: Option<String>,
     pub maker_address: Option<Address>,
@@ -751,15 +680,11 @@ impl TradesRequest {
 #[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
+#[builder(on(String, into))]
 pub struct TradeResponse {
-    #[builder(setter(into))]
-    pub id: TradeId,
-    #[builder(setter(into))]
+    pub id: String,
     pub taker_order_id: String,
-    #[builder(setter(into))]
     pub market: String,
-    #[builder(setter(into))]
     pub asset_id: String,
     pub side: Side,
     pub size: Decimal,
@@ -770,31 +695,24 @@ pub struct TradeResponse {
     pub match_time: DateTime<Utc>,
     #[serde_as(as = "TimestampSeconds<String>")]
     pub last_update: DateTime<Utc>,
-    #[builder(setter(into))]
     pub outcome: String,
     pub bucket_index: u32,
     pub owner: ApiKey,
     pub maker_address: Address,
-    #[builder(default)]
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
     pub maker_orders: Vec<MakerOrder>,
-    #[builder(setter(into))]
     pub transaction_hash: String,
     pub trader_side: TraderSide,
     #[serde(default)]
-    #[builder(default)]
-    #[builder(setter(into, strip_option))]
     pub error_msg: Option<String>,
 }
 
 #[non_exhaustive]
 #[derive(Debug, Default, Serialize, Builder)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into, strip_option))]
-#[builder(default)]
+#[builder(on(String, into))]
 pub struct OrdersRequest {
-    pub order_id: Option<OrderId>,
+    pub order_id: Option<String>,
     pub market: Option<String>,
     pub asset_id: Option<String>,
 }
@@ -817,7 +735,6 @@ impl OrdersRequest {
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
 pub struct NotificationResponse {
     pub r#type: u32,
     pub owner: ApiKey,
@@ -826,46 +743,29 @@ pub struct NotificationResponse {
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
+#[builder(on(String, into))]
 pub struct NotificationPayload {
-    #[builder(setter(into))]
     pub asset_id: String,
-    #[builder(setter(into))]
     pub condition_id: String,
     #[serde(rename = "eventSlug")]
-    #[builder(setter(into))]
     pub event_slug: String,
-    #[builder(setter(into))]
     pub icon: String,
-    #[builder(setter(into))]
     pub image: String,
-    #[builder(setter(into))]
     pub market: String,
-    #[builder(setter(into))]
     pub market_slug: String,
-    #[builder(setter(into))]
     pub matched_size: Decimal,
-    #[builder(setter(into))]
-    pub order_id: OrderId,
-    #[builder(setter(into))]
+    pub order_id: String,
     pub original_size: Decimal,
-    #[builder(setter(into))]
     pub outcome: String,
     pub outcome_index: u64,
     pub owner: ApiKey,
-    #[builder(setter(into))]
     pub price: Decimal,
-    #[builder(setter(into))]
     pub question: String,
-    #[builder(setter(into))]
     pub remaining_size: Decimal,
     #[serde(rename = "seriesSlug")]
-    #[builder(setter(into))]
     pub series_slug: String,
     pub side: Side,
-    #[builder(setter(into))]
     pub trade_id: String,
-    #[builder(setter(into))]
     pub transaction_hash: String,
     #[serde(alias = "type")]
     pub order_type: OrderType,
@@ -873,9 +773,6 @@ pub struct NotificationPayload {
 
 #[non_exhaustive]
 #[derive(Debug, Default, Serialize, Builder)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into, strip_option))]
-#[builder(default)]
 pub struct DeleteNotificationsRequest {
     pub notification_ids: Option<Vec<String>>,
 }
@@ -894,13 +791,10 @@ impl DeleteNotificationsRequest {
 
 #[non_exhaustive]
 #[derive(Debug, Default, Clone, Builder)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into, strip_option))]
+#[builder(on(String, into))]
 pub struct BalanceAllowanceRequest {
     pub asset_type: AssetType,
-    #[builder(default)]
     pub token_id: Option<String>,
-    #[builder(default)]
     pub signature_type: Option<SignatureType>,
 }
 
@@ -930,8 +824,9 @@ impl BalanceAllowanceRequest {
 }
 
 #[non_exhaustive]
+#[allow(clippy::allow_attributes)]
+#[allow(clippy::allow_attributes_without_reason)]
 #[derive(Debug, Default, Clone, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
 pub struct BalanceAllowanceResponse {
     pub balance: Decimal,
     #[serde(default)]
@@ -943,7 +838,6 @@ pub type UpdateBalanceAllowanceRequest = BalanceAllowanceRequest;
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
 pub struct OrderScoringResponse {
     pub scoring: bool,
 }
@@ -952,7 +846,6 @@ pub type OrdersScoringResponse = HashMap<String, bool>;
 
 #[non_exhaustive]
 #[derive(Debug, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
 pub struct SignedOrder {
     pub order: Order,
     pub signature: Signature,
@@ -995,7 +888,6 @@ impl Serialize for SignedOrder {
 
 #[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
 pub struct PriceSideResponse {
     pub side: Side,
     pub price: Decimal,
@@ -1003,7 +895,6 @@ pub struct PriceSideResponse {
 
 #[non_exhaustive]
 #[derive(Debug, Serialize, Deserialize, Clone, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
 pub struct RewardRate {
     pub asset_address: Address,
     pub rewards_daily_rate: Decimal,
@@ -1012,8 +903,6 @@ pub struct RewardRate {
 #[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Default, Clone, Serialize, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into, strip_option))]
 pub struct Rewards {
     #[builder(default)]
     #[serde(default)]
@@ -1025,8 +914,7 @@ pub struct Rewards {
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into))]
+#[builder(on(String, into))]
 pub struct MarketInfo {
     pub condition_id: String,
     pub asset_id: String,
@@ -1037,8 +925,7 @@ pub struct MarketInfo {
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into))]
+#[builder(on(String, into))]
 pub struct UserInfo {
     pub address: Address,
     pub username: String,
@@ -1049,28 +936,24 @@ pub struct UserInfo {
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
+#[builder(on(String, into))]
 pub struct MakerOrder {
-    #[builder(setter(into))]
-    pub order_id: OrderId,
+    pub order_id: String,
     pub owner: ApiKey,
     pub maker_address: Address,
     pub matched_amount: Decimal,
     pub price: Decimal,
     pub fee_rate_bps: Decimal,
-    #[builder(setter(into))]
     pub asset_id: String,
-    #[builder(setter(into))]
     pub outcome: String,
     pub side: Side,
 }
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
+#[builder(on(String, into))]
 pub struct UserEarningResponse {
     pub date: NaiveDate,
-    #[builder(setter(into))]
     pub condition_id: String,
     pub asset_address: Address,
     pub maker_address: Address,
@@ -1080,7 +963,7 @@ pub struct UserEarningResponse {
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
+#[builder(on(String, into))]
 pub struct TotalUserEarningResponse {
     pub date: NaiveDate,
     pub asset_address: Address,
@@ -1091,8 +974,7 @@ pub struct TotalUserEarningResponse {
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Builder)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(into, strip_option))]
+#[builder(on(String, into))]
 pub struct UserRewardsEarningRequest {
     pub date: NaiveDate,
     #[builder(default)]
@@ -1118,32 +1000,24 @@ impl UserRewardsEarningRequest {
 #[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
+#[builder(on(String, into))]
 pub struct UserRewardsEarningResponse {
-    #[builder(setter(into))]
     pub condition_id: String,
-    #[builder(setter(into))]
     pub question: String,
-    #[builder(setter(into))]
     pub market_slug: String,
-    #[builder(setter(into))]
     pub event_slug: String,
-    #[builder(setter(into))]
     pub image: String,
     pub rewards_max_spread: Decimal,
     pub rewards_min_size: Decimal,
     pub market_competitiveness: Decimal,
-    #[builder(default)]
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
     pub tokens: Vec<Token>,
-    #[builder(default)]
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
     pub rewards_config: Vec<RewardsConfig>,
     pub maker_address: Address,
     pub earning_percentage: Decimal,
-    #[builder(default)]
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
     pub earnings: Vec<Earning>,
@@ -1151,7 +1025,6 @@ pub struct UserRewardsEarningResponse {
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
 pub struct RewardsConfig {
     pub asset_address: Address,
     pub start_date: NaiveDate,
@@ -1162,9 +1035,8 @@ pub struct RewardsConfig {
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
+#[builder(on(String, into))]
 pub struct MarketRewardsConfig {
-    #[builder(setter(into))]
     // We sometimes get numbers or strings back
     #[serde(deserialize_with = "string_from_number_or_string")]
     pub id: String,
@@ -1178,7 +1050,6 @@ pub struct MarketRewardsConfig {
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
 pub struct Earning {
     pub asset_address: Address,
     pub earnings: Decimal,
@@ -1190,11 +1061,9 @@ pub type RewardsPercentagesResponse = HashMap<String, Decimal>;
 #[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
+#[builder(on(String, into))]
 pub struct CurrentRewardResponse {
-    #[builder(setter(into))]
     pub condition_id: String,
-    #[builder(default)]
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
     pub rewards_config: Vec<RewardsConfig>,
@@ -1205,26 +1074,19 @@ pub struct CurrentRewardResponse {
 #[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
+#[builder(on(String, into))]
 pub struct MarketRewardResponse {
-    #[builder(setter(into))]
     pub condition_id: String,
-    #[builder(setter(into))]
     pub question: String,
-    #[builder(setter(into))]
     pub market_slug: String,
-    #[builder(setter(into))]
     pub event_slug: String,
-    #[builder(setter(into))]
     pub image: String,
     pub rewards_max_spread: Decimal,
     pub rewards_min_size: Decimal,
     pub market_competitiveness: Decimal,
-    #[builder(default)]
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
     pub tokens: Vec<Token>,
-    #[builder(default)]
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
     pub rewards_config: Vec<MarketRewardsConfig>,
@@ -1234,15 +1096,10 @@ pub struct MarketRewardResponse {
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[serde(rename_all = "camelCase")]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
 pub struct BuilderApiKeyResponse {
     pub key: ApiKey,
-    #[builder(default)]
-    #[builder(setter(strip_option))]
     #[serde(default)]
     pub created_at: Option<DateTime<Utc>>,
-    #[builder(default)]
-    #[builder(setter(strip_option))]
     #[serde(default)]
     pub revoked_at: Option<DateTime<Utc>>,
 }
@@ -1251,45 +1108,32 @@ pub struct BuilderApiKeyResponse {
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[serde(rename_all = "camelCase")]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
+#[builder(on(String, into))]
 pub struct BuilderTradeResponse {
-    #[builder(setter(into))]
     pub id: String,
-    #[builder(setter(into))]
     pub trade_type: String,
-    #[builder(setter(into))]
     pub taker_order_hash: String,
-    #[builder(setter(into))]
     pub builder: String,
-    #[builder(setter(into))]
     pub market: String,
-    #[builder(setter(into))]
     pub asset_id: String,
     pub side: Side,
     pub size: Decimal,
     pub size_usdc: Decimal,
     pub price: Decimal,
     pub status: OrderStatusType,
-    #[builder(setter(into))]
     pub outcome: String,
     pub outcome_index: u32,
     pub owner: ApiKey,
-    #[builder(setter(into))]
     pub maker: String,
-    #[builder(setter(into))]
     pub transaction_hash: String,
     #[serde_as(as = "TimestampSeconds<String>")]
     pub match_time: DateTime<Utc>,
     pub bucket_index: u32,
     pub fee: Decimal,
     pub fee_usdc: Decimal,
-    #[builder(setter(into, strip_option))]
-    #[builder(default)]
     #[serde(alias = "err_msg")]
     pub err_msg: Option<String>,
-    #[builder(default)]
     pub created_at: Option<DateTime<Utc>>,
-    #[builder(default)]
     pub updated_at: Option<DateTime<Utc>>,
 }
 
@@ -1297,12 +1141,10 @@ pub struct BuilderTradeResponse {
 /// next page.
 #[non_exhaustive]
 #[derive(Clone, Debug, Serialize, Deserialize, Builder, PartialEq)]
-#[builder(pattern = "owned", build_fn(error = "Error"))]
-#[builder(setter(strip_option))]
+#[builder(on(String, into))]
 pub struct Page<T> {
     pub data: Vec<T>,
     /// The continuation token to supply to the API to trigger for the next [`Page<T>`].
-    #[builder(setter(into))]
     pub next_cursor: String,
     /// The maximum length of `data`.
     pub limit: u64,
@@ -1378,13 +1220,13 @@ mod tests {
     }
 
     #[test]
-    fn trades_request_as_params_should_succeed() -> Result<()> {
-        let request = TradesRequestBuilder::default()
+    fn trades_request_as_params_should_succeed() {
+        let request = TradesRequest::builder()
             .market("10000")
             .asset_id("100")
             .id("aa-bb")
             .maker_address(Address::ZERO)
-            .build()?;
+            .build();
 
         assert_eq!(
             request.as_params(None),
@@ -1394,17 +1236,15 @@ mod tests {
             request.as_params(Some(&"1".to_owned())),
             "?id=aa-bb&maker_address=0x0000000000000000000000000000000000000000&market=10000&asset_id=100&next_cursor=1"
         );
-
-        Ok(())
     }
 
     #[test]
-    fn orders_request_as_params_should_succeed() -> Result<()> {
-        let request = OrdersRequestBuilder::default()
+    fn orders_request_as_params_should_succeed() {
+        let request = OrdersRequest::builder()
             .market("10000")
             .asset_id("100")
             .order_id("aa-bb")
-            .build()?;
+            .build();
 
         assert_eq!(
             request.as_params(None),
@@ -1414,50 +1254,42 @@ mod tests {
             request.as_params(Some(&"1".to_owned())),
             "?order_id=aa-bb&market=10000&asset_id=100&next_cursor=1"
         );
-
-        Ok(())
     }
 
     #[test]
-    fn delete_notifications_request_as_params_should_succeed() -> Result<()> {
-        let empty_request = DeleteNotificationsRequestBuilder::default().build()?;
-        let request = DeleteNotificationsRequestBuilder::default()
+    fn delete_notifications_request_as_params_should_succeed() {
+        let empty_request = DeleteNotificationsRequest::builder().build();
+        let request = DeleteNotificationsRequest::builder()
             .notification_ids(vec!["1".to_owned(), "2".to_owned()])
-            .build()?;
+            .build();
 
         assert_eq!(empty_request.as_params(), "");
         assert_eq!(request.as_params(), "?ids=1,2");
-
-        Ok(())
     }
 
     #[test]
-    fn balance_allowance_request_as_params_should_succeed() -> Result<()> {
-        let request = BalanceAllowanceRequestBuilder::default()
+    fn balance_allowance_request_as_params_should_succeed() {
+        let request = BalanceAllowanceRequest::builder()
             .asset_type(AssetType::Collateral)
             .token_id("1".to_owned())
-            .build()?;
+            .build();
 
         assert_eq!(
             request.as_params(SignatureType::Eoa),
             "?asset_type=COLLATERAL&token_id=1&signature_type=0"
         );
-
-        Ok(())
     }
 
     #[test]
-    fn user_rewards_earning_request_as_params_should_succeed() -> Result<()> {
-        let request = UserRewardsEarningRequestBuilder::default()
+    fn user_rewards_earning_request_as_params_should_succeed() {
+        let request = UserRewardsEarningRequest::builder()
             .date(NaiveDate::MIN)
-            .build()?;
+            .build();
 
         assert_eq!(
             request.as_params(Some(&"1".to_owned())),
             "?date=-262143-01-01&order_by=&position=&no_competition=false&next_cursor=1"
         );
-
-        Ok(())
     }
 
     #[test]

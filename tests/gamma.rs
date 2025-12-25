@@ -3,12 +3,10 @@
 mod sports {
     use chrono::{DateTime, Utc};
     use httpmock::{Method::GET, MockServer};
+    use polymarket_client_sdk::gamma::types::{ListedTeam, Sport, SportsMarketTypesResponse};
     use polymarket_client_sdk::gamma::{
         Client,
-        types::{
-            ListTeamsRequest, ListTeamsResponse, ListedTeamBuilder, SportBuilder,
-            SportsMarketTypesResponseBuilder, SportsMetadataResponse,
-        },
+        types::{ListTeamsRequest, ListTeamsResponse, SportsMetadataResponse},
     };
     use reqwest::StatusCode;
     use serde_json::json;
@@ -49,8 +47,8 @@ mod sports {
         let response = client.teams(&ListTeamsRequest::default()).await?;
 
         let expected: ListTeamsResponse = vec![
-            ListedTeamBuilder::default()
-                .id(1_u32)
+            ListedTeam::builder()
+                .id(1)
                 .name("Lakers")
                 .league("NBA")
                 .record("45-37")
@@ -59,9 +57,9 @@ mod sports {
                 .alias("Los Angeles Lakers")
                 .created_at("2024-01-15T10:30:00Z".parse::<DateTime<Utc>>().unwrap())
                 .updated_at("2024-06-20T14:45:00Z".parse::<DateTime<Utc>>().unwrap())
-                .build()?,
-            ListedTeamBuilder::default()
-                .id(2_u32)
+                .build(),
+            ListedTeam::builder()
+                .id(2)
                 .name("Celtics")
                 .league("NBA")
                 .record("64-18")
@@ -70,7 +68,7 @@ mod sports {
                 .alias("Boston Celtics")
                 .created_at("2024-01-15T10:30:00Z".parse::<DateTime<Utc>>().unwrap())
                 .updated_at("2024-06-20T14:45:00Z".parse::<DateTime<Utc>>().unwrap())
-                .build()?,
+                .build(),
         ];
 
         assert_eq!(response, expected);
@@ -101,14 +99,14 @@ mod sports {
         let response = client.sports().await?;
 
         let expected: SportsMetadataResponse = vec![
-            SportBuilder::default()
+            Sport::builder()
                 .sport("ncaab")
                 .image("https://example.com/basketball.png")
                 .resolution("https://example.com")
                 .ordering("home")
                 .tags("1,2,3")
                 .series("39")
-                .build()?,
+                .build(),
         ];
 
         assert_eq!(response, expected);
@@ -131,13 +129,13 @@ mod sports {
 
         let response = client.sports_market_types().await?;
 
-        let expected = SportsMarketTypesResponseBuilder::default()
+        let expected = SportsMarketTypesResponse::builder()
             .market_types(vec![
                 "moneyline".to_owned(),
                 "spreads".to_owned(),
                 "totals".to_owned(),
             ])
-            .build()?;
+            .build();
 
         assert_eq!(response, expected);
         mock.assert();
@@ -149,13 +147,10 @@ mod sports {
 mod tags {
     use chrono::{DateTime, Utc};
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::gamma::{
-        Client,
-        types::{
-            RelatedTagsByIdRequestBuilder, RelatedTagsBySlugRequestBuilder, TagBuilder,
-            TagRelationshipBuilder, TagsRequest,
-        },
+    use polymarket_client_sdk::gamma::types::{
+        RelatedTagsByIdRequest, RelatedTagsBySlugRequest, Tag, TagRelationship,
     };
+    use polymarket_client_sdk::gamma::{Client, types::TagsRequest};
     use reqwest::StatusCode;
     use serde_json::json;
 
@@ -186,7 +181,7 @@ mod tags {
         let response = client.tags(&TagsRequest::default()).await?;
 
         let expected = vec![
-            TagBuilder::default()
+            Tag::builder()
                 .id("1")
                 .label("Politics")
                 .slug("politics")
@@ -198,7 +193,7 @@ mod tags {
                 .updated_at("2024-06-20T14:45:00Z".parse::<DateTime<Utc>>().unwrap())
                 .force_hide(false)
                 .is_carousel(true)
-                .build()?,
+                .build(),
         ];
 
         assert_eq!(response, expected);
@@ -226,14 +221,14 @@ mod tags {
 
         let response = client.tag_by_id(42, None).await?;
 
-        let expected = TagBuilder::default()
+        let expected = Tag::builder()
             .id("42")
             .label("Sports")
             .slug("sports")
             .force_show(false)
             .force_hide(false)
             .is_carousel(false)
-            .build()?;
+            .build();
 
         assert_eq!(response, expected);
         mock.assert();
@@ -260,14 +255,14 @@ mod tags {
 
         let response = client.tag_by_slug("crypto", None).await?;
 
-        let expected = TagBuilder::default()
+        let expected = Tag::builder()
             .id("99")
             .label("Crypto")
             .slug("crypto")
             .force_show(true)
             .force_hide(false)
             .is_carousel(true)
-            .build()?;
+            .build();
 
         assert_eq!(response, expected);
         mock.assert();
@@ -292,18 +287,16 @@ mod tags {
             ]));
         });
 
-        let request = RelatedTagsByIdRequestBuilder::default()
-            .id(42_u64)
-            .build()?;
+        let request = RelatedTagsByIdRequest::builder().id(42_u64).build();
         let response = client.tag_relationships_by_id(&request).await?;
 
         let expected = vec![
-            TagRelationshipBuilder::default()
+            TagRelationship::builder()
                 .id("1")
                 .tag_id(42_i64)
                 .related_tag_id(99_u64)
                 .rank(1_u64)
-                .build()?,
+                .build(),
         ];
 
         assert_eq!(response, expected);
@@ -329,18 +322,16 @@ mod tags {
             ]));
         });
 
-        let request = RelatedTagsBySlugRequestBuilder::default()
-            .slug("politics")
-            .build()?;
+        let request = RelatedTagsBySlugRequest::builder().slug("politics").build();
         let response = client.tag_relationships_by_slug(&request).await?;
 
         let expected = vec![
-            TagRelationshipBuilder::default()
+            TagRelationship::builder()
                 .id("2")
                 .tag_id(10_i64)
                 .related_tag_id(20_u64)
                 .rank(5_u64)
-                .build()?,
+                .build(),
         ];
 
         assert_eq!(response, expected);
@@ -368,20 +359,18 @@ mod tags {
             ]));
         });
 
-        let request = RelatedTagsByIdRequestBuilder::default()
-            .id(42_u64)
-            .build()?;
+        let request = RelatedTagsByIdRequest::builder().id(42_u64).build();
         let response = client.related_tags_by_id(&request).await?;
 
         let expected = vec![
-            TagBuilder::default()
+            Tag::builder()
                 .id("99")
                 .label("Related Tag")
                 .slug("related-tag")
                 .force_show(false)
                 .force_hide(false)
                 .is_carousel(false)
-                .build()?,
+                .build(),
         ];
 
         assert_eq!(response, expected);
@@ -410,20 +399,18 @@ mod tags {
             ]));
         });
 
-        let request = RelatedTagsBySlugRequestBuilder::default()
-            .slug("politics")
-            .build()?;
+        let request = RelatedTagsBySlugRequest::builder().slug("politics").build();
         let response = client.related_tags_by_slug(&request).await?;
 
         let expected = vec![
-            TagBuilder::default()
+            Tag::builder()
                 .id("50")
                 .label("Elections")
                 .slug("elections")
                 .force_show(true)
                 .force_hide(false)
                 .is_carousel(true)
-                .build()?,
+                .build(),
         ];
 
         assert_eq!(response, expected);

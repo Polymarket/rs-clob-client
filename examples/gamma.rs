@@ -2,8 +2,7 @@
 
 use polymarket_client_sdk::gamma::Client;
 use polymarket_client_sdk::gamma::types::{
-    ListTeamsRequest, ListTeamsRequestBuilder, RelatedTagsByIdRequestBuilder,
-    RelatedTagsBySlugRequestBuilder, TagsRequestBuilder,
+    ListTeamsRequest, RelatedTagsByIdRequest, RelatedTagsBySlugRequest, TagsRequest,
 };
 
 #[tokio::main]
@@ -16,10 +15,7 @@ async fn main() -> anyhow::Result<()> {
         client.teams(&ListTeamsRequest::default()).await
     );
 
-    let filtered_request = ListTeamsRequestBuilder::default()
-        .limit(5_u32)
-        .offset(10_u32)
-        .build()?;
+    let filtered_request = ListTeamsRequest::builder().limit(5).offset(10).build();
     println!(
         "teams custom -- {:?}",
         client.teams(&filtered_request).await
@@ -33,7 +29,7 @@ async fn main() -> anyhow::Result<()> {
     );
 
     //---- tag endpoints
-    let request = TagsRequestBuilder::default().build()?;
+    let request = TagsRequest::builder().build();
     println!("tags -- {:?}", client.tags(&request).await);
 
     println!("tag_by_id -- {:?}", client.tag_by_id(1, None).await);
@@ -43,29 +39,25 @@ async fn main() -> anyhow::Result<()> {
         client.tag_by_slug("politics", None).await
     );
 
-    let request = RelatedTagsByIdRequestBuilder::default().id(1_u64).build()?;
+    let request = RelatedTagsByIdRequest::builder().id(1_u64).build();
     println!(
         "tag_relationships_by_id -- {:?}",
         client.tag_relationships_by_id(&request).await
     );
 
-    let request = RelatedTagsBySlugRequestBuilder::default()
-        .slug("politics")
-        .build()?;
+    let request = RelatedTagsBySlugRequest::builder().slug("politics").build();
     println!(
         "tag_relationships_by_slug -- {:?}",
         client.tag_relationships_by_slug(&request).await
     );
 
-    let request = RelatedTagsByIdRequestBuilder::default().id(1_u64).build()?;
+    let request = RelatedTagsByIdRequest::builder().id(1_u64).build();
     println!(
         "related_tags_by_id -- {:?}",
         client.related_tags_by_id(&request).await
     );
 
-    let request = RelatedTagsBySlugRequestBuilder::default()
-        .slug("politics")
-        .build()?;
+    let request = RelatedTagsBySlugRequest::builder().slug("politics").build();
     println!(
         "related_tags_by_slug -- {:?}",
         client.related_tags_by_slug(&request).await

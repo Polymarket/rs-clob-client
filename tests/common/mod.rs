@@ -21,7 +21,7 @@ use polymarket_client_sdk::clob::types::{
     FeeRateResponseBuilder, NegRiskResponseBuilder, SignatureType, TickSize,
     TickSizeResponseBuilder,
 };
-use polymarket_client_sdk::clob::{Client, Config, ConfigBuilder};
+use polymarket_client_sdk::clob::{Client, Config};
 use reqwest::StatusCode;
 use rust_decimal::Decimal;
 use serde_json::json;
@@ -79,7 +79,7 @@ pub async fn create_authenticated(server: &MockServer) -> anyhow::Result<TestCli
             .json_body(TIMESTAMP.parse::<i64>().unwrap());
     });
 
-    let config = ConfigBuilder::default().use_server_time(true).build()?;
+    let config = Config::builder().use_server_time(true).build();
     let client = Client::new(&server.base_url(), config)?
         .authentication_builder(&signer)
         .authenticate()

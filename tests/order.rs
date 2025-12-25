@@ -1178,7 +1178,6 @@ mod limit {
 }
 
 mod market {
-    use polymarket_client_sdk::clob::types::OrderSummaryBuilder;
     use polymarket_client_sdk::error::Validation;
     use serde_json::json;
 
@@ -1270,14 +1269,14 @@ mod market {
                     TOKEN_1,
                     &[],
                     &[
-                        OrderSummaryBuilder::default()
+                        OrderSummary::builder()
                             .price(dec!(0.5))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.4))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
+                            .build(),
                     ],
                 );
 
@@ -1307,18 +1306,18 @@ mod market {
                     TOKEN_1,
                     &[],
                     &[
-                        OrderSummaryBuilder::default()
+                        OrderSummary::builder()
                             .price(dec!(0.5))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.4))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.3))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
+                            .build(),
                     ],
                 );
 
@@ -1362,18 +1361,18 @@ mod market {
                     TOKEN_1,
                     &[],
                     &[
-                        OrderSummaryBuilder::default()
+                        OrderSummary::builder()
                             .price(dec!(0.5))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.4))
                             .size(dec!(200))
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.3))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
+                            .build(),
                     ],
                 );
 
@@ -1408,18 +1407,18 @@ mod market {
                     TOKEN_1,
                     &[],
                     &[
-                        OrderSummaryBuilder::default()
+                        OrderSummary::builder()
                             .price(dec!(0.5))
                             .size(dec!(120))
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.4))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.2))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
+                            .build(),
                     ],
                 );
 
@@ -1454,18 +1453,18 @@ mod market {
                     TOKEN_1,
                     &[],
                     &[
-                        OrderSummaryBuilder::default()
+                        OrderSummary::builder()
                             .price(dec!(0.5))
                             .size(dec!(200))
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.4))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.3))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
+                            .build(),
                     ],
                 );
 
@@ -1529,14 +1528,14 @@ mod market {
                     TOKEN_1,
                     &[],
                     &[
-                        OrderSummaryBuilder::default()
+                        OrderSummary::builder()
                             .price(dec!(0.5))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.4))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
+                            .build(),
                     ],
                 );
 
@@ -1579,18 +1578,18 @@ mod market {
                     TOKEN_1,
                     &[],
                     &[
-                        OrderSummaryBuilder::default()
+                        OrderSummary::builder()
                             .price(dec!(0.5))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.4))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.3))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
+                            .build(),
                     ],
                 );
 
@@ -1624,18 +1623,18 @@ mod market {
                     TOKEN_1,
                     &[],
                     &[
-                        OrderSummaryBuilder::default()
+                        OrderSummary::builder()
                             .price(dec!(0.5))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.4))
                             .size(dec!(200))
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.3))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
+                            .build(),
                     ],
                 );
 
@@ -1669,18 +1668,18 @@ mod market {
                     TOKEN_1,
                     &[],
                     &[
-                        OrderSummaryBuilder::default()
+                        OrderSummary::builder()
                             .price(dec!(0.5))
                             .size(dec!(120))
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.4))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.3))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
+                            .build(),
                     ],
                 );
 
@@ -1714,18 +1713,18 @@ mod market {
                     TOKEN_1,
                     &[],
                     &[
-                        OrderSummaryBuilder::default()
+                        OrderSummary::builder()
                             .price(dec!(0.5))
                             .size(dec!(200))
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.4))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.3))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
+                            .build(),
                     ],
                 );
 
@@ -1761,10 +1760,10 @@ mod market {
                 &server,
                 TOKEN_1,
                 &[],
-                &[OrderSummaryBuilder::default()
+                &[OrderSummary::builder()
                     .price(dec!(0.5))
                     .size(Decimal::ONE_HUNDRED)
-                    .build()?],
+                    .build()],
             );
 
             let signable_order = client
@@ -1809,10 +1808,10 @@ mod market {
                 &server,
                 TOKEN_1,
                 &[],
-                &[OrderSummaryBuilder::default()
+                &[OrderSummary::builder()
                     .price(dec!(0.56))
                     .size(Decimal::ONE_HUNDRED)
-                    .build()?],
+                    .build()],
             );
 
             let signable_order = client
@@ -1858,10 +1857,10 @@ mod market {
                 &server,
                 TOKEN_1,
                 &[],
-                &[OrderSummaryBuilder::default()
+                &[OrderSummary::builder()
                     .price(dec!(0.056))
                     .size(Decimal::ONE_HUNDRED)
-                    .build()?],
+                    .build()],
             );
 
             let signable_order = client
@@ -1907,10 +1906,10 @@ mod market {
                 &server,
                 TOKEN_1,
                 &[],
-                &[OrderSummaryBuilder::default()
+                &[OrderSummary::builder()
                     .price(dec!(0.0056))
                     .size(Decimal::ONE_HUNDRED)
-                    .build()?],
+                    .build()],
             );
 
             let signable_order = client
@@ -1987,10 +1986,10 @@ mod market {
                 &server,
                 TOKEN_1,
                 &[],
-                &[OrderSummaryBuilder::default()
+                &[OrderSummary::builder()
                     .price(dec!(0.5))
                     .size(dec!(50))
-                    .build()?],
+                    .build()],
             );
 
             let err = client
@@ -2023,14 +2022,14 @@ mod market {
                 TOKEN_1,
                 &[],
                 &[
-                    OrderSummaryBuilder::default()
+                    OrderSummary::builder()
                         .price(dec!(0.5))
                         .size(dec!(100))
-                        .build()?,
-                    OrderSummaryBuilder::default()
+                        .build(),
+                    OrderSummary::builder()
                         .price(dec!(0.4))
                         .size(dec!(300))
-                        .build()?,
+                        .build(),
                 ],
             );
 
@@ -2091,14 +2090,14 @@ mod market {
                     &server,
                     TOKEN_1,
                     &[
-                        OrderSummaryBuilder::default()
+                        OrderSummary::builder()
                             .price(dec!(0.4))
                             .size(Decimal::TEN)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.5))
                             .size(Decimal::TEN)
-                            .build()?,
+                            .build(),
                     ],
                     &[],
                 );
@@ -2128,18 +2127,18 @@ mod market {
                     &server,
                     TOKEN_1,
                     &[
-                        OrderSummaryBuilder::default()
+                        OrderSummary::builder()
                             .price(dec!(0.3))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.4))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.5))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
+                            .build(),
                     ],
                     &[],
                 );
@@ -2183,18 +2182,18 @@ mod market {
                     &server,
                     TOKEN_1,
                     &[
-                        OrderSummaryBuilder::default()
+                        OrderSummary::builder()
                             .price(dec!(0.3))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.4))
                             .size(dec!(300))
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.5))
                             .size(Decimal::TEN)
-                            .build()?,
+                            .build(),
                     ],
                     &[],
                 );
@@ -2229,18 +2228,18 @@ mod market {
                     &server,
                     TOKEN_1,
                     &[
-                        OrderSummaryBuilder::default()
+                        OrderSummary::builder()
                             .price(dec!(0.3))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.4))
                             .size(dec!(200))
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.5))
                             .size(Decimal::TEN)
-                            .build()?,
+                            .build(),
                     ],
                     &[],
                 );
@@ -2275,18 +2274,18 @@ mod market {
                     &server,
                     TOKEN_1,
                     &[
-                        OrderSummaryBuilder::default()
+                        OrderSummary::builder()
                             .price(dec!(0.3))
                             .size(dec!(300))
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.4))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.5))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
+                            .build(),
                     ],
                     &[],
                 );
@@ -2321,18 +2320,18 @@ mod market {
                     &server,
                     TOKEN_1,
                     &[
-                        OrderSummaryBuilder::default()
+                        OrderSummary::builder()
                             .price(dec!(0.3))
                             .size(dec!(334))
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.4))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.5))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
+                            .build(),
                     ],
                     &[],
                 );
@@ -2396,14 +2395,14 @@ mod market {
                     &server,
                     TOKEN_1,
                     &[
-                        OrderSummaryBuilder::default()
+                        OrderSummary::builder()
                             .price(dec!(0.4))
                             .size(Decimal::TEN)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.5))
                             .size(Decimal::TEN)
-                            .build()?,
+                            .build(),
                     ],
                     &[],
                 );
@@ -2446,18 +2445,18 @@ mod market {
                     &server,
                     TOKEN_1,
                     &[
-                        OrderSummaryBuilder::default()
+                        OrderSummary::builder()
                             .price(dec!(0.3))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.4))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.5))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
+                            .build(),
                     ],
                     &[],
                 );
@@ -2491,18 +2490,18 @@ mod market {
                     &server,
                     TOKEN_1,
                     &[
-                        OrderSummaryBuilder::default()
+                        OrderSummary::builder()
                             .price(dec!(0.3))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.4))
                             .size(dec!(300))
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.5))
                             .size(Decimal::TEN)
-                            .build()?,
+                            .build(),
                     ],
                     &[],
                 );
@@ -2536,18 +2535,18 @@ mod market {
                     &server,
                     TOKEN_1,
                     &[
-                        OrderSummaryBuilder::default()
+                        OrderSummary::builder()
                             .price(dec!(0.3))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.4))
                             .size(dec!(200))
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.5))
                             .size(Decimal::TEN)
-                            .build()?,
+                            .build(),
                     ],
                     &[],
                 );
@@ -2581,18 +2580,18 @@ mod market {
                     &server,
                     TOKEN_1,
                     &[
-                        OrderSummaryBuilder::default()
+                        OrderSummary::builder()
                             .price(dec!(0.3))
                             .size(dec!(300))
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.4))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.5))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
+                            .build(),
                     ],
                     &[],
                 );
@@ -2626,18 +2625,18 @@ mod market {
                     &server,
                     TOKEN_1,
                     &[
-                        OrderSummaryBuilder::default()
+                        OrderSummary::builder()
                             .price(dec!(0.3))
                             .size(dec!(334))
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.4))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
-                        OrderSummaryBuilder::default()
+                            .build(),
+                        OrderSummary::builder()
                             .price(dec!(0.5))
                             .size(Decimal::ONE_HUNDRED)
-                            .build()?,
+                            .build(),
                     ],
                     &[],
                 );
@@ -2673,10 +2672,10 @@ mod market {
             ensure_requirements_for_market_price(
                 &server,
                 TOKEN_1,
-                &[OrderSummaryBuilder::default()
+                &[OrderSummary::builder()
                     .price(dec!(0.5))
                     .size(Decimal::ONE_HUNDRED)
-                    .build()?],
+                    .build()],
                 &[],
             );
 
@@ -2721,10 +2720,10 @@ mod market {
             ensure_requirements_for_market_price(
                 &server,
                 TOKEN_1,
-                &[OrderSummaryBuilder::default()
+                &[OrderSummary::builder()
                     .price(dec!(0.56))
                     .size(Decimal::ONE_HUNDRED)
-                    .build()?],
+                    .build()],
                 &[],
             );
 
@@ -2770,10 +2769,10 @@ mod market {
             ensure_requirements_for_market_price(
                 &server,
                 TOKEN_1,
-                &[OrderSummaryBuilder::default()
+                &[OrderSummary::builder()
                     .price(dec!(0.056))
                     .size(Decimal::ONE_HUNDRED)
-                    .build()?],
+                    .build()],
                 &[],
             );
 
@@ -2819,10 +2818,10 @@ mod market {
             ensure_requirements_for_market_price(
                 &server,
                 TOKEN_1,
-                &[OrderSummaryBuilder::default()
+                &[OrderSummary::builder()
                     .price(dec!(0.0056))
                     .size(Decimal::ONE_HUNDRED)
-                    .build()?],
+                    .build()],
                 &[],
             );
 

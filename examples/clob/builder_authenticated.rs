@@ -5,7 +5,7 @@ use std::str::FromStr as _;
 use alloy::signers::Signer as _;
 use alloy::signers::local::LocalSigner;
 use polymarket_client_sdk::auth::builder::Config as BuilderConfig;
-use polymarket_client_sdk::clob::types::TradesRequestBuilder;
+use polymarket_client_sdk::clob::types::TradesRequest;
 use polymarket_client_sdk::clob::{Client, Config};
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 
@@ -28,7 +28,7 @@ async fn main() -> anyhow::Result<()> {
     let keys = client.builder_api_keys().await?;
     println!("{keys:#?}");
 
-    let request = TradesRequestBuilder::default().asset_id("asset").build()?;
+    let request = TradesRequest::builder().asset_id("asset").build();
     println!(
         "builder_trades -- {:?}",
         client.builder_trades(&request, None).await?

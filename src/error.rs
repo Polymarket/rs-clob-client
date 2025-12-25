@@ -4,7 +4,6 @@ use std::fmt;
 
 use alloy::primitives::ChainId;
 use alloy::primitives::ruint::ParseError;
-use derive_builder::UninitializedFieldError;
 use hmac::digest::InvalidLength;
 use reqwest::{Method, StatusCode, header};
 
@@ -207,12 +206,6 @@ impl From<serde_json::Error> for Error {
 impl From<alloy::signers::Error> for Error {
     fn from(e: alloy::signers::Error) -> Self {
         Error::with_source(Kind::Internal, e)
-    }
-}
-
-impl From<UninitializedFieldError> for Error {
-    fn from(e: UninitializedFieldError) -> Self {
-        Error::with_source(Kind::Validation, e)
     }
 }
 
