@@ -66,6 +66,7 @@
 //! The default API endpoint is `https://gamma-api.polymarket.com`.
 
 pub mod client;
+mod ser;
 pub mod types;
 
 pub use client::Client;

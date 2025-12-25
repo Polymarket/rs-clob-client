@@ -44,17 +44,6 @@ use super::types::{
 use crate::Result;
 use crate::error::Error;
 
-fn to_query_string(params: &[(&'static str, String)]) -> String {
-    if params.is_empty() {
-        String::new()
-    } else {
-        let encoded: String = url::form_urlencoded::Serializer::new(String::new())
-            .extend_pairs(params.iter().map(|(k, v)| (*k, v.as_str())))
-            .finish();
-        format!("?{encoded}")
-    }
-}
-
 /// HTTP client for the Polymarket Gamma API.
 ///
 /// Provides methods for querying events, markets, tags, series, comments,
@@ -186,7 +175,7 @@ impl Client {
         path: &str,
         req: &Req,
     ) -> Result<Res> {
-        let params = to_query_string(&req.query_params());
+        let params = req.query_string();
         let request = self
             .client
             .request(Method::GET, format!("{}{path}{params}", self.host))
