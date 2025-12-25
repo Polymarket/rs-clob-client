@@ -2,8 +2,8 @@
 //!
 //! This module contains all types used by the Gamma API client, organized into:
 //!
-//! - **Common types**: Fundamental types like [`Address`], as well as enums
-//!   for filtering and categorization.
+//! - **Common types**: Shared data structures used across requests and responses,
+//!   as well as enums for filtering and categorization.
 //!
 //! - **Request types**: Builder-pattern structs for each API endpoint
 //!   (e.g., [`EventsRequest`], [`MarketsRequest`]).
