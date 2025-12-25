@@ -16,7 +16,7 @@ repos:
     hooks:
       - id: fmt
         name: fmt
-        entry: rustup run nightly cargo fmt --all -- --check
+        entry: cargo +nightly fmt --all -- --check
         language: system
         types: [ rust ]
         pass_filenames: false
