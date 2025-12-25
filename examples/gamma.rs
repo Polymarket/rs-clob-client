@@ -2,7 +2,7 @@
 
 use polymarket_client_sdk::gamma::Client;
 use polymarket_client_sdk::gamma::types::{
-    Address, CommentsByIdRequest, CommentsByUserAddressRequest, CommentsRequest, EventByIdRequest,
+    CommentsByIdRequest, CommentsByUserAddressRequest, CommentsRequest, EventByIdRequest,
     EventBySlugRequest, EventTagsRequest, EventsRequest, MarketByIdRequest, MarketBySlugRequest,
     MarketTagsRequest, MarketsRequest, PublicProfileRequest, RelatedTagsByIdRequest,
     RelatedTagsBySlugRequest, SearchRequest, SeriesByIdRequest, SeriesListRequest, TagByIdRequest,
@@ -121,7 +121,7 @@ async fn main() -> anyhow::Result<()> {
     );
 
     let request = CommentsByUserAddressRequest::builder()
-        .user_address(Address::new("0x56687bf447db6ffa42ffe2204a05edaa20f55839")?)
+        .user_address("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
         .limit(5)
         .build();
     println!(
@@ -131,7 +131,7 @@ async fn main() -> anyhow::Result<()> {
 
     //---- profile endpoints
     let request = PublicProfileRequest::builder()
-        .address(Address::new("0x56687bf447db6ffa42ffe2204a05edaa20f55839")?)
+        .address("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
         .build();
     println!(
         "public_profile -- {:?}",

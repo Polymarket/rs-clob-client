@@ -20,7 +20,7 @@
 
 use polymarket_client_sdk::gamma::Client;
 use polymarket_client_sdk::gamma::types::{
-    Address, CommentsByIdRequest, CommentsByUserAddressRequest, CommentsRequest, EventByIdRequest,
+    CommentsByIdRequest, CommentsByUserAddressRequest, CommentsRequest, EventByIdRequest,
     EventBySlugRequest, EventTagsRequest, EventsRequest, MarketByIdRequest, MarketBySlugRequest,
     MarketTagsRequest, MarketsRequest, ParentEntityType, PublicProfileRequest,
     RelatedTagsByIdRequest, RelatedTagsBySlugRequest, SearchRequest, SeriesByIdRequest,
@@ -557,16 +557,8 @@ async fn test_comments_by_id(client: &Client, results: &mut TestResults, id: i32
 
 async fn test_comments_by_user_address(client: &Client, results: &mut TestResults) {
     // Use a known Polymarket address for testing
-    let address = match Address::new("0x56687bf447db6ffa42ffe2204a05edaa20f55839") {
-        Ok(addr) => addr,
-        Err(e) => {
-            results.fail("comments_by_user_address()", &e.to_string());
-            return;
-        }
-    };
-
     let request = CommentsByUserAddressRequest::builder()
-        .user_address(address)
+        .user_address("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
         .limit(10_u32)
         .build();
     match client.comments_by_user_address(&request).await {
@@ -586,15 +578,9 @@ async fn test_comments_by_user_address(client: &Client, results: &mut TestResult
 
 async fn test_public_profile(client: &Client, results: &mut TestResults) {
     // Use a known Polymarket address for testing
-    let address = match Address::new("0x56687bf447db6ffa42ffe2204a05edaa20f55839") {
-        Ok(addr) => addr,
-        Err(e) => {
-            results.fail("public_profile()", &e.to_string());
-            return;
-        }
-    };
-
-    let request = PublicProfileRequest::builder().address(address).build();
+    let request = PublicProfileRequest::builder()
+        .address("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
+        .build();
     match client.public_profile(&request).await {
         Ok(_profile) => {
             results.pass("public_profile()");

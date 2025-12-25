@@ -1,12 +1,546 @@
-//! Response types for the Polymarket Gamma API.
+//! Types for the Polymarket Gamma API.
 //!
-//! This module contains all response types returned by Gamma API endpoints.
+//! This module contains all types used by the Gamma API client, organized into:
+//!
+//! - **Common types**: Fundamental types like [`Address`], as well as enums
+//!   for filtering and categorization.
+//!
+//! - **Request types**: Builder-pattern structs for each API endpoint
+//!   (e.g., [`EventsRequest`], [`MarketsRequest`]).
+//!
+//! - **Response types**: Structs representing API responses
+//!   (e.g., [`Event`], [`Market`], [`Tag`]).
+//!
+//! # Request Building
+//!
+//! All request types use the builder pattern via the [`bon`](https://docs.rs/bon) crate:
+//!
+//! ```
+//! use polymarket_client_sdk::gamma::types::{EventsRequest, MarketsRequest};
+//!
+//! // Simple request with defaults
+//! let events = EventsRequest::builder().build();
+//!
+//! // Request with filters
+//! let markets = MarketsRequest::builder()
+//!     .limit(10)
+//!     .closed(false)
+//!     .build();
+//! ```
 
+use bon::Builder;
 use chrono::{DateTime, Utc};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+
+use super::ser::{comma_separated, is_empty_vec, rfc3339};
 
 // =============================================================================
-// Common/Shared Types
+// Request Types - Trait
+// =============================================================================
+
+/// Trait for converting request types to URL query strings.
+///
+/// This trait is automatically implemented for all types that implement [`Serialize`].
+/// It uses [`serde_urlencoded`] to serialize the struct fields into a query string.
+///
+/// # Example
+///
+/// ```
+/// use polymarket_client_sdk::gamma::types::{EventsRequest, QueryParams};
+///
+/// let request = EventsRequest::builder()
+///     .limit(10)
+///     .active(true)
+///     .build();
+///
+/// let query = request.query_string();
+/// assert!(query.starts_with("?"));
+/// assert!(query.contains("limit=10"));
+/// assert!(query.contains("active=true"));
+/// ```
+pub trait QueryParams: Serialize {
+    /// Converts the request to a URL query string.
+    ///
+    /// Returns an empty string if no parameters are set, otherwise returns
+    /// a string starting with `?` followed by URL-encoded key-value pairs.
+    fn query_string(&self) -> String {
+        let params = serde_urlencoded::to_string(self).unwrap_or_default();
+        if params.is_empty() {
+            params
+        } else {
+            format!("?{params}")
+        }
+    }
+}
+
+impl<T: Serialize> QueryParams for T {}
+
+// =============================================================================
+// Request Types - Sports Endpoints
+// =============================================================================
+
+#[derive(Debug, Clone, Builder, Default, Serialize)]
+#[non_exhaustive]
+pub struct TeamsRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub offset: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ascending: Option<bool>,
+    #[serde(
+        skip_serializing_if = "is_empty_vec",
+        serialize_with = "comma_separated"
+    )]
+    pub league: Option<Vec<String>>,
+    #[serde(
+        skip_serializing_if = "is_empty_vec",
+        serialize_with = "comma_separated"
+    )]
+    pub name: Option<Vec<String>>,
+    #[serde(
+        skip_serializing_if = "is_empty_vec",
+        serialize_with = "comma_separated"
+    )]
+    pub abbreviation: Option<Vec<String>>,
+}
+
+// =============================================================================
+// Request Types - Tags Endpoints
+// =============================================================================
+
+#[derive(Debug, Clone, Builder, Default, Serialize)]
+#[non_exhaustive]
+pub struct TagsRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub offset: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ascending: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_template: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_carousel: Option<bool>,
+}
+
+#[derive(Debug, Clone, Builder, Serialize)]
+#[non_exhaustive]
+pub struct TagByIdRequest {
+    #[serde(skip_serializing)]
+    #[builder(into)]
+    pub id: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_template: Option<bool>,
+}
+
+#[derive(Debug, Clone, Builder, Serialize)]
+#[non_exhaustive]
+pub struct TagBySlugRequest {
+    #[serde(skip_serializing)]
+    #[builder(into)]
+    pub slug: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_template: Option<bool>,
+}
+
+#[derive(Debug, Clone, Builder, Serialize)]
+#[non_exhaustive]
+pub struct RelatedTagsByIdRequest {
+    #[serde(skip_serializing)]
+    #[builder(into)]
+    pub id: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub omit_empty: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<RelatedTagsStatus>,
+}
+
+#[derive(Debug, Clone, Builder, Serialize)]
+#[non_exhaustive]
+pub struct RelatedTagsBySlugRequest {
+    #[serde(skip_serializing)]
+    #[builder(into)]
+    pub slug: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub omit_empty: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<RelatedTagsStatus>,
+}
+
+// =============================================================================
+// Request Types - Events Endpoints
+// =============================================================================
+
+#[derive(Debug, Clone, Builder, Default, Serialize)]
+#[non_exhaustive]
+pub struct EventsRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub offset: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ascending: Option<bool>,
+    #[serde(
+        skip_serializing_if = "is_empty_vec",
+        serialize_with = "comma_separated"
+    )]
+    pub id: Option<Vec<i32>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tag_id: Option<i32>,
+    #[serde(
+        skip_serializing_if = "is_empty_vec",
+        serialize_with = "comma_separated"
+    )]
+    pub exclude_tag_id: Option<Vec<i32>>,
+    #[serde(
+        skip_serializing_if = "is_empty_vec",
+        serialize_with = "comma_separated"
+    )]
+    pub slug: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tag_slug: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub related_tags: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub active: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub archived: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub featured: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cyom: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_chat: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_template: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recurrence: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub closed: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub liquidity_min: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub liquidity_max: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub volume_min: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub volume_max: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "rfc3339")]
+    pub start_date_min: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "rfc3339")]
+    pub start_date_max: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "rfc3339")]
+    pub end_date_min: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "rfc3339")]
+    pub end_date_max: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Builder, Serialize)]
+#[non_exhaustive]
+pub struct EventByIdRequest {
+    #[serde(skip_serializing)]
+    #[builder(into)]
+    pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_chat: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_template: Option<bool>,
+}
+
+#[derive(Debug, Clone, Builder, Serialize)]
+#[non_exhaustive]
+pub struct EventBySlugRequest {
+    #[serde(skip_serializing)]
+    #[builder(into)]
+    pub slug: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_chat: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_template: Option<bool>,
+}
+
+#[derive(Debug, Clone, Builder, Serialize)]
+#[non_exhaustive]
+pub struct EventTagsRequest {
+    #[serde(skip_serializing)]
+    #[builder(into)]
+    pub id: u32,
+}
+
+// =============================================================================
+// Request Types - Markets Endpoints
+// =============================================================================
+
+#[derive(Debug, Clone, Builder, Default, Serialize)]
+#[non_exhaustive]
+pub struct MarketsRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub offset: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ascending: Option<bool>,
+    #[serde(
+        skip_serializing_if = "is_empty_vec",
+        serialize_with = "comma_separated"
+    )]
+    pub id: Option<Vec<i32>>,
+    #[serde(
+        skip_serializing_if = "is_empty_vec",
+        serialize_with = "comma_separated"
+    )]
+    pub slug: Option<Vec<String>>,
+    #[serde(
+        skip_serializing_if = "is_empty_vec",
+        serialize_with = "comma_separated"
+    )]
+    pub clob_token_ids: Option<Vec<String>>,
+    #[serde(
+        skip_serializing_if = "is_empty_vec",
+        serialize_with = "comma_separated"
+    )]
+    pub condition_ids: Option<Vec<String>>,
+    #[serde(
+        skip_serializing_if = "is_empty_vec",
+        serialize_with = "comma_separated"
+    )]
+    pub market_maker_address: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub liquidity_num_min: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub liquidity_num_max: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub volume_num_min: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub volume_num_max: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "rfc3339")]
+    pub start_date_min: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "rfc3339")]
+    pub start_date_max: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "rfc3339")]
+    pub end_date_min: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "rfc3339")]
+    pub end_date_max: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tag_id: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub related_tags: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cyom: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uma_resolution_status: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub game_id: Option<String>,
+    #[serde(
+        skip_serializing_if = "is_empty_vec",
+        serialize_with = "comma_separated"
+    )]
+    pub sports_market_types: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rewards_min_size: Option<f64>,
+    #[serde(
+        skip_serializing_if = "is_empty_vec",
+        serialize_with = "comma_separated"
+    )]
+    pub question_ids: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_tag: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub closed: Option<bool>,
+}
+
+#[derive(Debug, Clone, Builder, Serialize)]
+#[non_exhaustive]
+pub struct MarketByIdRequest {
+    #[serde(skip_serializing)]
+    #[builder(into)]
+    pub id: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_tag: Option<bool>,
+}
+
+#[derive(Debug, Clone, Builder, Serialize)]
+#[non_exhaustive]
+pub struct MarketBySlugRequest {
+    #[serde(skip_serializing)]
+    #[builder(into)]
+    pub slug: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_tag: Option<bool>,
+}
+
+#[derive(Debug, Clone, Builder, Serialize)]
+#[non_exhaustive]
+pub struct MarketTagsRequest {
+    #[serde(skip_serializing)]
+    #[builder(into)]
+    pub id: u32,
+}
+
+// =============================================================================
+// Request Types - Series Endpoints
+// =============================================================================
+
+#[derive(Debug, Clone, Builder, Default, Serialize)]
+#[non_exhaustive]
+pub struct SeriesListRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub offset: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ascending: Option<bool>,
+    #[serde(
+        skip_serializing_if = "is_empty_vec",
+        serialize_with = "comma_separated"
+    )]
+    pub slug: Option<Vec<String>>,
+    #[serde(
+        skip_serializing_if = "is_empty_vec",
+        serialize_with = "comma_separated"
+    )]
+    pub categories_ids: Option<Vec<i32>>,
+    #[serde(
+        skip_serializing_if = "is_empty_vec",
+        serialize_with = "comma_separated"
+    )]
+    pub categories_labels: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub closed: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_chat: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recurrence: Option<String>,
+}
+
+#[derive(Debug, Clone, Builder, Serialize)]
+#[non_exhaustive]
+pub struct SeriesByIdRequest {
+    #[serde(skip_serializing)]
+    #[builder(into)]
+    pub id: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_chat: Option<bool>,
+}
+
+// =============================================================================
+// Request Types - Comments Endpoints
+// =============================================================================
+
+#[derive(Debug, Clone, Builder, Default, Serialize)]
+#[non_exhaustive]
+pub struct CommentsRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub offset: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ascending: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_entity_type: Option<ParentEntityType>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_entity_id: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub get_positions: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub holders_only: Option<bool>,
+}
+
+#[derive(Debug, Clone, Builder, Serialize)]
+#[non_exhaustive]
+pub struct CommentsByIdRequest {
+    #[serde(skip_serializing)]
+    #[builder(into)]
+    pub id: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub get_positions: Option<bool>,
+}
+
+#[derive(Debug, Clone, Builder, Serialize)]
+#[non_exhaustive]
+pub struct CommentsByUserAddressRequest {
+    #[serde(skip_serializing)]
+    #[builder(into)]
+    pub user_address: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub offset: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ascending: Option<bool>,
+}
+
+// =============================================================================
+// Request Types - Profiles Endpoints
+// =============================================================================
+
+#[derive(Debug, Clone, Builder, Serialize)]
+#[non_exhaustive]
+pub struct PublicProfileRequest {
+    #[builder(into)]
+    pub address: String,
+}
+
+// =============================================================================
+// Request Types - Search Endpoints
+// =============================================================================
+
+#[derive(Debug, Clone, Builder, Serialize)]
+#[non_exhaustive]
+pub struct SearchRequest {
+    #[builder(into)]
+    pub q: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub events_status: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit_per_type: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub page: Option<i32>,
+    #[serde(
+        skip_serializing_if = "is_empty_vec",
+        serialize_with = "comma_separated"
+    )]
+    pub events_tag: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub keep_closed_markets: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ascending: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub search_tags: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub search_profiles: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recurrence: Option<String>,
+    #[serde(
+        skip_serializing_if = "is_empty_vec",
+        serialize_with = "comma_separated"
+    )]
+    pub exclude_tag_id: Option<Vec<i32>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimized: Option<bool>,
+}
+
+// =============================================================================
+// Response Types - Common/Shared
 // =============================================================================
 
 /// Image optimization metadata.
@@ -44,14 +578,14 @@ pub struct Count {
 }
 
 // =============================================================================
-// Health
+// Response Types - Health
 // =============================================================================
 
 /// Health check response.
 pub type HealthResponse = String;
 
 // =============================================================================
-// Sports
+// Response Types - Sports
 // =============================================================================
 
 /// A sports team.
@@ -91,7 +625,7 @@ pub struct SportsMarketTypesResponse {
 }
 
 // =============================================================================
-// Tags
+// Response Types - Tags
 // =============================================================================
 
 /// A tag for categorizing content.
@@ -126,7 +660,7 @@ pub struct RelatedTag {
 }
 
 // =============================================================================
-// Categories
+// Response Types - Categories
 // =============================================================================
 
 /// A category for organizing content.
@@ -146,7 +680,7 @@ pub struct Category {
 }
 
 // =============================================================================
-// Events
+// Response Types - Events
 // =============================================================================
 
 /// An event creator.
@@ -347,7 +881,7 @@ pub struct EventsPagination {
 }
 
 // =============================================================================
-// Markets
+// Response Types - Markets
 // =============================================================================
 
 /// A prediction market.
@@ -506,7 +1040,7 @@ pub struct MarketDescription {
 }
 
 // =============================================================================
-// Series
+// Response Types - Series
 // =============================================================================
 
 /// A series of related events.
@@ -571,7 +1105,7 @@ pub struct SeriesSummary {
 }
 
 // =============================================================================
-// Comments
+// Response Types - Comments
 // =============================================================================
 
 /// A comment position.
@@ -639,7 +1173,7 @@ pub struct Comment {
 }
 
 // =============================================================================
-// Profiles
+// Response Types - Profiles
 // =============================================================================
 
 /// A user associated with a public profile.
@@ -682,7 +1216,7 @@ pub struct PublicProfileError {
 }
 
 // =============================================================================
-// Search
+// Response Types - Search
 // =============================================================================
 
 /// A search tag result.
@@ -733,4 +1267,28 @@ pub struct SearchResults {
     pub tags: Option<Vec<SearchTag>>,
     pub profiles: Option<Vec<Profile>>,
     pub pagination: Option<Pagination>,
+}
+
+// =============================================================================
+// Common Types
+// =============================================================================
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
+#[non_exhaustive]
+pub enum RelatedTagsStatus {
+    Active,
+    Closed,
+    All,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
+#[non_exhaustive]
+pub enum ParentEntityType {
+    Event,
+    Series,
+    #[serde(rename = "market")]
+    #[strum(serialize = "market")]
+    Market,
 }
