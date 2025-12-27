@@ -3322,6 +3322,7 @@ dependencies = [
  "sec",
  "serde",
  "serde_json",
+ "serde_urlencoded",
  "serde_with",
  "sha2",
  "strum_macros",
