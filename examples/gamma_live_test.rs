@@ -70,6 +70,10 @@ impl TestResults {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Initialize tracing subscriber to see API drift warnings
+    #[cfg(feature = "tracing")]
+    tracing_subscriber::fmt::init();
+
     let client = Client::default();
     let mut results = TestResults::new();
 

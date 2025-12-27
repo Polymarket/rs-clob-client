@@ -29,6 +29,7 @@ use reqwest::{
     Client as ReqwestClient, Method, Request, StatusCode,
     header::{HeaderMap, HeaderValue},
 };
+use serde::Serialize;
 use serde::de::DeserializeOwned;
 use url::Url;
 
@@ -43,6 +44,8 @@ use super::types::{
 };
 use crate::Result;
 use crate::error::Error;
+#[cfg(feature = "tracing")]
+use crate::error::Kind;
 
 /// HTTP client for the Polymarket Gamma API.
 ///
@@ -110,7 +113,7 @@ impl Client {
             fields(method, path, status_code)
         )
     )]
-    async fn request<Response: DeserializeOwned>(
+    async fn request<Response: DeserializeOwned + Serialize>(
         &self,
         mut request: Request,
         headers: Option<HeaderMap>,
@@ -150,17 +153,52 @@ impl Client {
             return Err(Error::status(status_code, method, path, message));
         }
 
-        if let Some(response) = response.json::<Option<Response>>().await? {
-            Ok(response)
-        } else {
-            #[cfg(feature = "tracing")]
-            tracing::warn!(method = %method, path = %path, "Gamma API resource not found");
-            Err(Error::status(
-                StatusCode::NOT_FOUND,
-                method,
-                path,
-                "Unable to find requested resource",
-            ))
+        // When tracing is enabled, parse to Value first for drift detection
+        #[cfg(feature = "tracing")]
+        {
+            let text = response.text().await?;
+            let json_value: serde_json::Value =
+                serde_json::from_str(&text).map_err(|e| Error::with_source(Kind::Internal, e))?;
+
+            match serde_json::from_value::<Option<Response>>(json_value.clone()) {
+                Ok(Some(data)) => {
+                    super::drift::detect_and_log(&json_value, &data, &path);
+                    return Ok(data);
+                }
+                Ok(None) => {
+                    tracing::warn!(method = %method, path = %path, "Gamma API resource not found");
+                    return Err(Error::status(
+                        StatusCode::NOT_FOUND,
+                        method,
+                        path,
+                        "Unable to find requested resource",
+                    ));
+                }
+                Err(e) => {
+                    tracing::error!(
+                        method = %method,
+                        path = %path,
+                        error = %e,
+                        "API schema mismatch - response does not match expected type"
+                    );
+                    return Err(Error::with_source(Kind::Internal, e));
+                }
+            }
+        }
+
+        // Without tracing, use simple direct deserialization
+        #[cfg(not(feature = "tracing"))]
+        {
+            if let Some(response) = response.json::<Option<Response>>().await? {
+                Ok(response)
+            } else {
+                Err(Error::status(
+                    StatusCode::NOT_FOUND,
+                    method,
+                    path,
+                    "Unable to find requested resource",
+                ))
+            }
         }
     }
 
@@ -170,7 +208,7 @@ impl Client {
         &self.host
     }
 
-    async fn get<Req: QueryParams, Res: DeserializeOwned>(
+    async fn get<Req: QueryParams, Res: DeserializeOwned + Serialize>(
         &self,
         path: &str,
         req: &Req,

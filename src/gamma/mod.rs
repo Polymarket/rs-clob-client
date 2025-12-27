@@ -66,6 +66,8 @@
 //! The default API endpoint is `https://gamma-api.polymarket.com`.
 
 pub mod client;
+#[cfg(feature = "tracing")]
+mod drift;
 mod ser;
 pub mod types;
 
