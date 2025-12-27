@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0](https://github.com/Polymarket/rs-clob-client/compare/v0.1.2...v0.2.0) - 2025-12-27
+
+### Added
+
+- WebSocket client for real-time market and user data ([#26](https://github.com/Polymarket/rs-clob-client/pull/26))
+
+### Other
+
+- [**breaking**] change from `derive_builder` to `bon` ([#41](https://github.com/Polymarket/rs-clob-client/pull/41))
+
 ## [0.1.2](https://github.com/Polymarket/rs-clob-client/compare/v0.1.1...v0.1.2) - 2025-12-23
 
 ### Added
