@@ -156,7 +156,7 @@ impl SubscriptionManager {
         }
 
         // Store auth for re-subscription on reconnect.
-        // We can recover from poisoned lock because Option<AuthPayload> has no inconsistent intermediate state.
+        // We can recover from poisoned lock because Option<Credentials> has no inconsistent intermediate state.
         let auth = self
             .last_auth
             .read()
@@ -284,7 +284,7 @@ impl SubscriptionManager {
         self.interest.add(MessageInterest::USER);
 
         // Store auth for re-subscription on reconnect.
-        // We can recover from poisoned lock because Option<AuthPayload> has no inconsistent intermediate state.
+        // We can recover from poisoned lock because Option<Credentials> has no inconsistent intermediate state.
         *self
             .last_auth
             .write()
