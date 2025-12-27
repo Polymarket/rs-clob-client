@@ -3,8 +3,8 @@
 pub mod auth;
 pub mod clob;
 pub mod error;
-pub mod order_builder;
-pub mod types;
+#[cfg(feature = "gamma")]
+pub mod gamma;
 #[cfg(feature = "ws")]
 pub mod ws;
 

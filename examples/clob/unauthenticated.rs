@@ -1,10 +1,10 @@
 #![allow(clippy::print_stdout, reason = "Examples are okay to print to stdout")]
 
-use polymarket_client_sdk::clob::{Client, Config};
-use polymarket_client_sdk::types::{
+use polymarket_client_sdk::clob::types::{
     LastTradePriceRequestBuilder, MidpointRequestBuilder, OrderBookSummaryRequestBuilder,
     PriceRequestBuilder, Side, SpreadRequestBuilder,
 };
+use polymarket_client_sdk::clob::{Client, Config};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

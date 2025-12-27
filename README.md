@@ -13,6 +13,7 @@ This crate provides strongly typed request builders, authenticated endpoints, `a
 
 - [Overview](#overview)
 - [Getting Started](#getting-started)
+- [Features](#features)
 - [Examples](#examples)
 - [Setting Token Allowances](#token-allowances)
 - [Minimum Supported Rust Version (MSRV)](#minimum-supported-rust-version-msrv)
@@ -55,6 +56,21 @@ Then run any of the examples
 ```bash
 cargo run --example unauthenticated
 ```
+
+## Features
+
+### Tracing
+
+This crate supports optional structured logging via the [`tracing`](https://docs.rs/tracing) crate. When enabled, it provides detailed instrumentation for HTTP requests, authentication flows, caching, and order building.
+
+To enable tracing:
+
+```toml
+[dependencies]
+polymarket-client-sdk = { version = "0.1", features = ["tracing"] }
+```
+
+When the `tracing` feature is disabled (the default), all logging code is compiled out with zero runtime overhead.
 
 ## Examples
 
@@ -133,7 +149,7 @@ The **signature_type** parameter tells the system how to verify your signatures:
 - `signature_type=1`: Email/Magic wallet signatures (delegated signing)
 - `signature_type=2`: Browser wallet proxy signatures (when using a proxy contract, not direct wallet connections)
 
-See [SignatureType](src/types.rs#L115) for more information.
+See [SignatureType](src/clob/types.rs#L115) for more information.
 
 **Place a market order**
 
@@ -144,7 +160,7 @@ use alloy::signers::Signer as _;
 use alloy::signers::local::LocalSigner;
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 use polymarket_client_sdk::clob::{Client, Config};
-use polymarket_client_sdk::types::{Amount, OrderType, Side};
+use polymarket_client_sdk::clob::types::{Amount, OrderType, Side};
 use rust_decimal::Decimal;
 
 #[tokio::main]
@@ -180,7 +196,7 @@ use alloy::signers::Signer as _;
 use alloy::signers::local::LocalSigner;
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 use polymarket_client_sdk::clob::{Client, Config};
-use polymarket_client_sdk::types::{Amount, OrderType, Side};
+use polymarket_client_sdk::clob::types::{Amount, OrderType, Side};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 
@@ -220,7 +236,7 @@ use alloy::signers::local::LocalSigner;
 use polymarket_client_sdk::auth::builder::Config as BuilderConfig;
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 use polymarket_client_sdk::clob::{Client, Config};
-use polymarket_client_sdk::types::{SignatureType, TradesRequest};
+use polymarket_client_sdk::clob::types::{SignatureType, TradesRequest};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

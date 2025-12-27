@@ -10,13 +10,13 @@ use rust_decimal::prelude::ToPrimitive as _;
 
 use crate::Result;
 use crate::auth::Kind as AuthKind;
+use crate::auth::state::Authenticated;
 use crate::clob::Client;
-use crate::clob::state::Authenticated;
-use crate::error::Error;
-use crate::types::{
+use crate::clob::types::{
     Amount, AmountInner, Order, OrderBookSummaryRequest, OrderType, Side, SignableOrder,
     SignatureType,
 };
+use crate::error::Error;
 
 pub(crate) const USDC_DECIMALS: u32 = 6;
 
@@ -110,6 +110,10 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
     }
 
     /// Validates and transforms this limit builder into a [`SignableOrder`]
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(skip(self), err(level = "warn"))
+    )]
     pub async fn build(self) -> Result<SignableOrder> {
         let Some(token_id) = self.token_id.clone() else {
             return Err(Error::validation(
@@ -211,8 +215,10 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
             side => return Err(Error::validation(format!("Invalid side: {side}"))),
         };
 
+        let salt = to_ieee_754_int((self.salt_generator)());
+
         let order = Order {
-            salt: U256::from((self.salt_generator)()),
+            salt: U256::from(salt),
             maker: self.funder.unwrap_or(self.signer),
             taker,
             tokenId: U256::from_str(&token_id)?,
@@ -228,6 +234,9 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
             signatureType: self.signature_type as u8,
         };
 
+        #[cfg(feature = "tracing")]
+        tracing::debug!(token_id = %token_id, side = ?side, price = %price, size = %size, "limit order built");
+
         Ok(SignableOrder { order, order_type })
     }
 }
@@ -241,6 +250,10 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
     }
 
     // Attempts to calculate the market price from the top of the book for the particular token.
+    // - Uses an orderbook depth search to find the cutoff price:
+    //   - BUY + USDC: walk asks until notional >= USDC
+    //   - BUY + Shares: walk asks until shares >= N
+    //   - SELL + Shares: walk bids until shares >= N
     async fn calculate_price(&self, order_type: OrderType) -> Result<Decimal> {
         let token_id = self
             .token_id
@@ -265,20 +278,21 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
             ));
         }
 
-        let (levels, amount) = match (side, amount.0) {
-            (Side::Buy, a @ AmountInner::Usdc(_)) => (book.asks, a),
-            (Side::Sell, a @ AmountInner::Shares(_)) => (book.bids, a),
-            (Side::Buy, AmountInner::Shares(_)) => {
-                return Err(Error::validation(
-                    "Buy Orders must specify their `amount`s in terms of USDC",
-                ));
-            }
-            (Side::Sell, AmountInner::Usdc(_)) => {
-                return Err(Error::validation(
-                    "Sell Orders must specify their `amount`s in shares",
-                ));
-            }
-            (side, _) => return Err(Error::validation(format!("Invalid side: {side}"))),
+        let (levels, amount) = match side {
+            Side::Buy => match amount.0 {
+                a @ (AmountInner::Usdc(_) | AmountInner::Shares(_)) => (book.asks, a),
+            },
+
+            Side::Sell => match amount.0 {
+                a @ AmountInner::Shares(_) => (book.bids, a),
+                AmountInner::Usdc(_) => {
+                    return Err(Error::validation(
+                        "Sell Orders must specify their `amount`s in shares",
+                    ));
+                }
+            },
+
+            side => return Err(Error::validation(format!("Invalid side: {side}"))),
         };
 
         let first = levels.first().ok_or(Error::validation(format!(
@@ -305,6 +319,10 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
     }
 
     /// Validates and transforms this limit builder into a [`SignableOrder`]
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(skip(self), err(level = "warn"))
+    )]
     pub async fn build(self) -> Result<SignableOrder> {
         let Some(token_id) = self.token_id.clone() else {
             return Err(Error::validation(
@@ -369,17 +387,35 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         // `YES` tokens. This means that the `taker_amount` is `34000000` and the `maker_amount` is
         // `100000000`.
         let raw_amount = amount.as_inner();
-        let (taker_amount, maker_amount) = match side {
-            Side::Buy => (raw_amount / price, raw_amount),
-            Side::Sell => (raw_amount * price, raw_amount),
-            side => return Err(Error::validation(format!("Invalid side: {side}"))),
+
+        let (taker_amount, maker_amount) = match (side, amount.0) {
+            // Spend USDC to buy shares
+            (Side::Buy, AmountInner::Usdc(_)) => {
+                let shares = (raw_amount / price).trunc_with_scale(decimals + LOT_SIZE_SCALE);
+                (shares, raw_amount)
+            }
+
+            // Buy N shares: use cutoff `price` derived from ask depth
+            (Side::Buy, AmountInner::Shares(_)) => {
+                let usdc = (raw_amount * price).trunc_with_scale(decimals + LOT_SIZE_SCALE);
+                (raw_amount, usdc)
+            }
+
+            // Sell N shares for USDC
+            (Side::Sell, AmountInner::Shares(_)) => {
+                let usdc = (raw_amount * price).trunc_with_scale(decimals + LOT_SIZE_SCALE);
+                (usdc, raw_amount)
+            }
+
+            (Side::Sell, AmountInner::Usdc(_)) => {
+                return Err(Error::validation(
+                    "Sell Orders must specify their `amount`s in shares",
+                ));
+            }
+
+            (side, _) => return Err(Error::validation(format!("Invalid side: {side}"))),
         };
 
-        // Have to truncate the calculated number of shares the combined precision of the lot size
-        // _and_ the tick size
-        let taker_amount = taker_amount.trunc_with_scale(decimals + LOT_SIZE_SCALE);
-
-        // Mask the salt to be <= 2^53 - 1, as the backend parses as an IEEE 754.
         let salt = to_ieee_754_int((self.salt_generator)());
 
         let order = Order {
@@ -397,6 +433,9 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
             signatureType: self.signature_type as u8,
         };
 
+        #[cfg(feature = "tracing")]
+        tracing::debug!(token_id = %token_id, side = ?side, price = %price, amount = %amount.as_inner(), "market order built");
+
         Ok(SignableOrder { order, order_type })
     }
 }
@@ -411,7 +450,7 @@ fn to_fixed_u128(d: Decimal) -> u128 {
         .expect("The `build` call in `OrderBuilder<S, OrderKind, K>` ensures that only positive values are being multiplied/divided")
 }
 
-/// Masks the salt to be <= 2^53 - 1.
+/// Mask the salt to be <= 2^53 - 1, as the backend parses as an IEEE 754.
 fn to_ieee_754_int(salt: u64) -> u64 {
     salt & ((1 << 53) - 1)
 }

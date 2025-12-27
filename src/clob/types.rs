@@ -22,10 +22,9 @@ use strum_macros::Display;
 use uuid::Uuid;
 
 use crate::Result;
+use crate::auth::ApiKey;
+use crate::clob::order_builder::{LOT_SIZE_SCALE, USDC_DECIMALS};
 use crate::error::Error;
-use crate::order_builder::{LOT_SIZE_SCALE, USDC_DECIMALS};
-
-pub type ApiKey = Uuid;
 
 type OrderId = String;
 type TradeId = String;
@@ -151,6 +150,30 @@ pub enum SignatureType {
     Eoa = 0,
     Proxy = 1,
     GnosisSafe = 2,
+}
+
+#[non_exhaustive]
+#[derive(Clone, Copy, Display, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[serde(rename_all = "UPPERCASE")]
+#[strum(serialize_all = "UPPERCASE")]
+pub enum OrderStatusType {
+    #[serde(alias = "live")]
+    Live,
+
+    #[serde(alias = "matched")]
+    Matched,
+
+    #[serde(alias = "canceled")]
+    Canceled,
+
+    #[serde(alias = "delayed")]
+    Delayed,
+
+    #[serde(alias = "unmatched")]
+    Unmatched,
+
+    #[serde(other)]
+    Unknown,
 }
 
 #[non_exhaustive]
@@ -606,8 +629,7 @@ pub struct PostOrderResponse {
     #[serde(rename = "orderID")]
     #[builder(setter(into))]
     pub order_id: String,
-    #[builder(setter(into))]
-    pub status: String,
+    pub status: OrderStatusType,
     pub success: bool,
     #[builder(default)]
     #[serde(default)]
@@ -639,8 +661,7 @@ where
 pub struct OpenOrderResponse {
     #[builder(setter(into))]
     pub id: OrderId,
-    #[builder(setter(into))]
-    pub status: String,
+    pub status: OrderStatusType,
     pub owner: ApiKey,
     pub maker_address: Address,
     #[builder(setter(into))]
@@ -744,8 +765,7 @@ pub struct TradeResponse {
     pub size: Decimal,
     pub fee_rate_bps: Decimal,
     pub price: Decimal,
-    #[builder(setter(into))]
-    pub status: String,
+    pub status: OrderStatusType,
     #[serde_as(as = "TimestampSeconds<String>")]
     pub match_time: DateTime<Utc>,
     #[serde_as(as = "TimestampSeconds<String>")]
@@ -1249,8 +1269,7 @@ pub struct BuilderTradeResponse {
     pub size: Decimal,
     pub size_usdc: Decimal,
     pub price: Decimal,
-    #[builder(setter(into))]
-    pub status: String,
+    pub status: OrderStatusType,
     #[builder(setter(into))]
     pub outcome: String,
     pub outcome_index: u32,

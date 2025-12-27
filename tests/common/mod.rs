@@ -16,12 +16,12 @@ use alloy::signers::local::LocalSigner;
 use httpmock::MockServer;
 use polymarket_client_sdk::POLYGON;
 use polymarket_client_sdk::auth::Normal;
-use polymarket_client_sdk::clob::state::Authenticated;
-use polymarket_client_sdk::clob::{Client, Config, ConfigBuilder};
-use polymarket_client_sdk::types::{
+use polymarket_client_sdk::auth::state::Authenticated;
+use polymarket_client_sdk::clob::types::{
     FeeRateResponseBuilder, NegRiskResponseBuilder, SignatureType, TickSize,
     TickSizeResponseBuilder,
 };
+use polymarket_client_sdk::clob::{Client, Config, ConfigBuilder};
 use reqwest::StatusCode;
 use rust_decimal::Decimal;
 use serde_json::json;
