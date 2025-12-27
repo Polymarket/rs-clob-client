@@ -82,7 +82,7 @@ fn truncate_value(value: &Value) -> String {
         if end == 0 {
             // Extremely unlikely: no valid boundary found before index 200.
             // Fall back to an ellipsis without slicing.
-            "...".to_string()
+            "...".to_owned()
         } else {
             format!("{}...", &s[..end])
         }
