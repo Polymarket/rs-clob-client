@@ -79,7 +79,13 @@ fn truncate_value(value: &Value) -> String {
         while end > 0 && !s.is_char_boundary(end) {
             end -= 1;
         }
-        format!("{}...", &s[..end])
+        if end == 0 {
+            // Extremely unlikely: no valid boundary found before index 200.
+            // Fall back to an ellipsis without slicing.
+            "...".to_string()
+        } else {
+            format!("{}...", &s[..end])
+        }
     } else {
         s
     }
