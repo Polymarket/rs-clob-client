@@ -3,12 +3,12 @@
 #![allow(clippy::print_stderr, reason = "Examples are okay to print to stderr")]
 
 use futures::StreamExt as _;
-use polymarket_client_sdk::clob::ws::WebSocketClient;
+use polymarket_client_sdk::clob::ws::Client;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Create WebSocket client for CLOB endpoint
-    let client = WebSocketClient::default();
+    let client = Client::default();
 
     println!("Connected to CLOB WebSocket API");
 

@@ -14,7 +14,7 @@ use tokio::sync::{RwLock, broadcast, mpsc, watch};
 use tokio::time::{interval, sleep, timeout};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message};
 
-use super::config::WebSocketConfig;
+use super::config::Config;
 use super::error::WsError;
 use super::interest::InterestTracker;
 use super::types::{SubscriptionRequest, WsMessage, parse_if_interested};
@@ -74,11 +74,7 @@ impl ConnectionManager {
     ///
     /// The `interest` tracker is used to determine which message types to deserialize.
     /// Only messages that have active consumers will be fully parsed.
-    pub fn new(
-        endpoint: String,
-        config: WebSocketConfig,
-        interest: &Arc<InterestTracker>,
-    ) -> Result<Self> {
+    pub fn new(endpoint: String, config: Config, interest: &Arc<InterestTracker>) -> Result<Self> {
         let (sender_tx, sender_rx) = mpsc::unbounded_channel();
         let (broadcast_tx, _) = broadcast::channel(BROADCAST_CAPACITY);
         let (state_tx, _) = watch::channel(ConnectionState::Disconnected);
@@ -118,7 +114,7 @@ impl ConnectionManager {
     async fn connection_loop(
         endpoint: String,
         state: Arc<RwLock<ConnectionState>>,
-        config: WebSocketConfig,
+        config: Config,
         mut sender_rx: mpsc::UnboundedReceiver<String>,
         broadcast_tx: broadcast::Sender<WsMessage>,
         interest: Arc<InterestTracker>,
@@ -198,7 +194,7 @@ impl ConnectionManager {
         sender_rx: &mut mpsc::UnboundedReceiver<String>,
         broadcast_tx: &broadcast::Sender<WsMessage>,
         state: Arc<RwLock<ConnectionState>>,
-        config: WebSocketConfig,
+        config: Config,
         interest: &Arc<InterestTracker>,
     ) -> Result<()> {
         let (mut write, mut read) = ws_stream.split();
@@ -296,7 +292,7 @@ impl ConnectionManager {
     async fn heartbeat_loop(
         ping_tx: mpsc::UnboundedSender<()>,
         state: Arc<RwLock<ConnectionState>>,
-        config: &WebSocketConfig,
+        config: &Config,
         mut pong_rx: watch::Receiver<Instant>,
     ) {
         let mut ping_interval = interval(config.heartbeat_interval);

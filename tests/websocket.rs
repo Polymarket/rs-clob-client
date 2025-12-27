@@ -11,7 +11,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::{SinkExt as _, StreamExt as _};
-use polymarket_client_sdk::clob::ws::{WebSocketClient, WebSocketConfig, WsMessage};
+use polymarket_client_sdk::clob::ws::{Client, Config, WsMessage};
 use serde_json::json;
 use tokio::net::TcpListener;
 use tokio::sync::{broadcast, mpsc};
@@ -247,8 +247,8 @@ mod market_channel {
         let mut server = MockWsServer::start().await;
         let endpoint = server.ws_url("/ws/market");
 
-        let config = WebSocketConfig::default();
-        let client = WebSocketClient::new(&endpoint, config).unwrap();
+        let config = Config::default();
+        let client = Client::new(&endpoint, config).unwrap();
 
         let stream = client
             .subscribe_orderbook(vec![payloads::ASSET_ID.to_owned()])
@@ -282,8 +282,8 @@ mod market_channel {
         let mut server = MockWsServer::start().await;
         let endpoint = server.ws_url("/ws/market");
 
-        let config = WebSocketConfig::default();
-        let client = WebSocketClient::new(&endpoint, config).unwrap();
+        let config = Config::default();
+        let client = Client::new(&endpoint, config).unwrap();
 
         let asset_id =
             "71321045679252212594626385532706912750332728571942532289631379312455583992563";
@@ -310,8 +310,8 @@ mod market_channel {
         let mut server = MockWsServer::start().await;
         let endpoint = server.ws_url("/ws/market");
 
-        let config = WebSocketConfig::default();
-        let client = WebSocketClient::new(&endpoint, config).unwrap();
+        let config = Config::default();
+        let client = Client::new(&endpoint, config).unwrap();
 
         let subscribed_asset = payloads::ASSET_ID;
 
@@ -341,8 +341,8 @@ mod market_channel {
         let mut server = MockWsServer::start().await;
         let endpoint = server.ws_url("/ws/market");
 
-        let config = WebSocketConfig::default();
-        let client = WebSocketClient::new(&endpoint, config).unwrap();
+        let config = Config::default();
+        let client = Client::new(&endpoint, config).unwrap();
 
         let stream = client
             .subscribe_midpoints(vec![payloads::ASSET_ID.to_owned()])
@@ -369,8 +369,8 @@ mod market_channel {
         let mut server = MockWsServer::start().await;
         let endpoint = server.ws_url("/ws/market");
 
-        let config = WebSocketConfig::default();
-        let client = WebSocketClient::new(&endpoint, config).unwrap();
+        let config = Config::default();
+        let client = Client::new(&endpoint, config).unwrap();
 
         let stream = client
             .subscribe_midpoints(vec![payloads::ASSET_ID.to_owned()])
@@ -421,8 +421,8 @@ mod user_channel {
         let mut server = MockWsServer::start().await;
         let base_endpoint = format!("ws://{}", server.addr);
 
-        let config = WebSocketConfig::default();
-        let client = WebSocketClient::new(&base_endpoint, config)
+        let config = Config::default();
+        let client = Client::new(&base_endpoint, config)
             .unwrap()
             .authenticate(test_credentials(), alloy::primitives::Address::ZERO)
             .unwrap();
@@ -470,8 +470,8 @@ mod user_channel {
         let mut server = MockWsServer::start().await;
         let base_endpoint = format!("ws://{}", server.addr);
 
-        let config = WebSocketConfig::default();
-        let client = WebSocketClient::new(&base_endpoint, config)
+        let config = Config::default();
+        let client = Client::new(&base_endpoint, config)
             .unwrap()
             .authenticate(test_credentials(), Address::ZERO)
             .unwrap();
@@ -521,8 +521,8 @@ mod user_channel {
         let mut server = MockWsServer::start().await;
         let base_endpoint = format!("ws://{}", server.addr);
 
-        let config = WebSocketConfig::default();
-        let client = WebSocketClient::new(&base_endpoint, config)
+        let config = Config::default();
+        let client = Client::new(&base_endpoint, config)
             .unwrap()
             .authenticate(test_credentials(), alloy::primitives::Address::ZERO)
             .unwrap();
@@ -555,8 +555,8 @@ mod user_channel {
         let mut server = MockWsServer::start().await;
         let base_endpoint = format!("ws://{}", server.addr);
 
-        let config = WebSocketConfig::default();
-        let client = WebSocketClient::new(&base_endpoint, config)
+        let config = Config::default();
+        let client = Client::new(&base_endpoint, config)
             .unwrap()
             .authenticate(test_credentials(), Address::ZERO)
             .unwrap();
@@ -586,7 +586,7 @@ mod user_channel {
         let mut server = MockWsServer::start().await;
         let endpoint = server.ws_url("/ws/market");
 
-        let client = WebSocketClient::new(&endpoint, WebSocketConfig::default()).unwrap();
+        let client = Client::new(&endpoint, Config::default()).unwrap();
 
         let asset_id = payloads::ASSET_ID;
 
@@ -624,8 +624,8 @@ mod user_channel {
         let mut server = MockWsServer::start().await;
         let base_endpoint = format!("ws://{}", server.addr);
 
-        let config = WebSocketConfig::default();
-        let client = WebSocketClient::new(&base_endpoint, config)
+        let config = Config::default();
+        let client = Client::new(&base_endpoint, config)
             .unwrap()
             .authenticate(test_credentials(), Address::ZERO)
             .unwrap();
@@ -760,8 +760,8 @@ mod reconnection {
         }
     }
 
-    fn config() -> WebSocketConfig {
-        let mut config = WebSocketConfig::default();
+    fn config() -> Config {
+        let mut config = Config::default();
         config.reconnect.max_attempts = Some(5);
         config.reconnect.initial_backoff = Duration::from_millis(50);
         config.reconnect.max_backoff = Duration::from_millis(200);
@@ -773,7 +773,7 @@ mod reconnection {
         let mut server = ReconnectableMockServer::start().await;
         let endpoint = server.ws_url("/ws/market");
 
-        let client = WebSocketClient::new(&endpoint, config()).unwrap();
+        let client = Client::new(&endpoint, config()).unwrap();
 
         let asset_id = payloads::ASSET_ID;
         let stream = client
@@ -819,7 +819,7 @@ mod reconnection {
         let mut server = ReconnectableMockServer::start().await;
         let endpoint = server.ws_url("/ws/market");
 
-        let client = WebSocketClient::new(&endpoint, config()).unwrap();
+        let client = Client::new(&endpoint, config()).unwrap();
 
         let asset1 = payloads::ASSET_ID;
         let asset2 = payloads::OTHER_ASSET_ID;
@@ -860,8 +860,8 @@ mod message_parsing {
         let mut server = MockWsServer::start().await;
         let endpoint = server.ws_url("/ws/market");
 
-        let config = WebSocketConfig::default();
-        let client = WebSocketClient::new(&endpoint, config).unwrap();
+        let config = Config::default();
+        let client = Client::new(&endpoint, config).unwrap();
 
         let stream = client
             .subscribe_orderbook(vec![payloads::ASSET_ID.to_owned()])
@@ -889,8 +889,8 @@ mod message_parsing {
         let mut server = MockWsServer::start().await;
         let endpoint = server.ws_url("/ws/market");
 
-        let config = WebSocketConfig::default();
-        let client = WebSocketClient::new(&endpoint, config).unwrap();
+        let config = Config::default();
+        let client = Client::new(&endpoint, config).unwrap();
 
         let asset_a =
             "71321045679252212594626385532706912750332728571942532289631379312455583992563";

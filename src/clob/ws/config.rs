@@ -21,7 +21,7 @@ const DEFAULT_BACKOFF_MULTIPLIER: f64 = 2.0;
 /// Configuration for WebSocket client behavior.
 #[non_exhaustive]
 #[derive(Debug, Clone)]
-pub struct WebSocketConfig {
+pub struct Config {
     /// Interval for sending PING messages to keep connection alive
     pub heartbeat_interval: Duration,
     /// Maximum time to wait for PONG response before considering connection dead
@@ -30,7 +30,7 @@ pub struct WebSocketConfig {
     pub reconnect: ReconnectConfig,
 }
 
-impl Default for WebSocketConfig {
+impl Default for Config {
     fn default() -> Self {
         Self {
             heartbeat_interval: DEFAULT_HEARTBEAT_INTERVAL_DURATION,

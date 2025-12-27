@@ -7,7 +7,7 @@ use std::str::FromStr as _;
 use alloy::primitives::Address;
 use futures::StreamExt as _;
 use polymarket_client_sdk::auth::Credentials;
-use polymarket_client_sdk::clob::ws::{WebSocketClient, WsMessage};
+use polymarket_client_sdk::clob::ws::{Client, WsMessage};
 use uuid::Uuid;
 
 #[tokio::main]
@@ -21,7 +21,7 @@ async fn main() -> anyhow::Result<()> {
     let credentials = Credentials::new(api_key, api_secret, api_passphrase);
 
     // Connect using the base WebSocket endpoint and authenticate.
-    let client = WebSocketClient::default().authenticate(credentials, address)?;
+    let client = Client::default().authenticate(credentials, address)?;
     println!("Authenticated ws client created.");
 
     // Provide the specific market IDs you care about, or leave empty to receive all events.
