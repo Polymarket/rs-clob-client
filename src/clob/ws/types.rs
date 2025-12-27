@@ -1,0 +1,657 @@
+use std::fmt;
+
+use rust_decimal::Decimal;
+use serde::de::{IgnoredAny, MapAccess, SeqAccess, Visitor};
+use serde::{Deserialize, Deserializer as _, Serialize};
+use serde_json::Deserializer;
+use serde_with::{DisplayFromStr, serde_as};
+
+use super::interest::MessageInterest;
+use crate::auth::Credentials;
+use crate::clob::types::{Side, TraderSide};
+use crate::error::Kind;
+
+/// Top-level WebSocket message wrapper.
+///
+/// All messages received from the WebSocket connection are deserialized into this enum.
+#[non_exhaustive]
+#[derive(Debug, Clone, Deserialize)]
+#[serde(tag = "event_type")]
+pub enum WsMessage {
+    /// Full or incremental orderbook update
+    #[serde(rename = "book")]
+    Book(BookUpdate),
+    /// Price change notification
+    #[serde(rename = "price_change")]
+    PriceChange(PriceChange),
+    /// Tick size change notification
+    #[serde(rename = "tick_size_change")]
+    TickSizeChange(TickSizeChange),
+    /// Last trade price update
+    #[serde(rename = "last_trade_price")]
+    LastTradePrice(LastTradePrice),
+    /// User trade execution (authenticated channel)
+    #[serde(rename = "trade")]
+    Trade(TradeMessage),
+    /// User order update (authenticated channel)
+    #[serde(rename = "order")]
+    Order(OrderMessage),
+}
+
+impl WsMessage {
+    /// Check if the message is a user-specific message.
+    #[must_use]
+    pub const fn is_user(&self) -> bool {
+        matches!(self, WsMessage::Trade(_) | WsMessage::Order(_))
+    }
+
+    /// Check if the message is a market data message.
+    #[must_use]
+    pub const fn is_market(&self) -> bool {
+        !self.is_user()
+    }
+}
+
+/// Orderbook update message (full snapshot or delta).
+///
+/// When first subscribing or when trades occur, this message contains the current
+/// state of the orderbook with bids and asks arrays.
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct BookUpdate {
+    /// Asset/token identifier
+    pub asset_id: String,
+    /// Market identifier
+    pub market: String,
+    /// Unix timestamp in milliseconds
+    #[serde_as(as = "DisplayFromStr")]
+    pub timestamp: i64,
+    /// Current bid levels (price descending)
+    #[serde(default)]
+    pub bids: Vec<OrderBookLevel>,
+    /// Current ask levels (price ascending)
+    #[serde(default)]
+    pub asks: Vec<OrderBookLevel>,
+    /// Hash for orderbook validation
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hash: Option<String>,
+}
+
+/// Individual price level in an orderbook.
+#[non_exhaustive]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct OrderBookLevel {
+    /// Price at this level
+    pub price: Decimal,
+    /// Total size available at this price
+    pub size: Decimal,
+}
+
+/// Unified wire format for `price_change` events.
+///
+/// The server sends either a single price change or a batch. This struct captures both shapes.
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Clone, Deserialize)]
+pub struct PriceChange {
+    /// Market identifier
+    pub market: String,
+    #[serde_as(as = "DisplayFromStr")]
+    pub timestamp: i64,
+    #[serde(default)]
+    pub price_changes: Vec<PriceChangeBatchEntry>,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, Deserialize)]
+pub struct PriceChangeBatchEntry {
+    /// Asset/token identifier
+    pub asset_id: String,
+    /// New price
+    pub price: Decimal,
+    /// Total size affected by this price change (if provided)
+    #[serde(default)]
+    pub size: Option<Decimal>,
+    /// Side of the price change (BUY or SELL)
+    pub side: Side,
+    /// Hash for validation (if present)
+    #[serde(default)]
+    pub hash: Option<String>,
+    /// Best bid price after this change
+    #[serde(default)]
+    pub best_bid: Option<Decimal>,
+    /// Best ask price after this change
+    #[serde(default)]
+    pub best_ask: Option<Decimal>,
+}
+
+/// Tick size change event (triggered when price crosses thresholds).
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TickSizeChange {
+    /// Asset/token identifier
+    pub asset_id: String,
+    /// Market identifier
+    pub market: String,
+    /// Previous tick size
+    pub old_tick_size: Decimal,
+    /// New tick size
+    pub new_tick_size: Decimal,
+    /// Unix timestamp in milliseconds
+    #[serde_as(as = "DisplayFromStr")]
+    pub timestamp: i64,
+}
+
+/// Last trade price update.
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct LastTradePrice {
+    /// Asset/token identifier
+    pub asset_id: String,
+    /// Market identifier
+    pub market: String,
+    /// Last trade price
+    pub price: Decimal,
+    /// Side of the last trade
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub side: Option<Side>,
+    /// Unix timestamp in milliseconds
+    #[serde_as(as = "DisplayFromStr")]
+    pub timestamp: i64,
+}
+
+/// Maker order details within a trade message.
+#[non_exhaustive]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MakerOrder {
+    /// Asset/token identifier of the maker order
+    pub asset_id: String,
+    /// Amount of maker order matched in trade
+    pub matched_amount: String,
+    /// Maker order ID
+    pub order_id: String,
+    /// Outcome (Yes/No)
+    pub outcome: String,
+    /// Owner (API key) of maker order
+    pub owner: String,
+    /// Price of maker order
+    pub price: String,
+}
+
+/// User trade execution message (authenticated channel only).
+#[non_exhaustive]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TradeMessage {
+    /// Trade identifier
+    pub id: String,
+    /// Market identifier (condition ID)
+    pub market: String,
+    /// Asset/token identifier
+    pub asset_id: String,
+    /// Side of the trade (BUY or SELL)
+    pub side: Side,
+    /// Size of the trade
+    pub size: String,
+    /// Execution price
+    pub price: String,
+    /// Trade status (MATCHED, MINED, CONFIRMED, etc.)
+    pub status: String,
+    /// Message type (always "TRADE")
+    #[serde(rename = "type", default)]
+    pub msg_type: Option<String>,
+    /// Timestamp of last trade modification
+    #[serde(default)]
+    pub last_update: Option<String>,
+    /// Time trade was matched
+    #[serde(default)]
+    pub matchtime: Option<String>,
+    /// Unix timestamp of event
+    #[serde(default)]
+    pub timestamp: Option<String>,
+    /// Outcome (Yes/No)
+    #[serde(default)]
+    pub outcome: Option<String>,
+    /// API key of event owner
+    #[serde(default)]
+    pub owner: Option<String>,
+    /// API key of trade owner
+    #[serde(default)]
+    pub trade_owner: Option<String>,
+    /// ID of taker order
+    #[serde(default)]
+    pub taker_order_id: Option<String>,
+    /// Array of maker order details
+    #[serde(default)]
+    pub maker_orders: Vec<MakerOrder>,
+    /// Fee rate in basis points (string in API response)
+    #[serde(default)]
+    pub fee_rate_bps: Option<String>,
+    /// Transaction hash
+    #[serde(default)]
+    pub transaction_hash: Option<String>,
+    /// Whether user was maker or taker
+    #[serde(default)]
+    pub trader_side: Option<TraderSide>,
+}
+
+/// User order update message (authenticated channel only).
+#[non_exhaustive]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct OrderMessage {
+    /// Order identifier
+    pub id: String,
+    /// Market identifier (condition ID)
+    pub market: String,
+    /// Asset/token identifier
+    pub asset_id: String,
+    /// Side of the order (BUY or SELL)
+    pub side: Side,
+    /// Order price
+    pub price: String,
+    /// Message type (PLACEMENT, UPDATE, or CANCELLATION)
+    #[serde(rename = "type", default)]
+    pub msg_type: Option<String>,
+    /// Outcome (Yes/No)
+    #[serde(default)]
+    pub outcome: Option<String>,
+    /// Owner (API key)
+    #[serde(default)]
+    pub owner: Option<String>,
+    /// Order owner (API key of order originator)
+    #[serde(default)]
+    pub order_owner: Option<String>,
+    /// Original order size
+    #[serde(default)]
+    pub original_size: Option<String>,
+    /// Amount matched so far
+    #[serde(default)]
+    pub size_matched: Option<String>,
+    /// Unix timestamp of event
+    #[serde(default)]
+    pub timestamp: Option<String>,
+    /// Associated trade IDs
+    #[serde(default)]
+    pub associate_trades: Option<Vec<String>>,
+}
+
+/// Order status for WebSocket order messages.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum OrderStatus {
+    /// Order is open and active
+    Open,
+    /// Order has been matched with a counterparty
+    Matched,
+    /// Order has been partially filled
+    PartiallyFilled,
+    /// Order has been cancelled
+    Cancelled,
+    /// Order has been placed (initial status)
+    Placement,
+    /// Order update (partial match)
+    Update,
+    /// Order cancellation in progress
+    Cancellation,
+}
+
+/// Subscription request message sent to the WebSocket server.
+#[non_exhaustive]
+#[derive(Clone, Debug, Serialize)]
+pub struct SubscriptionRequest {
+    /// Subscription type ("market" or "user")
+    pub r#type: String,
+    /// List of market IDs
+    pub markets: Vec<String>,
+    /// List of asset IDs
+    #[serde(rename = "assets_ids")]
+    pub asset_ids: Vec<String>,
+    /// Request initial state dump
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub initial_dump: Option<bool>,
+    /// Authentication credentials
+    #[serde(skip)]
+    pub auth: Option<Credentials>,
+}
+
+impl SubscriptionRequest {
+    /// Create a market subscription request.
+    #[must_use]
+    pub fn market(asset_ids: Vec<String>) -> Self {
+        Self {
+            r#type: "market".to_owned(),
+            markets: vec![],
+            asset_ids,
+            initial_dump: Some(true),
+            auth: None,
+        }
+    }
+
+    /// Create a user subscription request.
+    #[must_use]
+    pub fn user(markets: Vec<String>, auth: Credentials) -> Self {
+        Self {
+            r#type: "user".to_owned(),
+            markets,
+            asset_ids: vec![],
+            initial_dump: Some(true),
+            auth: Some(auth),
+        }
+    }
+}
+
+/// Calculated midpoint update (derived from orderbook).
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MidpointUpdate {
+    /// Asset/token identifier
+    pub asset_id: String,
+    /// Market identifier
+    pub market: String,
+    /// Calculated midpoint price
+    pub midpoint: Decimal,
+    /// Unix timestamp in milliseconds
+    #[serde_as(as = "DisplayFromStr")]
+    pub timestamp: i64,
+}
+
+/// Result of peeking at the message structure without full deserialization.
+enum MessageShape {
+    /// Single object with the given `event_type` (if present).
+    Single(Option<String>),
+    /// Array of messages requiring full deserialization.
+    Array,
+}
+
+/// Peeks at the JSON structure to determine if it's a single object or array,
+/// and extracts the `event_type` for single objects without full deserialization.
+fn peek_message_shape(bytes: &[u8]) -> Result<MessageShape, serde_json::Error> {
+    struct ShapePeeker;
+
+    impl<'de> Visitor<'de> for ShapePeeker {
+        type Value = MessageShape;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a JSON object or array")
+        }
+
+        fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+        where
+            A: MapAccess<'de>,
+        {
+            let mut event_type: Option<String> = None;
+            while let Some(key) = map.next_key::<&str>()? {
+                if key == "event_type" {
+                    event_type = Some(map.next_value::<String>()?);
+                } else {
+                    map.next_value::<IgnoredAny>()?;
+                }
+            }
+            Ok(MessageShape::Single(event_type))
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+        where
+            A: SeqAccess<'de>,
+        {
+            // Consume the entire sequence to avoid "trailing characters" error
+            while seq.next_element::<IgnoredAny>()?.is_some() {}
+            Ok(MessageShape::Array)
+        }
+    }
+
+    let mut de = Deserializer::from_slice(bytes);
+    de.deserialize_any(ShapePeeker)
+}
+
+/// Check if a message matches the interest filter.
+fn matches_interest(msg: &WsMessage, interest: MessageInterest) -> bool {
+    match msg {
+        WsMessage::Book(_) => interest.contains(MessageInterest::BOOK),
+        WsMessage::PriceChange(_) => interest.contains(MessageInterest::PRICE_CHANGE),
+        WsMessage::TickSizeChange(_) => interest.contains(MessageInterest::TICK_SIZE),
+        WsMessage::LastTradePrice(_) => interest.contains(MessageInterest::LAST_TRADE_PRICE),
+        WsMessage::Trade(_) => interest.contains(MessageInterest::TRADE),
+        WsMessage::Order(_) => interest.contains(MessageInterest::ORDER),
+    }
+}
+
+/// Deserialize messages from the byte slice, filtering by interest.
+///
+/// For single objects, the `event_type` is extracted first to skip uninteresting messages
+/// without full deserialization. For arrays, all messages are deserialized and filtered.
+pub fn parse_if_interested(
+    bytes: &[u8],
+    interest: &MessageInterest,
+) -> crate::Result<Vec<WsMessage>> {
+    let shape = peek_message_shape(bytes)
+        .map_err(|e| crate::error::Error::with_source(Kind::Internal, Box::new(e)))?;
+
+    match shape {
+        MessageShape::Single(None) => Ok(vec![]),
+        MessageShape::Single(Some(event_type)) => {
+            if !interest.is_interested_in_event(&event_type) {
+                return Ok(vec![]);
+            }
+            let msg: WsMessage = serde_json::from_slice(bytes)?;
+            Ok(vec![msg])
+        }
+        MessageShape::Array => {
+            let messages: Vec<WsMessage> = serde_json::from_slice(bytes)?;
+            Ok(messages
+                .into_iter()
+                .filter(|msg| matches_interest(msg, *interest))
+                .collect())
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use rust_decimal_macros::dec;
+
+    use super::*;
+    use crate::auth::ApiKey;
+
+    #[test]
+    fn parse_book_message() {
+        let json = r#"{
+            "event_type": "book",
+            "asset_id": "123",
+            "market": "market1",
+            "timestamp": "1234567890",
+            "bids": [{"price": "0.5", "size": "100"}],
+            "asks": [{"price": "0.51", "size": "50"}]
+        }"#;
+
+        let msg: WsMessage = serde_json::from_str(json).unwrap();
+        match msg {
+            WsMessage::Book(book) => {
+                assert_eq!(book.asset_id, "123");
+                assert_eq!(book.bids.len(), 1);
+                assert_eq!(book.asks.len(), 1);
+            }
+            _ => panic!("Expected Book message"),
+        }
+    }
+
+    #[test]
+    fn parse_price_change_message() {
+        let json = r#"{
+            "event_type": "price_change",
+            "market": "market2",
+            "timestamp": "1234567890",
+            "price_changes": [{
+                "asset_id": "456",
+                "price": "0.52",
+                "size": "10",
+                "side": "BUY"
+            }]
+        }"#;
+
+        let msg: WsMessage = serde_json::from_str(json).unwrap();
+        match msg {
+            WsMessage::PriceChange(price) => {
+                let changes = &price.price_changes[0];
+
+                assert_eq!(changes.asset_id, "456");
+                assert_eq!(changes.side, Side::Buy);
+                assert_eq!(changes.size.unwrap(), Decimal::TEN);
+            }
+            _ => panic!("Expected PriceChange message"),
+        }
+    }
+
+    #[test]
+    fn parse_price_change_interest_message() {
+        let json = r#"{
+            "event_type": "price_change",
+            "market": "market3",
+            "timestamp": "1234567890",
+            "price_changes": [
+                {
+                    "asset_id": "asset_a",
+                    "price": "0.10",
+                    "side": "BUY",
+                    "hash": "abc",
+                    "best_bid": "0.11",
+                    "best_ask": "0.12"
+                },
+                {
+                    "asset_id": "asset_b",
+                    "price": "0.90",
+                    "size": "5",
+                    "side": "SELL"
+                }
+            ]
+        }"#;
+
+        let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::ALL).unwrap();
+        assert_eq!(msgs.len(), 1);
+
+        match &msgs[0] {
+            WsMessage::PriceChange(price) => {
+                assert_eq!(price.market, "market3");
+
+                let changes = &price.price_changes;
+                assert_eq!(changes.len(), 2);
+
+                assert_eq!(changes[0].asset_id, "asset_a");
+                assert_eq!(changes[0].best_bid, Some(dec!(0.11)));
+                assert_eq!(changes[0].price, dec!(0.10));
+                assert!(changes[0].size.is_none());
+
+                assert_eq!(changes[1].asset_id, "asset_b");
+                assert_eq!(changes[1].best_bid, None);
+                assert_eq!(changes[1].size, Some(dec!(5)));
+                assert_eq!(changes[1].price, dec!(0.90));
+            }
+            _ => panic!("Expected first price change"),
+        }
+    }
+
+    #[test]
+    fn parse_batch_messages() {
+        let json = r#"[
+            {
+                "event_type": "book",
+                "asset_id": "asset1",
+                "market": "market1",
+                "timestamp": "1234567890",
+                "bids": [{"price": "0.5", "size": "100"}],
+                "asks": []
+            },
+            {
+                "event_type": "price_change",
+                "market": "market1",
+                "timestamp": "1234567891",
+                "price_changes": [{
+                    "asset_id": "asset1",
+                    "price": "0.51",
+                    "side": "BUY"
+                }]
+            },
+            {
+                "event_type": "last_trade_price",
+                "asset_id": "asset2",
+                "market": "market1",
+                "price": "0.6",
+                "timestamp": "1234567892"
+            }
+        ]"#;
+
+        let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::ALL).unwrap();
+        assert_eq!(msgs.len(), 3);
+
+        assert!(matches!(&msgs[0], WsMessage::Book(b) if b.asset_id == "asset1"));
+        assert!(matches!(&msgs[1], WsMessage::PriceChange(p) if p.market == "market1"));
+        assert!(matches!(&msgs[2], WsMessage::LastTradePrice(l) if l.asset_id == "asset2"));
+    }
+
+    #[test]
+    fn parse_batch_filters_by_interest() {
+        let json = r#"[
+            {
+                "event_type": "book",
+                "asset_id": "asset1",
+                "market": "market1",
+                "timestamp": "1234567890",
+                "bids": [],
+                "asks": []
+            },
+            {
+                "event_type": "trade",
+                "id": "trade1",
+                "market": "market1",
+                "asset_id": "asset1",
+                "side": "BUY",
+                "size": "10",
+                "price": "0.5",
+                "status": "MATCHED"
+            }
+        ]"#;
+
+        // Only interested in BOOK, not TRADE
+        let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::BOOK).unwrap();
+        assert_eq!(msgs.len(), 1);
+        assert!(matches!(&msgs[0], WsMessage::Book(_)));
+
+        // Only interested in TRADE, not BOOK
+        let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::TRADE).unwrap();
+        assert_eq!(msgs.len(), 1);
+        assert!(matches!(&msgs[0], WsMessage::Trade(_)));
+
+        // Interested in both
+        let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::ALL).unwrap();
+        assert_eq!(msgs.len(), 2);
+    }
+
+    #[test]
+    fn serialize_market_subscription_request() {
+        let request = SubscriptionRequest::market(vec!["asset1".to_owned(), "asset2".to_owned()]);
+
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(json.contains("\"type\":\"market\""));
+        assert!(json.contains("\"assets_ids\""));
+        assert!(json.contains("\"initial_dump\":true"));
+    }
+
+    #[test]
+    fn serialize_user_subscription_request() {
+        let credentials = Credentials::new(
+            ApiKey::nil(),
+            "test-secret".to_owned(),
+            "test-pass".to_owned(),
+        );
+        let request = SubscriptionRequest::user(vec!["market1".to_owned()], credentials);
+
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(json.contains("\"type\":\"user\""));
+        assert!(json.contains("\"markets\""));
+        assert!(json.contains("\"initial_dump\":true"));
+    }
+}
