@@ -1,13 +1,13 @@
+//! Subscribe to authenticated (user) WebSocket channels.
 #![allow(clippy::print_stdout, reason = "Examples are okay to print to stdout")]
 #![allow(clippy::print_stderr, reason = "Examples are okay to print to stderr")]
-//! Subscribe to authenticated (user) WebSocket channels.
 
 use std::str::FromStr as _;
 
 use alloy::primitives::Address;
 use futures::StreamExt as _;
 use polymarket_client_sdk::auth::Credentials;
-use polymarket_client_sdk::ws::{WebSocketClient, WsMessage};
+use polymarket_client_sdk::clob::ws::{WebSocketClient, WsMessage};
 use uuid::Uuid;
 
 #[tokio::main]

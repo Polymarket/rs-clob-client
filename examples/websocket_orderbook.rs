@@ -1,9 +1,9 @@
+//! Example of subscribing to real-time orderbook updates via WebSocket.
 #![allow(clippy::print_stdout, reason = "Examples are okay to print to stdout")]
 #![allow(clippy::print_stderr, reason = "Examples are okay to print to stderr")]
-//! Example of subscribing to real-time orderbook updates via WebSocket.
 
 use futures::StreamExt as _;
-use polymarket_client_sdk::ws::WebSocketClient;
+use polymarket_client_sdk::clob::ws::WebSocketClient;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

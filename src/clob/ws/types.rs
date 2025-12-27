@@ -7,11 +7,9 @@ use serde_json::Deserializer;
 use serde_with::{DisplayFromStr, serde_as};
 
 use super::interest::MessageInterest;
+use crate::auth::Credentials;
+use crate::clob::types::{Side, TraderSide};
 use crate::error::Kind;
-use crate::{
-    auth::Credentials,
-    types::{Side, TraderSide},
-};
 
 /// Top-level WebSocket message wrapper.
 ///
@@ -457,7 +455,7 @@ mod tests {
     use rust_decimal_macros::dec;
 
     use super::*;
-    use crate::types::ApiKey;
+    use crate::auth::ApiKey;
 
     #[test]
     fn parse_book_message() {

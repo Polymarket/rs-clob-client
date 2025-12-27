@@ -5,8 +5,6 @@ pub mod clob;
 pub mod error;
 #[cfg(feature = "gamma")]
 pub mod gamma;
-#[cfg(feature = "ws")]
-pub mod ws;
 
 use alloy::primitives::{Address, ChainId, address};
 use phf::phf_map;

@@ -13,7 +13,6 @@ use tokio::net::TcpStream;
 use tokio::sync::{RwLock, broadcast, mpsc, watch};
 use tokio::time::{interval, sleep, timeout};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message};
-use tracing::{debug, error, trace, warn};
 
 use super::config::WebSocketConfig;
 use super::error::WsError;
@@ -156,12 +155,18 @@ impl ConnectionManager {
                     )
                     .await
                     {
-                        error!("Error handling connection: {e:?}");
+                        #[cfg(feature = "tracing")]
+                        tracing::error!("Error handling connection: {e:?}");
+                        #[cfg(not(feature = "tracing"))]
+                        let _ = &e;
                     }
                 }
                 Err(e) => {
                     let error = Error::with_source(Kind::WebSocket, WsError::Connection(e));
-                    warn!("Unable to connect: {error:?}");
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!("Unable to connect: {error:?}");
+                    #[cfg(not(feature = "tracing"))]
+                    let _ = &error;
                     attempt = attempt.saturating_add(1);
                 }
             }
@@ -219,18 +224,24 @@ impl ConnectionManager {
                                 continue;
                             }
 
-                            trace!(%text, "Received WebSocket text message");
+                            #[cfg(feature = "tracing")]
+                            tracing::trace!(%text, "Received WebSocket text message");
 
                             // Only deserialize message types that have active consumers
                             match parse_if_interested(text.as_bytes(), &interest.get()) {
                                 Ok(messages) => {
                                     for message in messages {
-                                        trace!(?message, "Parsed WebSocket message");
+                                        #[cfg(feature = "tracing")]
+                                        tracing::trace!(?message, "Parsed WebSocket message");
                                         _ = broadcast_tx.send(message);
                                     }
+
                                 }
                                 Err(e) => {
-                                    warn!(%text, error = %e, "Failed to parse WebSocket message");
+                                    #[cfg(feature = "tracing")]
+                                    tracing::warn!(%text, error = %e, "Failed to parse WebSocket message");
+                                    #[cfg(not(feature = "tracing"))]
+                                    let _ = (&text, &e);
                                 }
                             }
                         }
@@ -316,7 +327,10 @@ impl ConnectionManager {
                 Ok(Ok(())) => {
                     let last_pong = *pong_rx.borrow_and_update();
                     if last_pong < ping_sent {
-                        debug!("PONG received but older than last PING, connection may be stale");
+                        #[cfg(feature = "tracing")]
+                        tracing::debug!(
+                            "PONG received but older than last PING, connection may be stale"
+                        );
                         break;
                     }
                 }
@@ -326,7 +340,8 @@ impl ConnectionManager {
                 }
                 Err(_) => {
                     // Timeout waiting for PONG
-                    warn!(
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(
                         "Heartbeat timeout: no PONG received within {:?}",
                         config.heartbeat_timeout
                     );

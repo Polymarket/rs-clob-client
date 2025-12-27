@@ -11,7 +11,6 @@ use async_stream::try_stream;
 use dashmap::{DashMap, DashSet};
 use futures::Stream;
 use tokio::sync::broadcast::error::RecvError;
-use tracing::{debug, warn};
 
 use super::connection::{ConnectionManager, ConnectionState};
 use super::error::WsError;
@@ -118,7 +117,8 @@ impl SubscriptionManager {
                 ConnectionState::Connected { .. } => {
                     if was_connected {
                         // Reconnect to subscriptions
-                        debug!("WebSocket reconnected, re-establishing subscriptions");
+                        #[cfg(feature = "tracing")]
+                        tracing::debug!("WebSocket reconnected, re-establishing subscriptions");
                         self.resubscribe_all();
                     }
                     was_connected = true;
@@ -144,10 +144,14 @@ impl SubscriptionManager {
             .collect();
 
         if !assets.is_empty() {
-            debug!(count = assets.len(), "Re-subscribing to market assets");
+            #[cfg(feature = "tracing")]
+            tracing::debug!(count = assets.len(), "Re-subscribing to market assets");
             let request = SubscriptionRequest::market(assets);
             if let Err(e) = self.connection.send(&request) {
-                warn!(%e, "Failed to re-subscribe to market channel");
+                #[cfg(feature = "tracing")]
+                tracing::warn!(%e, "Failed to re-subscribe to market channel");
+                #[cfg(not(feature = "tracing"))]
+                let _ = &e;
             }
         }
 
@@ -165,13 +169,17 @@ impl SubscriptionManager {
                 .map(|r| r.key().clone())
                 .collect();
 
-            debug!(
+            #[cfg(feature = "tracing")]
+            tracing::debug!(
                 markets_count = markets.len(),
                 "Re-subscribing to user channel"
             );
             let request = SubscriptionRequest::user(markets, auth);
             if let Err(e) = self.connection.send(&request) {
-                warn!(%e, "Failed to re-subscribe to user channel");
+                #[cfg(feature = "tracing")]
+                tracing::warn!(%e, "Failed to re-subscribe to user channel");
+                #[cfg(not(feature = "tracing"))]
+                let _ = &e;
             }
         }
     }
@@ -205,9 +213,11 @@ impl SubscriptionManager {
 
         // Only send subscription request for new assets
         if new_assets.is_empty() {
-            debug!("All requested assets already subscribed, multiplexing");
+            #[cfg(feature = "tracing")]
+            tracing::debug!("All requested assets already subscribed, multiplexing");
         } else {
-            debug!(
+            #[cfg(feature = "tracing")]
+            tracing::debug!(
                 count = new_assets.len(),
                 ?new_assets,
                 "Subscribing to new market assets"
@@ -253,7 +263,8 @@ impl SubscriptionManager {
                         }
                     }
                     Err(RecvError::Lagged(n)) => {
-                        warn!("Subscription lagged, missed {n} messages");
+                        #[cfg(feature = "tracing")]
+                        tracing::warn!("Subscription lagged, missed {n} messages");
                         Err(WsError::Lagged { count: n })?;
                     }
                     Err(RecvError::Closed) => {
@@ -292,9 +303,11 @@ impl SubscriptionManager {
 
         // Only send subscription request for new markets (or if subscribing to all)
         if !markets.is_empty() && new_markets.is_empty() {
-            debug!("All requested markets already subscribed, multiplexing");
+            #[cfg(feature = "tracing")]
+            tracing::debug!("All requested markets already subscribed, multiplexing");
         } else {
-            debug!(
+            #[cfg(feature = "tracing")]
+            tracing::debug!(
                 count = new_markets.len(),
                 ?new_markets,
                 "Subscribing to user channel"
@@ -325,7 +338,8 @@ impl SubscriptionManager {
                         }
                     }
                     Err(RecvError::Lagged(n)) => {
-                        warn!("Subscription lagged, missed {n} messages");
+                        #[cfg(feature = "tracing")]
+                        tracing::warn!("Subscription lagged, missed {n} messages");
                         Err(WsError::Lagged { count: n })?;
                     }
                     Err(RecvError::Closed) => {

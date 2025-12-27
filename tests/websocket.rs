@@ -1,3 +1,4 @@
+#![cfg(feature = "ws")]
 #![allow(
     clippy::unwrap_used,
     reason = "Do not need additional syntax for setting up tests"
@@ -10,7 +11,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::{SinkExt as _, StreamExt as _};
-use polymarket_client_sdk::ws::{WebSocketClient, WebSocketConfig, WsMessage};
+use polymarket_client_sdk::clob::ws::{WebSocketClient, WebSocketConfig, WsMessage};
 use serde_json::json;
 use tokio::net::TcpListener;
 use tokio::sync::{broadcast, mpsc};
@@ -402,7 +403,7 @@ mod market_channel {
 mod user_channel {
     use alloy::primitives::Address;
     use polymarket_client_sdk::auth::Credentials;
-    use polymarket_client_sdk::types::Side;
+    use polymarket_client_sdk::clob::types::Side;
     use tokio::time::sleep;
 
     use super::*;
@@ -848,8 +849,8 @@ mod reconnection {
 }
 
 mod message_parsing {
-    use polymarket_client_sdk::types::Side;
-    use polymarket_client_sdk::ws::{LastTradePrice, TickSizeChange};
+    use polymarket_client_sdk::clob::types::Side;
+    use polymarket_client_sdk::clob::ws::{LastTradePrice, TickSizeChange};
     use rust_decimal_macros::dec;
 
     use super::*;

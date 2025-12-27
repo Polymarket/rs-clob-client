@@ -20,8 +20,8 @@ use super::types::{
     BookUpdate, MidpointUpdate, OrderMessage, PriceChange, TradeMessage, WsMessage,
 };
 use crate::Result;
+use crate::auth::state::{Authenticated, State, Unauthenticated};
 use crate::auth::{Credentials, Kind as AuthKind, Normal};
-use crate::clob::state::{Authenticated, State, Unauthenticated};
 use crate::error::Error;
 
 /// WebSocket client for real-time market data and user updates.
