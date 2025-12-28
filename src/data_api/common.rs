@@ -56,7 +56,9 @@ pub enum ActivityType {
 /// Sort criteria for position queries.
 ///
 /// Determines how positions are ordered in the response. Default is [`Tokens`](Self::Tokens).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display,
+)]
 #[non_exhaustive]
 pub enum PositionSortBy {
     /// Sort by current value of the position.
@@ -68,6 +70,7 @@ pub enum PositionSortBy {
     #[strum(serialize = "INITIAL")]
     Initial,
     /// Sort by number of tokens held (default).
+    #[default]
     #[serde(rename = "TOKENS")]
     #[strum(serialize = "TOKENS")]
     Tokens,
@@ -100,10 +103,13 @@ pub enum PositionSortBy {
 /// Sort criteria for closed position queries.
 ///
 /// Determines how closed positions are ordered in the response. Default is [`RealizedPnl`](Self::RealizedPnl).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display,
+)]
 #[non_exhaustive]
 pub enum ClosedPositionSortBy {
     /// Sort by realized profit and loss (default).
+    #[default]
     #[serde(rename = "REALIZEDPNL")]
     #[strum(serialize = "REALIZEDPNL")]
     RealizedPnl,
@@ -128,12 +134,15 @@ pub enum ClosedPositionSortBy {
 /// Sort criteria for activity queries.
 ///
 /// Determines how activity records are ordered in the response. Default is [`Timestamp`](Self::Timestamp).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display,
+)]
 #[serde(rename_all = "UPPERCASE")]
 #[strum(serialize_all = "UPPERCASE")]
 #[non_exhaustive]
 pub enum ActivitySortBy {
     /// Sort by activity timestamp (default).
+    #[default]
     Timestamp,
     /// Sort by number of tokens involved in the activity.
     Tokens,
@@ -144,7 +153,9 @@ pub enum ActivitySortBy {
 /// Sort direction for query results.
 ///
 /// Default is [`Desc`](Self::Desc) (descending) for most endpoints.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display,
+)]
 #[serde(rename_all = "UPPERCASE")]
 #[strum(serialize_all = "UPPERCASE")]
 #[non_exhaustive]
@@ -152,6 +163,7 @@ pub enum SortDirection {
     /// Ascending order (smallest/earliest first).
     Asc,
     /// Descending order (largest/latest first, default).
+    #[default]
     Desc,
 }
 
@@ -173,12 +185,15 @@ pub enum FilterType {
 /// Time period for aggregating leaderboard and volume data.
 ///
 /// Default is [`Day`](Self::Day) for most endpoints.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display,
+)]
 #[serde(rename_all = "UPPERCASE")]
 #[strum(serialize_all = "UPPERCASE")]
 #[non_exhaustive]
 pub enum TimePeriod {
     /// Last 24 hours (default).
+    #[default]
     Day,
     /// Last 7 days.
     Week,
@@ -191,12 +206,15 @@ pub enum TimePeriod {
 /// Market category for filtering trader leaderboard results.
 ///
 /// Default is [`Overall`](Self::Overall) which includes all categories.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display,
+)]
 #[serde(rename_all = "UPPERCASE")]
 #[strum(serialize_all = "UPPERCASE")]
 #[non_exhaustive]
 pub enum LeaderboardCategory {
     /// All categories combined (default).
+    #[default]
     Overall,
     /// Politics and elections markets.
     Politics,
@@ -221,12 +239,15 @@ pub enum LeaderboardCategory {
 /// Ordering criteria for trader leaderboard results.
 ///
 /// Default is [`Pnl`](Self::Pnl) (profit and loss).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display,
+)]
 #[serde(rename_all = "UPPERCASE")]
 #[strum(serialize_all = "UPPERCASE")]
 #[non_exhaustive]
 pub enum LeaderboardOrderBy {
     /// Order by profit and loss (default).
+    #[default]
     Pnl,
     /// Order by trading volume.
     Vol,
