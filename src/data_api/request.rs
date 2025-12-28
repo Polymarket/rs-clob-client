@@ -74,7 +74,7 @@ impl<T: Serialize> ToQueryString for T {}
 ///
 /// ```
 /// use alloy::primitives::address;
-/// use polymarket_client_sdk::data_api::{params::PositionsRequest, common::{PositionSortBy, SortDirection}};
+/// use polymarket_client_sdk::data_api::{request::PositionsRequest, common::{PositionSortBy, SortDirection}};
 ///
 /// let request = PositionsRequest::builder()
 ///     .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
@@ -139,7 +139,7 @@ pub struct PositionsRequest {
 ///
 /// ```
 /// use alloy::primitives::address;
-/// use polymarket_client_sdk::data_api::{params::TradesRequest, common::{Side, TradeFilter}};
+/// use polymarket_client_sdk::data_api::{request::TradesRequest, common::{Side, TradeFilter}};
 /// use rust_decimal_macros::dec;
 ///
 /// let request = TradesRequest::builder()
@@ -202,7 +202,7 @@ pub struct TradesRequest {
 ///
 /// ```
 /// use alloy::primitives::address;
-/// use polymarket_client_sdk::data_api::{params::ActivityRequest, common::ActivityType};
+/// use polymarket_client_sdk::data_api::{request::ActivityRequest, common::ActivityType};
 ///
 /// let request = ActivityRequest::builder()
 ///     .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
@@ -267,7 +267,7 @@ pub struct ActivityRequest {
 /// # Example
 ///
 /// ```
-/// use polymarket_client_sdk::data_api::params::HoldersRequest;
+/// use polymarket_client_sdk::data_api::request::HoldersRequest;
 ///
 /// let request = HoldersRequest::builder()
 ///     .markets(vec!["0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917".to_string()])
@@ -392,7 +392,7 @@ pub struct LiveVolumeRequest {
 ///
 /// ```
 /// use alloy::primitives::address;
-/// use polymarket_client_sdk::data_api::{params::ClosedPositionsRequest, common::ClosedPositionSortBy};
+/// use polymarket_client_sdk::data_api::{request::ClosedPositionsRequest, common::ClosedPositionSortBy};
 ///
 /// let request = ClosedPositionsRequest::builder()
 ///     .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
@@ -443,7 +443,7 @@ pub struct ClosedPositionsRequest {
 /// # Example
 ///
 /// ```
-/// use polymarket_client_sdk::data_api::{params::BuilderLeaderboardRequest, common::TimePeriod};
+/// use polymarket_client_sdk::data_api::{request::BuilderLeaderboardRequest, common::TimePeriod};
 ///
 /// let request = BuilderLeaderboardRequest::builder()
 ///     .time_period(TimePeriod::Week)
@@ -477,7 +477,7 @@ pub struct BuilderLeaderboardRequest {
 /// # Example
 ///
 /// ```
-/// use polymarket_client_sdk::data_api::{params::BuilderVolumeRequest, common::TimePeriod};
+/// use polymarket_client_sdk::data_api::{request::BuilderVolumeRequest, common::TimePeriod};
 ///
 /// let request = BuilderVolumeRequest::builder()
 ///     .time_period(TimePeriod::Month)
@@ -509,7 +509,7 @@ pub struct BuilderVolumeRequest {
 /// # Example
 ///
 /// ```
-/// use polymarket_client_sdk::data_api::{params::TraderLeaderboardRequest, common::{LeaderboardCategory, TimePeriod, LeaderboardOrderBy}};
+/// use polymarket_client_sdk::data_api::{request::TraderLeaderboardRequest, common::{LeaderboardCategory, TimePeriod, LeaderboardOrderBy}};
 ///
 /// let request = TraderLeaderboardRequest::builder()
 ///     .category(LeaderboardCategory::Politics)

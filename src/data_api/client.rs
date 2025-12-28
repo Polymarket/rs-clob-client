@@ -7,7 +7,7 @@
 //!
 //! ```no_run
 //! use alloy::primitives::address;
-//! use polymarket_client_sdk::data_api::{Client, params::PositionsRequest};
+//! use polymarket_client_sdk::data_api::{Client, request::PositionsRequest};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let client = Client::default();
@@ -31,7 +31,7 @@ use reqwest::{
 use serde::de::DeserializeOwned;
 use url::Url;
 
-use super::params::{
+use super::request::{
     ActivityRequest, BuilderLeaderboardRequest, BuilderVolumeRequest, ClosedPositionsRequest,
     HoldersRequest, LiveVolumeRequest, OpenInterestRequest, PositionsRequest, ToQueryString,
     TradedRequest, TraderLeaderboardRequest, TradesRequest, ValueRequest,
