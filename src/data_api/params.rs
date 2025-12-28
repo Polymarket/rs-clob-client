@@ -61,10 +61,11 @@ impl<T: Serialize> ToQueryString for T {}
 /// # Example
 ///
 /// ```
+/// use alloy::primitives::address;
 /// use polymarket_client_sdk::data_api::{params::PositionsRequest, common::{PositionSortBy, SortDirection}};
 ///
 /// let request = PositionsRequest::builder()
-///     .user("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
+///     .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
 ///     .sort_by(PositionSortBy::CashPnl)
 ///     .sort_direction(SortDirection::Desc)
 ///     .build();
@@ -123,12 +124,14 @@ pub struct PositionsRequest {
 /// # Example
 ///
 /// ```
+/// use alloy::primitives::address;
 /// use polymarket_client_sdk::data_api::{params::TradesRequest, common::{Side, TradeFilter}};
+/// use rust_decimal_macros::dec;
 ///
 /// let request = TradesRequest::builder()
-///     .user("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
+///     .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
 ///     .side(Side::Buy)
-///     .trade_filter(TradeFilter::cash(100.0).unwrap())
+///     .trade_filter(TradeFilter::cash(dec!(100)).unwrap())
 ///     .build();
 /// ```
 #[derive(Debug, Clone, Builder, Default, Serialize)]
@@ -182,10 +185,11 @@ pub struct TradesRequest {
 /// # Example
 ///
 /// ```
+/// use alloy::primitives::address;
 /// use polymarket_client_sdk::data_api::{params::ActivityRequest, common::ActivityType};
 ///
 /// let request = ActivityRequest::builder()
-///     .user("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
+///     .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
 ///     .activity_types(vec![ActivityType::Trade, ActivityType::Redeem])
 ///     .build();
 /// ```
@@ -367,10 +371,11 @@ pub struct LiveVolumeRequest {
 /// # Example
 ///
 /// ```
+/// use alloy::primitives::address;
 /// use polymarket_client_sdk::data_api::{params::ClosedPositionsRequest, common::ClosedPositionSortBy};
 ///
 /// let request = ClosedPositionsRequest::builder()
-///     .user("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
+///     .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
 ///     .sort_by(ClosedPositionSortBy::Timestamp)
 ///     .build();
 /// ```

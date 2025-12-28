@@ -30,6 +30,7 @@
 //! # Example
 //!
 //! ```no_run
+//! use alloy::primitives::address;
 //! use polymarket_client_sdk::data_api::{Client, params::PositionsRequest};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
@@ -38,7 +39,7 @@
 //!
 //! // Build a request for user positions
 //! let request = PositionsRequest::builder()
-//!     .user("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
+//!     .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
 //!     .build();
 //!
 //! // Fetch positions

@@ -2,6 +2,7 @@
 //!
 //! This module contains structs representing API responses from the Data API endpoints.
 
+use rust_decimal::Decimal;
 use serde::{Deserialize, Deserializer};
 use serde_with::{DefaultOnNull, serde_as};
 
@@ -59,25 +60,25 @@ pub struct Position {
     /// The market condition ID (unique market identifier).
     pub condition_id: Hash64,
     /// Number of outcome tokens held.
-    pub size: f64,
+    pub size: Decimal,
     /// Average entry price for the position.
-    pub avg_price: f64,
+    pub avg_price: Decimal,
     /// Initial value (cost basis) of the position.
-    pub initial_value: f64,
+    pub initial_value: Decimal,
     /// Current market value of the position.
-    pub current_value: f64,
+    pub current_value: Decimal,
     /// Unrealized cash profit/loss.
-    pub cash_pnl: f64,
+    pub cash_pnl: Decimal,
     /// Unrealized percentage profit/loss.
-    pub percent_pnl: f64,
+    pub percent_pnl: Decimal,
     /// Total amount bought (cumulative).
-    pub total_bought: f64,
+    pub total_bought: Decimal,
     /// Realized profit/loss from closed portions.
-    pub realized_pnl: f64,
+    pub realized_pnl: Decimal,
     /// Realized percentage profit/loss.
-    pub percent_realized_pnl: f64,
+    pub percent_realized_pnl: Decimal,
     /// Current market price of the outcome.
-    pub cur_price: f64,
+    pub cur_price: Decimal,
     /// Whether the position can be redeemed (market resolved).
     pub redeemable: bool,
     /// Whether the position can be merged with opposite outcome.
@@ -119,13 +120,13 @@ pub struct ClosedPosition {
     /// The market condition ID (unique market identifier).
     pub condition_id: Hash64,
     /// Average entry price for the position.
-    pub avg_price: f64,
+    pub avg_price: Decimal,
     /// Total amount bought (cumulative).
-    pub total_bought: f64,
+    pub total_bought: Decimal,
     /// Realized profit/loss from the closed position.
-    pub realized_pnl: f64,
+    pub realized_pnl: Decimal,
     /// Final market price when position was closed.
-    pub cur_price: f64,
+    pub cur_price: Decimal,
     /// Unix timestamp when the position was closed.
     pub timestamp: i64,
     /// Market title/question.
@@ -165,9 +166,9 @@ pub struct Trade {
     /// The market condition ID (unique market identifier).
     pub condition_id: Hash64,
     /// Number of tokens traded.
-    pub size: f64,
+    pub size: Decimal,
     /// Execution price per token.
-    pub price: f64,
+    pub price: Decimal,
     /// Unix timestamp when the trade occurred.
     pub timestamp: i64,
     /// Market title/question.
@@ -214,13 +215,13 @@ pub struct Activity {
     #[serde(rename = "type")]
     pub activity_type: ActivityType,
     /// Number of tokens involved in the activity.
-    pub size: f64,
+    pub size: Decimal,
     /// USDC value of the activity.
-    pub usdc_size: f64,
+    pub usdc_size: Decimal,
     /// On-chain transaction hash.
     pub transaction_hash: String,
     /// Price per token (for trades).
-    pub price: Option<f64>,
+    pub price: Option<Decimal>,
     /// Outcome token asset identifier (for trades).
     pub asset: Option<String>,
     /// Trade side (for trades only).
@@ -266,7 +267,7 @@ pub struct Holder {
     /// Holder's pseudonym (if set).
     pub pseudonym: Option<String>,
     /// Amount of tokens held.
-    pub amount: f64,
+    pub amount: Decimal,
     /// Whether the holder's username is publicly visible.
     pub display_username_public: Option<bool>,
     /// Outcome index within the market (0 or 1 for binary markets).
@@ -312,7 +313,7 @@ pub struct Value {
     /// The user's address.
     pub user: Address,
     /// Total value of positions in USDC.
-    pub value: f64,
+    pub value: Decimal,
 }
 
 /// Open interest for a market.
@@ -325,7 +326,7 @@ pub struct OpenInterest {
     /// The market condition ID.
     pub market: Hash64,
     /// Open interest value in USDC.
-    pub value: f64,
+    pub value: Decimal,
 }
 
 /// Trading volume for a specific market.
@@ -337,7 +338,7 @@ pub struct MarketVolume {
     /// The market condition ID.
     pub market: Hash64,
     /// Trading volume in USDC.
-    pub value: f64,
+    pub value: Decimal,
 }
 
 /// Live trading volume for an event.
@@ -349,7 +350,7 @@ pub struct MarketVolume {
 #[non_exhaustive]
 pub struct LiveVolume {
     /// Total trading volume across all markets in the event.
-    pub total: f64,
+    pub total: Decimal,
     /// Per-market volume breakdown.
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
@@ -369,7 +370,7 @@ pub struct BuilderLeaderboardEntry {
     /// Builder name or identifier.
     pub builder: String,
     /// Total trading volume attributed to this builder.
-    pub volume: f64,
+    pub volume: Decimal,
     /// Number of active users for this builder.
     pub active_users: i32,
     /// Whether the builder is verified.
@@ -395,7 +396,7 @@ pub struct BuilderVolumeEntry {
     /// Whether the builder is verified.
     pub verified: bool,
     /// Trading volume for this builder on this date.
-    pub volume: f64,
+    pub volume: Decimal,
     /// Number of active users for this builder on this date.
     pub active_users: i32,
     /// Rank position on this date.
@@ -417,9 +418,9 @@ pub struct TraderLeaderboardEntry {
     /// The trader's username.
     pub user_name: Option<String>,
     /// Trading volume for this trader.
-    pub vol: f64,
+    pub vol: Decimal,
     /// Profit and loss for this trader.
-    pub pnl: f64,
+    pub pnl: Decimal,
     /// URL to the trader's profile image.
     pub profile_image: Option<String>,
     /// The trader's X (Twitter) username.

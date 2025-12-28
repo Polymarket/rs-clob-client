@@ -9,6 +9,7 @@ use std::fmt;
 
 /// Re-export of alloy's Address type for Ethereum addresses.
 pub use alloy::primitives::Address;
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 /// Type alias for 64-character hex hashes (condition IDs, market identifiers).
@@ -417,12 +418,13 @@ bounded_u32!(TraderLeaderboardOffset, min = 0, max = 1000, default = 0);
 ///
 /// ```
 /// use polymarket_client_sdk::data_api::common::TradeFilter;
+/// use rust_decimal_macros::dec;
 ///
 /// // Filter trades with at least $100 USDC value
-/// let filter = TradeFilter::cash(100.0).unwrap();
+/// let filter = TradeFilter::cash(dec!(100)).unwrap();
 ///
 /// // Filter trades with at least 50 tokens
-/// let filter = TradeFilter::tokens(50.0).unwrap();
+/// let filter = TradeFilter::tokens(dec!(50)).unwrap();
 /// ```
 #[derive(Debug, Clone)]
 #[non_exhaustive]
@@ -430,7 +432,7 @@ pub struct TradeFilter {
     /// The type of filter (cash or tokens).
     pub filter_type: FilterType,
     /// The minimum amount to filter by (must be >= 0).
-    pub filter_amount: f64,
+    pub filter_amount: Decimal,
 }
 
 impl TradeFilter {
@@ -439,8 +441,8 @@ impl TradeFilter {
     /// # Errors
     ///
     /// Returns [`TradeFilterError`] if the amount is negative.
-    pub fn new(filter_type: FilterType, filter_amount: f64) -> Result<Self, TradeFilterError> {
-        if filter_amount < 0.0 {
+    pub fn new(filter_type: FilterType, filter_amount: Decimal) -> Result<Self, TradeFilterError> {
+        if filter_amount.is_sign_negative() {
             return Err(TradeFilterError::NegativeAmount(filter_amount));
         }
         Ok(Self {
@@ -454,7 +456,7 @@ impl TradeFilter {
     /// # Errors
     ///
     /// Returns [`TradeFilterError`] if the amount is negative.
-    pub fn cash(amount: f64) -> Result<Self, TradeFilterError> {
+    pub fn cash(amount: Decimal) -> Result<Self, TradeFilterError> {
         Self::new(FilterType::Cash, amount)
     }
 
@@ -463,7 +465,7 @@ impl TradeFilter {
     /// # Errors
     ///
     /// Returns [`TradeFilterError`] if the amount is negative.
-    pub fn tokens(amount: f64) -> Result<Self, TradeFilterError> {
+    pub fn tokens(amount: Decimal) -> Result<Self, TradeFilterError> {
         Self::new(FilterType::Tokens, amount)
     }
 }
@@ -483,7 +485,7 @@ impl Serialize for TradeFilter {
 #[non_exhaustive]
 pub enum TradeFilterError {
     /// The filter amount was negative.
-    NegativeAmount(f64),
+    NegativeAmount(Decimal),
 }
 
 impl fmt::Display for TradeFilterError {
