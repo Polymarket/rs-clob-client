@@ -596,7 +596,7 @@ pub type HealthResponse = String;
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct Team {
-    pub id: String,
+    pub id: i32,
     pub name: Option<String>,
     pub league: Option<String>,
     pub record: Option<String>,
