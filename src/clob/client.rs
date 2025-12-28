@@ -40,7 +40,7 @@ use crate::clob::types::response::{
 };
 use crate::clob::types::{SignableOrder, SignatureType, SignedOrder, TickSize};
 use crate::error::{Error, Synchronization};
-use crate::macros::{log_trace, log_warn};
+use crate::macros::log_trace;
 use crate::types::Address;
 use crate::{AMOY, POLYGON, Result, Timestamp, ToQueryParams as _, auth, contract_config};
 
