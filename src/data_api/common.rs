@@ -321,11 +321,11 @@ impl Serialize for MarketFilter {
 #[non_exhaustive]
 pub struct BoundedIntError {
     /// The value that was out of range.
-    pub value: u32,
+    pub value: i32,
     /// The minimum allowed value.
-    pub min: u32,
+    pub min: i32,
     /// The maximum allowed value.
-    pub max: u32,
+    pub max: i32,
     /// The name of the parameter.
     pub param_name: &'static str,
 }
@@ -333,7 +333,7 @@ pub struct BoundedIntError {
 impl BoundedIntError {
     /// Creates a new `BoundedIntError`.
     #[must_use]
-    pub const fn new(value: u32, min: u32, max: u32, param_name: &'static str) -> Self {
+    pub const fn new(value: i32, min: i32, max: i32, param_name: &'static str) -> Self {
         Self {
             value,
             min,

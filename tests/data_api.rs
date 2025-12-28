@@ -1268,7 +1268,7 @@ mod request_query_string_extended {
     fn positions_request_full() {
         let req = PositionsRequest::builder()
             .user(test_addr())
-            .size_threshold(100.0)
+            .size_threshold(dec!(100))
             .mergeable(true)
             .sort_by(PositionSortBy::Current)
             .title("test")
