@@ -133,7 +133,7 @@ pub struct TagsRequest {
 pub struct TagByIdRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
-    pub id: u32,
+    pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_template: Option<bool>,
 }
@@ -153,7 +153,7 @@ pub struct TagBySlugRequest {
 pub struct RelatedTagsByIdRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
-    pub id: u64,
+    pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub omit_empty: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -191,14 +191,15 @@ pub struct EventsRequest {
         skip_serializing_if = "is_empty_vec",
         serialize_with = "comma_separated"
     )]
-    pub id: Option<Vec<i32>>,
+    pub id: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tag_id: Option<i32>,
+    #[builder(into)]
+    pub tag_id: Option<String>,
     #[serde(
         skip_serializing_if = "is_empty_vec",
         serialize_with = "comma_separated"
     )]
-    pub exclude_tag_id: Option<Vec<i32>>,
+    pub exclude_tag_id: Option<Vec<String>>,
     #[serde(
         skip_serializing_if = "is_empty_vec",
         serialize_with = "comma_separated"
@@ -271,7 +272,7 @@ pub struct EventBySlugRequest {
 pub struct EventTagsRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
-    pub id: u32,
+    pub id: String,
 }
 
 // =============================================================================
@@ -293,7 +294,7 @@ pub struct MarketsRequest {
         skip_serializing_if = "is_empty_vec",
         serialize_with = "comma_separated"
     )]
-    pub id: Option<Vec<i32>>,
+    pub id: Option<Vec<String>>,
     #[serde(
         skip_serializing_if = "is_empty_vec",
         serialize_with = "comma_separated"
@@ -331,7 +332,8 @@ pub struct MarketsRequest {
     #[serde(skip_serializing_if = "Option::is_none", serialize_with = "rfc3339")]
     pub end_date_max: Option<DateTime<Utc>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tag_id: Option<i32>,
+    #[builder(into)]
+    pub tag_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub related_tags: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -363,7 +365,7 @@ pub struct MarketsRequest {
 pub struct MarketByIdRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
-    pub id: u32,
+    pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_tag: Option<bool>,
 }
@@ -383,7 +385,7 @@ pub struct MarketBySlugRequest {
 pub struct MarketTagsRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
-    pub id: u32,
+    pub id: String,
 }
 
 // =============================================================================
@@ -410,7 +412,7 @@ pub struct SeriesListRequest {
         skip_serializing_if = "is_empty_vec",
         serialize_with = "comma_separated"
     )]
-    pub categories_ids: Option<Vec<i32>>,
+    pub categories_ids: Option<Vec<String>>,
     #[serde(
         skip_serializing_if = "is_empty_vec",
         serialize_with = "comma_separated"
@@ -429,7 +431,7 @@ pub struct SeriesListRequest {
 pub struct SeriesByIdRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
-    pub id: u32,
+    pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_chat: Option<bool>,
 }
@@ -452,7 +454,8 @@ pub struct CommentsRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent_entity_type: Option<ParentEntityType>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub parent_entity_id: Option<i32>,
+    #[builder(into)]
+    pub parent_entity_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub get_positions: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -464,7 +467,7 @@ pub struct CommentsRequest {
 pub struct CommentsByIdRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
-    pub id: i32,
+    pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub get_positions: Option<bool>,
 }
@@ -534,7 +537,7 @@ pub struct SearchRequest {
         skip_serializing_if = "is_empty_vec",
         serialize_with = "comma_separated"
     )]
-    pub exclude_tag_id: Option<Vec<i32>>,
+    pub exclude_tag_id: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub optimized: Option<bool>,
 }
@@ -556,7 +559,7 @@ pub struct ImageOptimization {
     pub image_optimized_complete: Option<bool>,
     pub image_optimized_last_updated: Option<String>,
     #[serde(rename = "relID")]
-    pub rel_id: Option<i64>,
+    pub rel_id: Option<String>,
     pub field: Option<String>,
     pub relname: Option<String>,
 }
@@ -593,7 +596,7 @@ pub type HealthResponse = String;
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct Team {
-    pub id: i64,
+    pub id: String,
     pub name: Option<String>,
     pub league: Option<String>,
     pub record: Option<String>,
@@ -653,9 +656,9 @@ pub struct Tag {
 pub struct RelatedTag {
     pub id: String,
     #[serde(rename = "tagID")]
-    pub tag_id: Option<i64>,
+    pub tag_id: Option<String>,
     #[serde(rename = "relatedTagID")]
-    pub related_tag_id: Option<i64>,
+    pub related_tag_id: Option<String>,
     pub rank: Option<i64>,
 }
 
@@ -1142,7 +1145,7 @@ pub struct CommentProfile {
 pub struct Reaction {
     pub id: String,
     #[serde(rename = "commentID")]
-    pub comment_id: Option<i64>,
+    pub comment_id: Option<String>,
     pub reaction_type: Option<String>,
     pub icon: Option<String>,
     pub user_address: Option<String>,
@@ -1159,7 +1162,7 @@ pub struct Comment {
     pub body: Option<String>,
     pub parent_entity_type: Option<String>,
     #[serde(rename = "parentEntityID")]
-    pub parent_entity_id: Option<i64>,
+    pub parent_entity_id: Option<String>,
     #[serde(rename = "parentCommentID")]
     pub parent_comment_id: Option<String>,
     pub user_address: Option<String>,

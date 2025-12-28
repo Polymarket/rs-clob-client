@@ -71,10 +71,10 @@ mod sports {
         let response = client.teams(&TeamsRequest::default()).await?;
 
         assert_eq!(response.len(), 2);
-        assert_eq!(response[0].id, 1);
+        assert_eq!(response[0].id, "1");
         assert_eq!(response[0].name, Some("Lakers".to_owned()));
         assert_eq!(response[0].league, Some("NBA".to_owned()));
-        assert_eq!(response[1].id, 2);
+        assert_eq!(response[1].id, "2");
         assert_eq!(response[1].name, Some("Celtics".to_owned()));
         mock.assert();
 
@@ -199,7 +199,7 @@ mod tags {
             }));
         });
 
-        let request = TagByIdRequest::builder().id(42_u32).build();
+        let request = TagByIdRequest::builder().id("42").build();
         let response = client.tag_by_id(&request).await?;
 
         assert_eq!(response.id, "42");
@@ -254,13 +254,13 @@ mod tags {
             ]));
         });
 
-        let request = RelatedTagsByIdRequest::builder().id(42_u64).build();
+        let request = RelatedTagsByIdRequest::builder().id("42").build();
         let response = client.related_tags_by_id(&request).await?;
 
         assert_eq!(response.len(), 1);
         assert_eq!(response[0].id, "1");
-        assert_eq!(response[0].tag_id, Some(42));
-        assert_eq!(response[0].related_tag_id, Some(99));
+        assert_eq!(response[0].tag_id, Some("42".to_owned()));
+        assert_eq!(response[0].related_tag_id, Some("99".to_owned()));
         mock.assert();
 
         Ok(())
@@ -312,7 +312,7 @@ mod tags {
             ]));
         });
 
-        let request = RelatedTagsByIdRequest::builder().id(42_u64).build();
+        let request = RelatedTagsByIdRequest::builder().id("42").build();
         let response = client.tags_related_to_tag_by_id(&request).await?;
 
         assert_eq!(response.len(), 1);
@@ -493,7 +493,7 @@ mod markets {
             }));
         });
 
-        let request = MarketByIdRequest::builder().id(42_u32).build();
+        let request = MarketByIdRequest::builder().id("42").build();
         let response = client.market_by_id(&request).await?;
 
         assert_eq!(response.id, "42");
@@ -645,7 +645,7 @@ mod series {
             }));
         });
 
-        let request = SeriesByIdRequest::builder().id(42_u32).build();
+        let request = SeriesByIdRequest::builder().id("42").build();
         let response = client.series_by_id(&request).await?;
 
         assert_eq!(response.id, "42");
@@ -714,7 +714,7 @@ mod comments {
 
         let request = CommentsRequest::builder()
             .parent_entity_type(ParentEntityType::Event)
-            .parent_entity_id(123)
+            .parent_entity_id("123")
             .limit(10_u32)
             .build();
         let response = client.comments(&request).await?;
@@ -742,7 +742,7 @@ mod comments {
             ]));
         });
 
-        let request = CommentsByIdRequest::builder().id(42).build();
+        let request = CommentsByIdRequest::builder().id("42").build();
         let response = client.comments_by_id(&request).await?;
 
         assert_eq!(response.len(), 1);
@@ -855,7 +855,7 @@ mod event_tags {
             ]));
         });
 
-        let request = EventTagsRequest::builder().id(123_u32).build();
+        let request = EventTagsRequest::builder().id("123").build();
         let response = client.event_tags(&request).await?;
 
         assert_eq!(response.len(), 2);
@@ -891,7 +891,7 @@ mod market_tags {
             ]));
         });
 
-        let request = MarketTagsRequest::builder().id(456_u32).build();
+        let request = MarketTagsRequest::builder().id("456").build();
         let response = client.market_tags(&request).await?;
 
         assert_eq!(response.len(), 1);
@@ -977,7 +977,7 @@ mod query_string {
     #[test]
     fn tag_by_id_request_with_include_template() {
         let request = TagByIdRequest::builder()
-            .id(42_u32)
+            .id("42")
             .include_template(true)
             .build();
 
@@ -999,7 +999,7 @@ mod query_string {
     #[test]
     fn related_tags_by_id_all_params() {
         let request = RelatedTagsByIdRequest::builder()
-            .id(42_u64)
+            .id("42")
             .omit_empty(true)
             .status(RelatedTagsStatus::Active)
             .build();
@@ -1025,7 +1025,7 @@ mod query_string {
     #[test]
     fn related_tags_status_all() {
         let request = RelatedTagsByIdRequest::builder()
-            .id(1_u64)
+            .id("1")
             .status(RelatedTagsStatus::All)
             .build();
 
@@ -1043,9 +1043,9 @@ mod query_string {
             .offset(10_u32)
             .order("startDate".to_owned())
             .ascending(true)
-            .id(vec![1, 2, 3])
-            .tag_id(42)
-            .exclude_tag_id(vec![10, 20])
+            .id(vec!["1".to_owned(), "2".to_owned(), "3".to_owned()])
+            .tag_id("42")
+            .exclude_tag_id(vec!["10".to_owned(), "20".to_owned()])
             .slug(vec!["event-1".to_owned(), "event-2".to_owned()])
             .tag_slug("politics".to_owned())
             .related_tags(true)
@@ -1138,7 +1138,7 @@ mod query_string {
 
     #[test]
     fn event_tags_request_empty_params() {
-        let request = EventTagsRequest::builder().id(123_u32).build();
+        let request = EventTagsRequest::builder().id("123").build();
         let qs = request.query_string();
         assert!(qs.is_empty());
     }
@@ -1153,7 +1153,7 @@ mod query_string {
             .offset(50_u32)
             .order("volume".to_owned())
             .ascending(false)
-            .id(vec![1, 2])
+            .id(vec!["1".to_owned(), "2".to_owned()])
             .slug(vec!["market-1".to_owned()])
             .clob_token_ids(vec!["token1".to_owned(), "token2".to_owned()])
             .condition_ids(vec!["cond1".to_owned()])
@@ -1166,7 +1166,7 @@ mod query_string {
             .start_date_max(end_date)
             .end_date_min(start_date)
             .end_date_max(end_date)
-            .tag_id(42)
+            .tag_id("42")
             .related_tags(true)
             .cyom(false)
             .uma_resolution_status("resolved".to_owned())
@@ -1233,7 +1233,7 @@ mod query_string {
     #[test]
     fn market_by_id_request_with_include_tag() {
         let request = MarketByIdRequest::builder()
-            .id(42_u32)
+            .id("42")
             .include_tag(true)
             .build();
 
@@ -1254,7 +1254,7 @@ mod query_string {
 
     #[test]
     fn market_tags_request_empty_params() {
-        let request = MarketTagsRequest::builder().id(456_u32).build();
+        let request = MarketTagsRequest::builder().id("456").build();
         let qs = request.query_string();
         assert!(qs.is_empty());
     }
@@ -1267,7 +1267,7 @@ mod query_string {
             .order("title".to_owned())
             .ascending(true)
             .slug(vec!["series-1".to_owned(), "series-2".to_owned()])
-            .categories_ids(vec![1, 2, 3])
+            .categories_ids(vec!["1".to_owned(), "2".to_owned(), "3".to_owned()])
             .categories_labels(vec!["Sports".to_owned(), "Politics".to_owned()])
             .closed(false)
             .include_chat(true)
@@ -1304,7 +1304,7 @@ mod query_string {
     #[test]
     fn series_by_id_request_with_include_chat() {
         let request = SeriesByIdRequest::builder()
-            .id(42_u32)
+            .id("42")
             .include_chat(true)
             .build();
 
@@ -1320,7 +1320,7 @@ mod query_string {
             .order("createdAt".to_owned())
             .ascending(false)
             .parent_entity_type(ParentEntityType::Event)
-            .parent_entity_id(123)
+            .parent_entity_id("123")
             .get_positions(true)
             .holders_only(true)
             .build();
@@ -1359,7 +1359,7 @@ mod query_string {
     #[test]
     fn comments_by_id_request_with_get_positions() {
         let request = CommentsByIdRequest::builder()
-            .id(42)
+            .id("42")
             .get_positions(true)
             .build();
 
@@ -1409,7 +1409,7 @@ mod query_string {
             .search_tags(true)
             .search_profiles(true)
             .recurrence("weekly".to_owned())
-            .exclude_tag_id(vec![1, 2])
+            .exclude_tag_id(vec!["1".to_owned(), "2".to_owned()])
             .optimized(true)
             .build();
 

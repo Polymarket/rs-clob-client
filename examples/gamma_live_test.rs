@@ -103,11 +103,11 @@ async fn main() -> anyhow::Result<()> {
     // =========================================================================
     println!("Tags Endpoints:");
     let (tag_id, tag_slug) = test_tags(&client, &mut results).await;
-    test_tag_by_id(&client, &mut results, tag_id).await;
+    test_tag_by_id(&client, &mut results, &tag_id).await;
     test_tag_by_slug(&client, &mut results, &tag_slug).await;
-    test_related_tags_by_id(&client, &mut results, tag_id).await;
+    test_related_tags_by_id(&client, &mut results, &tag_id).await;
     test_related_tags_by_slug(&client, &mut results, &tag_slug).await;
-    test_tags_related_to_tag_by_id(&client, &mut results, tag_id).await;
+    test_tags_related_to_tag_by_id(&client, &mut results, &tag_id).await;
     test_tags_related_to_tag_by_slug(&client, &mut results, &tag_slug).await;
     println!();
 
@@ -136,7 +136,7 @@ async fn main() -> anyhow::Result<()> {
     // =========================================================================
     println!("Series Endpoints:");
     let series_id = test_series(&client, &mut results).await;
-    test_series_by_id(&client, &mut results, series_id).await;
+    test_series_by_id(&client, &mut results, &series_id).await;
     println!();
 
     // =========================================================================
@@ -144,7 +144,7 @@ async fn main() -> anyhow::Result<()> {
     // =========================================================================
     println!("Comments Endpoints:");
     let comment_id = test_comments(&client, &mut results, &event_id).await;
-    test_comments_by_id(&client, &mut results, comment_id).await;
+    test_comments_by_id(&client, &mut results, &comment_id).await;
     test_comments_by_user_address(&client, &mut results).await;
     println!();
 
@@ -224,29 +224,29 @@ async fn test_sports_market_types(client: &Client, results: &mut TestResults) {
 // Tags Tests
 // =============================================================================
 
-async fn test_tags(client: &Client, results: &mut TestResults) -> (u32, String) {
+async fn test_tags(client: &Client, results: &mut TestResults) -> (String, String) {
     let request = TagsRequest::builder().limit(10_u64).build();
     match client.tags(&request).await {
         Ok(tags) => {
             if tags.is_empty() {
                 results.fail("tags()", "Expected non-empty list");
-                (1, "politics".to_owned())
+                ("1".to_owned(), "politics".to_owned())
             } else {
                 results.pass(&format!("tags() - returned {} tags", tags.len()));
                 let tag = &tags[0];
-                let id = tag.id.parse::<u32>().unwrap_or(1);
+                let id = tag.id.clone();
                 let slug = tag.slug.clone().unwrap_or_else(|| "politics".to_owned());
                 (id, slug)
             }
         }
         Err(e) => {
             results.fail("tags()", &e.to_string());
-            (1, "politics".to_owned())
+            ("1".to_owned(), "politics".to_owned())
         }
     }
 }
 
-async fn test_tag_by_id(client: &Client, results: &mut TestResults, id: u32) {
+async fn test_tag_by_id(client: &Client, results: &mut TestResults, id: &str) {
     let request = TagByIdRequest::builder().id(id).build();
     match client.tag_by_id(&request).await {
         Ok(tag) => {
@@ -274,8 +274,8 @@ async fn test_tag_by_slug(client: &Client, results: &mut TestResults, slug: &str
     }
 }
 
-async fn test_related_tags_by_id(client: &Client, results: &mut TestResults, id: u32) {
-    let request = RelatedTagsByIdRequest::builder().id(u64::from(id)).build();
+async fn test_related_tags_by_id(client: &Client, results: &mut TestResults, id: &str) {
+    let request = RelatedTagsByIdRequest::builder().id(id).build();
     match client.related_tags_by_id(&request).await {
         Ok(related) => {
             results.pass(&format!(
@@ -300,8 +300,8 @@ async fn test_related_tags_by_slug(client: &Client, results: &mut TestResults, s
     }
 }
 
-async fn test_tags_related_to_tag_by_id(client: &Client, results: &mut TestResults, id: u32) {
-    let request = RelatedTagsByIdRequest::builder().id(u64::from(id)).build();
+async fn test_tags_related_to_tag_by_id(client: &Client, results: &mut TestResults, id: &str) {
+    let request = RelatedTagsByIdRequest::builder().id(id).build();
     match client.tags_related_to_tag_by_id(&request).await {
         Ok(tags) => {
             results.pass(&format!(
@@ -387,9 +387,7 @@ async fn test_event_by_slug(client: &Client, results: &mut TestResults, slug: &s
 }
 
 async fn test_event_tags(client: &Client, results: &mut TestResults, event_id: &str) {
-    // Parse the event_id to u32 for the request
-    let id: u32 = event_id.parse().unwrap_or(1);
-    let request = EventTagsRequest::builder().id(id).build();
+    let request = EventTagsRequest::builder().id(event_id).build();
     match client.event_tags(&request).await {
         Ok(tags) => {
             results.pass(&format!(
@@ -434,8 +432,7 @@ async fn test_markets(client: &Client, results: &mut TestResults) -> (String, St
 }
 
 async fn test_market_by_id(client: &Client, results: &mut TestResults, id: &str) {
-    let id_u32: u32 = id.parse().unwrap_or(1);
-    let request = MarketByIdRequest::builder().id(id_u32).build();
+    let request = MarketByIdRequest::builder().id(id).build();
     match client.market_by_id(&request).await {
         Ok(market) => {
             if market.id.is_empty() {
@@ -463,8 +460,7 @@ async fn test_market_by_slug(client: &Client, results: &mut TestResults, slug: &
 }
 
 async fn test_market_tags(client: &Client, results: &mut TestResults, market_id: &str) {
-    let id_u32: u32 = market_id.parse().unwrap_or(1);
-    let request = MarketTagsRequest::builder().id(id_u32).build();
+    let request = MarketTagsRequest::builder().id(market_id).build();
     match client.market_tags(&request).await {
         Ok(tags) => {
             results.pass(&format!(
@@ -480,26 +476,26 @@ async fn test_market_tags(client: &Client, results: &mut TestResults, market_id:
 // Series Tests
 // =============================================================================
 
-async fn test_series(client: &Client, results: &mut TestResults) -> u32 {
+async fn test_series(client: &Client, results: &mut TestResults) -> String {
     let request = SeriesListRequest::builder().limit(10_u32).build();
     match client.series(&request).await {
         Ok(series_list) => {
             if series_list.is_empty() {
                 results.fail("series()", "Expected non-empty list");
-                1
+                "1".to_owned()
             } else {
                 results.pass(&format!("series() - returned {} series", series_list.len()));
-                series_list[0].id.parse::<u32>().unwrap_or(1)
+                series_list[0].id.clone()
             }
         }
         Err(e) => {
             results.fail("series()", &e.to_string());
-            1
+            "1".to_owned()
         }
     }
 }
 
-async fn test_series_by_id(client: &Client, results: &mut TestResults, id: u32) {
+async fn test_series_by_id(client: &Client, results: &mut TestResults, id: &str) {
     let request = SeriesByIdRequest::builder().id(id).build();
     match client.series_by_id(&request).await {
         Ok(series) => {
@@ -517,12 +513,11 @@ async fn test_series_by_id(client: &Client, results: &mut TestResults, id: u32) 
 // Comments Tests
 // =============================================================================
 
-async fn test_comments(client: &Client, results: &mut TestResults, event_id: &str) -> i32 {
+async fn test_comments(client: &Client, results: &mut TestResults, event_id: &str) -> String {
     // Comments endpoint requires parent_entity_type and parent_entity_id
-    let entity_id: i32 = event_id.parse().unwrap_or(1);
     let request = CommentsRequest::builder()
         .parent_entity_type(ParentEntityType::Event)
-        .parent_entity_id(entity_id)
+        .parent_entity_id(event_id)
         .limit(10_u32)
         .build();
     match client.comments(&request).await {
@@ -530,23 +525,23 @@ async fn test_comments(client: &Client, results: &mut TestResults, event_id: &st
             if comments.is_empty() {
                 // Comments being empty is okay - not all events have comments
                 results.pass("comments() - returned 0 comments (may be normal)");
-                1
+                "1".to_owned()
             } else {
                 results.pass(&format!(
                     "comments() - returned {} comments",
                     comments.len()
                 ));
-                comments[0].id.parse::<i32>().unwrap_or(1)
+                comments[0].id.clone()
             }
         }
         Err(e) => {
             results.fail("comments()", &e.to_string());
-            1
+            "1".to_owned()
         }
     }
 }
 
-async fn test_comments_by_id(client: &Client, results: &mut TestResults, id: i32) {
+async fn test_comments_by_id(client: &Client, results: &mut TestResults, id: &str) {
     let request = CommentsByIdRequest::builder().id(id).build();
     match client.comments_by_id(&request).await {
         Ok(comments) => {

@@ -39,13 +39,13 @@ async fn main() -> anyhow::Result<()> {
     let request = TagsRequest::builder().build();
     println!("tags -- {:?}", client.tags(&request).await);
 
-    let request = TagByIdRequest::builder().id(1_u32).build();
+    let request = TagByIdRequest::builder().id("1").build();
     println!("tag_by_id -- {:?}", client.tag_by_id(&request).await);
 
     let request = TagBySlugRequest::builder().slug("politics").build();
     println!("tag_by_slug -- {:?}", client.tag_by_slug(&request).await);
 
-    let request = RelatedTagsByIdRequest::builder().id(1_u64).build();
+    let request = RelatedTagsByIdRequest::builder().id("1").build();
     println!(
         "related_tags_by_id -- {:?}",
         client.related_tags_by_id(&request).await
@@ -57,7 +57,7 @@ async fn main() -> anyhow::Result<()> {
         client.related_tags_by_slug(&request).await
     );
 
-    let request = RelatedTagsByIdRequest::builder().id(1_u64).build();
+    let request = RelatedTagsByIdRequest::builder().id("1").build();
     println!(
         "tags_related_to_tag_by_id -- {:?}",
         client.tags_related_to_tag_by_id(&request).await
@@ -82,14 +82,14 @@ async fn main() -> anyhow::Result<()> {
         client.event_by_slug(&request).await
     );
 
-    let request = EventTagsRequest::builder().id(1_u32).build();
+    let request = EventTagsRequest::builder().id("1").build();
     println!("event_tags -- {:?}", client.event_tags(&request).await);
 
     //---- markets endpoints
     let request = MarketsRequest::builder().closed(false).limit(5).build();
     println!("markets -- {:?}", client.markets(&request).await);
 
-    let request = MarketByIdRequest::builder().id(1_u32).build();
+    let request = MarketByIdRequest::builder().id("1").build();
     println!("market_by_id -- {:?}", client.market_by_id(&request).await);
 
     let request = MarketBySlugRequest::builder()
@@ -100,21 +100,21 @@ async fn main() -> anyhow::Result<()> {
         client.market_by_slug(&request).await
     );
 
-    let request = MarketTagsRequest::builder().id(1_u32).build();
+    let request = MarketTagsRequest::builder().id("1").build();
     println!("market_tags -- {:?}", client.market_tags(&request).await);
 
     //---- series endpoints
     let request = SeriesListRequest::builder().limit(5).build();
     println!("series -- {:?}", client.series(&request).await);
 
-    let request = SeriesByIdRequest::builder().id(1_u32).build();
+    let request = SeriesByIdRequest::builder().id("1").build();
     println!("series_by_id -- {:?}", client.series_by_id(&request).await);
 
     //---- comments endpoints
     let request = CommentsRequest::builder().limit(5).build();
     println!("comments -- {:?}", client.comments(&request).await);
 
-    let request = CommentsByIdRequest::builder().id(1).build();
+    let request = CommentsByIdRequest::builder().id("1").build();
     println!(
         "comments_by_id -- {:?}",
         client.comments_by_id(&request).await
