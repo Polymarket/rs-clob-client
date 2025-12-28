@@ -1,5 +1,7 @@
 #![cfg_attr(doc, doc = include_str!("../README.md"))]
 
+mod macros;
+
 pub mod auth;
 #[cfg(feature = "bridge")]
 pub mod bridge;

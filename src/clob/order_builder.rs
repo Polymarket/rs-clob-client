@@ -16,6 +16,7 @@ use crate::clob::types::{
     Amount, AmountInner, Order, OrderType, Side, SignableOrder, SignatureType,
 };
 use crate::error::Error;
+use crate::macros::log_debug;
 use crate::types::{Address, Decimal};
 
 pub(crate) const USDC_DECIMALS: u32 = 6;
@@ -234,8 +235,7 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
             signatureType: self.signature_type as u8,
         };
 
-        #[cfg(feature = "tracing")]
-        tracing::debug!(token_id = %token_id, side = ?side, price = %price, size = %size, "limit order built");
+        log_debug!(token_id = %token_id, side = ?side, price = %price, size = %size, "limit order built");
 
         Ok(SignableOrder { order, order_type })
     }
@@ -435,8 +435,7 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
             signatureType: self.signature_type as u8,
         };
 
-        #[cfg(feature = "tracing")]
-        tracing::debug!(token_id = %token_id, side = ?side, price = %price, amount = %amount.as_inner(), "market order built");
+        log_debug!(token_id = %token_id, side = ?side, price = %price, amount = %amount.as_inner(), "market order built");
 
         Ok(SignableOrder { order, order_type })
     }

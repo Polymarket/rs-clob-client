@@ -45,6 +45,7 @@ use super::types::response::{
     SportsMarketTypesResponse, SportsMetadata, Tag, Team,
 };
 use crate::error::Error;
+use crate::macros::log_warn;
 use crate::{Result, ToQueryParams as _};
 
 /// HTTP client for the Polymarket Gamma API.
