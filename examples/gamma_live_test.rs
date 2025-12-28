@@ -189,7 +189,7 @@ async fn test_status(client: &Client, results: &mut TestResults) {
 // =============================================================================
 
 async fn test_teams(client: &Client, results: &mut TestResults) {
-    let request = TeamsRequest::builder().limit(5_u32).build();
+    let request = TeamsRequest::builder().limit(5).build();
     match client.teams(&request).await {
         Ok(teams) => {
             // Teams may be empty if no sports teams configured
@@ -225,7 +225,7 @@ async fn test_sports_market_types(client: &Client, results: &mut TestResults) {
 // =============================================================================
 
 async fn test_tags(client: &Client, results: &mut TestResults) -> (String, String) {
-    let request = TagsRequest::builder().limit(10_u64).build();
+    let request = TagsRequest::builder().limit(10).build();
     match client.tags(&request).await {
         Ok(tags) => {
             if tags.is_empty() {
@@ -334,7 +334,7 @@ async fn test_tags_related_to_tag_by_slug(client: &Client, results: &mut TestRes
 // =============================================================================
 
 async fn test_events(client: &Client, results: &mut TestResults) -> (String, String) {
-    let request = EventsRequest::builder().active(true).limit(10_u32).build();
+    let request = EventsRequest::builder().active(true).limit(10).build();
     match client.events(&request).await {
         Ok(events) => {
             if events.is_empty() {
@@ -404,10 +404,7 @@ async fn test_event_tags(client: &Client, results: &mut TestResults, event_id: &
 // =============================================================================
 
 async fn test_markets(client: &Client, results: &mut TestResults) -> (String, String) {
-    let request = MarketsRequest::builder()
-        .closed(false)
-        .limit(10_u32)
-        .build();
+    let request = MarketsRequest::builder().closed(false).limit(10).build();
     match client.markets(&request).await {
         Ok(markets) => {
             if markets.is_empty() {
@@ -477,7 +474,7 @@ async fn test_market_tags(client: &Client, results: &mut TestResults, market_id:
 // =============================================================================
 
 async fn test_series(client: &Client, results: &mut TestResults) -> String {
-    let request = SeriesListRequest::builder().limit(10_u32).build();
+    let request = SeriesListRequest::builder().limit(10).build();
     match client.series(&request).await {
         Ok(series_list) => {
             if series_list.is_empty() {
@@ -518,7 +515,7 @@ async fn test_comments(client: &Client, results: &mut TestResults, event_id: &st
     let request = CommentsRequest::builder()
         .parent_entity_type(ParentEntityType::Event)
         .parent_entity_id(event_id)
-        .limit(10_u32)
+        .limit(10)
         .build();
     match client.comments(&request).await {
         Ok(comments) => {
@@ -558,7 +555,7 @@ async fn test_comments_by_user_address(client: &Client, results: &mut TestResult
     // Use a known Polymarket address for testing
     let request = CommentsByUserAddressRequest::builder()
         .user_address("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
-        .limit(10_u32)
+        .limit(10)
         .build();
     match client.comments_by_user_address(&request).await {
         Ok(comments) => {

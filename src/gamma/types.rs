@@ -83,9 +83,9 @@ impl<T: Serialize> QueryParams for T {}
 #[non_exhaustive]
 pub struct TeamsRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub limit: Option<u32>,
+    pub limit: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset: Option<u32>,
+    pub offset: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub order: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -115,9 +115,9 @@ pub struct TeamsRequest {
 #[non_exhaustive]
 pub struct TagsRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub limit: Option<u64>,
+    pub limit: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset: Option<u64>,
+    pub offset: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub order: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -180,9 +180,9 @@ pub struct RelatedTagsBySlugRequest {
 #[non_exhaustive]
 pub struct EventsRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub limit: Option<u32>,
+    pub limit: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset: Option<u32>,
+    pub offset: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub order: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -283,9 +283,9 @@ pub struct EventTagsRequest {
 #[non_exhaustive]
 pub struct MarketsRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub limit: Option<u32>,
+    pub limit: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset: Option<u32>,
+    pub offset: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub order: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -396,9 +396,9 @@ pub struct MarketTagsRequest {
 #[non_exhaustive]
 pub struct SeriesListRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub limit: Option<u32>,
+    pub limit: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset: Option<u32>,
+    pub offset: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub order: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -444,9 +444,9 @@ pub struct SeriesByIdRequest {
 #[non_exhaustive]
 pub struct CommentsRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub limit: Option<u32>,
+    pub limit: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset: Option<u32>,
+    pub offset: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub order: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -479,9 +479,9 @@ pub struct CommentsByUserAddressRequest {
     #[builder(into)]
     pub user_address: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub limit: Option<u32>,
+    pub limit: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset: Option<u32>,
+    pub offset: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub order: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -570,14 +570,14 @@ pub struct ImageOptimization {
 #[non_exhaustive]
 pub struct Pagination {
     pub has_more: Option<bool>,
-    pub total_results: Option<i64>,
+    pub total_results: Option<i32>,
 }
 
 /// Count response.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct Count {
-    pub count: Option<i64>,
+    pub count: Option<i32>,
 }
 
 // =============================================================================
@@ -641,8 +641,8 @@ pub struct Tag {
     pub slug: Option<String>,
     pub force_show: Option<bool>,
     pub published_at: Option<String>,
-    pub created_by: Option<i64>,
-    pub updated_by: Option<i64>,
+    pub created_by: Option<i32>,
+    pub updated_by: Option<i32>,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
     pub force_hide: Option<bool>,
@@ -659,7 +659,7 @@ pub struct RelatedTag {
     pub tag_id: Option<String>,
     #[serde(rename = "relatedTagID")]
     pub related_tag_id: Option<String>,
-    pub rank: Option<i64>,
+    pub rank: Option<i32>,
 }
 
 // =============================================================================
@@ -820,8 +820,8 @@ pub struct Event {
     pub neg_risk: Option<bool>,
     #[serde(rename = "negRiskMarketID")]
     pub neg_risk_market_id: Option<String>,
-    pub neg_risk_fee_bips: Option<i64>,
-    pub comment_count: Option<i64>,
+    pub neg_risk_fee_bips: Option<i32>,
+    pub comment_count: Option<i32>,
     pub image_optimized: Option<ImageOptimization>,
     pub icon_optimized: Option<ImageOptimization>,
     pub featured_image_optimized: Option<ImageOptimization>,
@@ -840,7 +840,7 @@ pub struct Event {
     pub automatically_active: Option<bool>,
     pub event_date: Option<String>,
     pub start_time: Option<DateTime<Utc>>,
-    pub event_week: Option<i64>,
+    pub event_week: Option<i32>,
     pub series_slug: Option<String>,
     pub score: Option<String>,
     pub elapsed: Option<String>,
@@ -850,9 +850,9 @@ pub struct Event {
     pub finished_timestamp: Option<DateTime<Utc>>,
     pub gmp_chart_mode: Option<String>,
     pub event_creators: Option<Vec<EventCreator>>,
-    pub tweet_count: Option<i64>,
+    pub tweet_count: Option<i32>,
     pub chats: Option<Vec<Chat>>,
-    pub featured_order: Option<i64>,
+    pub featured_order: Option<i32>,
     pub estimate_value: Option<bool>,
     pub cant_estimate: Option<bool>,
     pub estimated_value: Option<String>,
@@ -872,7 +872,7 @@ pub struct Event {
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct EventTweetCount {
-    pub tweet_count: Option<i64>,
+    pub tweet_count: Option<i32>,
 }
 
 /// Paginated events response.
@@ -924,8 +924,8 @@ pub struct Market {
     pub upper_bound_date: Option<String>,
     pub closed: Option<bool>,
     pub market_maker_address: Option<String>,
-    pub created_by: Option<i64>,
-    pub updated_by: Option<i64>,
+    pub created_by: Option<i32>,
+    pub updated_by: Option<i32>,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
     pub closed_time: Option<String>,
@@ -936,7 +936,7 @@ pub struct Market {
     pub archived: Option<bool>,
     pub resolved_by: Option<String>,
     pub restricted: Option<bool>,
-    pub market_group: Option<i64>,
+    pub market_group: Option<i32>,
     pub group_item_title: Option<String>,
     pub group_item_threshold: Option<String>,
     #[serde(rename = "questionID")]
@@ -946,7 +946,7 @@ pub struct Market {
     pub order_price_min_tick_size: Option<f64>,
     pub order_min_size: Option<f64>,
     pub uma_resolution_status: Option<String>,
-    pub curation_order: Option<i64>,
+    pub curation_order: Option<i32>,
     pub volume_num: Option<f64>,
     pub liquidity_num: Option<f64>,
     pub end_date_iso: Option<String>,
@@ -960,7 +960,7 @@ pub struct Market {
     pub volume_1mo: Option<f64>,
     pub volume_1yr: Option<f64>,
     pub game_start_time: Option<String>,
-    pub seconds_delay: Option<i64>,
+    pub seconds_delay: Option<i32>,
     pub clob_token_ids: Option<String>,
     pub disqus_thread: Option<String>,
     pub short_outcomes: Option<String>,
@@ -983,12 +983,12 @@ pub struct Market {
     pub volume_clob: Option<f64>,
     pub liquidity_amm: Option<f64>,
     pub liquidity_clob: Option<f64>,
-    pub maker_base_fee: Option<i64>,
-    pub taker_base_fee: Option<i64>,
-    pub custom_liveness: Option<i64>,
+    pub maker_base_fee: Option<i32>,
+    pub taker_base_fee: Option<i32>,
+    pub custom_liveness: Option<i32>,
     pub accepting_orders: Option<bool>,
     pub notifications_enabled: Option<bool>,
-    pub score: Option<i64>,
+    pub score: Option<i32>,
     pub image_optimized: Option<ImageOptimization>,
     pub icon_optimized: Option<ImageOptimization>,
     pub events: Option<Vec<Event>>,
@@ -1084,12 +1084,12 @@ pub struct Series {
     #[serde(rename = "pythTokenID")]
     pub pyth_token_id: Option<String>,
     pub cg_asset_name: Option<String>,
-    pub score: Option<i64>,
+    pub score: Option<i32>,
     pub events: Option<Vec<Event>>,
     pub collections: Option<Vec<Collection>>,
     pub categories: Option<Vec<Category>>,
     pub tags: Option<Vec<Tag>>,
-    pub comment_count: Option<i64>,
+    pub comment_count: Option<i32>,
     pub chats: Option<Vec<Chat>>,
 }
 
@@ -1102,8 +1102,8 @@ pub struct SeriesSummary {
     pub title: Option<String>,
     pub slug: Option<String>,
     pub event_dates: Option<Vec<String>>,
-    pub event_weeks: Option<Vec<i64>>,
-    pub earliest_open_week: Option<i64>,
+    pub event_weeks: Option<Vec<i32>>,
+    pub earliest_open_week: Option<i32>,
     pub earliest_open_date: Option<String>,
 }
 
@@ -1171,8 +1171,8 @@ pub struct Comment {
     pub updated_at: Option<DateTime<Utc>>,
     pub profile: Option<CommentProfile>,
     pub reactions: Option<Vec<Reaction>>,
-    pub report_count: Option<i64>,
-    pub reaction_count: Option<i64>,
+    pub report_count: Option<i32>,
+    pub reaction_count: Option<i32>,
 }
 
 // =============================================================================
@@ -1229,7 +1229,7 @@ pub struct SearchTag {
     pub id: Option<String>,
     pub label: Option<String>,
     pub slug: Option<String>,
-    pub event_count: Option<i64>,
+    pub event_count: Option<i32>,
 }
 
 /// A profile in search results.
@@ -1239,10 +1239,10 @@ pub struct SearchTag {
 pub struct Profile {
     pub id: String,
     pub name: Option<String>,
-    pub user: Option<i64>,
+    pub user: Option<i32>,
     pub referral: Option<String>,
-    pub created_by: Option<i64>,
-    pub updated_by: Option<i64>,
+    pub created_by: Option<i32>,
+    pub updated_by: Option<i32>,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
     pub utm_source: Option<String>,
