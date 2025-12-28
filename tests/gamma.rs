@@ -44,7 +44,7 @@ mod sports {
             when.method(GET).path("/teams");
             then.status(StatusCode::OK).json_body(json!([
                 {
-                    "id": "1",
+                    "id": 1,
                     "name": "Lakers",
                     "league": "NBA",
                     "record": "45-37",
@@ -55,7 +55,7 @@ mod sports {
                     "updatedAt": "2024-06-20T14:45:00Z"
                 },
                 {
-                    "id": "2",
+                    "id": 2,
                     "name": "Celtics",
                     "league": "NBA",
                     "record": "64-18",
@@ -71,10 +71,10 @@ mod sports {
         let response = client.teams(&TeamsRequest::default()).await?;
 
         assert_eq!(response.len(), 2);
-        assert_eq!(response[0].id, "1");
+        assert_eq!(response[0].id, 1);
         assert_eq!(response[0].name, Some("Lakers".to_owned()));
         assert_eq!(response[0].league, Some("NBA".to_owned()));
-        assert_eq!(response[1].id, "2");
+        assert_eq!(response[1].id, 2);
         assert_eq!(response[1].name, Some("Celtics".to_owned()));
         mock.assert();
 
