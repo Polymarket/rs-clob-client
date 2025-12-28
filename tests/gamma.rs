@@ -44,7 +44,7 @@ mod sports {
             when.method(GET).path("/teams");
             then.status(StatusCode::OK).json_body(json!([
                 {
-                    "id": 1,
+                    "id": "1",
                     "name": "Lakers",
                     "league": "NBA",
                     "record": "45-37",
@@ -55,7 +55,7 @@ mod sports {
                     "updatedAt": "2024-06-20T14:45:00Z"
                 },
                 {
-                    "id": 2,
+                    "id": "2",
                     "name": "Celtics",
                     "league": "NBA",
                     "record": "64-18",
@@ -247,8 +247,8 @@ mod tags {
             then.status(StatusCode::OK).json_body(json!([
                 {
                     "id": "1",
-                    "tagID": 42,
-                    "relatedTagID": 99,
+                    "tagID": "42",
+                    "relatedTagID": "99",
                     "rank": 1
                 }
             ]));
@@ -276,8 +276,8 @@ mod tags {
             then.status(StatusCode::OK).json_body(json!([
                 {
                     "id": "2",
-                    "tagID": 10,
-                    "relatedTagID": 20,
+                    "tagID": "10",
+                    "relatedTagID": "20",
                     "rank": 5
                 }
             ]));
@@ -468,7 +468,7 @@ mod markets {
             ]));
         });
 
-        let request = MarketsRequest::builder().limit(10_u32).build();
+        let request = MarketsRequest::builder().limit(10).build();
         let response = client.markets(&request).await?;
 
         assert_eq!(response.len(), 1);
@@ -680,7 +680,7 @@ mod comments {
                     "id": "1",
                     "body": "Great market!",
                     "parentEntityType": "Event",
-                    "parentEntityID": 123,
+                    "parentEntityID": "123",
                     "userAddress": "0x56687bf447db6ffa42ffe2204a05edaa20f55839",
                     "createdAt": "2024-01-15T10:30:00Z"
                 }
@@ -715,7 +715,7 @@ mod comments {
         let request = CommentsRequest::builder()
             .parent_entity_type(ParentEntityType::Event)
             .parent_entity_id("123")
-            .limit(10_u32)
+            .limit(10)
             .build();
         let response = client.comments(&request).await?;
 
@@ -737,7 +737,7 @@ mod comments {
                     "id": "42",
                     "body": "This is the comment",
                     "parentEntityType": "Event",
-                    "parentEntityID": 100
+                    "parentEntityID": "100"
                 }
             ]));
         });
@@ -921,8 +921,8 @@ mod query_string {
     #[test]
     fn teams_request_all_params() {
         let request = TeamsRequest::builder()
-            .limit(10_u32)
-            .offset(5_u32)
+            .limit(10)
+            .offset(5)
             .order("name".to_owned())
             .ascending(true)
             .league(vec!["NBA".to_owned(), "NFL".to_owned()])
@@ -957,8 +957,8 @@ mod query_string {
     #[test]
     fn tags_request_all_params() {
         let request = TagsRequest::builder()
-            .limit(20_u64)
-            .offset(10_u64)
+            .limit(20)
+            .offset(10)
             .order("label".to_owned())
             .ascending(false)
             .include_template(true)
@@ -1039,8 +1039,8 @@ mod query_string {
         let end_date = Utc.with_ymd_and_hms(2024, 12, 31, 23, 59, 59).unwrap();
 
         let request = EventsRequest::builder()
-            .limit(50_u32)
-            .offset(10_u32)
+            .limit(50)
+            .offset(10)
             .order("startDate".to_owned())
             .ascending(true)
             .id(vec!["1".to_owned(), "2".to_owned(), "3".to_owned()])
@@ -1149,8 +1149,8 @@ mod query_string {
         let end_date = Utc.with_ymd_and_hms(2024, 12, 31, 23, 59, 59).unwrap();
 
         let request = MarketsRequest::builder()
-            .limit(100_u32)
-            .offset(50_u32)
+            .limit(100)
+            .offset(50)
             .order("volume".to_owned())
             .ascending(false)
             .id(vec!["1".to_owned(), "2".to_owned()])
@@ -1262,8 +1262,8 @@ mod query_string {
     #[test]
     fn series_list_request_all_params() {
         let request = SeriesListRequest::builder()
-            .limit(25_u32)
-            .offset(5_u32)
+            .limit(25)
+            .offset(5)
             .order("title".to_owned())
             .ascending(true)
             .slug(vec!["series-1".to_owned(), "series-2".to_owned()])
@@ -1315,8 +1315,8 @@ mod query_string {
     #[test]
     fn comments_request_all_params() {
         let request = CommentsRequest::builder()
-            .limit(50_u32)
-            .offset(10_u32)
+            .limit(50)
+            .offset(10)
             .order("createdAt".to_owned())
             .ascending(false)
             .parent_entity_type(ParentEntityType::Event)
@@ -1371,8 +1371,8 @@ mod query_string {
     fn comments_by_user_address_request_all_params() {
         let request = CommentsByUserAddressRequest::builder()
             .user_address("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
-            .limit(20_u32)
-            .offset(5_u32)
+            .limit(20)
+            .offset(5)
             .order("createdAt".to_owned())
             .ascending(true)
             .build();
