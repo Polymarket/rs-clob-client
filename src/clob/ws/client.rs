@@ -203,9 +203,10 @@ impl<S: State> Client<S> {
     }
 
     /// Get the current connection state.
-    pub async fn connection_state(&self) -> ConnectionState {
+    #[must_use]
+    pub fn connection_state(&self) -> ConnectionState {
         if let Some(handles) = self.inner.channel(ChannelType::Market) {
-            handles.connection.state().await
+            handles.connection.state()
         } else {
             ConnectionState::Disconnected
         }

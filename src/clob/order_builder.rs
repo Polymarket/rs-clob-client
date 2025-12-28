@@ -279,10 +279,7 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         }
 
         let (levels, amount) = match side {
-            Side::Buy => match amount.0 {
-                a @ (AmountInner::Usdc(_) | AmountInner::Shares(_)) => (book.asks, a),
-            },
-
+            Side::Buy => (book.asks, amount.0),
             Side::Sell => match amount.0 {
                 a @ AmountInner::Shares(_) => (book.bids, a),
                 AmountInner::Usdc(_) => {
