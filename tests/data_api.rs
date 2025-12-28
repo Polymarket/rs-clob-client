@@ -48,7 +48,8 @@ mod positions {
     use httpmock::{Method::GET, MockServer};
     use polymarket_client_sdk::data_api::{
         Client,
-        types::{PositionsLimit, PositionsOffset, PositionsRequest},
+        common::{PositionsLimit, PositionsOffset},
+        params::PositionsRequest,
     };
     use reqwest::StatusCode;
     use serde_json::json;
@@ -144,10 +145,7 @@ mod positions {
 
 mod trades {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::data_api::{
-        Client,
-        types::{Side, TradesRequest},
-    };
+    use polymarket_client_sdk::data_api::{Client, common::Side, params::TradesRequest};
     use reqwest::StatusCode;
     use serde_json::json;
 
@@ -205,7 +203,8 @@ mod activity {
     use httpmock::{Method::GET, MockServer};
     use polymarket_client_sdk::data_api::{
         Client,
-        types::{ActivityRequest, ActivityType, Side},
+        common::{ActivityType, Side},
+        params::ActivityRequest,
     };
     use reqwest::StatusCode;
     use serde_json::json;
@@ -271,7 +270,7 @@ mod activity {
 
 mod holders {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::data_api::{Client, types::HoldersRequest};
+    use polymarket_client_sdk::data_api::{Client, params::HoldersRequest};
     use reqwest::StatusCode;
     use serde_json::json;
 
@@ -339,7 +338,7 @@ mod holders {
 
 mod value {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::data_api::{Client, types::ValueRequest};
+    use polymarket_client_sdk::data_api::{Client, params::ValueRequest};
     use reqwest::StatusCode;
     use serde_json::json;
 
@@ -377,7 +376,7 @@ mod value {
 
 mod closed_positions {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::data_api::{Client, types::ClosedPositionsRequest};
+    use polymarket_client_sdk::data_api::{Client, params::ClosedPositionsRequest};
     use reqwest::StatusCode;
     use serde_json::json;
 
@@ -438,10 +437,8 @@ mod leaderboard {
     use httpmock::{Method::GET, MockServer};
     use polymarket_client_sdk::data_api::{
         Client,
-        types::{
-            LeaderboardCategory, LeaderboardOrderBy, TimePeriod, TraderLeaderboardLimit,
-            TraderLeaderboardRequest,
-        },
+        common::{LeaderboardCategory, LeaderboardOrderBy, TimePeriod, TraderLeaderboardLimit},
+        params::TraderLeaderboardRequest,
     };
     use reqwest::StatusCode;
     use serde_json::json;
@@ -528,7 +525,7 @@ mod leaderboard {
 
 mod traded {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::data_api::{Client, types::TradedRequest};
+    use polymarket_client_sdk::data_api::{Client, params::TradedRequest};
     use reqwest::StatusCode;
     use serde_json::json;
 
@@ -563,7 +560,7 @@ mod traded {
 
 mod open_interest {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::data_api::{Client, types::OpenInterestRequest};
+    use polymarket_client_sdk::data_api::{Client, params::OpenInterestRequest};
     use reqwest::StatusCode;
     use serde_json::json;
 
@@ -638,7 +635,7 @@ mod open_interest {
 
 mod live_volume {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::data_api::{Client, types::LiveVolumeRequest};
+    use polymarket_client_sdk::data_api::{Client, params::LiveVolumeRequest};
     use reqwest::StatusCode;
     use serde_json::json;
 
@@ -694,7 +691,8 @@ mod builder_leaderboard {
     use httpmock::{Method::GET, MockServer};
     use polymarket_client_sdk::data_api::{
         Client,
-        types::{BuilderLeaderboardLimit, BuilderLeaderboardRequest, TimePeriod},
+        common::{BuilderLeaderboardLimit, TimePeriod},
+        params::BuilderLeaderboardRequest,
     };
     use reqwest::StatusCode;
     use serde_json::json;
@@ -770,8 +768,7 @@ mod builder_leaderboard {
 mod builder_volume {
     use httpmock::{Method::GET, MockServer};
     use polymarket_client_sdk::data_api::{
-        Client,
-        types::{BuilderVolumeRequest, TimePeriod},
+        Client, common::TimePeriod, params::BuilderVolumeRequest,
     };
     use reqwest::StatusCode;
     use serde_json::json;
@@ -846,7 +843,7 @@ mod builder_volume {
 
 mod error_handling {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::data_api::{Client, types::PositionsRequest};
+    use polymarket_client_sdk::data_api::{Client, params::PositionsRequest};
     use polymarket_client_sdk::error::Kind;
     use reqwest::StatusCode;
     use serde_json::json;
@@ -948,11 +945,16 @@ mod client {
 }
 
 mod types {
-    use polymarket_client_sdk::data_api::types::{
-        ActivityRequest, ActivityType, BuilderLeaderboardLimit, HoldersLimit, LeaderboardCategory,
-        LeaderboardOrderBy, LiveVolumeRequest, MarketFilter, PositionSortBy, PositionsLimit,
-        PositionsRequest, QueryParams as _, Side, SortDirection, TimePeriod, TradeFilter,
-        TradedRequest, TraderLeaderboardLimit, TraderLeaderboardRequest, TradesRequest,
+    use polymarket_client_sdk::data_api::{
+        common::{
+            ActivityType, BuilderLeaderboardLimit, HoldersLimit, LeaderboardCategory,
+            LeaderboardOrderBy, MarketFilter, PositionSortBy, PositionsLimit, Side, SortDirection,
+            TimePeriod, TradeFilter, TraderLeaderboardLimit,
+        },
+        params::{
+            ActivityRequest, LiveVolumeRequest, PositionsRequest, ToQueryString as _,
+            TradedRequest, TraderLeaderboardRequest, TradesRequest,
+        },
     };
 
     #[test]
@@ -1099,7 +1101,7 @@ mod types {
 
     #[test]
     fn all_activity_types_display() {
-        use polymarket_client_sdk::data_api::types::ActivityType;
+        use polymarket_client_sdk::data_api::common::ActivityType;
         assert_eq!(ActivityType::Split.to_string(), "SPLIT");
         assert_eq!(ActivityType::Merge.to_string(), "MERGE");
         assert_eq!(ActivityType::Redeem.to_string(), "REDEEM");
@@ -1150,7 +1152,7 @@ mod types {
 }
 
 mod error_display {
-    use polymarket_client_sdk::data_api::types::{PositionsLimit, TradeFilter};
+    use polymarket_client_sdk::data_api::common::{PositionsLimit, TradeFilter};
 
     #[test]
     fn bounded_int_error_display() {
@@ -1167,7 +1169,7 @@ mod error_display {
 }
 
 mod conversions {
-    use polymarket_client_sdk::data_api::types::PositionsLimit;
+    use polymarket_client_sdk::data_api::common::PositionsLimit;
 
     #[test]
     fn positions_limit_try_from_u32() {
@@ -1190,13 +1192,17 @@ mod conversions {
 }
 
 mod request_query_string_extended {
-    use polymarket_client_sdk::data_api::types::{
-        ActivityLimit, ActivityRequest, ActivitySortBy, BuilderLeaderboardOffset,
-        BuilderLeaderboardRequest, ClosedPositionSortBy, ClosedPositionsLimit,
-        ClosedPositionsRequest, HoldersMinBalance, HoldersRequest, MarketFilter,
-        OpenInterestRequest, PositionSortBy, PositionsRequest, QueryParams as _, Side,
-        SortDirection, TradeFilter, TraderLeaderboardRequest, TradesLimit, TradesOffset,
-        TradesRequest, ValueRequest,
+    use polymarket_client_sdk::data_api::{
+        common::{
+            ActivityLimit, ActivitySortBy, BuilderLeaderboardOffset, ClosedPositionSortBy,
+            ClosedPositionsLimit, HoldersMinBalance, MarketFilter, PositionSortBy, Side,
+            SortDirection, TradeFilter, TradesLimit, TradesOffset,
+        },
+        params::{
+            ActivityRequest, BuilderLeaderboardRequest, ClosedPositionsRequest, HoldersRequest,
+            OpenInterestRequest, PositionsRequest, ToQueryString as _, TraderLeaderboardRequest,
+            TradesRequest, ValueRequest,
+        },
     };
 
     fn test_addr() -> String {
@@ -1390,7 +1396,7 @@ mod request_query_string_extended {
 
     #[test]
     fn closed_position_sort_by_variants() {
-        use polymarket_client_sdk::data_api::types::ClosedPositionSortBy;
+        use polymarket_client_sdk::data_api::common::ClosedPositionSortBy;
         assert_eq!(ClosedPositionSortBy::Title.to_string(), "TITLE");
         assert_eq!(ClosedPositionSortBy::Price.to_string(), "PRICE");
         assert_eq!(ClosedPositionSortBy::AvgPrice.to_string(), "AVGPRICE");
@@ -1405,7 +1411,7 @@ mod request_query_string_extended {
 
     #[test]
     fn filter_type_display() {
-        use polymarket_client_sdk::data_api::types::FilterType;
+        use polymarket_client_sdk::data_api::common::FilterType;
         assert_eq!(FilterType::Cash.to_string(), "CASH");
         assert_eq!(FilterType::Tokens.to_string(), "TOKENS");
     }

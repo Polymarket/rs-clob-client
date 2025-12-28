@@ -6,7 +6,7 @@
 //! # Example
 //!
 //! ```no_run
-//! use polymarket_client_sdk::data_api::{Client, types::PositionsRequest};
+//! use polymarket_client_sdk::data_api::{Client, params::PositionsRequest};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let client = Client::default();
@@ -30,12 +30,14 @@ use reqwest::{
 use serde::de::DeserializeOwned;
 use url::Url;
 
-use super::types::{
-    Activity, ActivityRequest, BuilderLeaderboardEntry, BuilderLeaderboardRequest,
-    BuilderVolumeEntry, BuilderVolumeRequest, ClosedPosition, ClosedPositionsRequest,
-    HealthResponse, HoldersRequest, LiveVolume, LiveVolumeRequest, MetaHolder, OpenInterest,
-    OpenInterestRequest, Position, PositionsRequest, QueryParams, Trade, Traded, TradedRequest,
-    TraderLeaderboardEntry, TraderLeaderboardRequest, TradesRequest, Value, ValueRequest,
+use super::params::{
+    ActivityRequest, BuilderLeaderboardRequest, BuilderVolumeRequest, ClosedPositionsRequest,
+    HoldersRequest, LiveVolumeRequest, OpenInterestRequest, PositionsRequest, ToQueryString,
+    TradedRequest, TraderLeaderboardRequest, TradesRequest, ValueRequest,
+};
+use super::response::{
+    Activity, BuilderLeaderboardEntry, BuilderVolumeEntry, ClosedPosition, Health, LiveVolume,
+    MetaHolder, OpenInterest, Position, Trade, Traded, TraderLeaderboardEntry, Value,
 };
 use crate::Result;
 use crate::error::Error;
@@ -166,7 +168,7 @@ impl Client {
         &self.host
     }
 
-    async fn get<Req: QueryParams, Res: DeserializeOwned>(
+    async fn get<Req: ToQueryString, Res: DeserializeOwned>(
         &self,
         path: &str,
         req: &Req,
@@ -186,7 +188,7 @@ impl Client {
     /// # Errors
     ///
     /// Returns an error if the request fails or the API returns an error response.
-    pub async fn health(&self) -> Result<HealthResponse> {
+    pub async fn health(&self) -> Result<Health> {
         self.get("", &()).await
     }
 

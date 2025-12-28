@@ -1,12 +1,14 @@
 #![allow(clippy::print_stdout, reason = "Examples are okay to print to stdout")]
 
 use polymarket_client_sdk::data_api::Client;
-use polymarket_client_sdk::data_api::types::{
-    ActivityLimit, ActivityRequest, BuilderLeaderboardLimit, BuilderLeaderboardRequest,
-    BuilderVolumeRequest, ClosedPositionsLimit, ClosedPositionsRequest, HoldersLimit,
-    HoldersRequest, LeaderboardCategory, LiveVolumeRequest, OpenInterestRequest, PositionsLimit,
-    PositionsRequest, TimePeriod, TradedRequest, TraderLeaderboardLimit, TraderLeaderboardRequest,
-    TradesRequest, ValueRequest,
+use polymarket_client_sdk::data_api::common::{
+    ActivityLimit, BuilderLeaderboardLimit, ClosedPositionsLimit, HoldersLimit,
+    LeaderboardCategory, PositionsLimit, TimePeriod, TraderLeaderboardLimit,
+};
+use polymarket_client_sdk::data_api::params::{
+    ActivityRequest, BuilderLeaderboardRequest, BuilderVolumeRequest, ClosedPositionsRequest,
+    HoldersRequest, LiveVolumeRequest, OpenInterestRequest, PositionsRequest, TradedRequest,
+    TraderLeaderboardRequest, TradesRequest, ValueRequest,
 };
 
 const EXAMPLE_USER: &str = "0x56687bf447db6ffa42ffe2204a05edaa20f55839";
