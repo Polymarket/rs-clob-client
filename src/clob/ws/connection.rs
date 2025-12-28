@@ -201,13 +201,11 @@ impl ConnectionManager {
                 // Handle incoming messages
                 Some(msg) = read.next() => {
                     match msg {
-                        Ok(Message::Text(text)) => {
+                        Ok(Message::Text(text)) if text == "PONG" => {
                             // Notify heartbeat loop when PONG is received
-                            if text == "PONG" {
-                                _ = pong_tx.send(Instant::now());
-                                continue;
-                            }
-
+                             _ = pong_tx.send(Instant::now());
+                        }
+                        Ok(Message::Text(text)) => {
                             #[cfg(feature = "tracing")]
                             tracing::trace!(%text, "Received WebSocket text message");
 
