@@ -44,7 +44,9 @@ async fn main() -> Result<()> {
 
     if args.len() != 2 {
         eprintln!("Usage: cargo run --example check_approvals -- <WALLET_ADDRESS>");
-        eprintln!("Example: cargo run --example check_approvals -- 0x1234567890abcdef1234567890abcdef12345678");
+        eprintln!(
+            "Example: cargo run --example check_approvals -- 0x1234567890abcdef1234567890abcdef12345678"
+        );
         std::process::exit(1);
     }
 
@@ -89,7 +91,11 @@ async fn main() -> Result<()> {
         println!();
         println!("{name}");
         println!("  Address: {target}");
-        println!("  USDC allowance: {} {}", format_allowance(usdc_allowance), usdc_status);
+        println!(
+            "  USDC allowance: {} {}",
+            format_allowance(usdc_allowance),
+            usdc_status
+        );
         println!("  CTF approved:   {} {}", ctf_approved, ctf_status);
 
         if !usdc_ok || !ctf_ok {
