@@ -143,16 +143,16 @@ async fn main() -> anyhow::Result<()> {
     // Comments
     // =========================================================================
     println!("Comments Endpoints:");
-    let comment_id = test_comments(&client, &mut results, &event_id, &series_id).await;
+    let (comment_id, user_address) = test_comments(&client, &mut results, &event_id, &series_id).await;
     test_comments_by_id(&client, &mut results, &comment_id).await;
-    test_comments_by_user_address(&client, &mut results).await;
+    test_comments_by_user_address(&client, &mut results, &user_address).await;
     println!();
 
     // =========================================================================
     // Profiles
     // =========================================================================
     println!("Profiles Endpoints:");
-    test_public_profile(&client, &mut results).await;
+    test_public_profile(&client, &mut results, &user_address).await;
     println!();
 
     // =========================================================================
@@ -540,7 +540,7 @@ async fn test_comments(
     results: &mut TestResults,
     event_id: &str,
     series_id: &str,
-) -> String {
+) -> (String, String) {
     // Try event first, then series if no comments found
     // Note: Market is not a valid parent_entity_type for comments
     let request = CommentsRequest::builder()
@@ -555,7 +555,12 @@ async fn test_comments(
                     "comments(Event) - returned {} comments",
                     comments.len()
                 ));
-                return comments[0].id.to_string();
+                let id = comments[0].id.to_string();
+                let user_address = comments[0]
+                    .user_address
+                    .clone()
+                    .unwrap_or_else(|| "0x0".to_owned());
+                return (id, user_address);
             }
             // Try series if event has no comments
             let request = CommentsRequest::builder()
@@ -567,24 +572,29 @@ async fn test_comments(
                 Ok(series_comments) => {
                     if series_comments.is_empty() {
                         results.pass("comments() - no comments found (normal for some entities)");
-                        "1".to_owned()
+                        ("1".to_owned(), "0x0".to_owned())
                     } else {
                         results.pass(&format!(
                             "comments(Series) - returned {} comments",
                             series_comments.len()
                         ));
-                        series_comments[0].id.to_string()
+                        let id = series_comments[0].id.to_string();
+                        let user_address = series_comments[0]
+                            .user_address
+                            .clone()
+                            .unwrap_or_else(|| "0x0".to_owned());
+                        (id, user_address)
                     }
                 }
                 Err(e) => {
                     results.fail("comments(Series)", &e.to_string());
-                    "1".to_owned()
+                    ("1".to_owned(), "0x0".to_owned())
                 }
             }
         }
         Err(e) => {
             results.fail("comments()", &e.to_string());
-            "1".to_owned()
+            ("1".to_owned(), "0x0".to_owned())
         }
     }
 }
@@ -602,16 +612,16 @@ async fn test_comments_by_id(client: &Client, results: &mut TestResults, id: &st
     }
 }
 
-async fn test_comments_by_user_address(client: &Client, results: &mut TestResults) {
-    // Use a known Polymarket address for testing
+async fn test_comments_by_user_address(client: &Client, results: &mut TestResults, user_address: &str) {
     let request = CommentsByUserAddressRequest::builder()
-        .user_address("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
+        .user_address(user_address)
         .limit(10)
         .build();
     match client.comments_by_user_address(&request).await {
         Ok(comments) => {
             results.pass(&format!(
-                "comments_by_user_address() - returned {} comments",
+                "comments_by_user_address({}) - returned {} comments",
+                &user_address[..8],
                 comments.len()
             ));
         }
@@ -623,19 +633,21 @@ async fn test_comments_by_user_address(client: &Client, results: &mut TestResult
 // Profiles Tests
 // =============================================================================
 
-async fn test_public_profile(client: &Client, results: &mut TestResults) {
-    // Use a known Polymarket address for testing
+async fn test_public_profile(client: &Client, results: &mut TestResults, user_address: &str) {
     let request = PublicProfileRequest::builder()
-        .address("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
+        .address(user_address)
         .build();
     match client.public_profile(&request).await {
         Ok(_profile) => {
-            results.pass("public_profile()");
+            results.pass(&format!("public_profile({}) ", &user_address[..8]));
         }
         Err(e) => {
             // Profile may not exist for all addresses, which is acceptable
             if e.to_string().contains("404") || e.to_string().contains("not found") {
-                results.pass("public_profile() - profile not found (acceptable)");
+                results.pass(&format!(
+                    "public_profile({}) - profile not found (acceptable)",
+                    &user_address[..8]
+                ));
             } else {
                 results.fail("public_profile()", &e.to_string());
             }
