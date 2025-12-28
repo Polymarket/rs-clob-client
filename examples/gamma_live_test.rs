@@ -143,7 +143,7 @@ async fn main() -> anyhow::Result<()> {
     // Comments
     // =========================================================================
     println!("Comments Endpoints:");
-    let comment_id = test_comments(&client, &mut results, &event_id).await;
+    let comment_id = test_comments(&client, &mut results, &event_id, &series_id).await;
     test_comments_by_id(&client, &mut results, &comment_id).await;
     test_comments_by_user_address(&client, &mut results).await;
     println!();
@@ -334,7 +334,13 @@ async fn test_tags_related_to_tag_by_slug(client: &Client, results: &mut TestRes
 // =============================================================================
 
 async fn test_events(client: &Client, results: &mut TestResults) -> (String, String) {
-    let request = EventsRequest::builder().active(true).limit(10).build();
+    // Fetch more events sorted by volume to find popular ones with comments
+    let request = EventsRequest::builder()
+        .active(true)
+        .limit(50)
+        .order("volume24hr".to_owned())
+        .ascending(false)
+        .build();
     match client.events(&request).await {
         Ok(events) => {
             if events.is_empty() {
@@ -342,12 +348,20 @@ async fn test_events(client: &Client, results: &mut TestResults) -> (String, Str
                 ("1".to_owned(), "example-event".to_owned())
             } else {
                 results.pass(&format!("events() - returned {} events", events.len()));
-                let event = &events[0];
+                // Find an event with comments if possible, otherwise use the first one
+                let event = events
+                    .iter()
+                    .find(|e| e.comment_count.unwrap_or(0) > 0)
+                    .unwrap_or(&events[0]);
                 let id = event.id.clone();
                 let slug = event
                     .slug
                     .clone()
                     .unwrap_or_else(|| "example-event".to_owned());
+                let comment_count = event.comment_count.unwrap_or(0);
+                if comment_count > 0 {
+                    println!("    (selected event '{slug}' with {comment_count} comments)");
+                }
                 (id, slug)
             }
         }
@@ -404,7 +418,13 @@ async fn test_event_tags(client: &Client, results: &mut TestResults, event_id: &
 // =============================================================================
 
 async fn test_markets(client: &Client, results: &mut TestResults) -> (String, String) {
-    let request = MarketsRequest::builder().closed(false).limit(10).build();
+    // Fetch markets sorted by volume to get popular ones
+    let request = MarketsRequest::builder()
+        .closed(false)
+        .limit(50)
+        .order("volume24hr".to_owned())
+        .ascending(false)
+        .build();
     match client.markets(&request).await {
         Ok(markets) => {
             if markets.is_empty() {
@@ -412,12 +432,17 @@ async fn test_markets(client: &Client, results: &mut TestResults) -> (String, St
                 ("1".to_owned(), "example-market".to_owned())
             } else {
                 results.pass(&format!("markets() - returned {} markets", markets.len()));
+                // Use the highest volume market (first one after sorting)
                 let market = &markets[0];
                 let id = market.id.clone();
                 let slug = market
                     .slug
                     .clone()
                     .unwrap_or_else(|| "example-market".to_owned());
+                let volume = market.volume_24hr.unwrap_or(0.0);
+                if volume > 0.0 {
+                    println!("    (selected market '{slug}' with ${volume:.0} 24hr volume)");
+                }
                 (id, slug)
             }
         }
@@ -510,8 +535,14 @@ async fn test_series_by_id(client: &Client, results: &mut TestResults, id: &str)
 // Comments Tests
 // =============================================================================
 
-async fn test_comments(client: &Client, results: &mut TestResults, event_id: &str) -> String {
-    // Comments endpoint requires parent_entity_type and parent_entity_id
+async fn test_comments(
+    client: &Client,
+    results: &mut TestResults,
+    event_id: &str,
+    series_id: &str,
+) -> String {
+    // Try event first, then series if no comments found
+    // Note: Market is not a valid parent_entity_type for comments
     let request = CommentsRequest::builder()
         .parent_entity_type(ParentEntityType::Event)
         .parent_entity_id(event_id)
@@ -519,16 +550,36 @@ async fn test_comments(client: &Client, results: &mut TestResults, event_id: &st
         .build();
     match client.comments(&request).await {
         Ok(comments) => {
-            if comments.is_empty() {
-                // Comments being empty is okay - not all events have comments
-                results.pass("comments() - returned 0 comments (may be normal)");
-                "1".to_owned()
-            } else {
+            if !comments.is_empty() {
                 results.pass(&format!(
-                    "comments() - returned {} comments",
+                    "comments(Event) - returned {} comments",
                     comments.len()
                 ));
-                comments[0].id.clone()
+                return comments[0].id.to_string();
+            }
+            // Try series if event has no comments
+            let request = CommentsRequest::builder()
+                .parent_entity_type(ParentEntityType::Series)
+                .parent_entity_id(series_id)
+                .limit(10)
+                .build();
+            match client.comments(&request).await {
+                Ok(series_comments) => {
+                    if series_comments.is_empty() {
+                        results.pass("comments() - no comments found (normal for some entities)");
+                        "1".to_owned()
+                    } else {
+                        results.pass(&format!(
+                            "comments(Series) - returned {} comments",
+                            series_comments.len()
+                        ));
+                        series_comments[0].id.to_string()
+                    }
+                }
+                Err(e) => {
+                    results.fail("comments(Series)", &e.to_string());
+                    "1".to_owned()
+                }
             }
         }
         Err(e) => {

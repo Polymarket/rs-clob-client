@@ -1145,7 +1145,7 @@ pub struct CommentProfile {
 pub struct Reaction {
     pub id: String,
     #[serde(rename = "commentID")]
-    pub comment_id: Option<String>,
+    pub comment_id: Option<i32>,
     pub reaction_type: Option<String>,
     pub icon: Option<String>,
     pub user_address: Option<String>,
@@ -1162,7 +1162,7 @@ pub struct Comment {
     pub body: Option<String>,
     pub parent_entity_type: Option<String>,
     #[serde(rename = "parentEntityID")]
-    pub parent_entity_id: Option<String>,
+    pub parent_entity_id: Option<i32>,
     #[serde(rename = "parentCommentID")]
     pub parent_comment_id: Option<String>,
     pub user_address: Option<String>,
