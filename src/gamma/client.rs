@@ -160,7 +160,8 @@ impl Client {
             let json_value: serde_json::Value =
                 serde_json::from_str(&text).map_err(|e| Error::with_source(Kind::Internal, e))?;
 
-            match serde_json::from_value::<Option<Response>>(json_value.clone()) {
+            // Use serde_path_to_error to get the field path in error messages
+            match serde_path_to_error::deserialize::<_, Option<Response>>(json_value.clone()) {
                 Ok(Some(data)) => {
                     super::drift::detect_and_log(&json_value, &data, &path);
                     return Ok(data);
@@ -178,7 +179,8 @@ impl Client {
                     tracing::error!(
                         method = %method,
                         path = %path,
-                        error = %e,
+                        field = %e.path(),
+                        error = %e.inner(),
                         "API schema mismatch - response does not match expected type"
                     );
                     return Err(Error::with_source(Kind::Internal, e));
