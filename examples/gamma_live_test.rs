@@ -143,7 +143,8 @@ async fn main() -> anyhow::Result<()> {
     // Comments
     // =========================================================================
     println!("Comments Endpoints:");
-    let (comment_id, user_address) = test_comments(&client, &mut results, &event_id, &series_id).await;
+    let (comment_id, user_address) =
+        test_comments(&client, &mut results, &event_id, &series_id).await;
     test_comments_by_id(&client, &mut results, &comment_id).await;
     test_comments_by_user_address(&client, &mut results, &user_address).await;
     println!();
@@ -612,7 +613,11 @@ async fn test_comments_by_id(client: &Client, results: &mut TestResults, id: &st
     }
 }
 
-async fn test_comments_by_user_address(client: &Client, results: &mut TestResults, user_address: &str) {
+async fn test_comments_by_user_address(
+    client: &Client,
+    results: &mut TestResults,
+    user_address: &str,
+) {
     let request = CommentsByUserAddressRequest::builder()
         .user_address(user_address)
         .limit(10)
@@ -621,7 +626,7 @@ async fn test_comments_by_user_address(client: &Client, results: &mut TestResult
         Ok(comments) => {
             results.pass(&format!(
                 "comments_by_user_address({}) - returned {} comments",
-                &user_address[..8],
+                user_address.get(..8).unwrap_or(user_address),
                 comments.len()
             ));
         }
@@ -639,14 +644,17 @@ async fn test_public_profile(client: &Client, results: &mut TestResults, user_ad
         .build();
     match client.public_profile(&request).await {
         Ok(_profile) => {
-            results.pass(&format!("public_profile({}) ", &user_address[..8]));
+            results.pass(&format!(
+                "public_profile({}) ",
+                user_address.get(..8).unwrap_or(user_address)
+            ));
         }
         Err(e) => {
             // Profile may not exist for all addresses, which is acceptable
             if e.to_string().contains("404") || e.to_string().contains("not found") {
                 results.pass(&format!(
                     "public_profile({}) - profile not found (acceptable)",
-                    &user_address[..8]
+                    user_address.get(..8).unwrap_or(user_address)
                 ));
             } else {
                 results.fail("public_profile()", &e.to_string());
