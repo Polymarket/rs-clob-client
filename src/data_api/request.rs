@@ -3,6 +3,11 @@
 //! This module contains builder-pattern structs for each API endpoint.
 //! All request types use the [`bon`](https://docs.rs/bon) crate for the builder pattern.
 
+#![allow(
+    clippy::module_name_repetitions,
+    reason = "Request suffix is intentional for clarity"
+)]
+
 use bon::Builder;
 use serde::Serialize;
 
