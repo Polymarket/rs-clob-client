@@ -2,10 +2,7 @@
 
 use alloy::primitives::address;
 use polymarket_client_sdk::data_api::Client;
-use polymarket_client_sdk::data_api::common::{
-    ActivityLimit, BuilderLeaderboardLimit, ClosedPositionsLimit, HoldersLimit,
-    LeaderboardCategory, PositionsLimit, TimePeriod, TraderLeaderboardLimit,
-};
+use polymarket_client_sdk::data_api::common::{LeaderboardCategory, TimePeriod};
 use polymarket_client_sdk::data_api::params::{
     ActivityRequest, BuilderLeaderboardRequest, BuilderVolumeRequest, ClosedPositionsRequest,
     HoldersRequest, LiveVolumeRequest, OpenInterestRequest, PositionsRequest, TradedRequest,
@@ -23,10 +20,7 @@ async fn main() -> anyhow::Result<()> {
 
     println!("health -- {:?}", client.health().await);
 
-    let request = PositionsRequest::builder()
-        .user(user)
-        .limit(PositionsLimit::new(5)?)
-        .build();
+    let request = PositionsRequest::builder().user(user).limit(5)?.build();
     println!("positions -- {:?}", client.positions(&request).await);
 
     println!(
@@ -34,15 +28,12 @@ async fn main() -> anyhow::Result<()> {
         client.trades(&TradesRequest::default()).await
     );
 
-    let request = ActivityRequest::builder()
-        .user(user)
-        .limit(ActivityLimit::new(5)?)
-        .build();
+    let request = ActivityRequest::builder().user(user).limit(5)?.build();
     println!("activity -- {:?}", client.activity(&request).await);
 
     let request = HoldersRequest::builder()
         .markets(vec![market.clone()])
-        .limit(HoldersLimit::new(5)?)
+        .limit(5)?
         .build();
     println!("holders -- {:?}", client.holders(&request).await);
 
@@ -51,7 +42,7 @@ async fn main() -> anyhow::Result<()> {
 
     let request = ClosedPositionsRequest::builder()
         .user(user)
-        .limit(ClosedPositionsLimit::new(5)?)
+        .limit(5)?
         .build();
     println!(
         "closed_positions -- {:?}",
@@ -61,7 +52,7 @@ async fn main() -> anyhow::Result<()> {
     let request = TraderLeaderboardRequest::builder()
         .category(LeaderboardCategory::Overall)
         .time_period(TimePeriod::Week)
-        .limit(TraderLeaderboardLimit::new(5)?)
+        .limit(5)?
         .build();
     println!("leaderboard -- {:?}", client.leaderboard(&request).await);
 
@@ -78,7 +69,7 @@ async fn main() -> anyhow::Result<()> {
 
     let request = BuilderLeaderboardRequest::builder()
         .time_period(TimePeriod::Week)
-        .limit(BuilderLeaderboardLimit::new(5)?)
+        .limit(5)?
         .build();
     println!(
         "builder_leaderboard -- {:?}",

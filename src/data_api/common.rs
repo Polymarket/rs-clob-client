@@ -318,11 +318,29 @@ impl Serialize for MarketFilter {
 
 /// Error type for bounded integer values that are out of range.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct BoundedIntError {
-    value: u32,
-    min: u32,
-    max: u32,
-    type_name: &'static str,
+    /// The value that was out of range.
+    pub value: u32,
+    /// The minimum allowed value.
+    pub min: u32,
+    /// The maximum allowed value.
+    pub max: u32,
+    /// The name of the parameter.
+    pub param_name: &'static str,
+}
+
+impl BoundedIntError {
+    /// Creates a new `BoundedIntError`.
+    #[must_use]
+    pub const fn new(value: u32, min: u32, max: u32, param_name: &'static str) -> Self {
+        Self {
+            value,
+            min,
+            max,
+            param_name,
+        }
+    }
 }
 
 impl fmt::Display for BoundedIntError {
@@ -330,84 +348,12 @@ impl fmt::Display for BoundedIntError {
         write!(
             f,
             "{} must be between {} and {} (got {})",
-            self.type_name, self.min, self.max, self.value
+            self.param_name, self.min, self.max, self.value
         )
     }
 }
 
 impl StdError for BoundedIntError {}
-
-macro_rules! bounded_u32 {
-    ($name:ident, min = $min:expr, max = $max:expr, default = $default:expr) => {
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-        #[serde(try_from = "u32", into = "u32")]
-        pub struct $name(u32);
-
-        impl $name {
-            pub const MIN: u32 = $min;
-            pub const MAX: u32 = $max;
-            pub const DEFAULT: u32 = $default;
-
-            pub fn new(value: u32) -> Result<Self, BoundedIntError> {
-                if (Self::MIN..=Self::MAX).contains(&value) {
-                    Ok(Self(value))
-                } else {
-                    Err(BoundedIntError {
-                        value,
-                        min: Self::MIN,
-                        max: Self::MAX,
-                        type_name: stringify!($name),
-                    })
-                }
-            }
-
-            #[must_use]
-            pub fn value(self) -> u32 {
-                self.0
-            }
-        }
-
-        impl Default for $name {
-            fn default() -> Self {
-                Self(Self::DEFAULT)
-            }
-        }
-
-        impl TryFrom<u32> for $name {
-            type Error = BoundedIntError;
-            fn try_from(value: u32) -> Result<Self, Self::Error> {
-                Self::new(value)
-            }
-        }
-
-        impl From<$name> for u32 {
-            fn from(b: $name) -> Self {
-                b.0
-            }
-        }
-
-        impl fmt::Display for $name {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                write!(f, "{}", self.0)
-            }
-        }
-    };
-}
-
-bounded_u32!(PositionsLimit, min = 0, max = 500, default = 100);
-bounded_u32!(PositionsOffset, min = 0, max = 10000, default = 0);
-bounded_u32!(TradesLimit, min = 0, max = 10000, default = 100);
-bounded_u32!(TradesOffset, min = 0, max = 10000, default = 0);
-bounded_u32!(ActivityLimit, min = 0, max = 500, default = 100);
-bounded_u32!(ActivityOffset, min = 0, max = 10000, default = 0);
-bounded_u32!(HoldersLimit, min = 0, max = 20, default = 20);
-bounded_u32!(HoldersMinBalance, min = 0, max = 999_999, default = 1);
-bounded_u32!(ClosedPositionsLimit, min = 0, max = 50, default = 10);
-bounded_u32!(ClosedPositionsOffset, min = 0, max = 100_000, default = 0);
-bounded_u32!(BuilderLeaderboardLimit, min = 0, max = 50, default = 25);
-bounded_u32!(BuilderLeaderboardOffset, min = 0, max = 1000, default = 0);
-bounded_u32!(TraderLeaderboardLimit, min = 1, max = 50, default = 25);
-bounded_u32!(TraderLeaderboardOffset, min = 0, max = 1000, default = 0);
 
 /// A filter for minimum trade size.
 ///

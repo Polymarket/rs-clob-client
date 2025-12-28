@@ -7,13 +7,25 @@ use bon::Builder;
 use serde::Serialize;
 
 use super::common::{
-    ActivityLimit, ActivityOffset, ActivitySortBy, ActivityType, Address, BuilderLeaderboardLimit,
-    BuilderLeaderboardOffset, ClosedPositionSortBy, ClosedPositionsLimit, ClosedPositionsOffset,
-    Hash64, HoldersLimit, HoldersMinBalance, LeaderboardCategory, LeaderboardOrderBy, MarketFilter,
-    PositionSortBy, PositionsLimit, PositionsOffset, Side, SortDirection, TimePeriod, Title,
-    TradeFilter, TraderLeaderboardLimit, TraderLeaderboardOffset, TradesLimit, TradesOffset,
+    ActivitySortBy, ActivityType, Address, BoundedIntError, ClosedPositionSortBy, Hash64,
+    LeaderboardCategory, LeaderboardOrderBy, MarketFilter, PositionSortBy, Side, SortDirection,
+    TimePeriod, Title, TradeFilter,
 };
 use crate::data_api::ser::{comma_separated, comma_separated_vec, is_empty_vec, vec_is_empty};
+
+/// Validates that a u32 value is within the specified bounds.
+fn validate_bound(
+    value: u32,
+    min: u32,
+    max: u32,
+    param_name: &'static str,
+) -> Result<u32, BoundedIntError> {
+    if (min..=max).contains(&value) {
+        Ok(value)
+    } else {
+        Err(BoundedIntError::new(value, min, max, param_name))
+    }
+}
 
 /// Trait for converting request types to URL query strings.
 ///
@@ -89,11 +101,13 @@ pub struct PositionsRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mergeable: Option<bool>,
     /// Maximum number of positions to return (0-500, default: 100).
+    #[builder(with = |v: u32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 500, "limit") })]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub limit: Option<PositionsLimit>,
+    pub limit: Option<u32>,
     /// Pagination offset (0-10000, default: 0).
+    #[builder(with = |v: u32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 10000, "offset") })]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset: Option<PositionsOffset>,
+    pub offset: Option<u32>,
     /// Sort criteria (default: TOKENS).
     #[serde(rename = "sortBy", skip_serializing_if = "Option::is_none")]
     pub sort_by: Option<PositionSortBy>,
@@ -145,11 +159,13 @@ pub struct TradesRequest {
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
     pub filter: Option<MarketFilter>,
     /// Maximum number of trades to return (0-10000, default: 100).
+    #[builder(with = |v: u32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 10000, "limit") })]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub limit: Option<TradesLimit>,
+    pub limit: Option<u32>,
     /// Pagination offset (0-10000, default: 0).
+    #[builder(with = |v: u32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 10000, "offset") })]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset: Option<TradesOffset>,
+    pub offset: Option<u32>,
     /// Only return taker trades (default: true).
     #[serde(rename = "takerOnly", skip_serializing_if = "Option::is_none")]
     pub taker_only: Option<bool>,
@@ -210,11 +226,13 @@ pub struct ActivityRequest {
     )]
     pub activity_types: Option<Vec<ActivityType>>,
     /// Maximum number of activities to return (0-500, default: 100).
+    #[builder(with = |v: u32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 500, "limit") })]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub limit: Option<ActivityLimit>,
+    pub limit: Option<u32>,
     /// Pagination offset (0-10000, default: 0).
+    #[builder(with = |v: u32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 10000, "offset") })]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset: Option<ActivityOffset>,
+    pub offset: Option<u32>,
     /// Start timestamp filter (Unix timestamp, minimum: 0).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub start: Option<u64>,
@@ -266,11 +284,13 @@ pub struct HoldersRequest {
     )]
     pub markets: Vec<Hash64>,
     /// Maximum holders to return per token (0-20, default: 20).
+    #[builder(with = |v: u32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 20, "limit") })]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub limit: Option<HoldersLimit>,
+    pub limit: Option<u32>,
     /// Minimum balance to include (0-999999, default: 1).
+    #[builder(with = |v: u32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 999_999, "min_balance") })]
     #[serde(rename = "minBalance", skip_serializing_if = "Option::is_none")]
-    pub min_balance: Option<HoldersMinBalance>,
+    pub min_balance: Option<u32>,
 }
 
 /// Request parameters for the `/traded` endpoint.
@@ -393,11 +413,13 @@ pub struct ClosedPositionsRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<Title>,
     /// Maximum number of positions to return (0-50, default: 10).
+    #[builder(with = |v: u32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 50, "limit") })]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub limit: Option<ClosedPositionsLimit>,
+    pub limit: Option<u32>,
     /// Pagination offset (0-100000, default: 0).
+    #[builder(with = |v: u32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 100_000, "offset") })]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset: Option<ClosedPositionsOffset>,
+    pub offset: Option<u32>,
     /// Sort criteria (default: REALIZEDPNL).
     #[serde(rename = "sortBy", skip_serializing_if = "Option::is_none")]
     pub sort_by: Option<ClosedPositionSortBy>,
@@ -434,11 +456,13 @@ pub struct BuilderLeaderboardRequest {
     #[serde(rename = "timePeriod", skip_serializing_if = "Option::is_none")]
     pub time_period: Option<TimePeriod>,
     /// Maximum number of builders to return (0-50, default: 25).
+    #[builder(with = |v: u32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 50, "limit") })]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub limit: Option<BuilderLeaderboardLimit>,
+    pub limit: Option<u32>,
     /// Pagination offset (0-1000, default: 0).
+    #[builder(with = |v: u32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 1000, "offset") })]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset: Option<BuilderLeaderboardOffset>,
+    pub offset: Option<u32>,
 }
 
 /// Request parameters for the `/v1/builders/volume` endpoint.
@@ -506,11 +530,13 @@ pub struct TraderLeaderboardRequest {
     #[serde(rename = "orderBy", skip_serializing_if = "Option::is_none")]
     pub order_by: Option<LeaderboardOrderBy>,
     /// Maximum number of traders to return (1-50, default: 25).
+    #[builder(with = |v: u32| -> Result<_, BoundedIntError> { validate_bound(v, 1, 50, "limit") })]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub limit: Option<TraderLeaderboardLimit>,
+    pub limit: Option<u32>,
     /// Pagination offset (0-1000, default: 0).
+    #[builder(with = |v: u32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 1000, "offset") })]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset: Option<TraderLeaderboardOffset>,
+    pub offset: Option<u32>,
     /// Filter to a single user by address.
     #[builder(into)]
     #[serde(skip_serializing_if = "Option::is_none")]

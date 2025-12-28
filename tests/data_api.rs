@@ -48,11 +48,7 @@ mod health {
 
 mod positions {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::data_api::{
-        Client,
-        common::{PositionsLimit, PositionsOffset},
-        params::PositionsRequest,
-    };
+    use polymarket_client_sdk::data_api::{Client, params::PositionsRequest};
     use reqwest::StatusCode;
     use rust_decimal_macros::dec;
     use serde_json::json;
@@ -132,8 +128,8 @@ mod positions {
 
         let request = PositionsRequest::builder()
             .user(test_user())
-            .limit(PositionsLimit::new(10)?)
-            .offset(PositionsOffset::new(5)?)
+            .limit(10)?
+            .offset(5)?
             .redeemable(true)
             .build();
 
@@ -446,7 +442,7 @@ mod leaderboard {
     use httpmock::{Method::GET, MockServer};
     use polymarket_client_sdk::data_api::{
         Client,
-        common::{LeaderboardCategory, LeaderboardOrderBy, TimePeriod, TraderLeaderboardLimit},
+        common::{LeaderboardCategory, LeaderboardOrderBy, TimePeriod},
         params::TraderLeaderboardRequest,
     };
     use reqwest::StatusCode;
@@ -523,7 +519,7 @@ mod leaderboard {
             .category(LeaderboardCategory::Politics)
             .time_period(TimePeriod::Week)
             .order_by(LeaderboardOrderBy::Vol)
-            .limit(TraderLeaderboardLimit::new(10)?)
+            .limit(10)?
             .build();
 
         let response = client.leaderboard(&request).await?;
@@ -704,9 +700,7 @@ mod live_volume {
 mod builder_leaderboard {
     use httpmock::{Method::GET, MockServer};
     use polymarket_client_sdk::data_api::{
-        Client,
-        common::{BuilderLeaderboardLimit, TimePeriod},
-        params::BuilderLeaderboardRequest,
+        Client, common::TimePeriod, params::BuilderLeaderboardRequest,
     };
     use reqwest::StatusCode;
     use rust_decimal_macros::dec;
@@ -768,7 +762,7 @@ mod builder_leaderboard {
 
         let request = BuilderLeaderboardRequest::builder()
             .time_period(TimePeriod::Month)
-            .limit(BuilderLeaderboardLimit::new(5)?)
+            .limit(5)?
             .build();
 
         let response = client.builder_leaderboard(&request).await?;
@@ -964,46 +958,99 @@ mod types {
     use alloy::primitives::address;
     use polymarket_client_sdk::data_api::{
         common::{
-            ActivityType, BuilderLeaderboardLimit, HoldersLimit, LeaderboardCategory,
-            LeaderboardOrderBy, MarketFilter, PositionSortBy, PositionsLimit, Side, SortDirection,
-            TimePeriod, TradeFilter, TraderLeaderboardLimit,
+            ActivityType, BoundedIntError, LeaderboardCategory, LeaderboardOrderBy, MarketFilter,
+            PositionSortBy, Side, SortDirection, TimePeriod, TradeFilter,
         },
         params::{
-            ActivityRequest, LiveVolumeRequest, PositionsRequest, ToQueryString as _,
-            TradedRequest, TraderLeaderboardRequest, TradesRequest,
+            ActivityRequest, BuilderLeaderboardRequest, HoldersRequest, LiveVolumeRequest,
+            PositionsRequest, ToQueryString as _, TradedRequest, TraderLeaderboardRequest,
+            TradesRequest,
         },
     };
     use rust_decimal_macros::dec;
 
     #[test]
     fn bounded_limits() {
-        // PositionsLimit: 0-500
-        PositionsLimit::new(0).unwrap();
-        PositionsLimit::new(500).unwrap();
-        PositionsLimit::new(501).unwrap_err();
+        // Test that the builder validates bounds correctly
+        // PositionsRequest limit: 0-500
+        drop(
+            PositionsRequest::builder()
+                .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
+                .limit(0)
+                .unwrap()
+                .build(),
+        );
+        drop(
+            PositionsRequest::builder()
+                .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
+                .limit(500)
+                .unwrap()
+                .build(),
+        );
+        let err = PositionsRequest::builder()
+            .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
+            .limit(501);
+        assert!(matches!(err, Err(BoundedIntError { .. })));
 
-        // HoldersLimit: 0-20
-        HoldersLimit::new(0).unwrap();
-        HoldersLimit::new(20).unwrap();
-        HoldersLimit::new(21).unwrap_err();
+        // HoldersRequest limit: 0-20
+        drop(
+            HoldersRequest::builder()
+                .markets(vec![])
+                .limit(0)
+                .unwrap()
+                .build(),
+        );
+        drop(
+            HoldersRequest::builder()
+                .markets(vec![])
+                .limit(20)
+                .unwrap()
+                .build(),
+        );
+        let err = HoldersRequest::builder().markets(vec![]).limit(21);
+        assert!(matches!(err, Err(BoundedIntError { .. })));
 
-        // TraderLeaderboardLimit: 1-50
-        TraderLeaderboardLimit::new(0).unwrap_err();
-        TraderLeaderboardLimit::new(1).unwrap();
-        TraderLeaderboardLimit::new(50).unwrap();
-        TraderLeaderboardLimit::new(51).unwrap_err();
+        // TraderLeaderboardRequest limit: 1-50
+        let err = TraderLeaderboardRequest::builder().limit(0);
+        assert!(matches!(err, Err(BoundedIntError { .. })));
+        drop(
+            TraderLeaderboardRequest::builder()
+                .limit(1)
+                .unwrap()
+                .build(),
+        );
+        drop(
+            TraderLeaderboardRequest::builder()
+                .limit(50)
+                .unwrap()
+                .build(),
+        );
+        let err = TraderLeaderboardRequest::builder().limit(51);
+        assert!(matches!(err, Err(BoundedIntError { .. })));
 
-        // BuilderLeaderboardLimit: 0-50
-        BuilderLeaderboardLimit::new(0).unwrap();
-        BuilderLeaderboardLimit::new(50).unwrap();
-        BuilderLeaderboardLimit::new(51).unwrap_err();
+        // BuilderLeaderboardRequest limit: 0-50
+        drop(
+            BuilderLeaderboardRequest::builder()
+                .limit(0)
+                .unwrap()
+                .build(),
+        );
+        drop(
+            BuilderLeaderboardRequest::builder()
+                .limit(50)
+                .unwrap()
+                .build(),
+        );
+        let err = BuilderLeaderboardRequest::builder().limit(51);
+        assert!(matches!(err, Err(BoundedIntError { .. })));
     }
 
     #[test]
     fn positions_request_query_string() {
         let req = PositionsRequest::builder()
             .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
-            .limit(PositionsLimit::new(50).unwrap())
+            .limit(50)
+            .unwrap()
             .sort_by(PositionSortBy::CashPnl)
             .sort_direction(SortDirection::Desc)
             .build();
@@ -1096,7 +1143,8 @@ mod types {
             .category(LeaderboardCategory::Politics)
             .time_period(TimePeriod::Week)
             .order_by(LeaderboardOrderBy::Pnl)
-            .limit(TraderLeaderboardLimit::new(10).unwrap())
+            .limit(10)
+            .unwrap()
             .build();
 
         let qs = req.query_string();
@@ -1170,12 +1218,18 @@ mod types {
 }
 
 mod error_display {
-    use polymarket_client_sdk::data_api::common::{PositionsLimit, TradeFilter};
+    use alloy::primitives::address;
+    use polymarket_client_sdk::data_api::{common::TradeFilter, params::PositionsRequest};
     use rust_decimal_macros::dec;
 
     #[test]
     fn bounded_int_error_display() {
-        let err = PositionsLimit::new(501).unwrap_err();
+        let err = PositionsRequest::builder()
+            .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
+            .limit(501);
+        let Err(err) = err else {
+            panic!("Expected an error")
+        };
         assert!(err.to_string().contains("500"));
         assert!(err.to_string().contains("501"));
     }
@@ -1187,36 +1241,12 @@ mod error_display {
     }
 }
 
-mod conversions {
-    use polymarket_client_sdk::data_api::common::PositionsLimit;
-
-    #[test]
-    fn positions_limit_try_from_u32() {
-        let limit: PositionsLimit = 50_u32.try_into().expect("valid limit");
-        let v: u32 = limit.into();
-        assert_eq!(v, 50);
-        assert_eq!(limit.value(), 50);
-    }
-
-    #[test]
-    fn display_implementations() {
-        let limit = PositionsLimit::new(100).unwrap();
-        assert_eq!(limit.to_string(), "100");
-    }
-
-    #[test]
-    fn bounded_int_defaults() {
-        assert_eq!(PositionsLimit::default().value(), PositionsLimit::DEFAULT);
-    }
-}
-
 mod request_query_string_extended {
     use alloy::primitives::{Address, address};
     use polymarket_client_sdk::data_api::{
         common::{
-            ActivityLimit, ActivitySortBy, BuilderLeaderboardOffset, ClosedPositionSortBy,
-            ClosedPositionsLimit, HoldersMinBalance, MarketFilter, PositionSortBy, Side,
-            SortDirection, TradeFilter, TradesLimit, TradesOffset,
+            ActivitySortBy, ClosedPositionSortBy, MarketFilter, PositionSortBy, Side,
+            SortDirection, TradeFilter,
         },
         params::{
             ActivityRequest, BuilderLeaderboardRequest, ClosedPositionsRequest, HoldersRequest,
@@ -1256,7 +1286,8 @@ mod request_query_string_extended {
         let req = TradesRequest::builder()
             .user(test_addr())
             .filter(MarketFilter::markets([test_hash()]))
-            .limit(TradesLimit::new(50).unwrap())
+            .limit(50)
+            .unwrap()
             .taker_only(true)
             .side(Side::Buy)
             .build();
@@ -1274,7 +1305,8 @@ mod request_query_string_extended {
         let req = ActivityRequest::builder()
             .user(test_addr())
             .filter(MarketFilter::event_ids([1]))
-            .limit(ActivityLimit::new(50).unwrap())
+            .limit(50)
+            .unwrap()
             .start(1000)
             .end(2000)
             .sort_by(ActivitySortBy::Timestamp)
@@ -1295,7 +1327,8 @@ mod request_query_string_extended {
     fn holders_request_full() {
         let req = HoldersRequest::builder()
             .markets(vec![test_hash()])
-            .min_balance(HoldersMinBalance::new(10).unwrap())
+            .min_balance(10)
+            .unwrap()
             .build();
 
         let qs = req.query_string();
@@ -1319,7 +1352,8 @@ mod request_query_string_extended {
             .user(test_addr())
             .filter(MarketFilter::markets([test_hash()]))
             .title("test")
-            .limit(ClosedPositionsLimit::new(10).unwrap())
+            .limit(10)
+            .unwrap()
             .sort_by(ClosedPositionSortBy::RealizedPnl)
             .sort_direction(SortDirection::Desc)
             .build();
@@ -1334,7 +1368,8 @@ mod request_query_string_extended {
     #[test]
     fn builder_leaderboard_request_full() {
         let req = BuilderLeaderboardRequest::builder()
-            .offset(BuilderLeaderboardOffset::new(10).unwrap())
+            .offset(10)
+            .unwrap()
             .build();
 
         let qs = req.query_string();
@@ -1446,9 +1481,7 @@ mod request_query_string_extended {
 
     #[test]
     fn trades_request_with_offset() {
-        let req = TradesRequest::builder()
-            .offset(TradesOffset::new(100).unwrap())
-            .build();
+        let req = TradesRequest::builder().offset(100).unwrap().build();
 
         let qs = req.query_string();
         assert!(qs.contains("offset=100"));
