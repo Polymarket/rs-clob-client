@@ -7,10 +7,9 @@
 use std::error::Error as StdError;
 use std::fmt;
 
+/// Re-export of alloy's Address type for Ethereum addresses.
+pub use alloy::primitives::Address;
 use serde::{Deserialize, Serialize};
-
-/// Type alias for Ethereum addresses (0x-prefixed hex strings).
-pub type Address = String;
 
 /// Type alias for 64-character hex hashes (condition IDs, market identifiers).
 pub type Hash64 = String;

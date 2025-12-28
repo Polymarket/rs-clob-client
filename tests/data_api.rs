@@ -1,12 +1,14 @@
 #![cfg(feature = "data-api")]
 
-const TEST_USER_STR: &str = "0x1234567890abcdef1234567890abcdef12345678";
+use alloy::primitives::{Address, address};
+
+const TEST_USER: Address = address!("1234567890abcdef1234567890abcdef12345678");
 const TEST_CONDITION_ID_STR: &str =
     "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
 const TEST_ASSET_STR: &str = "0x1111111111111111111111111111111111111111111111111111111111111111";
 
-fn test_user() -> String {
-    TEST_USER_STR.to_owned()
+fn test_user() -> Address {
+    TEST_USER
 }
 
 fn test_condition_id() -> String {
@@ -102,7 +104,7 @@ mod positions {
 
         assert_eq!(response.len(), 1);
         let pos = &response[0];
-        assert_eq!(pos.proxy_wallet.as_str(), test_user().as_str());
+        assert_eq!(pos.proxy_wallet, test_user());
         assert_eq!(pos.condition_id.as_str(), test_condition_id().as_str());
         assert!((pos.size - 100.5).abs() < f64::EPSILON);
         assert_eq!(pos.title, "Will BTC hit $100k?");
@@ -187,7 +189,7 @@ mod trades {
 
         assert_eq!(response.len(), 1);
         let trade = &response[0];
-        assert_eq!(trade.proxy_wallet.as_str(), test_user().as_str());
+        assert_eq!(trade.proxy_wallet, test_user());
         assert_eq!(trade.condition_id.as_str(), test_condition_id().as_str());
         assert_eq!(trade.side, Side::Buy);
         assert!((trade.size - 50.0).abs() < f64::EPSILON);
@@ -254,7 +256,7 @@ mod activity {
         let response = client.activity(&request).await?;
 
         assert_eq!(response.len(), 2);
-        assert_eq!(response[0].proxy_wallet.as_str(), test_user().as_str());
+        assert_eq!(response[0].proxy_wallet, test_user());
         assert_eq!(
             response[0].condition_id.as_str(),
             test_condition_id().as_str()
@@ -278,10 +280,12 @@ mod holders {
 
     #[tokio::test]
     async fn holders_should_succeed() -> anyhow::Result<()> {
+        use alloy::primitives::address;
+
         let server = MockServer::start();
         let client = Client::new(&server.base_url())?;
 
-        let holder2 = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_owned();
+        let holder2 = address!("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
         let mock = server.mock(|when, then| {
             when.method(GET)
@@ -326,10 +330,14 @@ mod holders {
         assert_eq!(response[0].token, test_asset().as_str());
         let holders = &response[0].holders;
         assert_eq!(holders.len(), 2);
-        assert_eq!(holders[0].proxy_wallet.as_str(), test_user().as_str());
-        assert!((holders[0].amount - 10000.0).abs() < f64::EPSILON);
-        assert_eq!(holders[1].proxy_wallet.as_str(), holder2.as_str());
-        assert!((holders[1].amount - 5000.0).abs() < f64::EPSILON);
+        assert_eq!(holders[0].proxy_wallet, test_user());
+        #[expect(clippy::float_arithmetic, reason = "test assertion")]
+        let holder0_diff = (holders[0].amount - 10000.0).abs();
+        assert!(holder0_diff < f64::EPSILON);
+        assert_eq!(holders[1].proxy_wallet, holder2);
+        #[expect(clippy::float_arithmetic, reason = "test assertion")]
+        let holder1_diff = (holders[1].amount - 5000.0).abs();
+        assert!(holder1_diff < f64::EPSILON);
         mock.assert();
 
         Ok(())
@@ -366,7 +374,7 @@ mod value {
         let response = client.value(&request).await?;
 
         assert_eq!(response.len(), 1);
-        assert_eq!(response[0].user.as_str(), test_user().as_str());
+        assert_eq!(response[0].user, test_user());
         assert!((response[0].value - 12345.67).abs() < f64::EPSILON);
         mock.assert();
 
@@ -419,7 +427,7 @@ mod closed_positions {
         let response = client.closed_positions(&request).await?;
 
         assert_eq!(response.len(), 1);
-        assert_eq!(response[0].proxy_wallet.as_str(), test_user().as_str());
+        assert_eq!(response[0].proxy_wallet, test_user());
         assert_eq!(
             response[0].condition_id.as_str(),
             test_condition_id().as_str()
@@ -447,10 +455,12 @@ mod leaderboard {
 
     #[tokio::test]
     async fn leaderboard_should_succeed() -> anyhow::Result<()> {
+        use alloy::primitives::address;
+
         let server = MockServer::start();
         let client = Client::new(&server.base_url())?;
 
-        let second_user = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_owned();
+        let second_user = address!("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
 
         let mock = server.mock(|when, then| {
             when.method(GET).path("/v1/leaderboard");
@@ -482,11 +492,13 @@ mod leaderboard {
 
         assert_eq!(response.len(), 2);
         assert_eq!(response[0].rank, "1");
-        assert_eq!(response[0].proxy_wallet.as_str(), test_user().as_str());
-        assert!((response[0].pnl - 150_000.0).abs() < f64::EPSILON);
+        assert_eq!(response[0].proxy_wallet, test_user());
+        #[expect(clippy::float_arithmetic, reason = "test assertion")]
+        let pnl_diff = (response[0].pnl - 150_000.0).abs();
+        assert!(pnl_diff < f64::EPSILON);
         assert_eq!(response[0].verified_badge, Some(true));
         assert_eq!(response[1].rank, "2");
-        assert_eq!(response[1].proxy_wallet.as_str(), second_user.as_str());
+        assert_eq!(response[1].proxy_wallet, second_user);
         mock.assert();
 
         Ok(())
@@ -550,7 +562,7 @@ mod traded {
 
         let response = client.traded(&request).await?;
 
-        assert_eq!(response.user.as_str(), test_user().as_str());
+        assert_eq!(response.user, test_user());
         assert_eq!(response.traded, 42);
         mock.assert();
 
@@ -945,6 +957,7 @@ mod client {
 }
 
 mod types {
+    use alloy::primitives::address;
     use polymarket_client_sdk::data_api::{
         common::{
             ActivityType, BuilderLeaderboardLimit, HoldersLimit, LeaderboardCategory,
@@ -984,7 +997,7 @@ mod types {
     #[test]
     fn positions_request_query_string() {
         let req = PositionsRequest::builder()
-            .user("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
+            .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
             .limit(PositionsLimit::new(50).unwrap())
             .sort_by(PositionSortBy::CashPnl)
             .sort_direction(SortDirection::Desc)
@@ -1003,7 +1016,7 @@ mod types {
         let hash2 = "0xaa22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917".to_owned();
 
         let req = PositionsRequest::builder()
-            .user("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
+            .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
             .filter(MarketFilter::markets([hash1, hash2]))
             .build();
 
@@ -1016,7 +1029,7 @@ mod types {
     #[test]
     fn event_id_filter_query_string() {
         let req = PositionsRequest::builder()
-            .user("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
+            .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
             .filter(MarketFilter::event_ids([1, 2]))
             .build();
 
@@ -1046,7 +1059,7 @@ mod types {
     #[test]
     fn activity_types_query_string() {
         let req = ActivityRequest::builder()
-            .user("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
+            .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
             .activity_types(vec![ActivityType::Trade, ActivityType::Redeem])
             .build();
 
@@ -1065,7 +1078,7 @@ mod types {
     #[test]
     fn traded_request() {
         let req = TradedRequest::builder()
-            .user("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
+            .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
             .build();
 
         let qs = req.query_string();
@@ -1192,6 +1205,7 @@ mod conversions {
 }
 
 mod request_query_string_extended {
+    use alloy::primitives::{Address, address};
     use polymarket_client_sdk::data_api::{
         common::{
             ActivityLimit, ActivitySortBy, BuilderLeaderboardOffset, ClosedPositionSortBy,
@@ -1205,8 +1219,8 @@ mod request_query_string_extended {
         },
     };
 
-    fn test_addr() -> String {
-        "0x56687bf447db6ffa42ffe2204a05edaa20f55839".to_owned()
+    fn test_addr() -> Address {
+        address!("56687bf447db6ffa42ffe2204a05edaa20f55839")
     }
 
     fn test_hash() -> String {

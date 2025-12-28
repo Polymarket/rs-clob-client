@@ -1,5 +1,6 @@
 #![allow(clippy::print_stdout, reason = "Examples are okay to print to stdout")]
 
+use alloy::primitives::address;
 use polymarket_client_sdk::data_api::Client;
 use polymarket_client_sdk::data_api::common::{
     ActivityLimit, BuilderLeaderboardLimit, ClosedPositionsLimit, HoldersLimit,
@@ -11,21 +12,19 @@ use polymarket_client_sdk::data_api::params::{
     TraderLeaderboardRequest, TradesRequest, ValueRequest,
 };
 
-const EXAMPLE_USER: &str = "0x56687bf447db6ffa42ffe2204a05edaa20f55839";
-
 const EXAMPLE_MARKET: &str = "0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let client = Client::default();
 
-    let user = EXAMPLE_USER.to_owned();
+    let user = address!("56687bf447db6ffa42ffe2204a05edaa20f55839");
     let market = EXAMPLE_MARKET.to_owned();
 
     println!("health -- {:?}", client.health().await);
 
     let request = PositionsRequest::builder()
-        .user(user.clone())
+        .user(user)
         .limit(PositionsLimit::new(5)?)
         .build();
     println!("positions -- {:?}", client.positions(&request).await);
@@ -36,7 +35,7 @@ async fn main() -> anyhow::Result<()> {
     );
 
     let request = ActivityRequest::builder()
-        .user(user.clone())
+        .user(user)
         .limit(ActivityLimit::new(5)?)
         .build();
     println!("activity -- {:?}", client.activity(&request).await);
@@ -47,11 +46,11 @@ async fn main() -> anyhow::Result<()> {
         .build();
     println!("holders -- {:?}", client.holders(&request).await);
 
-    let request = ValueRequest::builder().user(user.clone()).build();
+    let request = ValueRequest::builder().user(user).build();
     println!("value -- {:?}", client.value(&request).await);
 
     let request = ClosedPositionsRequest::builder()
-        .user(user.clone())
+        .user(user)
         .limit(ClosedPositionsLimit::new(5)?)
         .build();
     println!(
@@ -66,7 +65,7 @@ async fn main() -> anyhow::Result<()> {
         .build();
     println!("leaderboard -- {:?}", client.leaderboard(&request).await);
 
-    let request = TradedRequest::builder().user(user.clone()).build();
+    let request = TradedRequest::builder().user(user).build();
     println!("traded -- {:?}", client.traded(&request).await);
 
     println!(
