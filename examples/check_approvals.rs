@@ -9,10 +9,10 @@
 //! for a given wallet address. No private key or gas required.
 //!
 //! Usage:
-//!   cargo run --example check_approvals -- <WALLET_ADDRESS>
+//!   `cargo run --example check_approvals -- <WALLET_ADDRESS>`
 //!
 //! Example:
-//!   cargo run --example check_approvals -- 0x1234...abcd
+//!   `cargo run --example check_approvals -- 0x1234...abcd`
 
 use std::env;
 
@@ -43,8 +43,8 @@ async fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() != 2 {
-        eprintln!("Usage: cargo run --example check_approvals -- <WALLET_ADDRESS>");
-        eprintln!(
+        println!("Usage: cargo run --example check_approvals -- <WALLET_ADDRESS>");
+        println!(
             "Example: cargo run --example check_approvals -- 0x1234567890abcdef1234567890abcdef12345678"
         );
         std::process::exit(1);
@@ -96,7 +96,7 @@ async fn main() -> Result<()> {
             format_allowance(usdc_allowance),
             usdc_status
         );
-        println!("  CTF approved:   {} {}", ctf_approved, ctf_status);
+        println!("  CTF approved:   {ctf_approved} {ctf_status}");
 
         if !usdc_ok || !ctf_ok {
             all_approved = false;
@@ -121,13 +121,13 @@ async fn main() -> Result<()> {
 
 fn format_allowance(allowance: U256) -> String {
     if allowance == U256::MAX {
-        "MAX (unlimited)".to_string()
+        "MAX (unlimited)".to_owned()
     } else if allowance == U256::ZERO {
-        "0".to_string()
+        "0".to_owned()
     } else {
         // USDC has 6 decimals
         let usdc_decimals = U256::from(1_000_000);
         let whole = allowance / usdc_decimals;
-        format!("{} USDC", whole)
+        format!("{whole} USDC")
     }
 }

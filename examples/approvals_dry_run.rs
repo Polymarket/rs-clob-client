@@ -35,8 +35,8 @@ fn main() {
     println!();
 
     for (name, target) in &targets {
-        println!("  {} ", name);
-        println!("    → {}", target);
+        println!("  {name} ");
+        println!("    → {target}");
         println!();
     }
 

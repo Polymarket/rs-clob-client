@@ -54,12 +54,12 @@ fn main() {
 
     for (name, addr, correct) in &old_targets {
         let status = if *correct { "✅" } else { "❌ WRONG!" };
-        println!("  {} {}", status, name);
-        println!("       {}", addr);
+        println!("  {status} {name}");
+        println!("       {addr}");
     }
 
     println!();
-    println!("  ⚠️  CTF Exchange NOT approved: {}", ctf_exchange);
+    println!("  ⚠️  CTF Exchange NOT approved: {ctf_exchange}");
     println!("      Users cannot trade on standard markets!");
     println!();
 
@@ -89,8 +89,8 @@ fn main() {
     ];
 
     for (name, addr) in &new_targets {
-        println!("  ✅ {}", name);
-        println!("       {}", addr);
+        println!("  ✅ {name}");
+        println!("       {addr}");
     }
 
     println!();
@@ -107,7 +107,7 @@ fn main() {
     println!("║          'exchange' (CTF Exchange).                                  ║");
     println!("║                                                                      ║");
     println!("║ Missing approval:                                                    ║");
-    println!("║   CTF Exchange: {}     ║", ctf_exchange);
+    println!("║   CTF Exchange: {ctf_exchange}     ║");
     println!("║                                                                      ║");
     println!("║ The fix: NEW code correctly approves config.exchange                 ║");
     println!("║                                                                      ║");
