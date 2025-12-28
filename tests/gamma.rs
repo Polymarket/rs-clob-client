@@ -680,7 +680,7 @@ mod comments {
                     "id": "1",
                     "body": "Great market!",
                     "parentEntityType": "Event",
-                    "parentEntityID": "123",
+                    "parentEntityID": 123,
                     "userAddress": "0x56687bf447db6ffa42ffe2204a05edaa20f55839",
                     "createdAt": "2024-01-15T10:30:00Z"
                 }
@@ -737,7 +737,7 @@ mod comments {
                     "id": "42",
                     "body": "This is the comment",
                     "parentEntityType": "Event",
-                    "parentEntityID": "100"
+                    "parentEntityID": 100
                 }
             ]));
         });
