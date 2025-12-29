@@ -39,7 +39,7 @@
 //! # Example
 //!
 //! ```no_run
-//! use polymarket_client_sdk::gamma::{Client, types::EventsRequest};
+//! use polymarket_client_sdk::gamma::{Client, types::request::EventsRequest};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // Create a client with the default endpoint
