@@ -17,12 +17,12 @@
 //! # Example
 //!
 //! ```rust, no_run
-//! use polymarket_client_sdk::rtds::RtdsClient;
+//! use polymarket_client_sdk::rtds::Client;
 //! use futures::StreamExt;
 //!
 //! #[tokio::main]
 //! async fn main() -> anyhow::Result<()> {
-//!     let client = RtdsClient::default();
+//!     let client = Client::default();
 //!
 //!     // Subscribe to BTC prices
 //!     let stream = client.subscribe_crypto_prices(Some(vec!["btcusdt".to_owned()]))?;
@@ -45,7 +45,7 @@ pub mod subscription;
 pub mod types;
 
 // Re-export commonly used types
-pub use client::RtdsClient;
+pub use client::Client;
 pub use config::{ReconnectConfig, RtdsConfig};
 pub use connection::ConnectionState;
 pub use error::RtdsError;

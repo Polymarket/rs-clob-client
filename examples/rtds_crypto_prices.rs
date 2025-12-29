@@ -12,12 +12,12 @@
 )]
 
 use futures::StreamExt as _;
-use polymarket_client_sdk::rtds::RtdsClient;
+use polymarket_client_sdk::rtds::Client;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Create a new RTDS client with default configuration
-    let client = RtdsClient::default();
+    let client = Client::default();
 
     println!("Subscribing to crypto prices from Binance...\n");
 

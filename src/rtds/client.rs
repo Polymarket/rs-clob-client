@@ -1,8 +1,3 @@
-#![expect(
-    clippy::module_name_repetitions,
-    reason = "Public RTDS types intentionally include the module name for clarity"
-)]
-
 use std::sync::Arc;
 
 use alloy::primitives::Address;
@@ -25,12 +20,12 @@ use crate::auth::Credentials;
 /// # Examples
 ///
 /// ```rust, no_run
-/// use polymarket_client_sdk::rtds::RtdsClient;
+/// use polymarket_client_sdk::rtds::Client;
 /// use futures::StreamExt;
 ///
 /// #[tokio::main]
 /// async fn main() -> anyhow::Result<()> {
-///     let client = RtdsClient::default();
+///     let client = Client::default();
 ///
 ///     // Subscribe to BTC and ETH prices from Binance
 ///     let symbols = vec!["btcusdt".to_owned(), "ethusdt".to_owned()];
@@ -45,11 +40,11 @@ use crate::auth::Credentials;
 /// }
 /// ```
 #[derive(Clone)]
-pub struct RtdsClient {
-    inner: Arc<RtdsClientInner>,
+pub struct Client {
+    inner: Arc<ClientInner>,
 }
 
-struct RtdsClientInner {
+struct ClientInner {
     /// Configuration for the RTDS connection
     #[expect(dead_code, reason = "Config stored for potential future use")]
     config: RtdsConfig,
@@ -59,14 +54,14 @@ struct RtdsClientInner {
     subscriptions: Arc<SubscriptionManager>,
 }
 
-impl Default for RtdsClient {
+impl Default for Client {
     fn default() -> Self {
         Self::new("wss://ws-live-data.polymarket.com", RtdsConfig::default())
             .expect("RTDS client with default endpoint should succeed")
     }
 }
 
-impl RtdsClient {
+impl Client {
     /// Create a new RTDS client with the specified endpoint and configuration.
     ///
     /// # Arguments
@@ -77,10 +72,10 @@ impl RtdsClient {
     /// # Examples
     ///
     /// ```rust, no_run
-    /// use polymarket_client_sdk::rtds::{RtdsClient, RtdsConfig};
+    /// use polymarket_client_sdk::rtds::{Client, RtdsConfig};
     ///
     /// // Use default configuration
-    /// let client = RtdsClient::new("wss://ws-live-data.polymarket.com", RtdsConfig::default())?;
+    /// let client = Client::new("wss://ws-live-data.polymarket.com", RtdsConfig::default())?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn new(endpoint: &str, config: RtdsConfig) -> Result<Self> {
@@ -92,7 +87,7 @@ impl RtdsClient {
         subscriptions.start_reconnection_handler();
 
         Ok(Self {
-            inner: Arc::new(RtdsClientInner {
+            inner: Arc::new(ClientInner {
                 config,
                 connection,
                 subscriptions,
@@ -114,11 +109,11 @@ impl RtdsClient {
     /// # Examples
     ///
     /// ```rust, no_run
-    /// use polymarket_client_sdk::rtds::RtdsClient;
+    /// use polymarket_client_sdk::rtds::Client;
     /// use futures::StreamExt;
     ///
     /// # async fn example() -> anyhow::Result<()> {
-    /// let client = RtdsClient::default();
+    /// let client = Client::default();
     ///
     /// // Subscribe to specific symbols
     /// let stream = client.subscribe_crypto_prices(Some(vec![
@@ -184,11 +179,11 @@ impl RtdsClient {
     /// # Examples
     ///
     /// ```rust, no_run
-    /// use polymarket_client_sdk::rtds::RtdsClient;
+    /// use polymarket_client_sdk::rtds::Client;
     /// use futures::StreamExt;
     ///
     /// # async fn example() -> anyhow::Result<()> {
-    /// let client = RtdsClient::default();
+    /// let client = Client::default();
     ///
     /// // Subscribe to ETH/USD price feed
     /// let stream = client.subscribe_chainlink_prices(Some("eth/usd".to_owned()))?;
@@ -246,11 +241,11 @@ impl RtdsClient {
     /// # Examples
     ///
     /// ```rust, no_run
-    /// use polymarket_client_sdk::rtds::{RtdsClient, CommentType};
+    /// use polymarket_client_sdk::rtds::{Client, CommentType};
     /// use futures::StreamExt;
     ///
     /// # async fn example() -> anyhow::Result<()> {
-    /// let client = RtdsClient::default();
+    /// let client = Client::default();
     ///
     /// // Subscribe to new comment events only
     /// let stream = client.subscribe_comments(Some(CommentType::CommentCreated))?;
@@ -312,11 +307,11 @@ impl RtdsClient {
     /// # Examples
     ///
     /// ```rust, no_run
-    /// use polymarket_client_sdk::rtds::{RtdsClient, Subscription};
+    /// use polymarket_client_sdk::rtds::{Client, Subscription};
     /// use futures::StreamExt;
     ///
     /// # async fn example() -> anyhow::Result<()> {
-    /// let client = RtdsClient::default();
+    /// let client = Client::default();
     ///
     /// // Create a custom subscription
     /// let sub = Subscription::crypto_prices(None);
