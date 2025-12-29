@@ -87,13 +87,36 @@ impl Client {
     ///
     /// Returns an error if the URL is invalid or the HTTP client cannot be created.
     pub fn new(host: &str) -> Result<Client> {
+        Self::new_with_proxy(host, None)
+    }
+
+    /// Creates a new Data API client with a custom host URL and optional proxy.
+    ///
+    /// # Arguments
+    ///
+    /// * `host` - The base URL for the Data API (e.g., `https://data-api.polymarket.com`).
+    /// * `proxy` - Optional proxy URL (e.g., `"http://user:pass@proxy:8080"` or `"socks5://127.0.0.1:1080"`).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the URL is invalid, the proxy URL is invalid, or the HTTP client cannot be created.
+    pub fn new_with_proxy(host: &str, proxy: Option<&str>) -> Result<Client> {
         let mut headers = HeaderMap::new();
 
         headers.insert("User-Agent", HeaderValue::from_static("rs_clob_client"));
         headers.insert("Accept", HeaderValue::from_static("*/*"));
         headers.insert("Connection", HeaderValue::from_static("keep-alive"));
         headers.insert("Content-Type", HeaderValue::from_static("application/json"));
-        let client = ReqwestClient::builder().default_headers(headers).build()?;
+
+        let mut builder = ReqwestClient::builder().default_headers(headers);
+
+        if let Some(proxy_url) = proxy {
+            let proxy = reqwest::Proxy::all(proxy_url)
+                .map_err(|e| Error::validation(format!("invalid proxy URL '{proxy_url}': {e}")))?;
+            builder = builder.proxy(proxy);
+        }
+
+        let client = builder.build()?;
 
         Ok(Self {
             host: Url::parse(host)?,
