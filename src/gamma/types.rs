@@ -118,7 +118,10 @@ pub struct RelatedTagsBySlugRequest {
 pub struct EventsRequest {
     pub limit: Option<i32>,
     pub offset: Option<i32>,
-    pub order: Option<String>,
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[builder(default)]
+    pub order: Vec<String>,
     pub ascending: Option<bool>,
     #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
