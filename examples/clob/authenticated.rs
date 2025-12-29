@@ -11,8 +11,8 @@ use polymarket_client_sdk::clob::types::request::{
 };
 use polymarket_client_sdk::clob::types::{Amount, OrderType, Side};
 use polymarket_client_sdk::clob::{Client, Config};
+use polymarket_client_sdk::types::Decimal;
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
-use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 
 #[tokio::main]
