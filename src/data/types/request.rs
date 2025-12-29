@@ -13,11 +13,12 @@ use rust_decimal::Decimal;
 use serde::Serialize;
 use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as, skip_serializing_none};
 
-use super::common::{
-    ActivitySortBy, ActivityType, Address, BoundedIntError, ClosedPositionSortBy, Hash64,
+use super::{
+    ActivitySortBy, ActivityType, BoundedIntError, ClosedPositionSortBy, Hash64,
     LeaderboardCategory, LeaderboardOrderBy, MarketFilter, PositionSortBy, Side, SortDirection,
     TimePeriod, Title, TradeFilter,
 };
+use crate::types::Address;
 
 /// Converts a serializable request to a URL query string.
 ///

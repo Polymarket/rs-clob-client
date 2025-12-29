@@ -2,12 +2,12 @@
 
 use alloy::primitives::address;
 use polymarket_client_sdk::data::Client;
-use polymarket_client_sdk::data::types::common::{LeaderboardCategory, TimePeriod};
 use polymarket_client_sdk::data::types::request::{
     ActivityRequest, BuilderLeaderboardRequest, BuilderVolumeRequest, ClosedPositionsRequest,
     HoldersRequest, LiveVolumeRequest, OpenInterestRequest, PositionsRequest, TradedRequest,
     TraderLeaderboardRequest, TradesRequest, ValueRequest,
 };
+use polymarket_client_sdk::data::types::{LeaderboardCategory, TimePeriod};
 
 const EXAMPLE_MARKET: &str = "0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917";
 

@@ -7,6 +7,7 @@ pub mod data;
 pub mod error;
 #[cfg(feature = "gamma")]
 pub mod gamma;
+pub mod types;
 
 use alloy::primitives::{Address, ChainId, address};
 use phf::phf_map;
