@@ -73,7 +73,7 @@ fn validate_bound(
 ///
 /// ```
 /// use alloy::primitives::address;
-/// use polymarket_client_sdk::data::{types::request::PositionsRequest, types::common::{PositionSortBy, SortDirection}};
+/// use polymarket_client_sdk::data::{types::request::PositionsRequest, types::{PositionSortBy, SortDirection}};
 ///
 /// let request = PositionsRequest::builder()
 ///     .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
@@ -134,7 +134,7 @@ pub struct PositionsRequest {
 ///
 /// ```
 /// use alloy::primitives::address;
-/// use polymarket_client_sdk::data::{types::request::TradesRequest, types::common::{Side, TradeFilter}};
+/// use polymarket_client_sdk::data::{types::request::TradesRequest, types::{Side, TradeFilter}};
 /// use rust_decimal_macros::dec;
 ///
 /// let request = TradesRequest::builder()
@@ -194,7 +194,7 @@ pub struct TradesRequest {
 ///
 /// ```
 /// use alloy::primitives::address;
-/// use polymarket_client_sdk::data::{types::request::ActivityRequest, types::common::ActivityType};
+/// use polymarket_client_sdk::data::{types::request::ActivityRequest, types::ActivityType};
 ///
 /// let request = ActivityRequest::builder()
 ///     .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
@@ -377,7 +377,7 @@ pub struct LiveVolumeRequest {
 ///
 /// ```
 /// use alloy::primitives::address;
-/// use polymarket_client_sdk::data::{types::request::ClosedPositionsRequest, types::common::ClosedPositionSortBy};
+/// use polymarket_client_sdk::data::{types::request::ClosedPositionsRequest, types::ClosedPositionSortBy};
 ///
 /// let request = ClosedPositionsRequest::builder()
 ///     .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
@@ -426,7 +426,7 @@ pub struct ClosedPositionsRequest {
 /// # Example
 ///
 /// ```
-/// use polymarket_client_sdk::data::{types::request::BuilderLeaderboardRequest, types::common::TimePeriod};
+/// use polymarket_client_sdk::data::{types::request::BuilderLeaderboardRequest, types::TimePeriod};
 ///
 /// let request = BuilderLeaderboardRequest::builder()
 ///     .time_period(TimePeriod::Week)
@@ -459,7 +459,7 @@ pub struct BuilderLeaderboardRequest {
 /// # Example
 ///
 /// ```
-/// use polymarket_client_sdk::data::{types::request::BuilderVolumeRequest, types::common::TimePeriod};
+/// use polymarket_client_sdk::data::{types::request::BuilderVolumeRequest, types::TimePeriod};
 ///
 /// let request = BuilderVolumeRequest::builder()
 ///     .time_period(TimePeriod::Month)
@@ -492,7 +492,7 @@ pub struct BuilderVolumeRequest {
 /// # Example
 ///
 /// ```
-/// use polymarket_client_sdk::data::{types::request::TraderLeaderboardRequest, types::common::{LeaderboardCategory, TimePeriod, LeaderboardOrderBy}};
+/// use polymarket_client_sdk::data::{types::request::TraderLeaderboardRequest, types::{LeaderboardCategory, TimePeriod, LeaderboardOrderBy}};
 ///
 /// let request = TraderLeaderboardRequest::builder()
 ///     .category(LeaderboardCategory::Politics)
