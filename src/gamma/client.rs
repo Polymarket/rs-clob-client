@@ -227,10 +227,6 @@ impl Client {
         self.request(request, None).await
     }
 
-    // =========================================================================
-    // Health
-    // =========================================================================
-
     /// Performs a health check on the API.
     ///
     /// Returns "OK" when the API is healthy.
@@ -256,10 +252,6 @@ impl Client {
         Ok(response.text().await?)
     }
 
-    // =========================================================================
-    // Sports
-    // =========================================================================
-
     /// Lists teams with optional filters.
     pub async fn teams(&self, request: &TeamsRequest) -> Result<Vec<Team>> {
         self.get("teams", request).await
@@ -274,10 +266,6 @@ impl Client {
     pub async fn sports_market_types(&self) -> Result<SportsMarketTypesResponse> {
         self.get("sports/market-types", &()).await
     }
-
-    // =========================================================================
-    // Tags
-    // =========================================================================
 
     /// Lists tags with optional filters.
     pub async fn tags(&self, request: &TagsRequest) -> Result<Vec<Tag>> {
@@ -334,10 +322,6 @@ impl Client {
         .await
     }
 
-    // =========================================================================
-    // Events
-    // =========================================================================
-
     /// Lists events with optional filters.
     pub async fn events(&self, request: &EventsRequest) -> Result<Vec<Event>> {
         self.get("events", request).await
@@ -359,10 +343,6 @@ impl Client {
         self.get(&format!("events/{}/tags", request.id), request)
             .await
     }
-
-    // =========================================================================
-    // Markets
-    // =========================================================================
 
     /// Lists markets with optional filters.
     pub async fn markets(&self, request: &MarketsRequest) -> Result<Vec<Market>> {
@@ -386,10 +366,6 @@ impl Client {
             .await
     }
 
-    // =========================================================================
-    // Series
-    // =========================================================================
-
     /// Lists series with optional filters.
     pub async fn series(&self, request: &SeriesListRequest) -> Result<Vec<Series>> {
         self.get("series", request).await
@@ -399,10 +375,6 @@ impl Client {
     pub async fn series_by_id(&self, request: &SeriesByIdRequest) -> Result<Series> {
         self.get(&format!("series/{}", request.id), request).await
     }
-
-    // =========================================================================
-    // Comments
-    // =========================================================================
 
     /// Lists comments with optional filters.
     pub async fn comments(&self, request: &CommentsRequest) -> Result<Vec<Comment>> {
@@ -426,18 +398,10 @@ impl Client {
         .await
     }
 
-    // =========================================================================
-    // Profiles
-    // =========================================================================
-
     /// Gets a public profile by wallet address.
     pub async fn public_profile(&self, request: &PublicProfileRequest) -> Result<PublicProfile> {
         self.get("public-profile", request).await
     }
-
-    // =========================================================================
-    // Search
-    // =========================================================================
 
     /// Searches markets, events, and profiles.
     pub async fn search(&self, request: &SearchRequest) -> Result<SearchResults> {
