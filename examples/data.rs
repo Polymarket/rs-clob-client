@@ -1,9 +1,9 @@
 #![allow(clippy::print_stdout, reason = "Examples are okay to print to stdout")]
 
 use alloy::primitives::address;
-use polymarket_client_sdk::data_api::Client;
-use polymarket_client_sdk::data_api::common::{LeaderboardCategory, TimePeriod};
-use polymarket_client_sdk::data_api::request::{
+use polymarket_client_sdk::data::Client;
+use polymarket_client_sdk::data::common::{LeaderboardCategory, TimePeriod};
+use polymarket_client_sdk::data::request::{
     ActivityRequest, BuilderLeaderboardRequest, BuilderVolumeRequest, ClosedPositionsRequest,
     HoldersRequest, LiveVolumeRequest, OpenInterestRequest, PositionsRequest, TradedRequest,
     TraderLeaderboardRequest, TradesRequest, ValueRequest,

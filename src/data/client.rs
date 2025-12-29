@@ -7,7 +7,7 @@
 //!
 //! ```no_run
 //! use alloy::primitives::address;
-//! use polymarket_client_sdk::data_api::{Client, request::PositionsRequest};
+//! use polymarket_client_sdk::data::{Client, request::PositionsRequest};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let client = Client::default();
@@ -56,7 +56,7 @@ use crate::error::Error;
 /// # Example
 ///
 /// ```no_run
-/// use polymarket_client_sdk::data_api::Client;
+/// use polymarket_client_sdk::data::Client;
 ///
 /// // Create client with default endpoint
 /// let client = Client::default();
