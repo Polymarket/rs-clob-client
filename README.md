@@ -236,7 +236,7 @@ use alloy::signers::local::LocalSigner;
 use polymarket_client_sdk::auth::builder::Config as BuilderConfig;
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 use polymarket_client_sdk::clob::{Client, Config};
-use polymarket_client_sdk::clob::types::{SignatureType, TradesRequest};
+use polymarket_client_sdk::clob::types::{SignatureType, request::TradesRequest};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

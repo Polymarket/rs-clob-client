@@ -1069,7 +1069,7 @@ mod types {
 
         let req = PositionsRequest::builder()
             .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
-            .filter(MarketFilter::markets([hash1, hash2]))
+            .maybe_filter(MarketFilter::markets([hash1, hash2]))
             .build();
 
         let qs = to_query_string(&req);
@@ -1082,7 +1082,7 @@ mod types {
     fn event_id_filter_query_string() {
         let req = PositionsRequest::builder()
             .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
-            .filter(MarketFilter::event_ids([1, 2]))
+            .maybe_filter(MarketFilter::event_ids(["1".to_owned(), "2".to_owned()]))
             .build();
 
         let qs = to_query_string(&req);
@@ -1283,7 +1283,7 @@ mod request_query_string_extended {
     fn trades_request_full() {
         let req = TradesRequest::builder()
             .user(test_addr())
-            .filter(MarketFilter::markets([test_hash()]))
+            .maybe_filter(MarketFilter::markets([test_hash()]))
             .limit(50)
             .unwrap()
             .taker_only(true)
@@ -1302,7 +1302,7 @@ mod request_query_string_extended {
     fn activity_request_full() {
         let req = ActivityRequest::builder()
             .user(test_addr())
-            .filter(MarketFilter::event_ids([1]))
+            .maybe_filter(MarketFilter::event_ids(["1".to_owned()]))
             .limit(50)
             .unwrap()
             .start(1000)
@@ -1348,7 +1348,7 @@ mod request_query_string_extended {
     fn closed_positions_request_full() {
         let req = ClosedPositionsRequest::builder()
             .user(test_addr())
-            .filter(MarketFilter::markets([test_hash()]))
+            .maybe_filter(MarketFilter::markets([test_hash()]))
             .title("test")
             .limit(10)
             .unwrap()
@@ -1400,7 +1400,7 @@ mod request_query_string_extended {
     fn empty_market_filter_not_added() {
         let req = PositionsRequest::builder()
             .user(test_addr())
-            .filter(MarketFilter::markets([]))
+            .maybe_filter(MarketFilter::markets([]))
             .build();
 
         let qs = to_query_string(&req);
@@ -1411,7 +1411,7 @@ mod request_query_string_extended {
     fn empty_event_id_filter_not_added() {
         let req = PositionsRequest::builder()
             .user(test_addr())
-            .filter(MarketFilter::event_ids([]))
+            .maybe_filter(MarketFilter::event_ids([]))
             .build();
 
         let qs = to_query_string(&req);

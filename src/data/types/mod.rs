@@ -3,6 +3,7 @@ use std::fmt;
 use rust_decimal::Decimal;
 use serde::de::StdError;
 use serde::{Deserialize, Serialize};
+use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as};
 
 pub mod request;
 pub mod response;
@@ -263,51 +264,41 @@ pub enum LeaderboardOrderBy {
 /// let by_markets = MarketFilter::markets(["0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917".to_string()]);
 ///
 /// // Or filter by events (which may contain multiple markets)
-/// let by_events = MarketFilter::event_ids([123]);
+/// let by_events = MarketFilter::event_ids(["123".to_owned()]);
 /// ```
-#[derive(Debug, Clone)]
+#[serde_as]
+#[derive(Debug, Clone, Serialize)]
 #[non_exhaustive]
 pub enum MarketFilter {
     /// Filter by condition IDs (market identifiers).
-    Markets(Vec<String>),
+    #[serde(rename = "market")]
+    Markets(
+        #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        Vec<String>,
+    ),
     /// Filter by event IDs (groups of related markets).
-    EventIds(Vec<u64>),
+    #[serde(rename = "eventId")]
+    EventIds(
+        #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        Vec<String>,
+    ),
 }
 
 impl MarketFilter {
     /// Creates a filter for specific markets by their condition IDs.
     #[must_use]
-    pub fn markets<I: IntoIterator<Item = String>>(ids: I) -> Self {
-        Self::Markets(ids.into_iter().collect())
+    pub fn markets<I: IntoIterator<Item = String>>(ids: I) -> Option<Self> {
+        let v: Vec<String> = ids.into_iter().collect();
+        (!v.is_empty()).then_some(MarketFilter::Markets(v))
     }
 
     /// Creates a filter for all markets within the specified events.
     #[must_use]
-    pub fn event_ids<I: IntoIterator<Item = u64>>(ids: I) -> Self {
-        Self::EventIds(ids.into_iter().collect())
-    }
-}
-
-impl Serialize for MarketFilter {
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        use serde::ser::SerializeMap as _;
-        let mut map = serializer.serialize_map(Some(1))?;
-        match self {
-            Self::Markets(ids) if !ids.is_empty() => {
-                let s = ids.iter().map(String::as_str).collect::<Vec<_>>().join(",");
-                map.serialize_entry("market", &s)?;
-            }
-            Self::EventIds(ids) if !ids.is_empty() => {
-                let s = ids
-                    .iter()
-                    .map(std::string::ToString::to_string)
-                    .collect::<Vec<_>>()
-                    .join(",");
-                map.serialize_entry("eventId", &s)?;
-            }
-            _ => {}
-        }
-        map.end()
+    pub fn event_ids<I: IntoIterator<Item = String>>(ids: I) -> Option<Self> {
+        let v: Vec<String> = ids.into_iter().collect();
+        (!v.is_empty()).then_some(MarketFilter::EventIds(v))
     }
 }
 
@@ -367,7 +358,8 @@ impl StdError for BoundedIntError {}
 /// // Filter trades with at least 50 tokens
 /// let filter = TradeFilter::tokens(dec!(50)).unwrap();
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct TradeFilter {
     /// The type of filter (cash or tokens).
@@ -408,16 +400,6 @@ impl TradeFilter {
     /// Returns [`TradeFilterError`] if the amount is negative.
     pub fn tokens(amount: Decimal) -> Result<Self, TradeFilterError> {
         Self::new(FilterType::Tokens, amount)
-    }
-}
-
-impl Serialize for TradeFilter {
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        use serde::ser::SerializeMap as _;
-        let mut map = serializer.serialize_map(Some(2))?;
-        map.serialize_entry("filterType", &self.filter_type)?;
-        map.serialize_entry("filterAmount", &self.filter_amount)?;
-        map.end()
     }
 }
 
