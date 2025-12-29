@@ -21,7 +21,7 @@ rust-version = "1.88.0" # MSRV
 
 [features]
 default = []
-data-api = ["dep:serde_urlencoded"]
+data = ["dep:serde_urlencoded"]
 gamma = ["dep:serde_urlencoded"]
 tracing = ["dep:tracing"]
 ws = ["dep:backoff", "dep:bitflags", "dep:tokio", "dep:tokio-tungstenite"]
