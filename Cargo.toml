@@ -23,6 +23,7 @@ rust-version = "1.88.0" # MSRV
 default = []
 data-api = ["dep:serde_urlencoded"]
 gamma = ["dep:serde_urlencoded"]
+bridge = []
 tracing = ["dep:tracing"]
 ws = ["dep:backoff", "dep:bitflags", "dep:tokio", "dep:tokio-tungstenite"]
 
@@ -114,6 +115,11 @@ required-features = ["data-api"]
 name = "gamma"
 path = "examples/gamma.rs"
 required-features = ["gamma"]
+
+[[example]]
+name = "bridge"
+path = "examples/bridge.rs"
+required-features = ["bridge"]
 
 [[example]]
 name = "websocket_orderbook"
