@@ -31,10 +31,12 @@ use reqwest::{
 use serde::de::DeserializeOwned;
 use url::Url;
 
+use serde::Serialize;
+
 use super::request::{
     ActivityRequest, BuilderLeaderboardRequest, BuilderVolumeRequest, ClosedPositionsRequest,
-    HoldersRequest, LiveVolumeRequest, OpenInterestRequest, PositionsRequest, ToQueryString,
-    TradedRequest, TraderLeaderboardRequest, TradesRequest, ValueRequest,
+    HoldersRequest, LiveVolumeRequest, OpenInterestRequest, PositionsRequest, TradedRequest,
+    TraderLeaderboardRequest, TradesRequest, ValueRequest, to_query_string,
 };
 use super::response::{
     Activity, BuilderLeaderboardEntry, BuilderVolumeEntry, ClosedPosition, Health, LiveVolume,
@@ -169,12 +171,12 @@ impl Client {
         &self.host
     }
 
-    async fn get<Req: ToQueryString, Res: DeserializeOwned>(
+    async fn get<Req: Serialize, Res: DeserializeOwned>(
         &self,
         path: &str,
         req: &Req,
     ) -> Result<Res> {
-        let query = req.query_string();
+        let query = to_query_string(req);
         let request = self
             .client
             .request(Method::GET, format!("{}{path}{query}", self.host))

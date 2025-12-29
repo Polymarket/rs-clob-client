@@ -64,6 +64,5 @@ pub mod client;
 pub mod common;
 pub mod request;
 pub mod response;
-pub(crate) mod ser;
 
 pub use client::Client;

@@ -11,13 +11,26 @@
 use bon::Builder;
 use rust_decimal::Decimal;
 use serde::Serialize;
+use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as, skip_serializing_none};
 
 use super::common::{
     ActivitySortBy, ActivityType, Address, BoundedIntError, ClosedPositionSortBy, Hash64,
     LeaderboardCategory, LeaderboardOrderBy, MarketFilter, PositionSortBy, Side, SortDirection,
     TimePeriod, Title, TradeFilter,
 };
-use crate::data_api::ser::{comma_separated, comma_separated_vec, is_empty_vec, vec_is_empty};
+
+/// Converts a serializable request to a URL query string.
+///
+/// Returns an empty string if no parameters are set, otherwise returns
+/// a string starting with `?` followed by URL-encoded key-value pairs.
+pub fn to_query_string<T: Serialize>(req: &T) -> String {
+    let params = serde_urlencoded::to_string(req).unwrap_or_default();
+    if params.is_empty() {
+        params
+    } else {
+        format!("?{params}")
+    }
+}
 
 /// Validates that an i32 value is within the specified bounds.
 fn validate_bound(
@@ -32,27 +45,6 @@ fn validate_bound(
         Err(BoundedIntError::new(value, min, max, param_name))
     }
 }
-
-/// Trait for converting request types to URL query strings.
-///
-/// This trait is automatically implemented for all types that implement [`Serialize`].
-/// It uses [`serde_urlencoded`] to serialize the struct fields into a query string.
-pub trait ToQueryString: Serialize {
-    /// Converts the request to a URL query string.
-    ///
-    /// Returns an empty string if no parameters are set, otherwise returns
-    /// a string starting with `?` followed by URL-encoded key-value pairs.
-    fn query_string(&self) -> String {
-        let params = serde_urlencoded::to_string(self).unwrap_or_default();
-        if params.is_empty() {
-            params
-        } else {
-            format!("?{params}")
-        }
-    }
-}
-
-impl<T: Serialize> ToQueryString for T {}
 
 /// Request parameters for the `/positions` endpoint.
 ///
@@ -88,6 +80,7 @@ impl<T: Serialize> ToQueryString for T {}
 ///     .sort_direction(SortDirection::Desc)
 ///     .build();
 /// ```
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
 pub struct PositionsRequest {
@@ -95,34 +88,29 @@ pub struct PositionsRequest {
     #[builder(into)]
     pub user: Address,
     /// Filter by markets or events. Mutually exclusive options.
-    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    #[serde(flatten)]
     pub filter: Option<MarketFilter>,
     /// Minimum position size to include (default: 1).
-    #[serde(rename = "sizeThreshold", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "sizeThreshold")]
     pub size_threshold: Option<Decimal>,
     /// Only return positions that can be redeemed (default: false).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub redeemable: Option<bool>,
     /// Only return positions that can be merged (default: false).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub mergeable: Option<bool>,
     /// Maximum number of positions to return (0-500, default: 100).
     #[builder(with = |v: i32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 500, "limit") })]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i32>,
     /// Pagination offset (0-10000, default: 0).
     #[builder(with = |v: i32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 10000, "offset") })]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<i32>,
     /// Sort criteria (default: TOKENS).
-    #[serde(rename = "sortBy", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "sortBy")]
     pub sort_by: Option<PositionSortBy>,
     /// Sort direction (default: DESC).
-    #[serde(rename = "sortDirection", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "sortDirection")]
     pub sort_direction: Option<SortDirection>,
     /// Filter by market title substring (max 100 chars).
     #[builder(into)]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<Title>,
 }
 
@@ -154,32 +142,29 @@ pub struct PositionsRequest {
 ///     .trade_filter(TradeFilter::cash(dec!(100)).unwrap())
 ///     .build();
 /// ```
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
 #[non_exhaustive]
 pub struct TradesRequest {
     /// Filter by user address.
     #[builder(into)]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub user: Option<Address>,
     /// Filter by markets or events. Mutually exclusive options.
-    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    #[serde(flatten)]
     pub filter: Option<MarketFilter>,
     /// Maximum number of trades to return (0-10000, default: 100).
     #[builder(with = |v: i32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 10000, "limit") })]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i32>,
     /// Pagination offset (0-10000, default: 0).
     #[builder(with = |v: i32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 10000, "offset") })]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<i32>,
     /// Only return taker trades (default: true).
-    #[serde(rename = "takerOnly", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "takerOnly")]
     pub taker_only: Option<bool>,
     /// Filter by minimum trade size. Must provide both type and amount.
-    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    #[serde(flatten)]
     pub trade_filter: Option<TradeFilter>,
     /// Filter by trade side (BUY or SELL).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub side: Option<Side>,
 }
 
@@ -215,6 +200,8 @@ pub struct TradesRequest {
 ///     .activity_types(vec![ActivityType::Trade, ActivityType::Redeem])
 ///     .build();
 /// ```
+#[serde_as]
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
 pub struct ActivityRequest {
@@ -222,37 +209,30 @@ pub struct ActivityRequest {
     #[builder(into)]
     pub user: Address,
     /// Filter by markets or events. Mutually exclusive options.
-    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    #[serde(flatten)]
     pub filter: Option<MarketFilter>,
     /// Filter by activity types.
-    #[serde(
-        rename = "type",
-        serialize_with = "comma_separated",
-        skip_serializing_if = "is_empty_vec"
-    )]
-    pub activity_types: Option<Vec<ActivityType>>,
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, ActivityType>")]
+    #[builder(default)]
+    #[serde(rename = "type", skip_serializing_if = "Vec::is_empty")]
+    pub activity_types: Vec<ActivityType>,
     /// Maximum number of activities to return (0-500, default: 100).
     #[builder(with = |v: i32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 500, "limit") })]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i32>,
     /// Pagination offset (0-10000, default: 0).
     #[builder(with = |v: i32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 10000, "offset") })]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<i32>,
     /// Start timestamp filter (Unix timestamp, minimum: 0).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub start: Option<u64>,
     /// End timestamp filter (Unix timestamp, minimum: 0).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub end: Option<u64>,
     /// Sort criteria (default: TIMESTAMP).
-    #[serde(rename = "sortBy", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "sortBy")]
     pub sort_by: Option<ActivitySortBy>,
     /// Sort direction (default: DESC).
-    #[serde(rename = "sortDirection", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "sortDirection")]
     pub sort_direction: Option<SortDirection>,
     /// Filter by trade side (only applies to TRADE activities).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub side: Option<Side>,
 }
 
@@ -279,23 +259,21 @@ pub struct ActivityRequest {
 ///     .markets(vec!["0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917".to_string()])
 ///     .build();
 /// ```
+#[serde_as]
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
 pub struct HoldersRequest {
     /// Condition IDs of markets to query (required).
-    #[serde(
-        rename = "market",
-        serialize_with = "comma_separated_vec",
-        skip_serializing_if = "vec_is_empty"
-    )]
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde(rename = "market", skip_serializing_if = "Vec::is_empty")]
     pub markets: Vec<Hash64>,
     /// Maximum holders to return per token (0-20, default: 20).
     #[builder(with = |v: i32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 20, "limit") })]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i32>,
     /// Minimum balance to include (0-999999, default: 1).
     #[builder(with = |v: i32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 999_999, "min_balance") })]
-    #[serde(rename = "minBalance", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "minBalance")]
     pub min_balance: Option<i32>,
 }
 
@@ -325,6 +303,8 @@ pub struct TradedRequest {
 /// # Optional Parameters
 ///
 /// - `markets`: Filter by specific condition IDs.
+#[serde_as]
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
 pub struct ValueRequest {
@@ -332,12 +312,10 @@ pub struct ValueRequest {
     #[builder(into)]
     pub user: Address,
     /// Optional list of condition IDs to filter by.
-    #[serde(
-        rename = "market",
-        serialize_with = "comma_separated",
-        skip_serializing_if = "is_empty_vec"
-    )]
-    pub markets: Option<Vec<Hash64>>,
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[builder(default)]
+    #[serde(rename = "market", skip_serializing_if = "Vec::is_empty")]
+    pub markets: Vec<Hash64>,
 }
 
 /// Request parameters for the `/oi` (open interest) endpoint.
@@ -349,16 +327,16 @@ pub struct ValueRequest {
 ///
 /// - `markets`: Filter by specific condition IDs. If not provided, returns
 ///   open interest for all markets.
+#[serde_as]
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
 #[non_exhaustive]
 pub struct OpenInterestRequest {
     /// Optional list of condition IDs to filter by.
-    #[serde(
-        rename = "market",
-        serialize_with = "comma_separated",
-        skip_serializing_if = "is_empty_vec"
-    )]
-    pub markets: Option<Vec<Hash64>>,
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[builder(default)]
+    #[serde(rename = "market", skip_serializing_if = "Vec::is_empty")]
+    pub markets: Vec<Hash64>,
 }
 
 /// Request parameters for the `/live-volume` endpoint.
@@ -405,6 +383,7 @@ pub struct LiveVolumeRequest {
 ///     .sort_by(ClosedPositionSortBy::Timestamp)
 ///     .build();
 /// ```
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
 pub struct ClosedPositionsRequest {
@@ -412,25 +391,22 @@ pub struct ClosedPositionsRequest {
     #[builder(into)]
     pub user: Address,
     /// Filter by markets or events. Mutually exclusive options.
-    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    #[serde(flatten)]
     pub filter: Option<MarketFilter>,
     /// Filter by market title substring (max 100 chars).
     #[builder(into)]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<Title>,
     /// Maximum number of positions to return (0-50, default: 10).
     #[builder(with = |v: i32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 50, "limit") })]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i32>,
     /// Pagination offset (0-100000, default: 0).
     #[builder(with = |v: i32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 100_000, "offset") })]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<i32>,
     /// Sort criteria (default: REALIZEDPNL).
-    #[serde(rename = "sortBy", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "sortBy")]
     pub sort_by: Option<ClosedPositionSortBy>,
     /// Sort direction (default: DESC).
-    #[serde(rename = "sortDirection", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "sortDirection")]
     pub sort_direction: Option<SortDirection>,
 }
 
@@ -455,19 +431,18 @@ pub struct ClosedPositionsRequest {
 ///     .time_period(TimePeriod::Week)
 ///     .build();
 /// ```
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
 #[non_exhaustive]
 pub struct BuilderLeaderboardRequest {
     /// Time period to aggregate results over (default: DAY).
-    #[serde(rename = "timePeriod", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "timePeriod")]
     pub time_period: Option<TimePeriod>,
     /// Maximum number of builders to return (0-50, default: 25).
     #[builder(with = |v: i32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 50, "limit") })]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i32>,
     /// Pagination offset (0-1000, default: 0).
     #[builder(with = |v: i32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 1000, "offset") })]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<i32>,
 }
 
@@ -489,11 +464,12 @@ pub struct BuilderLeaderboardRequest {
 ///     .time_period(TimePeriod::Month)
 ///     .build();
 /// ```
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
 #[non_exhaustive]
 pub struct BuilderVolumeRequest {
     /// Time period to fetch daily records for (default: DAY).
-    #[serde(rename = "timePeriod", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "timePeriod")]
     pub time_period: Option<TimePeriod>,
 }
 
@@ -523,32 +499,29 @@ pub struct BuilderVolumeRequest {
 ///     .order_by(LeaderboardOrderBy::Vol)
 ///     .build();
 /// ```
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
 #[non_exhaustive]
 pub struct TraderLeaderboardRequest {
     /// Market category filter (default: OVERALL).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub category: Option<LeaderboardCategory>,
     /// Time period for leaderboard results (default: DAY).
-    #[serde(rename = "timePeriod", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "timePeriod")]
     pub time_period: Option<TimePeriod>,
     /// Ordering criteria (default: PNL).
-    #[serde(rename = "orderBy", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "orderBy")]
     pub order_by: Option<LeaderboardOrderBy>,
     /// Maximum number of traders to return (1-50, default: 25).
     #[builder(with = |v: i32| -> Result<_, BoundedIntError> { validate_bound(v, 1, 50, "limit") })]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i32>,
     /// Pagination offset (0-1000, default: 0).
     #[builder(with = |v: i32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 1000, "offset") })]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<i32>,
     /// Filter to a single user by address.
     #[builder(into)]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub user: Option<Address>,
     /// Filter to a single user by username.
     #[builder(into)]
-    #[serde(rename = "userName", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "userName")]
     pub user_name: Option<String>,
 }
