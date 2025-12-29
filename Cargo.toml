@@ -117,12 +117,12 @@ required-features = ["gamma"]
 
 [[example]]
 name = "websocket_orderbook"
-path = "examples/websocket_orderbook.rs"
+path = "examples/clob/ws/orderbook.rs"
 required-features = ["ws"]
 
 [[example]]
 name = "websocket_user"
-path = "examples/websocket_user.rs"
+path = "examples/clob/ws/user.rs"
 required-features = ["ws"]
 
 # https://rust-lang.github.io/rust-clippy/master/index.html?versions=lte%3A88
