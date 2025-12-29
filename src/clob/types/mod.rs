@@ -150,19 +150,14 @@ pub enum SignatureType {
 pub enum OrderStatusType {
     #[serde(alias = "live")]
     Live,
-
     #[serde(alias = "matched")]
     Matched,
-
     #[serde(alias = "canceled")]
     Canceled,
-
     #[serde(alias = "delayed")]
     Delayed,
-
     #[serde(alias = "unmatched")]
     Unmatched,
-
     #[serde(other)]
     Unknown,
 }

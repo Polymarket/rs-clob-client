@@ -15,7 +15,8 @@ use tokio::sync::broadcast::error::RecvError;
 use super::connection::{ConnectionManager, ConnectionState};
 use super::error::WsError;
 use super::interest::{InterestTracker, MessageInterest};
-use super::types::{SubscriptionRequest, WsMessage};
+use super::types::request::SubscriptionRequest;
+use super::types::response::WsMessage;
 use crate::Result;
 use crate::auth::Credentials;
 
