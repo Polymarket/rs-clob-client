@@ -1,8 +1,8 @@
 #![allow(clippy::print_stdout, reason = "Examples are okay to print to stdout")]
 
-use polymarket_client_sdk::clob::types::{
-    LastTradePriceRequest, MidpointRequest, OrderBookSummaryRequest, PriceRequest, Side,
-    SpreadRequest,
+use polymarket_client_sdk::clob::types::Side;
+use polymarket_client_sdk::clob::types::request::{
+    LastTradePriceRequest, MidpointRequest, OrderBookSummaryRequest, PriceRequest, SpreadRequest,
 };
 use polymarket_client_sdk::clob::{Client, Config};
 

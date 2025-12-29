@@ -12,9 +12,9 @@ use crate::Result;
 use crate::auth::Kind as AuthKind;
 use crate::auth::state::Authenticated;
 use crate::clob::Client;
+use crate::clob::types::request::OrderBookSummaryRequest;
 use crate::clob::types::{
-    Amount, AmountInner, Order, OrderBookSummaryRequest, OrderType, Side, SignableOrder,
-    SignatureType,
+    Amount, AmountInner, Order, OrderType, Side, SignableOrder, SignatureType,
 };
 use crate::error::Error;
 

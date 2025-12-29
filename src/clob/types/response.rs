@@ -1,0 +1,684 @@
+#![allow(
+    clippy::module_name_repetitions,
+    reason = "Response suffix is intentional for clarity"
+)]
+
+use std::collections::HashMap;
+use std::fmt;
+
+use alloy::primitives::Address;
+use bon::Builder;
+use chrono::{DateTime, NaiveDate, Utc};
+use rust_decimal::Decimal;
+use serde::de::Visitor;
+use serde::{Deserialize, Deserializer, Serialize, de};
+use serde_with::{DefaultOnNull, TimestampMilliSeconds, TimestampSeconds, TryFromInto, serde_as};
+use sha2::{Digest as _, Sha256};
+
+use crate::Result;
+use crate::auth::ApiKey;
+use crate::clob::types::{OrderStatusType, OrderType, Side, TickSize, TraderSide};
+
+#[non_exhaustive]
+#[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
+pub struct MidpointResponse {
+    pub mid: Decimal,
+}
+
+#[non_exhaustive]
+#[derive(Clone, Debug, Default, Deserialize, Builder, PartialEq)]
+#[serde(transparent)]
+pub struct MidpointsResponse {
+    pub midpoints: HashMap<String, Decimal>,
+}
+
+#[non_exhaustive]
+#[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
+pub struct PriceResponse {
+    pub price: Decimal,
+}
+
+#[non_exhaustive]
+#[derive(Clone, Debug, Default, Deserialize, Builder, PartialEq)]
+#[serde(transparent)]
+pub struct PricesResponse {
+    pub prices: Option<HashMap<String, HashMap<Side, Decimal>>>,
+}
+
+#[non_exhaustive]
+#[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
+pub struct SpreadResponse {
+    pub spread: Decimal,
+}
+
+#[non_exhaustive]
+#[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
+pub struct SpreadsResponse {
+    pub spreads: Option<HashMap<String, Decimal>>,
+}
+
+#[non_exhaustive]
+#[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
+#[builder(on(TickSize, into))]
+pub struct TickSizeResponse {
+    pub minimum_tick_size: TickSize,
+}
+
+#[non_exhaustive]
+#[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
+pub struct NegRiskResponse {
+    pub neg_risk: bool,
+}
+
+#[non_exhaustive]
+#[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
+pub struct FeeRateResponse {
+    pub base_fee: u32,
+}
+
+#[non_exhaustive]
+#[serde_as]
+#[derive(Clone, Debug, Serialize, Deserialize, Builder, PartialEq)]
+#[builder(on(String, into))]
+pub struct OrderBookSummaryResponse {
+    pub market: String,
+    pub asset_id: String,
+    #[serde_as(as = "TimestampMilliSeconds<String>")]
+    pub timestamp: DateTime<Utc>,
+    #[serde(default)]
+    pub hash: Option<String>,
+    #[builder(default)]
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnNull")]
+    pub bids: Vec<OrderSummary>,
+    #[builder(default)]
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnNull")]
+    pub asks: Vec<OrderSummary>,
+    pub min_order_size: Decimal,
+    pub neg_risk: bool,
+    #[serde_as(as = "TryFromInto<Decimal>")]
+    pub tick_size: TickSize,
+}
+
+impl OrderBookSummaryResponse {
+    pub fn hash(&self) -> Result<String> {
+        let json = serde_json::to_string(&self)?;
+
+        let mut hasher = Sha256::new();
+        hasher.update(json.as_bytes());
+        let result = hasher.finalize();
+
+        Ok(format!("{result:x}"))
+    }
+}
+
+#[non_exhaustive]
+#[derive(Clone, Debug, Serialize, Deserialize, Hash, Builder, PartialEq)]
+pub struct OrderSummary {
+    pub price: Decimal,
+    pub size: Decimal,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Deserialize, Builder, PartialEq)]
+pub struct LastTradePriceResponse {
+    pub price: Decimal,
+    pub side: Side,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Deserialize, Builder, PartialEq)]
+#[builder(on(String, into))]
+pub struct LastTradesPricesResponse {
+    pub token_id: String,
+    pub price: Decimal,
+    pub side: Side,
+}
+
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "The current API has these fields, so we have to capture this"
+)]
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Deserialize, Clone, Builder, PartialEq)]
+#[builder(on(String, into))]
+pub struct MarketResponse {
+    pub enable_order_book: bool,
+    pub active: bool,
+    pub closed: bool,
+    pub archived: bool,
+    pub accepting_orders: bool,
+    pub accepting_order_timestamp: Option<DateTime<Utc>>,
+    pub minimum_order_size: Decimal,
+    pub minimum_tick_size: Decimal,
+    pub condition_id: String,
+    pub question_id: String,
+    pub question: String,
+    pub description: String,
+    pub market_slug: String,
+    pub end_date_iso: Option<DateTime<Utc>>,
+    pub game_start_time: Option<DateTime<Utc>>,
+    pub seconds_delay: u64,
+    pub fpmm: String,
+    pub maker_base_fee: Decimal,
+    pub taker_base_fee: Decimal,
+    pub notifications_enabled: bool,
+    pub neg_risk: bool,
+    pub neg_risk_market_id: String,
+    pub neg_risk_request_id: String,
+    pub icon: String,
+    pub image: String,
+    pub rewards: Rewards,
+    pub is_50_50_outcome: bool,
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnNull")]
+    pub tokens: Vec<Token>,
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnNull")]
+    pub tags: Vec<String>,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Serialize, Deserialize, Clone, Builder, PartialEq)]
+#[builder(on(String, into))]
+pub struct Token {
+    pub token_id: String,
+    pub outcome: String,
+    pub price: Decimal,
+    #[serde(default)]
+    pub winner: bool,
+}
+
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "The current API has these fields"
+)]
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Default, Deserialize, Clone, Builder, PartialEq)]
+#[builder(on(String, into))]
+pub struct SimplifiedMarketResponse {
+    pub condition_id: String,
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnNull")]
+    pub tokens: Vec<Token>,
+    pub rewards: Rewards,
+    pub active: bool,
+    pub closed: bool,
+    pub archived: bool,
+    pub accepting_orders: bool,
+}
+
+#[non_exhaustive]
+#[derive(Clone, Debug, Default, Deserialize, Builder, PartialEq)]
+pub struct ApiKeysResponse {
+    #[serde(rename = "apiKeys")]
+    keys: Option<Vec<ApiKey>>,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
+pub struct BanStatusResponse {
+    pub closed_only: bool,
+}
+
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
+#[serde(rename_all = "camelCase")]
+#[builder(on(String, into))]
+pub struct PostOrderResponse {
+    pub error_msg: Option<String>,
+    #[serde(deserialize_with = "empty_string_as_zero")]
+    pub making_amount: Decimal,
+    #[serde(deserialize_with = "empty_string_as_zero")]
+    pub taking_amount: Decimal,
+    #[serde(rename = "orderID")]
+    pub order_id: String,
+    pub status: OrderStatusType,
+    pub success: bool,
+    #[builder(default)]
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnNull")]
+    pub transaction_hashes: Vec<String>,
+    #[builder(default)]
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnNull")]
+    pub trade_ids: Vec<String>,
+}
+
+pub fn empty_string_as_zero<'de, D>(deserializer: D) -> std::result::Result<Decimal, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+
+    if s.trim().is_empty() {
+        Ok(Decimal::ZERO)
+    } else {
+        s.parse::<Decimal>().map_err(serde::de::Error::custom)
+    }
+}
+
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
+#[builder(on(String, into))]
+pub struct OpenOrderResponse {
+    pub id: String,
+    pub status: OrderStatusType,
+    pub owner: ApiKey,
+    pub maker_address: Address,
+    pub market: String,
+    pub asset_id: String,
+    pub side: Side,
+    pub original_size: Decimal,
+    pub size_matched: Decimal,
+    pub price: Decimal,
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnNull")]
+    pub associate_trades: Vec<String>,
+    pub outcome: String,
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub created_at: DateTime<Utc>,
+    #[serde_as(as = "TimestampSeconds<String>")]
+    pub expiration: DateTime<Utc>,
+    pub order_type: OrderType,
+}
+
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Default, Deserialize, Builder, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CancelOrdersResponse {
+    #[builder(default)]
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnNull")]
+    pub canceled: Vec<String>,
+    #[builder(default)]
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnNull")]
+    pub not_canceled: HashMap<String, String>,
+}
+
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
+#[builder(on(String, into))]
+pub struct TradeResponse {
+    pub id: String,
+    pub taker_order_id: String,
+    pub market: String,
+    pub asset_id: String,
+    pub side: Side,
+    pub size: Decimal,
+    pub fee_rate_bps: Decimal,
+    pub price: Decimal,
+    pub status: OrderStatusType,
+    #[serde_as(as = "TimestampSeconds<String>")]
+    pub match_time: DateTime<Utc>,
+    #[serde_as(as = "TimestampSeconds<String>")]
+    pub last_update: DateTime<Utc>,
+    pub outcome: String,
+    pub bucket_index: u32,
+    pub owner: ApiKey,
+    pub maker_address: Address,
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnNull")]
+    pub maker_orders: Vec<MakerOrder>,
+    pub transaction_hash: String,
+    pub trader_side: TraderSide,
+    #[serde(default)]
+    pub error_msg: Option<String>,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
+pub struct NotificationResponse {
+    pub r#type: u32,
+    pub owner: ApiKey,
+    pub payload: NotificationPayload,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
+#[builder(on(String, into))]
+pub struct NotificationPayload {
+    pub asset_id: String,
+    pub condition_id: String,
+    #[serde(rename = "eventSlug")]
+    pub event_slug: String,
+    pub icon: String,
+    pub image: String,
+    pub market: String,
+    pub market_slug: String,
+    pub matched_size: Decimal,
+    pub order_id: String,
+    pub original_size: Decimal,
+    pub outcome: String,
+    pub outcome_index: u64,
+    pub owner: ApiKey,
+    pub price: Decimal,
+    pub question: String,
+    pub remaining_size: Decimal,
+    #[serde(rename = "seriesSlug")]
+    pub series_slug: String,
+    pub side: Side,
+    pub trade_id: String,
+    pub transaction_hash: String,
+    #[serde(alias = "type")]
+    pub order_type: OrderType,
+}
+
+#[non_exhaustive]
+#[allow(
+    clippy::allow_attributes,
+    reason = "Bon will generate code that has an allow attribute for some reason on the `allowances` field"
+)]
+#[allow(
+    clippy::allow_attributes_without_reason,
+    reason = "Bon will generate code that has an allow attribute for some reason on the `allowances` field"
+)]
+#[derive(Debug, Default, Clone, Deserialize, Builder, PartialEq)]
+pub struct BalanceAllowanceResponse {
+    pub balance: Decimal,
+    #[serde(default)]
+    #[builder(default)]
+    pub allowances: HashMap<Address, String>,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
+pub struct OrderScoringResponse {
+    pub scoring: bool,
+}
+
+pub type OrdersScoringResponse = HashMap<String, bool>;
+
+#[non_exhaustive]
+#[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
+pub struct PriceSideResponse {
+    pub side: Side,
+    pub price: Decimal,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Serialize, Deserialize, Clone, Builder, PartialEq)]
+pub struct RewardRate {
+    pub asset_address: Address,
+    pub rewards_daily_rate: Decimal,
+}
+
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, Builder, PartialEq)]
+pub struct Rewards {
+    #[builder(default)]
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnNull")]
+    pub rates: Vec<RewardRate>,
+    pub min_size: Decimal,
+    pub max_spread: Decimal,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
+#[builder(on(String, into))]
+pub struct MarketInfo {
+    pub condition_id: String,
+    pub asset_id: String,
+    pub question: String,
+    pub icon: String,
+    pub slug: String,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
+#[builder(on(String, into))]
+pub struct UserInfo {
+    pub address: Address,
+    pub username: String,
+    pub profile_picture: String,
+    pub optimized_profile_picture: String,
+    pub pseudonym: String,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
+#[builder(on(String, into))]
+pub struct MakerOrder {
+    pub order_id: String,
+    pub owner: ApiKey,
+    pub maker_address: Address,
+    pub matched_amount: Decimal,
+    pub price: Decimal,
+    pub fee_rate_bps: Decimal,
+    pub asset_id: String,
+    pub outcome: String,
+    pub side: Side,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
+#[builder(on(String, into))]
+pub struct UserEarningResponse {
+    pub date: NaiveDate,
+    pub condition_id: String,
+    pub asset_address: Address,
+    pub maker_address: Address,
+    pub earnings: Decimal,
+    pub asset_rate: Decimal,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
+#[builder(on(String, into))]
+pub struct TotalUserEarningResponse {
+    pub date: NaiveDate,
+    pub asset_address: Address,
+    pub maker_address: Address,
+    pub earnings: Decimal,
+    pub asset_rate: Decimal,
+}
+
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
+#[builder(on(String, into))]
+pub struct UserRewardsEarningResponse {
+    pub condition_id: String,
+    pub question: String,
+    pub market_slug: String,
+    pub event_slug: String,
+    pub image: String,
+    pub rewards_max_spread: Decimal,
+    pub rewards_min_size: Decimal,
+    pub market_competitiveness: Decimal,
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnNull")]
+    pub tokens: Vec<Token>,
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnNull")]
+    pub rewards_config: Vec<RewardsConfig>,
+    pub maker_address: Address,
+    pub earning_percentage: Decimal,
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnNull")]
+    pub earnings: Vec<Earning>,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
+pub struct RewardsConfig {
+    pub asset_address: Address,
+    pub start_date: NaiveDate,
+    pub end_date: NaiveDate,
+    pub rate_per_day: Decimal,
+    pub total_rewards: Decimal,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
+#[builder(on(String, into))]
+pub struct MarketRewardsConfig {
+    // We sometimes get numbers or strings back
+    #[serde(deserialize_with = "string_from_number_or_string")]
+    pub id: String,
+    pub asset_address: Address,
+    pub start_date: NaiveDate,
+    pub end_date: NaiveDate,
+    pub rate_per_day: Decimal,
+    pub total_rewards: Decimal,
+    pub total_days: Decimal,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
+pub struct Earning {
+    pub asset_address: Address,
+    pub earnings: Decimal,
+    pub asset_rate: Decimal,
+}
+
+pub type RewardsPercentagesResponse = HashMap<String, Decimal>;
+
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
+#[builder(on(String, into))]
+pub struct CurrentRewardResponse {
+    pub condition_id: String,
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnNull")]
+    pub rewards_config: Vec<RewardsConfig>,
+    pub rewards_max_spread: Decimal,
+    pub rewards_min_size: Decimal,
+}
+
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
+#[builder(on(String, into))]
+pub struct MarketRewardResponse {
+    pub condition_id: String,
+    pub question: String,
+    pub market_slug: String,
+    pub event_slug: String,
+    pub image: String,
+    pub rewards_max_spread: Decimal,
+    pub rewards_min_size: Decimal,
+    pub market_competitiveness: Decimal,
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnNull")]
+    pub tokens: Vec<Token>,
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnNull")]
+    pub rewards_config: Vec<MarketRewardsConfig>,
+}
+
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct BuilderApiKeyResponse {
+    pub key: ApiKey,
+    #[serde(default)]
+    pub created_at: Option<DateTime<Utc>>,
+    #[serde(default)]
+    pub revoked_at: Option<DateTime<Utc>>,
+}
+
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
+#[serde(rename_all = "camelCase")]
+#[builder(on(String, into))]
+pub struct BuilderTradeResponse {
+    pub id: String,
+    pub trade_type: String,
+    pub taker_order_hash: String,
+    pub builder: String,
+    pub market: String,
+    pub asset_id: String,
+    pub side: Side,
+    pub size: Decimal,
+    pub size_usdc: Decimal,
+    pub price: Decimal,
+    pub status: OrderStatusType,
+    pub outcome: String,
+    pub outcome_index: u32,
+    pub owner: ApiKey,
+    pub maker: String,
+    pub transaction_hash: String,
+    #[serde_as(as = "TimestampSeconds<String>")]
+    pub match_time: DateTime<Utc>,
+    pub bucket_index: u32,
+    pub fee: Decimal,
+    pub fee_usdc: Decimal,
+    #[serde(alias = "err_msg")]
+    pub err_msg: Option<String>,
+    pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
+}
+
+/// Generic wrapper structure that holds inner `data` with metadata designating how to query for the
+/// next page.
+#[non_exhaustive]
+#[derive(Clone, Debug, Serialize, Deserialize, Builder, PartialEq)]
+#[builder(on(String, into))]
+pub struct Page<T> {
+    pub data: Vec<T>,
+    /// The continuation token to supply to the API to trigger for the next [`Page<T>`].
+    pub next_cursor: String,
+    /// The maximum length of `data`.
+    pub limit: u64,
+    /// The length of `data`
+    pub count: u64,
+}
+
+fn string_from_number_or_string<'de, D>(deserializer: D) -> std::result::Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct StringOrNumberVisitor;
+
+    impl Visitor<'_> for StringOrNumberVisitor {
+        type Value = String;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("string or integer")
+        }
+
+        fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(v.to_owned())
+        }
+
+        fn visit_string<E>(self, v: String) -> std::result::Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(v)
+        }
+
+        fn visit_i64<E>(self, v: i64) -> std::result::Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(v.to_string())
+        }
+
+        fn visit_u64<E>(self, v: u64) -> std::result::Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(v.to_string())
+        }
+    }
+
+    deserializer.deserialize_any(StringOrNumberVisitor)
+}
