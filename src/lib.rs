@@ -2,6 +2,8 @@
 
 pub mod auth;
 pub mod clob;
+#[cfg(feature = "data-api")]
+pub mod data_api;
 pub mod error;
 #[cfg(feature = "gamma")]
 pub mod gamma;

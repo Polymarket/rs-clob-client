@@ -15,7 +15,7 @@ use serde::ser::{Error as _, SerializeStruct as _};
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 use serde_json::Value;
 use serde_with::{
-    DefaultOnNull, DisplayFromStr, FromInto, TimestampMilliSeconds, TimestampSeconds, serde_as,
+    DefaultOnNull, DisplayFromStr, TimestampMilliSeconds, TimestampSeconds, TryFromInto, serde_as,
 };
 use sha2::{Digest as _, Sha256};
 use strum_macros::Display;
@@ -238,14 +238,18 @@ impl From<TickSize> for Decimal {
     }
 }
 
-impl From<Decimal> for TickSize {
-    fn from(value: Decimal) -> Self {
+impl TryFrom<Decimal> for TickSize {
+    type Error = Error;
+
+    fn try_from(value: Decimal) -> std::result::Result<Self, Self::Error> {
         match value {
-            v if v == dec!(0.1) => TickSize::Tenth,
-            v if v == dec!(0.01) => TickSize::Hundredth,
-            v if v == dec!(0.001) => TickSize::Thousandth,
-            v if v == dec!(0.0001) => TickSize::TenThousandth,
-            other => panic!("Unable to convert {other:?} to TickSize"),
+            v if v == dec!(0.1) => Ok(TickSize::Tenth),
+            v if v == dec!(0.01) => Ok(TickSize::Hundredth),
+            v if v == dec!(0.001) => Ok(TickSize::Thousandth),
+            v if v == dec!(0.0001) => Ok(TickSize::TenThousandth),
+            other => Err(Error::validation(format!(
+                "Unknown tick size: {other}. Expected one of: 0.1, 0.01, 0.001, 0.0001"
+            ))),
         }
     }
 }
@@ -262,7 +266,7 @@ impl<'de> Deserialize<'de> for TickSize {
         D: Deserializer<'de>,
     {
         let dec = <Decimal as Deserialize>::deserialize(deserializer)?;
-        Ok(TickSize::from(dec))
+        TickSize::try_from(dec).map_err(de::Error::custom)
     }
 }
 
@@ -422,7 +426,7 @@ pub struct OrderBookSummaryResponse {
     pub asks: Vec<OrderSummary>,
     pub min_order_size: Decimal,
     pub neg_risk: bool,
-    #[serde_as(as = "FromInto<Decimal>")]
+    #[serde_as(as = "TryFromInto<Decimal>")]
     pub tick_size: TickSize,
 }
 
@@ -1311,16 +1315,28 @@ mod tests {
 
     #[test]
     fn tick_from_decimal_should_succeed() {
-        assert_eq!(TickSize::from(dec!(0.0001)), TickSize::TenThousandth);
-        assert_eq!(TickSize::from(dec!(0.001)), TickSize::Thousandth);
-        assert_eq!(TickSize::from(dec!(0.01)), TickSize::Hundredth);
-        assert_eq!(TickSize::from(dec!(0.1)), TickSize::Tenth);
+        assert_eq!(
+            TickSize::try_from(dec!(0.0001)).unwrap(),
+            TickSize::TenThousandth
+        );
+        assert_eq!(
+            TickSize::try_from(dec!(0.001)).unwrap(),
+            TickSize::Thousandth
+        );
+        assert_eq!(TickSize::try_from(dec!(0.01)).unwrap(), TickSize::Hundredth);
+        assert_eq!(TickSize::try_from(dec!(0.1)).unwrap(), TickSize::Tenth);
     }
 
     #[test]
-    #[should_panic = "Unable to convert 1 to TickSize"]
     fn non_standard_decimal_to_tick_size_should_fail() {
-        _ = TickSize::from(Decimal::ONE);
+        let result = TickSize::try_from(Decimal::ONE);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Unknown tick size: 1")
+        );
     }
 
     #[test]
