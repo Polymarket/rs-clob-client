@@ -28,10 +28,9 @@ use reqwest::{
     Client as ReqwestClient, Method, Request, StatusCode,
     header::{HeaderMap, HeaderValue},
 };
+use serde::Serialize;
 use serde::de::DeserializeOwned;
 use url::Url;
-
-use serde::Serialize;
 
 use super::request::{
     ActivityRequest, BuilderLeaderboardRequest, BuilderVolumeRequest, ClosedPositionsRequest,
