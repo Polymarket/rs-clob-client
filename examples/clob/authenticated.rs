@@ -5,10 +5,11 @@ use std::str::FromStr as _;
 use alloy::signers::Signer as _;
 use alloy::signers::local::LocalSigner;
 use chrono::{TimeDelta, Utc};
-use polymarket_client_sdk::clob::types::{
-    Amount, BalanceAllowanceRequest, OrderType, OrdersRequest, Side, TradesRequest,
-    UpdateBalanceAllowanceRequest, UserRewardsEarningRequest,
+use polymarket_client_sdk::clob::types::request::{
+    BalanceAllowanceRequest, OrdersRequest, TradesRequest, UpdateBalanceAllowanceRequest,
+    UserRewardsEarningRequest,
 };
+use polymarket_client_sdk::clob::types::{Amount, OrderType, Side};
 use polymarket_client_sdk::clob::{Client, Config};
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 use rust_decimal::Decimal;

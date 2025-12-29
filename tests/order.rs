@@ -10,9 +10,8 @@ use std::str::FromStr as _;
 use alloy::primitives::{Address, U256};
 use chrono::{DateTime, Utc};
 use httpmock::MockServer;
-use polymarket_client_sdk::clob::types::{
-    Amount, OrderSummary, OrderType, Side, SignatureType, TickSize,
-};
+use polymarket_client_sdk::clob::types::response::OrderSummary;
+use polymarket_client_sdk::clob::types::{Amount, OrderType, Side, SignatureType, TickSize};
 use reqwest::StatusCode;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;

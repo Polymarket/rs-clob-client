@@ -22,20 +22,22 @@ use crate::auth::builder::{Builder, Config as BuilderConfig};
 use crate::auth::state::{Authenticated, State, Unauthenticated};
 use crate::auth::{Credentials, Kind, Normal};
 use crate::clob::order_builder::{Limit, Market, OrderBuilder, generate_seed};
-use crate::clob::types::{
-    ApiKeysResponse, BalanceAllowanceRequest, BalanceAllowanceResponse, BanStatusResponse,
-    BuilderApiKeyResponse, BuilderTradeResponse, CancelMarketOrderRequest, CancelOrdersResponse,
-    CurrentRewardResponse, DeleteNotificationsRequest, FeeRateResponse, LastTradePriceRequest,
-    LastTradePriceResponse, LastTradesPricesResponse, MarketResponse, MarketRewardResponse,
-    MidpointRequest, MidpointResponse, MidpointsResponse, NegRiskResponse, NotificationResponse,
-    OpenOrderResponse, OrderBookSummaryRequest, OrderBookSummaryResponse, OrderScoringResponse,
-    OrdersRequest, OrdersScoringResponse, Page, PostOrderResponse, PriceRequest, PriceResponse,
-    PricesResponse, RewardsPercentagesResponse, SignableOrder, SignatureType, SignedOrder,
-    SimplifiedMarketResponse, SpreadRequest, SpreadResponse, SpreadsResponse, TickSize,
-    TickSizeResponse, TotalUserEarningResponse, TradeResponse, TradesRequest,
-    UpdateBalanceAllowanceRequest, UserEarningResponse, UserRewardsEarningRequest,
-    UserRewardsEarningResponse,
+use crate::clob::types::request::{
+    BalanceAllowanceRequest, CancelMarketOrderRequest, DeleteNotificationsRequest,
+    LastTradePriceRequest, MidpointRequest, OrderBookSummaryRequest, OrdersRequest, PriceRequest,
+    SpreadRequest, TradesRequest, UpdateBalanceAllowanceRequest, UserRewardsEarningRequest,
 };
+use crate::clob::types::response::{
+    ApiKeysResponse, BalanceAllowanceResponse, BanStatusResponse, BuilderApiKeyResponse,
+    BuilderTradeResponse, CancelOrdersResponse, CurrentRewardResponse, FeeRateResponse,
+    LastTradePriceResponse, LastTradesPricesResponse, MarketResponse, MarketRewardResponse,
+    MidpointResponse, MidpointsResponse, NegRiskResponse, NotificationResponse, OpenOrderResponse,
+    OrderBookSummaryResponse, OrderScoringResponse, OrdersScoringResponse, Page, PostOrderResponse,
+    PriceResponse, PricesResponse, RewardsPercentagesResponse, SimplifiedMarketResponse,
+    SpreadResponse, SpreadsResponse, TickSizeResponse, TotalUserEarningResponse, TradeResponse,
+    UserEarningResponse, UserRewardsEarningResponse,
+};
+use crate::clob::types::{SignableOrder, SignatureType, SignedOrder, TickSize};
 use crate::error::{Error, Synchronization};
 use crate::{AMOY, POLYGON, Result, Timestamp, auth, contract_config};
 
