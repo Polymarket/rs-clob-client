@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1](https://github.com/Polymarket/rs-clob-client/compare/v0.2.0...v0.2.1) - 2025-12-29
+
+### Added
+
+- complete gamma client ([#40](https://github.com/Polymarket/rs-clob-client/pull/40))
+- add data-api client ([#39](https://github.com/Polymarket/rs-clob-client/pull/39))
+
+### Fixed
+
+- use TryFrom for TickSize to avoid panic on unknown values ([#43](https://github.com/Polymarket/rs-clob-client/pull/43))
+
+### Other
+
+- *(cargo)* bump tracing from 0.1.41 to 0.1.44 ([#49](https://github.com/Polymarket/rs-clob-client/pull/49))
+- *(cargo)* bump serde_json from 1.0.146 to 1.0.148 ([#51](https://github.com/Polymarket/rs-clob-client/pull/51))
+- *(cargo)* bump alloy from 1.1.3 to 1.2.1 ([#50](https://github.com/Polymarket/rs-clob-client/pull/50))
+- *(cargo)* bump reqwest from 0.12.27 to 0.12.28 ([#48](https://github.com/Polymarket/rs-clob-client/pull/48))
+
 ## [0.2.0](https://github.com/Polymarket/rs-clob-client/compare/v0.1.2...v0.2.0) - 2025-12-27
 
 ### Added
