@@ -1082,7 +1082,7 @@ mod types {
     fn event_id_filter_query_string() {
         let req = PositionsRequest::builder()
             .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
-            .filter(MarketFilter::event_ids([1, 2]))
+            .filter(MarketFilter::event_ids(["1".to_owned(), "2".to_owned()]))
             .build();
 
         let qs = to_query_string(&req);
@@ -1304,7 +1304,7 @@ mod request_query_string_extended {
     fn activity_request_full() {
         let req = ActivityRequest::builder()
             .user(test_addr())
-            .filter(MarketFilter::event_ids([1]))
+            .filter(MarketFilter::event_ids(["1".to_owned()]))
             .limit(50)
             .unwrap()
             .start(1000)

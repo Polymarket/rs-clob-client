@@ -88,7 +88,7 @@ pub struct PositionsRequest {
     #[builder(into)]
     pub user: Address,
     /// Filter by markets or events. Mutually exclusive options.
-    #[serde(flatten)]
+    #[serde(flatten, skip_serializing_if = "filter_is_none_or_empty")]
     pub filter: Option<MarketFilter>,
     /// Minimum position size to include (default: 1).
     #[serde(rename = "sizeThreshold")]
@@ -112,6 +112,14 @@ pub struct PositionsRequest {
     /// Filter by market title substring (max 100 chars).
     #[builder(into)]
     pub title: Option<Title>,
+}
+
+#[expect(clippy::ref_option, reason = "Need an explicit reference for serde")]
+fn filter_is_none_or_empty(f: &Option<MarketFilter>) -> bool {
+    match f {
+        None => true,
+        Some(MarketFilter::Markets(v) | MarketFilter::EventIds(v)) => v.is_empty(),
+    }
 }
 
 /// Request parameters for the `/trades` endpoint.

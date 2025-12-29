@@ -1,8 +1,3 @@
-#![expect(
-    clippy::module_name_repetitions,
-    reason = "Public WebSocket types intentionally include the module name for clarity"
-)]
-
 use std::collections::{HashMap, hash_map::Entry};
 use std::sync::Arc;
 
@@ -12,7 +7,7 @@ use futures::Stream;
 use futures::StreamExt as _;
 use rust_decimal::Decimal;
 
-use super::config::WebSocketConfig;
+use super::config::Config;
 use super::connection::{ConnectionManager, ConnectionState};
 use super::interest::InterestTracker;
 use super::subscription::{ChannelType, SubscriptionManager};
@@ -27,13 +22,13 @@ use crate::error::Error;
 /// WebSocket client for real-time market data and user updates.
 ///
 /// This client uses a type-state pattern to enforce authentication requirements at compile time:
-/// - [`WebSocketClient<Unauthenticated>`]: Can only access public market data
-/// - [`WebSocketClient<Authenticated<K>>`]: Can access both public and user-specific data
+/// - [`Client<Unauthenticated>`]: Can only access public market data
+/// - [`Client<Authenticated<K>>`]: Can access both public and user-specific data
 ///
 /// # Examples
 ///
 /// ```rust, no_run
-/// use polymarket_client_sdk::ws::WebSocketClient;
+/// use polymarket_client_sdk::clob::ws::WebSocketClient;
 /// use futures::StreamExt;
 ///
 /// #[tokio::main]
@@ -52,37 +47,37 @@ use crate::error::Error;
 /// }
 /// ```
 #[derive(Clone)]
-pub struct WebSocketClient<S: State = Unauthenticated> {
-    inner: Arc<WsClientInner<S>>,
+pub struct Client<S: State = Unauthenticated> {
+    inner: Arc<ClientInner<S>>,
 }
 
-impl Default for WebSocketClient<Unauthenticated> {
+impl Default for Client<Unauthenticated> {
     fn default() -> Self {
         Self::new(
             "wss://ws-subscriptions-clob.polymarket.com",
-            WebSocketConfig::default(),
+            Config::default(),
         )
         .expect("WebSocket client with default endpoint should succeed")
     }
 }
 
-struct WsClientInner<S: State> {
+struct ClientInner<S: State> {
     /// Current state of the client (authenticated or unauthenticated)
     state: S,
     /// Configuration for the WebSocket connections
-    config: WebSocketConfig,
+    config: Config,
     /// Base endpoint without channel suffix (e.g. `wss://...`)
     base_endpoint: String,
     /// Resources for each WebSocket channel
     channels: HashMap<ChannelType, ChannelHandles>,
 }
 
-impl WebSocketClient<Unauthenticated> {
+impl Client<Unauthenticated> {
     /// Create a new unauthenticated WebSocket client.
     ///
     /// The `endpoint` should be the base WebSocket URL (e.g. `wss://...polymarket.com`);
     /// channel paths (`/ws/market` or `/ws/user`) are appended automatically.
-    pub fn new(endpoint: &str, config: WebSocketConfig) -> Result<Self> {
+    pub fn new(endpoint: &str, config: Config) -> Result<Self> {
         let normalized = normalize_base_endpoint(endpoint);
         let market_handles =
             ChannelHandles::connect(channel_endpoint(&normalized, ChannelType::Market), &config)?;
@@ -90,7 +85,7 @@ impl WebSocketClient<Unauthenticated> {
         channels.insert(ChannelType::Market, market_handles);
 
         Ok(Self {
-            inner: Arc::new(WsClientInner {
+            inner: Arc::new(ClientInner {
                 state: Unauthenticated,
                 config,
                 base_endpoint: normalized,
@@ -107,12 +102,12 @@ impl WebSocketClient<Unauthenticated> {
         self,
         credentials: Credentials,
         address: Address,
-    ) -> Result<WebSocketClient<Authenticated<Normal>>> {
+    ) -> Result<Client<Authenticated<Normal>>> {
         let inner = Arc::into_inner(self.inner).ok_or(Error::validation(
             "Cannot authenticate while other references to this client exist; \
                  drop all clones before calling authenticate",
         ))?;
-        let WsClientInner {
+        let ClientInner {
             config,
             base_endpoint,
             mut channels,
@@ -127,8 +122,8 @@ impl WebSocketClient<Unauthenticated> {
             slot.insert(handles);
         }
 
-        Ok(WebSocketClient {
-            inner: Arc::new(WsClientInner {
+        Ok(Client {
+            inner: Arc::new(ClientInner {
                 state: Authenticated {
                     address,
                     credentials,
@@ -143,7 +138,7 @@ impl WebSocketClient<Unauthenticated> {
 }
 
 // Methods available in any state
-impl<S: State> WebSocketClient<S> {
+impl<S: State> Client<S> {
     /// Subscribe to orderbook updates for specific assets.
     pub fn subscribe_orderbook(
         &self,
@@ -234,7 +229,7 @@ impl<S: State> WebSocketClient<S> {
 }
 
 // Methods only available for authenticated clients
-impl<K: AuthKind> WebSocketClient<Authenticated<K>> {
+impl<K: AuthKind> Client<Authenticated<K>> {
     /// Subscribe to raw user channel events (orders and trades).
     pub fn subscribe_user_events(
         &self,
@@ -286,12 +281,12 @@ impl<K: AuthKind> WebSocketClient<Authenticated<K>> {
     ///
     /// Returns an error if there are other references to this client (e.g., from clones).
     /// Ensure all clones are dropped before calling this method.
-    pub fn deauthenticate(self) -> Result<WebSocketClient<Unauthenticated>> {
+    pub fn deauthenticate(self) -> Result<Client<Unauthenticated>> {
         let inner = Arc::into_inner(self.inner).ok_or(Error::validation(
             "Cannot deauthenticate while other references to this client exist; \
                  drop all clones before calling deauthenticate",
         ))?;
-        let WsClientInner {
+        let ClientInner {
             config,
             base_endpoint,
             mut channels,
@@ -299,8 +294,8 @@ impl<K: AuthKind> WebSocketClient<Authenticated<K>> {
         } = inner;
         channels.remove(&ChannelType::User);
 
-        Ok(WebSocketClient {
-            inner: Arc::new(WsClientInner {
+        Ok(Client {
+            inner: Arc::new(ClientInner {
                 state: Unauthenticated,
                 config,
                 base_endpoint,
@@ -310,7 +305,7 @@ impl<K: AuthKind> WebSocketClient<Authenticated<K>> {
     }
 }
 
-impl<S: State> WsClientInner<S> {
+impl<S: State> ClientInner<S> {
     fn channel(&self, kind: ChannelType) -> Option<&ChannelHandles> {
         self.channels.get(&kind)
     }
@@ -326,7 +321,7 @@ struct ChannelHandles {
 }
 
 impl ChannelHandles {
-    fn connect(endpoint: String, config: &WebSocketConfig) -> Result<Self> {
+    fn connect(endpoint: String, config: &Config) -> Result<Self> {
         // Create shared interest tracker for lazy deserialization
         let interest = Arc::new(InterestTracker::new());
         let connection = ConnectionManager::new(endpoint, config.clone(), &interest)?;
