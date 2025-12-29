@@ -33,10 +33,6 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as, skip_serializing_none};
 
-// =============================================================================
-// Request Types - Trait
-// =============================================================================
-
 /// Converts a serializable request to a URL query string.
 ///
 /// Returns an empty string if no parameters are set, otherwise returns
@@ -67,10 +63,6 @@ pub fn query_string<T: Serialize>(request: &T) -> String {
     }
 }
 
-// =============================================================================
-// Request Types - Sports Endpoints
-// =============================================================================
-
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
@@ -93,10 +85,6 @@ pub struct TeamsRequest {
     #[builder(default)]
     pub abbreviation: Vec<String>,
 }
-
-// =============================================================================
-// Request Types - Tags Endpoints
-// =============================================================================
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
@@ -151,10 +139,6 @@ pub struct RelatedTagsBySlugRequest {
     pub omit_empty: Option<bool>,
     pub status: Option<RelatedTagsStatus>,
 }
-
-// =============================================================================
-// Request Types - Events Endpoints
-// =============================================================================
 
 #[serde_as]
 #[skip_serializing_none]
@@ -228,10 +212,6 @@ pub struct EventTagsRequest {
     #[builder(into)]
     pub id: String,
 }
-
-// =============================================================================
-// Request Types - Markets Endpoints
-// =============================================================================
 
 #[serde_as]
 #[skip_serializing_none]
@@ -317,10 +297,6 @@ pub struct MarketTagsRequest {
     pub id: String,
 }
 
-// =============================================================================
-// Request Types - Series Endpoints
-// =============================================================================
-
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
@@ -356,10 +332,6 @@ pub struct SeriesByIdRequest {
     pub id: String,
     pub include_chat: Option<bool>,
 }
-
-// =============================================================================
-// Request Types - Comments Endpoints
-// =============================================================================
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
@@ -399,20 +371,12 @@ pub struct CommentsByUserAddressRequest {
     pub ascending: Option<bool>,
 }
 
-// =============================================================================
-// Request Types - Profiles Endpoints
-// =============================================================================
-
 #[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
 pub struct PublicProfileRequest {
     #[builder(into)]
     pub address: String,
 }
-
-// =============================================================================
-// Request Types - Search Endpoints
-// =============================================================================
 
 #[serde_as]
 #[skip_serializing_none]
@@ -442,10 +406,6 @@ pub struct SearchRequest {
     pub optimized: Option<bool>,
 }
 
-// =============================================================================
-// Response Types - Common/Shared
-// =============================================================================
-
 /// Image optimization metadata.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -473,23 +433,8 @@ pub struct Pagination {
     pub total_results: Option<i32>,
 }
 
-/// Count response.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[non_exhaustive]
-pub struct Count {
-    pub count: Option<i32>,
-}
-
-// =============================================================================
-// Response Types - Health
-// =============================================================================
-
 /// Health check response.
 pub type HealthResponse = String;
-
-// =============================================================================
-// Response Types - Sports
-// =============================================================================
 
 /// A sports team.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -527,10 +472,6 @@ pub struct SportsMarketTypesResponse {
     pub market_types: Vec<String>,
 }
 
-// =============================================================================
-// Response Types - Tags
-// =============================================================================
-
 /// A tag for categorizing content.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -562,10 +503,6 @@ pub struct RelatedTag {
     pub rank: Option<i32>,
 }
 
-// =============================================================================
-// Response Types - Categories
-// =============================================================================
-
 /// A category for organizing content.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -581,10 +518,6 @@ pub struct Category {
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
 }
-
-// =============================================================================
-// Response Types - Events
-// =============================================================================
 
 /// An event creator.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -767,26 +700,6 @@ pub struct Event {
     pub game_status: Option<String>,
 }
 
-/// Event tweet count response.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[non_exhaustive]
-pub struct EventTweetCount {
-    pub tweet_count: Option<i32>,
-}
-
-/// Paginated events response.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[non_exhaustive]
-pub struct EventsPagination {
-    pub data: Option<Vec<Event>>,
-    pub pagination: Option<Pagination>,
-}
-
-// =============================================================================
-// Response Types - Markets
-// =============================================================================
-
 /// A prediction market.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -935,17 +848,6 @@ pub struct Market {
     pub event_start_time: Option<DateTime<Utc>>,
 }
 
-/// Market description response.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[non_exhaustive]
-pub struct MarketDescription {
-    pub description: Option<String>,
-}
-
-// =============================================================================
-// Response Types - Series
-// =============================================================================
-
 /// A series of related events.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -992,24 +894,6 @@ pub struct Series {
     pub comment_count: Option<i32>,
     pub chats: Option<Vec<Chat>>,
 }
-
-/// A summary of a series with event dates and weeks.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[non_exhaustive]
-pub struct SeriesSummary {
-    pub id: String,
-    pub title: Option<String>,
-    pub slug: Option<String>,
-    pub event_dates: Option<Vec<String>>,
-    pub event_weeks: Option<Vec<i32>>,
-    pub earliest_open_week: Option<i32>,
-    pub earliest_open_date: Option<String>,
-}
-
-// =============================================================================
-// Response Types - Comments
-// =============================================================================
 
 /// A comment position.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1075,10 +959,6 @@ pub struct Comment {
     pub reaction_count: Option<i32>,
 }
 
-// =============================================================================
-// Response Types - Profiles
-// =============================================================================
-
 /// A user associated with a public profile.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
@@ -1105,22 +985,6 @@ pub struct PublicProfile {
     pub x_username: Option<String>,
     pub verified_badge: Option<bool>,
 }
-
-/// Error response for public profile endpoint.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[non_exhaustive]
-pub struct PublicProfileError {
-    /// Error type classification.
-    #[serde(rename = "type")]
-    pub error_type: Option<String>,
-    /// Error message.
-    pub error: Option<String>,
-}
-
-// =============================================================================
-// Response Types - Search
-// =============================================================================
 
 /// A search tag result.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1171,10 +1035,6 @@ pub struct SearchResults {
     pub profiles: Option<Vec<Profile>>,
     pub pagination: Option<Pagination>,
 }
-
-// =============================================================================
-// Common Types
-// =============================================================================
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
 #[serde(rename_all = "lowercase")]
