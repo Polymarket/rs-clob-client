@@ -3,12 +3,12 @@
     reason = "Request suffix is intentional for clarity"
 )]
 
+use alloy::primitives::Address;
 use bon::Builder;
 use chrono::NaiveDate;
 use serde::Serialize;
 
 use crate::clob::types::{AssetType, Side, SignatureType};
-use crate::types::Address;
 
 #[non_exhaustive]
 #[derive(Debug, Serialize, Builder)]
