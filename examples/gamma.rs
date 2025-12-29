@@ -1,7 +1,7 @@
 #![allow(clippy::print_stdout, reason = "Examples are okay to print to stdout")]
 
 use polymarket_client_sdk::gamma::Client;
-use polymarket_client_sdk::gamma::types::{
+use polymarket_client_sdk::gamma::types::request::{
     CommentsByIdRequest, CommentsByUserAddressRequest, CommentsRequest, EventByIdRequest,
     EventBySlugRequest, EventTagsRequest, EventsRequest, MarketByIdRequest, MarketBySlugRequest,
     MarketTagsRequest, MarketsRequest, PublicProfileRequest, RelatedTagsByIdRequest,

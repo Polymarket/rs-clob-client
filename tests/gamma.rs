@@ -31,7 +31,7 @@
 
 mod sports {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::gamma::{Client, types::TeamsRequest};
+    use polymarket_client_sdk::gamma::{Client, types::request::TeamsRequest};
     use reqwest::StatusCode;
     use serde_json::json;
 
@@ -138,7 +138,7 @@ mod tags {
     use httpmock::{Method::GET, MockServer};
     use polymarket_client_sdk::gamma::{
         Client,
-        types::{
+        types::request::{
             RelatedTagsByIdRequest, RelatedTagsBySlugRequest, TagByIdRequest, TagBySlugRequest,
             TagsRequest,
         },
@@ -359,7 +359,7 @@ mod events {
     use httpmock::{Method::GET, MockServer};
     use polymarket_client_sdk::gamma::{
         Client,
-        types::{EventByIdRequest, EventBySlugRequest, EventsRequest},
+        types::request::{EventByIdRequest, EventBySlugRequest, EventsRequest},
     };
     use reqwest::StatusCode;
     use serde_json::json;
@@ -447,7 +447,7 @@ mod markets {
     use httpmock::{Method::GET, MockServer};
     use polymarket_client_sdk::gamma::{
         Client,
-        types::{MarketByIdRequest, MarketBySlugRequest, MarketsRequest},
+        types::request::{MarketByIdRequest, MarketBySlugRequest, MarketsRequest},
     };
     use reqwest::StatusCode;
     use serde_json::json;
@@ -530,7 +530,7 @@ mod markets {
 
 mod search {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::gamma::{Client, types::SearchRequest};
+    use polymarket_client_sdk::gamma::{Client, types::request::SearchRequest};
     use reqwest::StatusCode;
     use serde_json::json;
 
@@ -594,7 +594,7 @@ mod series {
     use httpmock::{Method::GET, MockServer};
     use polymarket_client_sdk::gamma::{
         Client,
-        types::{SeriesByIdRequest, SeriesListRequest},
+        types::request::{SeriesByIdRequest, SeriesListRequest},
     };
     use reqwest::StatusCode;
     use serde_json::json;
@@ -659,11 +659,10 @@ mod series {
 
 mod comments {
     use httpmock::{Method::GET, MockServer};
+    use polymarket_client_sdk::gamma::types::ParentEntityType;
     use polymarket_client_sdk::gamma::{
         Client,
-        types::{
-            CommentsByIdRequest, CommentsByUserAddressRequest, CommentsRequest, ParentEntityType,
-        },
+        types::request::{CommentsByIdRequest, CommentsByUserAddressRequest, CommentsRequest},
     };
     use reqwest::StatusCode;
     use serde_json::json;
@@ -791,7 +790,7 @@ mod comments {
 
 mod profiles {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::gamma::{Client, types::PublicProfileRequest};
+    use polymarket_client_sdk::gamma::{Client, types::request::PublicProfileRequest};
     use reqwest::StatusCode;
     use serde_json::json;
 
@@ -830,7 +829,7 @@ mod profiles {
 
 mod event_tags {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::gamma::{Client, types::EventTagsRequest};
+    use polymarket_client_sdk::gamma::{Client, types::request::EventTagsRequest};
     use reqwest::StatusCode;
     use serde_json::json;
 
@@ -871,7 +870,7 @@ mod event_tags {
 
 mod market_tags {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::gamma::{Client, types::MarketTagsRequest};
+    use polymarket_client_sdk::gamma::{Client, types::request::MarketTagsRequest};
     use reqwest::StatusCode;
     use serde_json::json;
 
@@ -909,14 +908,14 @@ mod market_tags {
 
 mod query_string {
     use chrono::{TimeZone as _, Utc};
-    use polymarket_client_sdk::gamma::types::{
+    use polymarket_client_sdk::gamma::types::request::{
         CommentsByIdRequest, CommentsByUserAddressRequest, CommentsRequest, EventByIdRequest,
         EventBySlugRequest, EventTagsRequest, EventsRequest, MarketByIdRequest,
-        MarketBySlugRequest, MarketTagsRequest, MarketsRequest, ParentEntityType,
-        PublicProfileRequest, RelatedTagsByIdRequest, RelatedTagsBySlugRequest, RelatedTagsStatus,
-        SearchRequest, SeriesByIdRequest, SeriesListRequest, TagByIdRequest, TagBySlugRequest,
-        TagsRequest, TeamsRequest,
+        MarketBySlugRequest, MarketTagsRequest, MarketsRequest, PublicProfileRequest,
+        RelatedTagsByIdRequest, RelatedTagsBySlugRequest, SearchRequest, SeriesByIdRequest,
+        SeriesListRequest, TagByIdRequest, TagBySlugRequest, TagsRequest, TeamsRequest,
     };
+    use polymarket_client_sdk::gamma::types::{ParentEntityType, RelatedTagsStatus};
     use rust_decimal_macros::dec;
     use serde::Serialize;
 
