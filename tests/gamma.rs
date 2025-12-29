@@ -915,8 +915,18 @@ mod query_string {
         MarketBySlugRequest, MarketTagsRequest, MarketsRequest, ParentEntityType,
         PublicProfileRequest, RelatedTagsByIdRequest, RelatedTagsBySlugRequest, RelatedTagsStatus,
         SearchRequest, SeriesByIdRequest, SeriesListRequest, TagByIdRequest, TagBySlugRequest,
-        TagsRequest, TeamsRequest, query_string,
+        TagsRequest, TeamsRequest,
     };
+    use serde::Serialize;
+
+    fn query_string<T: Serialize>(request: &T) -> String {
+        let params = serde_urlencoded::to_string(request).unwrap_or_default();
+        if params.is_empty() {
+            params
+        } else {
+            format!("?{params}")
+        }
+    }
 
     #[test]
     fn teams_request_all_params() {

@@ -40,7 +40,7 @@ use super::types::{
     PublicProfileRequest, RelatedTag, RelatedTagsByIdRequest, RelatedTagsBySlugRequest,
     SearchRequest, SearchResults, Series, SeriesByIdRequest, SeriesListRequest,
     SportsMarketTypesResponse, SportsMetadata, Tag, TagByIdRequest, TagBySlugRequest, TagsRequest,
-    Team, TeamsRequest, query_string,
+    Team, TeamsRequest,
 };
 use crate::Result;
 use crate::error::Error;
@@ -163,7 +163,6 @@ impl Client {
             // Use serde_path_to_error to get the field path in error messages
             match serde_path_to_error::deserialize::<_, Option<Response>>(json_value.clone()) {
                 Ok(Some(data)) => {
-                    super::drift::detect_and_log(&json_value, &data, &path);
                     return Ok(data);
                 }
                 Ok(None) => {
@@ -215,10 +214,15 @@ impl Client {
         path: &str,
         req: &Req,
     ) -> Result<Res> {
-        let params = query_string(req);
+        let params = serde_urlencoded::to_string(req).unwrap_or_default();
+        let query = if params.is_empty() {
+            params
+        } else {
+            format!("?{params}")
+        };
         let request = self
             .client
-            .request(Method::GET, format!("{}{path}{params}", self.host))
+            .request(Method::GET, format!("{}{path}{query}", self.host))
             .build()?;
         self.request(request, None).await
     }

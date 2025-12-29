@@ -33,36 +33,6 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as, skip_serializing_none};
 
-/// Converts a serializable request to a URL query string.
-///
-/// Returns an empty string if no parameters are set, otherwise returns
-/// a string starting with `?` followed by URL-encoded key-value pairs.
-///
-/// # Example
-///
-/// ```
-/// use polymarket_client_sdk::gamma::types::{EventsRequest, query_string};
-///
-/// let request = EventsRequest::builder()
-///     .limit(10)
-///     .active(true)
-///     .build();
-///
-/// let query = query_string(&request);
-/// assert!(query.starts_with("?"));
-/// assert!(query.contains("limit=10"));
-/// assert!(query.contains("active=true"));
-/// ```
-#[must_use]
-pub fn query_string<T: Serialize>(request: &T) -> String {
-    let params = serde_urlencoded::to_string(request).unwrap_or_default();
-    if params.is_empty() {
-        params
-    } else {
-        format!("?{params}")
-    }
-}
-
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
