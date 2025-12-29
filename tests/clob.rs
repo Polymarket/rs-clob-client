@@ -12,7 +12,7 @@ use alloy::primitives::U256;
 use chrono::{DateTime, Utc};
 use httpmock::MockServer;
 use polymarket_client_sdk::POLYGON;
-use polymarket_client_sdk::clob::types::{SignatureType, TickSize};
+use polymarket_client_sdk::clob::types::SignatureType;
 use polymarket_client_sdk::clob::{Client, Config};
 use reqwest::StatusCode;
 use rust_decimal::Decimal;
@@ -30,13 +30,17 @@ mod unauthenticated {
     use chrono::{TimeDelta, TimeZone as _};
     use futures_util::future;
     use futures_util::stream::StreamExt as _;
-    use polymarket_client_sdk::clob::types::{
-        FeeRateResponse, LastTradePriceRequest, LastTradePriceResponse, LastTradesPricesResponse,
-        MarketResponse, MidpointRequest, MidpointResponse, MidpointsResponse, NegRiskResponse,
-        OrderBookSummaryRequest, OrderBookSummaryResponse, OrderSummary, Page, PriceRequest,
-        PriceResponse, PricesResponse, Rewards, Side, SimplifiedMarketResponse, SpreadRequest,
-        SpreadResponse, SpreadsResponse, TickSize, TickSizeResponse, Token,
+    use polymarket_client_sdk::clob::types::request::{
+        LastTradePriceRequest, MidpointRequest, OrderBookSummaryRequest, PriceRequest,
+        SpreadRequest,
     };
+    use polymarket_client_sdk::clob::types::response::{
+        FeeRateResponse, LastTradePriceResponse, LastTradesPricesResponse, MarketResponse,
+        MidpointResponse, MidpointsResponse, NegRiskResponse, OrderBookSummaryResponse,
+        OrderSummary, Page, PriceResponse, PricesResponse, Rewards, SimplifiedMarketResponse,
+        SpreadResponse, SpreadsResponse, TickSizeResponse, Token,
+    };
+    use polymarket_client_sdk::clob::types::{Side, TickSize};
     use polymarket_client_sdk::error::Status;
     use reqwest::Method;
 
@@ -1104,14 +1108,20 @@ mod authenticated {
     use alloy::signers::local::LocalSigner;
     use chrono::NaiveDate;
     use httpmock::Method::{DELETE, GET, POST};
+    use polymarket_client_sdk::clob::types::request::{
+        BalanceAllowanceRequest, CancelMarketOrderRequest, DeleteNotificationsRequest,
+        OrdersRequest, TradesRequest, UserRewardsEarningRequest,
+    };
+    use polymarket_client_sdk::clob::types::response::{
+        ApiKeysResponse, BalanceAllowanceResponse, BanStatusResponse, CancelOrdersResponse,
+        CurrentRewardResponse, Earning, MakerOrder, MarketRewardResponse, MarketRewardsConfig,
+        NotificationPayload, NotificationResponse, OpenOrderResponse, OrderScoringResponse, Page,
+        PostOrderResponse, RewardsConfig, Token, TotalUserEarningResponse, TradeResponse,
+        UserEarningResponse, UserRewardsEarningResponse,
+    };
     use polymarket_client_sdk::clob::types::{
-        ApiKeysResponse, AssetType, BalanceAllowanceRequest, BalanceAllowanceResponse,
-        BanStatusResponse, CancelMarketOrderRequest, CancelOrdersResponse, CurrentRewardResponse,
-        DeleteNotificationsRequest, Earning, MakerOrder, MarketRewardResponse, MarketRewardsConfig,
-        NotificationPayload, NotificationResponse, OpenOrderResponse, OrderScoringResponse,
-        OrderStatusType, OrderType, OrdersRequest, Page, PostOrderResponse, RewardsConfig, Side,
-        SignableOrder, SignedOrder, Token, TotalUserEarningResponse, TradeResponse, TraderSide,
-        TradesRequest, UserEarningResponse, UserRewardsEarningRequest, UserRewardsEarningResponse,
+        AssetType, OrderStatusType, OrderType, Side, SignableOrder, SignedOrder, TickSize,
+        TraderSide,
     };
 
     use super::*;
@@ -2444,9 +2454,11 @@ mod builder_authenticated {
     use alloy::signers::local::LocalSigner;
     use httpmock::Method::DELETE;
     use polymarket_client_sdk::auth::builder::Config as BuilderConfig;
-    use polymarket_client_sdk::clob::types::{
-        BuilderApiKeyResponse, BuilderTradeResponse, OrderStatusType, Page, Side, TradesRequest,
+    use polymarket_client_sdk::clob::types::request::TradesRequest;
+    use polymarket_client_sdk::clob::types::response::{
+        BuilderApiKeyResponse, BuilderTradeResponse, Page,
     };
+    use polymarket_client_sdk::clob::types::{OrderStatusType, Side};
 
     use super::*;
     use crate::common::{

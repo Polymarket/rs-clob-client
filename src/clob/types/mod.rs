@@ -1,0 +1,447 @@
+use std::fmt;
+
+use alloy::core::sol;
+use alloy::primitives::{Signature, U256};
+use bon::Builder;
+use rust_decimal::Decimal;
+use rust_decimal::prelude::ToPrimitive as _;
+use rust_decimal_macros::dec;
+use serde::ser::{Error as _, SerializeStruct as _};
+use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
+use serde_json::Value;
+use serde_with::{DisplayFromStr, serde_as};
+use strum_macros::Display;
+
+use crate::Result;
+use crate::auth::ApiKey;
+use crate::clob::order_builder::{LOT_SIZE_SCALE, USDC_DECIMALS};
+use crate::error::Error;
+
+pub mod request;
+pub mod response;
+
+#[non_exhaustive]
+#[derive(
+    Clone, Copy, Debug, Display, Default, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
+)]
+pub enum OrderType {
+    /// Good 'til Cancelled; If not fully filled, the order rests on the book until it is explicitly
+    /// cancelled.
+    #[serde(alias = "gtc")]
+    GTC,
+    /// Fill or Kill; Order is attempted to be filled, in full, immediately. If it cannot be fully
+    /// filled, the entire order is cancelled.
+    #[default]
+    #[serde(alias = "fok")]
+    FOK,
+    /// Good 'til Date; If not fully filled, the order rests on the book until the specified date.
+    #[serde(alias = "gtd")]
+    GTD,
+    /// Fill and Kill; Order is attempted to be filled, however much is possible, immediately. If
+    /// the order cannot be fully filled, the remaining quantity is cancelled.
+    #[serde(alias = "fak")]
+    FAK,
+    #[serde(other)]
+    Unknown,
+}
+
+#[non_exhaustive]
+#[derive(
+    Clone, Copy, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
+)]
+#[serde(rename_all = "UPPERCASE")]
+#[strum(serialize_all = "UPPERCASE")]
+#[repr(u8)]
+pub enum Side {
+    #[serde(alias = "buy")]
+    Buy = 0,
+    #[serde(alias = "sell")]
+    Sell = 1,
+    #[serde(other)]
+    Unknown = 255,
+}
+
+impl TryFrom<u8> for Side {
+    type Error = Error;
+
+    fn try_from(value: u8) -> std::result::Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Side::Buy),
+            1 => Ok(Side::Sell),
+            other => Err(Error::validation(format!(
+                "Unable to create Side from {other}"
+            ))),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum AmountInner {
+    Usdc(Decimal),
+    Shares(Decimal),
+}
+
+impl AmountInner {
+    pub fn as_inner(&self) -> Decimal {
+        match self {
+            AmountInner::Usdc(d) | AmountInner::Shares(d) => *d,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Amount(pub(crate) AmountInner);
+
+impl Amount {
+    pub fn usdc(value: Decimal) -> Result<Amount> {
+        let normalized = value.normalize();
+        if normalized.scale() > USDC_DECIMALS {
+            return Err(Error::validation(format!(
+                "Unable to build Amount with {} decimal points, must be <= {USDC_DECIMALS}",
+                normalized.scale()
+            )));
+        }
+
+        Ok(Amount(AmountInner::Usdc(normalized)))
+    }
+
+    pub fn shares(value: Decimal) -> Result<Amount> {
+        let normalized = value.normalize();
+        if normalized.scale() > LOT_SIZE_SCALE {
+            return Err(Error::validation(format!(
+                "Unable to build Amount with {} decimal points, must be <= {LOT_SIZE_SCALE}",
+                normalized.scale()
+            )));
+        }
+
+        Ok(Amount(AmountInner::Shares(normalized)))
+    }
+
+    #[must_use]
+    pub fn as_inner(&self) -> Decimal {
+        self.0.as_inner()
+    }
+
+    #[must_use]
+    pub fn is_usdc(&self) -> bool {
+        matches!(self.0, AmountInner::Usdc(_))
+    }
+
+    #[must_use]
+    pub fn is_shares(&self) -> bool {
+        matches!(self.0, AmountInner::Shares(_))
+    }
+}
+
+#[non_exhaustive]
+#[derive(Clone, Copy, Display, Debug, Default, Eq, Ord, PartialEq, PartialOrd)]
+#[repr(u8)]
+pub enum SignatureType {
+    #[default]
+    Eoa = 0,
+    Proxy = 1,
+    GnosisSafe = 2,
+}
+
+#[non_exhaustive]
+#[derive(Clone, Copy, Display, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[serde(rename_all = "UPPERCASE")]
+#[strum(serialize_all = "UPPERCASE")]
+pub enum OrderStatusType {
+    #[serde(alias = "live")]
+    Live,
+    #[serde(alias = "matched")]
+    Matched,
+    #[serde(alias = "canceled")]
+    Canceled,
+    #[serde(alias = "delayed")]
+    Delayed,
+    #[serde(alias = "unmatched")]
+    Unmatched,
+    #[serde(other)]
+    Unknown,
+}
+
+#[non_exhaustive]
+#[derive(
+    Clone, Copy, Debug, Default, Display, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
+)]
+#[serde(rename_all = "UPPERCASE")]
+#[strum(serialize_all = "UPPERCASE")]
+pub enum AssetType {
+    #[default]
+    Collateral,
+    Conditional,
+    #[serde(other)]
+    Unknown,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum TraderSide {
+    Taker,
+    Maker,
+    #[serde(other)]
+    Unknown,
+}
+
+/// Represents the maximum number of decimal places for an order's price field
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy)]
+pub enum TickSize {
+    Tenth,
+    Hundredth,
+    Thousandth,
+    TenThousandth,
+}
+
+impl fmt::Display for TickSize {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = match self {
+            TickSize::Tenth => "Tenth",
+            TickSize::Hundredth => "Hundredth",
+            TickSize::Thousandth => "Thousandth",
+            TickSize::TenThousandth => "TenThousandth",
+        };
+
+        write!(f, "{name}({})", self.as_decimal())
+    }
+}
+
+impl TickSize {
+    #[must_use]
+    pub fn as_decimal(&self) -> Decimal {
+        match self {
+            TickSize::Tenth => dec!(0.1),
+            TickSize::Hundredth => dec!(0.01),
+            TickSize::Thousandth => dec!(0.001),
+            TickSize::TenThousandth => dec!(0.0001),
+        }
+    }
+}
+
+impl From<TickSize> for Decimal {
+    fn from(tick_size: TickSize) -> Self {
+        tick_size.as_decimal()
+    }
+}
+
+impl TryFrom<Decimal> for TickSize {
+    type Error = Error;
+
+    fn try_from(value: Decimal) -> std::result::Result<Self, Self::Error> {
+        match value {
+            v if v == dec!(0.1) => Ok(TickSize::Tenth),
+            v if v == dec!(0.01) => Ok(TickSize::Hundredth),
+            v if v == dec!(0.001) => Ok(TickSize::Thousandth),
+            v if v == dec!(0.0001) => Ok(TickSize::TenThousandth),
+            other => Err(Error::validation(format!(
+                "Unknown tick size: {other}. Expected one of: 0.1, 0.01, 0.001, 0.0001"
+            ))),
+        }
+    }
+}
+
+impl PartialEq for TickSize {
+    fn eq(&self, other: &Self) -> bool {
+        self.as_decimal() == other.as_decimal()
+    }
+}
+
+impl<'de> Deserialize<'de> for TickSize {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let dec = <Decimal as Deserialize>::deserialize(deserializer)?;
+        TickSize::try_from(dec).map_err(de::Error::custom)
+    }
+}
+
+sol! {
+    /// Alloy solidity type representing an order in the context of the Polymarket exchange
+    ///
+    /// <!-- The CLOB expects all `uint256` types, [`U256`], excluding `salt`, to be presented as a
+    /// string so we must serialize as Display, which for U256 is lower hex-encoded string.
+    /// -->
+    #[non_exhaustive]
+    #[serde_as]
+    #[derive(Serialize, Debug, Default, PartialEq)]
+    struct Order {
+        #[serde(serialize_with = "ser_salt")]
+        uint256 salt;
+        address maker;
+        address signer;
+        address taker;
+        #[serde_as(as = "DisplayFromStr")]
+        uint256 tokenId;
+        #[serde_as(as = "DisplayFromStr")]
+        uint256 makerAmount;
+        #[serde_as(as = "DisplayFromStr")]
+        uint256 takerAmount;
+        #[serde_as(as = "DisplayFromStr")]
+        uint256 expiration;
+        #[serde_as(as = "DisplayFromStr")]
+        uint256 nonce;
+        #[serde_as(as = "DisplayFromStr")]
+        uint256 feeRateBps;
+        uint8   side;
+        uint8   signatureType;
+    }
+}
+
+// CLOB expects salt as a JSON number. U256 as an integer will not fit as a JSON number. Since
+// we generated the salt as a u64 originally (see `salt_generator`), we can be very confident that
+// we can invert the conversion to U256 and return a u64 when serializing.
+fn ser_salt<S: Serializer>(value: &U256, serializer: S) -> std::result::Result<S::Ok, S::Error> {
+    let v: u64 = value
+        .try_into()
+        .map_err(|e| S::Error::custom(format!("salt does not fit into u64: {e}")))?;
+    serializer.serialize_u64(v)
+}
+
+#[non_exhaustive]
+#[derive(Clone, Debug, Default, Serialize, Builder, PartialEq)]
+pub struct SignableOrder {
+    pub order: Order,
+    pub order_type: OrderType,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Builder, PartialEq)]
+pub struct SignedOrder {
+    pub order: Order,
+    pub signature: Signature,
+    pub order_type: OrderType,
+    pub owner: ApiKey,
+}
+
+// CLOB expects a struct that has the `signature` "folded" into the `order` key
+impl Serialize for SignedOrder {
+    fn serialize<S: Serializer>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> {
+        let mut st = serializer.serialize_struct("SignedOrder", 3)?;
+
+        let mut order = serde_json::to_value(&self.order).map_err(serde::ser::Error::custom)?;
+
+        // inject signature into order object
+        if let Value::Object(ref mut map) = order {
+            map.insert(
+                "signature".to_owned(),
+                Value::String(self.signature.to_string()),
+            );
+        }
+
+        // Side has to be serialized as "BUY" or "SELL" when hitting the CLOB, but the actual
+        // signature for a SignedOrder has to be done on the integer representation.
+        if let Some(value) = order.get_mut("side")
+            && let Some(side_numeric) = value.as_u64()
+            && let Some(side_numeric) = side_numeric.to_u8()
+            && let Ok(side) = Side::try_from(side_numeric)
+        {
+            *value = Value::String(side.to_string());
+        }
+
+        st.serialize_field("order", &order)?;
+        st.serialize_field("orderType", &self.order_type)?;
+        st.serialize_field("owner", &self.owner)?;
+
+        st.end()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::error::Validation;
+
+    #[test]
+    fn tick_size_decimals_should_succeed() {
+        assert_eq!(TickSize::Tenth.as_decimal().scale(), 1);
+        assert_eq!(TickSize::Hundredth.as_decimal().scale(), 2);
+        assert_eq!(TickSize::Thousandth.as_decimal().scale(), 3);
+        assert_eq!(TickSize::TenThousandth.as_decimal().scale(), 4);
+    }
+
+    #[test]
+    fn tick_size_should_display() {
+        assert_eq!(format!("{}", TickSize::Tenth), "Tenth(0.1)");
+        assert_eq!(format!("{}", TickSize::Hundredth), "Hundredth(0.01)");
+        assert_eq!(format!("{}", TickSize::Thousandth), "Thousandth(0.001)");
+        assert_eq!(
+            format!("{}", TickSize::TenThousandth),
+            "TenThousandth(0.0001)"
+        );
+    }
+
+    #[test]
+    fn tick_from_decimal_should_succeed() {
+        assert_eq!(
+            TickSize::try_from(dec!(0.0001)).unwrap(),
+            TickSize::TenThousandth
+        );
+        assert_eq!(
+            TickSize::try_from(dec!(0.001)).unwrap(),
+            TickSize::Thousandth
+        );
+        assert_eq!(TickSize::try_from(dec!(0.01)).unwrap(), TickSize::Hundredth);
+        assert_eq!(TickSize::try_from(dec!(0.1)).unwrap(), TickSize::Tenth);
+    }
+
+    #[test]
+    fn non_standard_decimal_to_tick_size_should_fail() {
+        let result = TickSize::try_from(Decimal::ONE);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Unknown tick size: 1")
+        );
+    }
+
+    #[test]
+    fn amount_should_succeed() -> Result<()> {
+        let usdc = Amount::usdc(Decimal::ONE_HUNDRED)?;
+        assert!(usdc.is_usdc());
+        assert_eq!(usdc.as_inner(), Decimal::ONE_HUNDRED);
+
+        let shares = Amount::shares(Decimal::ONE_HUNDRED)?;
+        assert!(shares.is_shares());
+        assert_eq!(shares.as_inner(), Decimal::ONE_HUNDRED);
+
+        Ok(())
+    }
+
+    #[test]
+    fn improper_shares_lot_size_should_fail() {
+        let Err(err) = Amount::shares(dec!(0.23400)) else {
+            panic!()
+        };
+
+        let message = err.downcast_ref::<Validation>().unwrap();
+        assert_eq!(
+            message.reason,
+            format!("Unable to build Amount with 3 decimal points, must be <= {LOT_SIZE_SCALE}")
+        );
+    }
+
+    #[test]
+    fn improper_usdc_decimal_size_should_fail() {
+        let Err(err) = Amount::usdc(dec!(0.2340011)) else {
+            panic!()
+        };
+
+        let message = err.downcast_ref::<Validation>().unwrap();
+        assert_eq!(
+            message.reason,
+            format!("Unable to build Amount with 7 decimal points, must be <= {USDC_DECIMALS}")
+        );
+    }
+
+    #[test]
+    fn side_to_string_should_succeed() {
+        assert_eq!(Side::Buy.to_string(), "BUY");
+        assert_eq!(Side::Sell.to_string(), "SELL");
+    }
+}
