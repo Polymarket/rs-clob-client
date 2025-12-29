@@ -28,7 +28,7 @@ use crate::error::Error;
 /// # Examples
 ///
 /// ```rust, no_run
-/// use polymarket_client_sdk::clob::ws::Client;
+/// use polymarket_client_sdk::clob::ws::WebSocketClient;
 /// use futures::StreamExt;
 ///
 /// #[tokio::main]
@@ -48,7 +48,7 @@ use crate::error::Error;
 /// ```
 #[derive(Clone)]
 pub struct Client<S: State = Unauthenticated> {
-    inner: Arc<WsClientInner<S>>,
+    inner: Arc<ClientInner<S>>,
 }
 
 impl Default for Client<Unauthenticated> {
@@ -61,7 +61,7 @@ impl Default for Client<Unauthenticated> {
     }
 }
 
-struct WsClientInner<S: State> {
+struct ClientInner<S: State> {
     /// Current state of the client (authenticated or unauthenticated)
     state: S,
     /// Configuration for the WebSocket connections
@@ -85,7 +85,7 @@ impl Client<Unauthenticated> {
         channels.insert(ChannelType::Market, market_handles);
 
         Ok(Self {
-            inner: Arc::new(WsClientInner {
+            inner: Arc::new(ClientInner {
                 state: Unauthenticated,
                 config,
                 base_endpoint: normalized,
@@ -107,7 +107,7 @@ impl Client<Unauthenticated> {
             "Cannot authenticate while other references to this client exist; \
                  drop all clones before calling authenticate",
         ))?;
-        let WsClientInner {
+        let ClientInner {
             config,
             base_endpoint,
             mut channels,
@@ -123,7 +123,7 @@ impl Client<Unauthenticated> {
         }
 
         Ok(Client {
-            inner: Arc::new(WsClientInner {
+            inner: Arc::new(ClientInner {
                 state: Authenticated {
                     address,
                     credentials,
@@ -287,7 +287,7 @@ impl<K: AuthKind> Client<Authenticated<K>> {
             "Cannot deauthenticate while other references to this client exist; \
                  drop all clones before calling deauthenticate",
         ))?;
-        let WsClientInner {
+        let ClientInner {
             config,
             base_endpoint,
             mut channels,
@@ -296,7 +296,7 @@ impl<K: AuthKind> Client<Authenticated<K>> {
         channels.remove(&ChannelType::User);
 
         Ok(Client {
-            inner: Arc::new(WsClientInner {
+            inner: Arc::new(ClientInner {
                 state: Unauthenticated,
                 config,
                 base_endpoint,
@@ -306,7 +306,7 @@ impl<K: AuthKind> Client<Authenticated<K>> {
     }
 }
 
-impl<S: State> WsClientInner<S> {
+impl<S: State> ClientInner<S> {
     fn channel(&self, kind: ChannelType) -> Option<&ChannelHandles> {
         self.channels.get(&kind)
     }

@@ -1,8 +1,3 @@
-#![expect(
-    clippy::module_name_repetitions,
-    reason = "Configuration types intentionally mirror the module name for clarity"
-)]
-
 use std::time::Duration;
 
 use backoff::{ExponentialBackoff, ExponentialBackoffBuilder};

@@ -282,15 +282,13 @@ impl MarketFilter {
     /// Creates a filter for specific markets by their condition IDs.
     #[must_use]
     pub fn markets<I: IntoIterator<Item = String>>(ids: I) -> Self {
-        let v: Vec<String> = ids.into_iter().collect();
-        MarketFilter::Markets(v)
+        Self::Markets(ids.into_iter().collect())
     }
 
     /// Creates a filter for all markets within the specified events.
     #[must_use]
     pub fn event_ids<I: IntoIterator<Item = String>>(ids: I) -> Self {
-        let v: Vec<String> = ids.into_iter().collect();
-        MarketFilter::EventIds(v)
+        Self::EventIds(ids.into_iter().collect())
     }
 }
 

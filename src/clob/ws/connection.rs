@@ -203,8 +203,7 @@ impl ConnectionManager {
                 Some(msg) = read.next() => {
                     match msg {
                         Ok(Message::Text(text)) if text == "PONG" => {
-                            // Notify heartbeat loop when PONG is received
-                             _ = pong_tx.send(Instant::now());
+                            _ = pong_tx.send(Instant::now());
                         }
                         Ok(Message::Text(text)) => {
                             #[cfg(feature = "tracing")]
