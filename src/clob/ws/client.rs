@@ -28,7 +28,7 @@ use crate::error::Error;
 /// # Examples
 ///
 /// ```rust, no_run
-/// use polymarket_client_sdk::clob::ws::WebSocketClient;
+/// use polymarket_client_sdk::clob::ws::Client;
 /// use futures::StreamExt;
 ///
 /// #[tokio::main]
