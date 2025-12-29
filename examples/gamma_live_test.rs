@@ -26,6 +26,7 @@ use polymarket_client_sdk::gamma::types::{
     RelatedTagsByIdRequest, RelatedTagsBySlugRequest, SearchRequest, SeriesByIdRequest,
     SeriesListRequest, TagByIdRequest, TagBySlugRequest, TagsRequest, TeamsRequest,
 };
+use rust_decimal::Decimal;
 
 struct TestResults {
     passed: u32,
@@ -440,8 +441,8 @@ async fn test_markets(client: &Client, results: &mut TestResults) -> (String, St
                     .slug
                     .clone()
                     .unwrap_or_else(|| "example-market".to_owned());
-                let volume = market.volume_24hr.unwrap_or(0.0);
-                if volume > 0.0 {
+                let volume = market.volume_24hr.unwrap_or(Decimal::ZERO);
+                if volume > Decimal::ZERO {
                     println!("    (selected market '{slug}' with ${volume:.0} 24hr volume)");
                 }
                 (id, slug)

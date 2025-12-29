@@ -917,6 +917,7 @@ mod query_string {
         SearchRequest, SeriesByIdRequest, SeriesListRequest, TagByIdRequest, TagBySlugRequest,
         TagsRequest, TeamsRequest,
     };
+    use rust_decimal_macros::dec;
     use serde::Serialize;
 
     fn query_string<T: Serialize>(request: &T) -> String {
@@ -1067,10 +1068,10 @@ mod query_string {
             .include_template(true)
             .recurrence("weekly".to_owned())
             .closed(false)
-            .liquidity_min(1000.0)
-            .liquidity_max(100_000.0)
-            .volume_min(500.0)
-            .volume_max(50000.0)
+            .liquidity_min(dec!(1000))
+            .liquidity_max(dec!(100_000))
+            .volume_min(dec!(500))
+            .volume_max(dec!(50000))
             .start_date_min(start_date)
             .start_date_max(end_date)
             .end_date_min(start_date)
@@ -1168,10 +1169,10 @@ mod query_string {
             .clob_token_ids(vec!["token1".to_owned(), "token2".to_owned()])
             .condition_ids(vec!["cond1".to_owned()])
             .market_maker_address(vec!["0x123".to_owned()])
-            .liquidity_num_min(1000.0)
-            .liquidity_num_max(100_000.0)
-            .volume_num_min(500.0)
-            .volume_num_max(50000.0)
+            .liquidity_num_min(dec!(1000))
+            .liquidity_num_max(dec!(100_000))
+            .volume_num_min(dec!(500))
+            .volume_num_max(dec!(50000))
             .start_date_min(start_date)
             .start_date_max(end_date)
             .end_date_min(start_date)
@@ -1182,7 +1183,7 @@ mod query_string {
             .uma_resolution_status("resolved".to_owned())
             .game_id("game123".to_owned())
             .sports_market_types(vec!["moneyline".to_owned(), "spread".to_owned()])
-            .rewards_min_size(100.0)
+            .rewards_min_size(dec!(100))
             .question_ids(vec!["q1".to_owned(), "q2".to_owned()])
             .include_tag(true)
             .closed(false)
