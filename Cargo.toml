@@ -124,11 +124,6 @@ name = "websocket_user"
 path = "examples/websocket_user.rs"
 required-features = ["ws"]
 
-[[example]]
-name = "gamma_live_test"
-path = "examples/gamma_live_test.rs"
-required-features = ["gamma"]
-
 # https://rust-lang.github.io/rust-clippy/master/index.html?versions=lte%3A88
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }

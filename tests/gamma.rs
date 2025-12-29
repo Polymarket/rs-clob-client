@@ -1052,7 +1052,7 @@ mod query_string {
         let request = EventsRequest::builder()
             .limit(50)
             .offset(10)
-            .order("startDate".to_owned())
+            .order(vec!["startDate".to_owned()])
             .ascending(true)
             .id(vec!["1".to_owned(), "2".to_owned(), "3".to_owned()])
             .tag_id("42")
