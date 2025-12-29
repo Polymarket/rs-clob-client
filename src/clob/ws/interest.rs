@@ -1,59 +1,47 @@
 use std::sync::atomic::{AtomicU8, Ordering};
 
-/// Flags representing interest in specific WebSocket message types.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct MessageInterest(u8);
+use bitflags::bitflags;
+
+bitflags! {
+    #[repr(transparent)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub struct MessageInterest: u8 {
+        /// No interest in any message types.
+        const NONE = 0;
+
+        /// Interest in orderbook updates.
+        const BOOK = 1;
+
+        /// Interest in price change notifications.
+        const PRICE_CHANGE = 1 << 1;
+
+        /// Interest in tick size changes.
+        const TICK_SIZE = 1 << 2;
+
+        /// Interest in last trade price updates.
+        const LAST_TRADE_PRICE = 1 << 3;
+
+        /// Interest in trade executions.
+        const TRADE = 1 << 4;
+
+        /// Interest in order updates.
+        const ORDER = 1 << 5;
+
+        /// Interest in all market data messages.
+        const MARKET = Self::BOOK.bits()
+            | Self::PRICE_CHANGE.bits()
+            | Self::TICK_SIZE.bits()
+            | Self::LAST_TRADE_PRICE.bits();
+
+        /// Interest in all user channel messages.
+        const USER = Self::TRADE.bits() | Self::ORDER.bits();
+
+        /// Interest in all message types.
+        const ALL = Self::MARKET.bits() | Self::USER.bits();
+    }
+}
 
 impl MessageInterest {
-    /// No interest in any message types.
-    pub const NONE: Self = Self(0);
-
-    /// Interest in orderbook updates.
-    pub const BOOK: Self = Self(1 << 0);
-
-    /// Interest in price change notifications.
-    pub const PRICE_CHANGE: Self = Self(1 << 1);
-
-    /// Interest in tick size changes.
-    pub const TICK_SIZE: Self = Self(1 << 2);
-
-    /// Interest in last trade price updates.
-    pub const LAST_TRADE_PRICE: Self = Self(1 << 3);
-
-    /// Interest in trade executions.
-    pub const TRADE: Self = Self(1 << 4);
-
-    /// Interest in order updates.
-    pub const ORDER: Self = Self(1 << 5);
-
-    /// Interest in all market data messages.
-    pub const MARKET: Self =
-        Self(Self::BOOK.0 | Self::PRICE_CHANGE.0 | Self::TICK_SIZE.0 | Self::LAST_TRADE_PRICE.0);
-
-    /// Interest in all user channel messages.
-    pub const USER: Self = Self(Self::TRADE.0 | Self::ORDER.0);
-
-    /// Interest in all message types.
-    pub const ALL: Self = Self(Self::MARKET.0 | Self::USER.0);
-
-    /// Check if this interest set contains a specific interest.
-    #[must_use]
-    pub const fn contains(self, other: Self) -> bool {
-        (self.0 & other.0) == other.0
-    }
-
-    /// Combine two interest sets.
-    #[must_use]
-    pub const fn union(self, other: Self) -> Self {
-        Self(self.0 | other.0)
-    }
-
-    /// Check if any interest is set.
-    #[must_use]
-    pub const fn is_empty(self) -> bool {
-        self.0 == 0
-    }
-
     /// Get the interest flag for a given event type string.
     #[must_use]
     pub fn from_event_type(event_type: &str) -> Self {
@@ -81,28 +69,6 @@ impl Default for MessageInterest {
     }
 }
 
-impl std::ops::BitOr for MessageInterest {
-    type Output = Self;
-
-    fn bitor(self, rhs: Self) -> Self::Output {
-        Self(self.0 | rhs.0)
-    }
-}
-
-impl std::ops::BitOrAssign for MessageInterest {
-    fn bitor_assign(&mut self, rhs: Self) {
-        self.0 |= rhs.0;
-    }
-}
-
-impl std::ops::BitAnd for MessageInterest {
-    type Output = Self;
-
-    fn bitand(self, rhs: Self) -> Self::Output {
-        Self(self.0 & rhs.0)
-    }
-}
-
 /// Thread-safe interest tracker that can be shared between subscription manager and connection.
 #[derive(Debug, Default)]
 pub struct InterestTracker {
@@ -120,13 +86,14 @@ impl InterestTracker {
 
     /// Add interest in specific message types.
     pub fn add(&self, interest: MessageInterest) {
-        self.interest.fetch_or(interest.0, Ordering::Release);
+        self.interest.fetch_or(interest.bits(), Ordering::Release);
     }
 
     /// Get the current interest set.
     #[must_use]
     pub fn get(&self) -> MessageInterest {
-        MessageInterest(self.interest.load(Ordering::Acquire))
+        MessageInterest::from_bits(self.interest.load(Ordering::Acquire))
+            .unwrap_or(MessageInterest::NONE)
     }
 
     /// Check if there's interest in a specific message type.

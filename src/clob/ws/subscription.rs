@@ -205,10 +205,8 @@ impl SubscriptionManager {
         let new_assets: Vec<String> = asset_ids
             .iter()
             .filter(|id| !self.subscribed_assets.contains(*id))
-            .map(|id| {
-                self.subscribed_assets.insert(id.clone());
-                id.clone()
-            })
+            .inspect(|id| _ = self.subscribed_assets.insert((*id).to_owned()))
+            .map(ToOwned::to_owned)
             .collect();
 
         // Only send subscription request for new assets
@@ -294,11 +292,8 @@ impl SubscriptionManager {
         let new_markets: Vec<String> = markets
             .iter()
             .filter(|m| !self.subscribed_markets.contains(*m))
-            .map(|m| {
-                let owned = m.clone();
-                self.subscribed_markets.insert(owned.clone());
-                owned
-            })
+            .inspect(|id| _ = self.subscribed_markets.insert((*id).to_owned()))
+            .map(ToOwned::to_owned)
             .collect();
 
         // Only send subscription request for new markets (or if subscribing to all)
@@ -353,16 +348,14 @@ impl SubscriptionManager {
     /// Get information about all active subscriptions.
     #[must_use]
     pub fn active_subscriptions(&self) -> HashMap<ChannelType, Vec<SubscriptionInfo>> {
-        let mut grouped: HashMap<ChannelType, Vec<SubscriptionInfo>> = HashMap::new();
-
-        for entry in &self.active_subs {
-            grouped
-                .entry(entry.value().channel())
-                .or_default()
-                .push(entry.value().clone());
-        }
-
-        grouped
+        self.active_subs
+            .iter()
+            .fold(HashMap::new(), |mut acc, entry| {
+                acc.entry(entry.value().channel())
+                    .or_default()
+                    .push(entry.value().clone());
+                acc
+            })
     }
 
     /// Get the number of active subscriptions.

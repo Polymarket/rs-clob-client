@@ -28,13 +28,13 @@ use crate::error::Error;
 /// # Examples
 ///
 /// ```rust, no_run
-/// use polymarket_client_sdk::clob::ws::WebSocketClient;
+/// use polymarket_client_sdk::clob::ws::Client;
 /// use futures::StreamExt;
 ///
 /// #[tokio::main]
 /// async fn main() -> anyhow::Result<()> {
 ///     // Create unauthenticated client
-///     let client = WebSocketClient::default();
+///     let client = Client::default();
 ///
 ///     let stream = client.subscribe_orderbook(vec!["asset_id".to_owned()])?;
 ///     let mut stream = Box::pin(stream);
@@ -203,9 +203,10 @@ impl<S: State> Client<S> {
     }
 
     /// Get the current connection state.
-    pub async fn connection_state(&self) -> ConnectionState {
+    #[must_use]
+    pub fn connection_state(&self) -> ConnectionState {
         if let Some(handles) = self.inner.channel(ChannelType::Market) {
-            handles.connection.state().await
+            handles.connection.state()
         } else {
             ConnectionState::Disconnected
         }
