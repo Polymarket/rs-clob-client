@@ -7,7 +7,7 @@ use serde_json::Deserializer;
 use serde_with::{DisplayFromStr, serde_as};
 
 use super::interest::MessageInterest;
-use crate::auth::Credentials;
+use crate::auth::{ApiKey, Credentials};
 use crate::clob::types::{Side, TraderSide};
 use crate::error::Kind;
 
@@ -170,15 +170,15 @@ pub struct MakerOrder {
     /// Asset/token identifier of the maker order
     pub asset_id: String,
     /// Amount of maker order matched in trade
-    pub matched_amount: String,
+    pub matched_amount: Decimal,
     /// Maker order ID
     pub order_id: String,
     /// Outcome (Yes/No)
     pub outcome: String,
     /// Owner (API key) of maker order
-    pub owner: String,
+    pub owner: ApiKey,
     /// Price of maker order
-    pub price: String,
+    pub price: Decimal,
 }
 
 /// User trade execution message (authenticated channel only).
@@ -194,9 +194,9 @@ pub struct TradeMessage {
     /// Side of the trade (BUY or SELL)
     pub side: Side,
     /// Size of the trade
-    pub size: String,
+    pub size: Decimal,
     /// Execution price
-    pub price: String,
+    pub price: Decimal,
     /// Trade status (MATCHED, MINED, CONFIRMED, etc.)
     pub status: String,
     /// Message type (always "TRADE")
@@ -216,10 +216,10 @@ pub struct TradeMessage {
     pub outcome: Option<String>,
     /// API key of event owner
     #[serde(default)]
-    pub owner: Option<String>,
+    pub owner: Option<ApiKey>,
     /// API key of trade owner
     #[serde(default)]
-    pub trade_owner: Option<String>,
+    pub trade_owner: Option<ApiKey>,
     /// ID of taker order
     #[serde(default)]
     pub taker_order_id: Option<String>,
@@ -250,7 +250,7 @@ pub struct OrderMessage {
     /// Side of the order (BUY or SELL)
     pub side: Side,
     /// Order price
-    pub price: String,
+    pub price: Decimal,
     /// Message type (PLACEMENT, UPDATE, or CANCELLATION)
     #[serde(rename = "type", default)]
     pub msg_type: Option<String>,
@@ -259,16 +259,16 @@ pub struct OrderMessage {
     pub outcome: Option<String>,
     /// Owner (API key)
     #[serde(default)]
-    pub owner: Option<String>,
+    pub owner: Option<ApiKey>,
     /// Order owner (API key of order originator)
     #[serde(default)]
-    pub order_owner: Option<String>,
+    pub order_owner: Option<ApiKey>,
     /// Original order size
     #[serde(default)]
-    pub original_size: Option<String>,
+    pub original_size: Option<Decimal>,
     /// Amount matched so far
     #[serde(default)]
-    pub size_matched: Option<String>,
+    pub size_matched: Option<Decimal>,
     /// Unix timestamp of event
     #[serde(default)]
     pub timestamp: Option<String>,

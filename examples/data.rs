@@ -2,8 +2,8 @@
 
 use alloy::primitives::address;
 use polymarket_client_sdk::data::Client;
-use polymarket_client_sdk::data::common::{LeaderboardCategory, TimePeriod};
-use polymarket_client_sdk::data::request::{
+use polymarket_client_sdk::data::types::common::{LeaderboardCategory, TimePeriod};
+use polymarket_client_sdk::data::types::request::{
     ActivityRequest, BuilderLeaderboardRequest, BuilderVolumeRequest, ClosedPositionsRequest,
     HoldersRequest, LiveVolumeRequest, OpenInterestRequest, PositionsRequest, TradedRequest,
     TraderLeaderboardRequest, TradesRequest, ValueRequest,

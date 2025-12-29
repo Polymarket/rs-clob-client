@@ -404,6 +404,7 @@ mod user_channel {
     use alloy::primitives::Address;
     use polymarket_client_sdk::auth::Credentials;
     use polymarket_client_sdk::clob::types::Side;
+    use rust_decimal_macros::dec;
     use tokio::time::sleep;
 
     use super::*;
@@ -454,10 +455,10 @@ mod user_channel {
                     order.market,
                     "0xbd31dc8a20211944f6b70f31557f1001557b59905b7738480ca09bd4532f84af"
                 );
-                assert_eq!(order.price, "0.57");
+                assert_eq!(order.price, dec!(0.57));
                 assert_eq!(order.side, Side::Sell);
-                assert_eq!(order.original_size, Some("10".to_owned()));
-                assert_eq!(order.size_matched, Some("0".to_owned()));
+                assert_eq!(order.original_size, Some(dec!(10)));
+                assert_eq!(order.size_matched, Some(dec!(0)));
                 assert_eq!(order.outcome, Some("YES".to_owned()));
                 assert_eq!(order.msg_type, Some("PLACEMENT".to_owned()));
             }
@@ -496,14 +497,14 @@ mod user_channel {
                     trade.market,
                     "0xbd31dc8a20211944f6b70f31557f1001557b59905b7738480ca09bd4532f84af"
                 );
-                assert_eq!(trade.price, "0.57");
-                assert_eq!(trade.size, "10");
+                assert_eq!(trade.price, dec!(0.57));
+                assert_eq!(trade.size, dec!(10));
                 assert_eq!(trade.side, Side::Buy);
                 assert_eq!(trade.status, "MATCHED");
                 assert_eq!(trade.outcome, Some("YES".to_owned()));
                 assert_eq!(trade.maker_orders.len(), 1);
-                assert_eq!(trade.maker_orders[0].matched_amount, "10");
-                assert_eq!(trade.maker_orders[0].price, "0.57");
+                assert_eq!(trade.maker_orders[0].matched_amount, dec!(10));
+                assert_eq!(trade.maker_orders[0].price, dec!(0.57));
                 assert_eq!(
                     trade.taker_order_id,
                     Some(

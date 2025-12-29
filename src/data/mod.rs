@@ -31,7 +31,7 @@
 //!
 //! ```no_run
 //! use alloy::primitives::address;
-//! use polymarket_client_sdk::data::{Client, request::PositionsRequest};
+//! use polymarket_client_sdk::data::{Client, types::request::PositionsRequest};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // Create a client with the default endpoint
@@ -61,8 +61,6 @@
 //! The default API endpoint is `https://data-api.polymarket.com`.
 
 pub mod client;
-pub mod common;
-pub mod request;
-pub mod response;
+pub mod types;
 
 pub use client::Client;

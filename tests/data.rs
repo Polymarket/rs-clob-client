@@ -48,7 +48,7 @@ mod health {
 
 mod positions {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::data::{Client, request::PositionsRequest};
+    use polymarket_client_sdk::data::{Client, types::request::PositionsRequest};
     use reqwest::StatusCode;
     use rust_decimal_macros::dec;
     use serde_json::json;
@@ -144,7 +144,7 @@ mod positions {
 
 mod trades {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::data::{Client, common::Side, request::TradesRequest};
+    use polymarket_client_sdk::data::{Client, types::common::Side, types::request::TradesRequest};
     use reqwest::StatusCode;
     use rust_decimal_macros::dec;
     use serde_json::json;
@@ -203,8 +203,8 @@ mod activity {
     use httpmock::{Method::GET, MockServer};
     use polymarket_client_sdk::data::{
         Client,
-        common::{ActivityType, Side},
-        request::ActivityRequest,
+        types::common::{ActivityType, Side},
+        types::request::ActivityRequest,
     };
     use reqwest::StatusCode;
     use serde_json::json;
@@ -270,7 +270,7 @@ mod activity {
 
 mod holders {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::data::{Client, request::HoldersRequest};
+    use polymarket_client_sdk::data::{Client, types::request::HoldersRequest};
     use reqwest::StatusCode;
     use rust_decimal_macros::dec;
     use serde_json::json;
@@ -341,7 +341,7 @@ mod holders {
 
 mod value {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::data::{Client, request::ValueRequest};
+    use polymarket_client_sdk::data::{Client, types::request::ValueRequest};
     use reqwest::StatusCode;
     use rust_decimal_macros::dec;
     use serde_json::json;
@@ -380,7 +380,7 @@ mod value {
 
 mod closed_positions {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::data::{Client, request::ClosedPositionsRequest};
+    use polymarket_client_sdk::data::{Client, types::request::ClosedPositionsRequest};
     use reqwest::StatusCode;
     use rust_decimal_macros::dec;
     use serde_json::json;
@@ -442,8 +442,8 @@ mod leaderboard {
     use httpmock::{Method::GET, MockServer};
     use polymarket_client_sdk::data::{
         Client,
-        common::{LeaderboardCategory, LeaderboardOrderBy, TimePeriod},
-        request::TraderLeaderboardRequest,
+        types::common::{LeaderboardCategory, LeaderboardOrderBy, TimePeriod},
+        types::request::TraderLeaderboardRequest,
     };
     use reqwest::StatusCode;
     use rust_decimal_macros::dec;
@@ -533,7 +533,7 @@ mod leaderboard {
 
 mod traded {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::data::{Client, request::TradedRequest};
+    use polymarket_client_sdk::data::{Client, types::request::TradedRequest};
     use reqwest::StatusCode;
     use serde_json::json;
 
@@ -568,7 +568,7 @@ mod traded {
 
 mod open_interest {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::data::{Client, request::OpenInterestRequest};
+    use polymarket_client_sdk::data::{Client, types::request::OpenInterestRequest};
     use reqwest::StatusCode;
     use rust_decimal_macros::dec;
     use serde_json::json;
@@ -644,7 +644,7 @@ mod open_interest {
 
 mod live_volume {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::data::{Client, request::LiveVolumeRequest};
+    use polymarket_client_sdk::data::{Client, types::request::LiveVolumeRequest};
     use reqwest::StatusCode;
     use rust_decimal_macros::dec;
     use serde_json::json;
@@ -700,7 +700,7 @@ mod live_volume {
 mod builder_leaderboard {
     use httpmock::{Method::GET, MockServer};
     use polymarket_client_sdk::data::{
-        Client, common::TimePeriod, request::BuilderLeaderboardRequest,
+        Client, types::common::TimePeriod, types::request::BuilderLeaderboardRequest,
     };
     use reqwest::StatusCode;
     use rust_decimal_macros::dec;
@@ -776,7 +776,9 @@ mod builder_leaderboard {
 
 mod builder_volume {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::data::{Client, common::TimePeriod, request::BuilderVolumeRequest};
+    use polymarket_client_sdk::data::{
+        Client, types::common::TimePeriod, types::request::BuilderVolumeRequest,
+    };
     use reqwest::StatusCode;
     use rust_decimal_macros::dec;
     use serde_json::json;
@@ -851,7 +853,7 @@ mod builder_volume {
 
 mod error_handling {
     use httpmock::{Method::GET, MockServer};
-    use polymarket_client_sdk::data::{Client, request::PositionsRequest};
+    use polymarket_client_sdk::data::{Client, types::request::PositionsRequest};
     use polymarket_client_sdk::error::Kind;
     use reqwest::StatusCode;
     use serde_json::json;
@@ -955,11 +957,11 @@ mod client {
 mod types {
     use alloy::primitives::address;
     use polymarket_client_sdk::data::{
-        common::{
+        types::common::{
             ActivityType, BoundedIntError, LeaderboardCategory, LeaderboardOrderBy, MarketFilter,
             PositionSortBy, Side, SortDirection, TimePeriod, TradeFilter,
         },
-        request::{
+        types::request::{
             ActivityRequest, BuilderLeaderboardRequest, HoldersRequest, LiveVolumeRequest,
             PositionsRequest, TradedRequest, TraderLeaderboardRequest, TradesRequest,
             to_query_string,
@@ -1165,7 +1167,7 @@ mod types {
 
     #[test]
     fn all_activity_types_display() {
-        use polymarket_client_sdk::data::common::ActivityType;
+        use polymarket_client_sdk::data::types::common::ActivityType;
         assert_eq!(ActivityType::Split.to_string(), "SPLIT");
         assert_eq!(ActivityType::Merge.to_string(), "MERGE");
         assert_eq!(ActivityType::Redeem.to_string(), "REDEEM");
@@ -1217,7 +1219,9 @@ mod types {
 
 mod error_display {
     use alloy::primitives::address;
-    use polymarket_client_sdk::data::{common::TradeFilter, request::PositionsRequest};
+    use polymarket_client_sdk::data::{
+        types::common::TradeFilter, types::request::PositionsRequest,
+    };
     use rust_decimal_macros::dec;
 
     #[test]
@@ -1241,7 +1245,7 @@ mod error_display {
 
 mod request_query_string_extended {
     use alloy::primitives::{Address, address};
-    use polymarket_client_sdk::data::{
+    use polymarket_client_sdk::data::types::{
         common::{
             ActivitySortBy, ClosedPositionSortBy, MarketFilter, PositionSortBy, Side,
             SortDirection, TradeFilter,
@@ -1450,7 +1454,7 @@ mod request_query_string_extended {
 
     #[test]
     fn closed_position_sort_by_variants() {
-        use polymarket_client_sdk::data::common::ClosedPositionSortBy;
+        use polymarket_client_sdk::data::types::common::ClosedPositionSortBy;
         assert_eq!(ClosedPositionSortBy::Title.to_string(), "TITLE");
         assert_eq!(ClosedPositionSortBy::Price.to_string(), "PRICE");
         assert_eq!(ClosedPositionSortBy::AvgPrice.to_string(), "AVGPRICE");
@@ -1465,7 +1469,7 @@ mod request_query_string_extended {
 
     #[test]
     fn filter_type_display() {
-        use polymarket_client_sdk::data::common::FilterType;
+        use polymarket_client_sdk::data::types::common::FilterType;
         assert_eq!(FilterType::Cash.to_string(), "CASH");
         assert_eq!(FilterType::Tokens.to_string(), "TOKENS");
     }
