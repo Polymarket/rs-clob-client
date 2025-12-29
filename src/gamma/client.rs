@@ -44,8 +44,6 @@ use super::types::{
 };
 use crate::Result;
 use crate::error::Error;
-#[cfg(feature = "tracing")]
-use crate::error::Kind;
 
 /// HTTP client for the Polymarket Gamma API.
 ///
@@ -153,53 +151,18 @@ impl Client {
             return Err(Error::status(status_code, method, path, message));
         }
 
-        // When tracing is enabled, parse to Value first for drift detection
-        #[cfg(feature = "tracing")]
-        {
-            let text = response.text().await?;
-            let json_value: serde_json::Value =
-                serde_json::from_str(&text).map_err(|e| Error::with_source(Kind::Internal, e))?;
+        if let Some(response) = response.json::<Option<Response>>().await? {
+            Ok(response)
+        } else {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(method = %method, path = %path, "Gamma API resource not found");
 
-            // Use serde_path_to_error to get the field path in error messages
-            match serde_path_to_error::deserialize::<_, Option<Response>>(json_value.clone()) {
-                Ok(Some(data)) => {
-                    return Ok(data);
-                }
-                Ok(None) => {
-                    tracing::warn!(method = %method, path = %path, "Gamma API resource not found");
-                    return Err(Error::status(
-                        StatusCode::NOT_FOUND,
-                        method,
-                        path,
-                        "Unable to find requested resource",
-                    ));
-                }
-                Err(e) => {
-                    tracing::error!(
-                        method = %method,
-                        path = %path,
-                        field = %e.path(),
-                        error = %e.inner(),
-                        "API schema mismatch - response does not match expected type"
-                    );
-                    return Err(Error::with_source(Kind::Internal, e));
-                }
-            }
-        }
-
-        // Without tracing, use simple direct deserialization
-        #[cfg(not(feature = "tracing"))]
-        {
-            if let Some(response) = response.json::<Option<Response>>().await? {
-                Ok(response)
-            } else {
-                Err(Error::status(
-                    StatusCode::NOT_FOUND,
-                    method,
-                    path,
-                    "Unable to find requested resource",
-                ))
-            }
+            Err(Error::status(
+                StatusCode::NOT_FOUND,
+                method,
+                path,
+                "Unable to find requested resource",
+            ))
         }
     }
 
