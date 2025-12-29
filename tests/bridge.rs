@@ -127,6 +127,7 @@ mod supported_assets {
         types::{SupportedAsset, SupportedAssetsResponse, Token},
     };
     use reqwest::StatusCode;
+    use rust_decimal_macros::dec;
     use serde_json::json;
 
     #[tokio::test]
@@ -179,7 +180,7 @@ mod supported_assets {
                             .decimals(6_u8)
                             .build(),
                     )
-                    .min_checkout_usd(45.0)
+                    .min_checkout_usd(dec!(45))
                     .build(),
                 SupportedAsset::builder()
                     .chain_id("137")
@@ -192,7 +193,7 @@ mod supported_assets {
                             .decimals(6_u8)
                             .build(),
                     )
-                    .min_checkout_usd(10.0)
+                    .min_checkout_usd(dec!(10))
                     .build(),
             ])
             .build();
