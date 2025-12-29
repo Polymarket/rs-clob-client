@@ -68,7 +68,6 @@
 pub mod client;
 #[cfg(feature = "tracing")]
 mod drift;
-mod ser;
 pub mod types;
 
 pub use client::Client;

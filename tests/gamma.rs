@@ -913,9 +913,9 @@ mod query_string {
         CommentsByIdRequest, CommentsByUserAddressRequest, CommentsRequest, EventByIdRequest,
         EventBySlugRequest, EventTagsRequest, EventsRequest, MarketByIdRequest,
         MarketBySlugRequest, MarketTagsRequest, MarketsRequest, ParentEntityType,
-        PublicProfileRequest, QueryParams as _, RelatedTagsByIdRequest, RelatedTagsBySlugRequest,
-        RelatedTagsStatus, SearchRequest, SeriesByIdRequest, SeriesListRequest, TagByIdRequest,
-        TagBySlugRequest, TagsRequest, TeamsRequest,
+        PublicProfileRequest, RelatedTagsByIdRequest, RelatedTagsBySlugRequest, RelatedTagsStatus,
+        SearchRequest, SeriesByIdRequest, SeriesListRequest, TagByIdRequest, TagBySlugRequest,
+        TagsRequest, TeamsRequest, query_string,
     };
 
     #[test]
@@ -930,7 +930,7 @@ mod query_string {
             .abbreviation(vec!["LAL".to_owned(), "BOS".to_owned()])
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.contains("limit=10"));
         assert!(qs.contains("offset=5"));
         assert!(qs.contains("order=name"));
@@ -948,7 +948,7 @@ mod query_string {
             .abbreviation(vec![])
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(!qs.contains("league="));
         assert!(!qs.contains("name="));
         assert!(!qs.contains("abbreviation="));
@@ -965,7 +965,7 @@ mod query_string {
             .is_carousel(true)
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.contains("limit=20"));
         assert!(qs.contains("offset=10"));
         assert!(qs.contains("order=label"));
@@ -981,7 +981,7 @@ mod query_string {
             .include_template(true)
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.contains("include_template=true"));
     }
 
@@ -992,7 +992,7 @@ mod query_string {
             .include_template(false)
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.contains("include_template=false"));
     }
 
@@ -1004,7 +1004,7 @@ mod query_string {
             .status(RelatedTagsStatus::Active)
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.contains("omit_empty=true"));
         assert!(qs.contains("status=active"));
     }
@@ -1017,7 +1017,7 @@ mod query_string {
             .status(RelatedTagsStatus::Closed)
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.contains("omit_empty=false"));
         assert!(qs.contains("status=closed"));
     }
@@ -1029,7 +1029,7 @@ mod query_string {
             .status(RelatedTagsStatus::All)
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.contains("status=all"));
     }
 
@@ -1067,7 +1067,7 @@ mod query_string {
             .end_date_max(end_date)
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.contains("limit=50"));
         assert!(qs.contains("offset=10"));
         assert!(qs.contains("order=startDate"));
@@ -1104,7 +1104,7 @@ mod query_string {
             .slug(vec![])
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(!qs.contains("id="));
         assert!(!qs.contains("exclude_tag_id="));
         assert!(!qs.contains("slug="));
@@ -1118,7 +1118,7 @@ mod query_string {
             .include_template(false)
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.contains("include_chat=true"));
         assert!(qs.contains("include_template=false"));
     }
@@ -1131,7 +1131,7 @@ mod query_string {
             .include_template(true)
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.contains("include_chat=false"));
         assert!(qs.contains("include_template=true"));
     }
@@ -1139,7 +1139,7 @@ mod query_string {
     #[test]
     fn event_tags_request_empty_params() {
         let request = EventTagsRequest::builder().id("123").build();
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.is_empty());
     }
 
@@ -1178,7 +1178,7 @@ mod query_string {
             .closed(false)
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.contains("limit=100"));
         assert!(qs.contains("offset=50"));
         assert!(qs.contains("order=volume"));
@@ -1220,7 +1220,7 @@ mod query_string {
             .question_ids(vec![])
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(!qs.contains("id="));
         assert!(!qs.contains("slug="));
         assert!(!qs.contains("clob_token_ids="));
@@ -1237,7 +1237,7 @@ mod query_string {
             .include_tag(true)
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.contains("include_tag=true"));
     }
 
@@ -1248,14 +1248,14 @@ mod query_string {
             .include_tag(false)
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.contains("include_tag=false"));
     }
 
     #[test]
     fn market_tags_request_empty_params() {
         let request = MarketTagsRequest::builder().id("456").build();
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.is_empty());
     }
 
@@ -1274,7 +1274,7 @@ mod query_string {
             .recurrence("daily".to_owned())
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.contains("limit=25"));
         assert!(qs.contains("offset=5"));
         assert!(qs.contains("order=title"));
@@ -1295,7 +1295,7 @@ mod query_string {
             .categories_labels(vec![])
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(!qs.contains("slug="));
         assert!(!qs.contains("categories_ids="));
         assert!(!qs.contains("categories_labels="));
@@ -1308,7 +1308,7 @@ mod query_string {
             .include_chat(true)
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.contains("include_chat=true"));
     }
 
@@ -1325,7 +1325,7 @@ mod query_string {
             .holders_only(true)
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.contains("limit=50"));
         assert!(qs.contains("offset=10"));
         assert!(qs.contains("order=createdAt"));
@@ -1342,7 +1342,7 @@ mod query_string {
             .parent_entity_type(ParentEntityType::Series)
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.contains("parent_entity_type=Series"));
     }
 
@@ -1352,7 +1352,7 @@ mod query_string {
             .parent_entity_type(ParentEntityType::Market)
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.contains("parent_entity_type=market"));
     }
 
@@ -1363,7 +1363,7 @@ mod query_string {
             .get_positions(true)
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.contains("get_positions=true"));
     }
 
@@ -1377,7 +1377,7 @@ mod query_string {
             .ascending(true)
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.contains("limit=20"));
         assert!(qs.contains("offset=5"));
         assert!(qs.contains("order=createdAt"));
@@ -1390,7 +1390,7 @@ mod query_string {
             .address("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.contains("address=0x56687bf447db6ffa42ffe2204a05edaa20f55839"));
     }
 
@@ -1413,7 +1413,7 @@ mod query_string {
             .optimized(true)
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(qs.contains("q=bitcoin"));
         assert!(qs.contains("cache=true"));
         assert!(qs.contains("events_status=active"));
@@ -1438,14 +1438,14 @@ mod query_string {
             .exclude_tag_id(vec![])
             .build();
 
-        let qs = request.query_string();
+        let qs = query_string(&request);
         assert!(!qs.contains("events_tag="));
         assert!(!qs.contains("exclude_tag_id="));
     }
 
     #[test]
     fn unit_query_string_returns_empty() {
-        let qs = ().query_string();
+        let qs = query_string(&());
         assert!(qs.is_empty());
     }
 }

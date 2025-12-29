@@ -31,144 +31,124 @@
 use bon::Builder;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-
-use super::ser::{comma_separated, is_empty_vec, rfc3339};
+use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as, skip_serializing_none};
 
 // =============================================================================
 // Request Types - Trait
 // =============================================================================
 
-/// Trait for converting request types to URL query strings.
+/// Converts a serializable request to a URL query string.
 ///
-/// This trait is automatically implemented for all types that implement [`Serialize`].
-/// It uses [`serde_urlencoded`] to serialize the struct fields into a query string.
+/// Returns an empty string if no parameters are set, otherwise returns
+/// a string starting with `?` followed by URL-encoded key-value pairs.
 ///
 /// # Example
 ///
 /// ```
-/// use polymarket_client_sdk::gamma::types::{EventsRequest, QueryParams};
+/// use polymarket_client_sdk::gamma::types::{EventsRequest, query_string};
 ///
 /// let request = EventsRequest::builder()
 ///     .limit(10)
 ///     .active(true)
 ///     .build();
 ///
-/// let query = request.query_string();
+/// let query = query_string(&request);
 /// assert!(query.starts_with("?"));
 /// assert!(query.contains("limit=10"));
 /// assert!(query.contains("active=true"));
 /// ```
-pub trait QueryParams: Serialize {
-    /// Converts the request to a URL query string.
-    ///
-    /// Returns an empty string if no parameters are set, otherwise returns
-    /// a string starting with `?` followed by URL-encoded key-value pairs.
-    fn query_string(&self) -> String {
-        let params = serde_urlencoded::to_string(self).unwrap_or_default();
-        if params.is_empty() {
-            params
-        } else {
-            format!("?{params}")
-        }
+#[must_use]
+pub fn query_string<T: Serialize>(request: &T) -> String {
+    let params = serde_urlencoded::to_string(request).unwrap_or_default();
+    if params.is_empty() {
+        params
+    } else {
+        format!("?{params}")
     }
 }
-
-impl<T: Serialize> QueryParams for T {}
 
 // =============================================================================
 // Request Types - Sports Endpoints
 // =============================================================================
 
+#[serde_as]
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
 #[non_exhaustive]
 pub struct TeamsRequest {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub order: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub ascending: Option<bool>,
-    #[serde(
-        skip_serializing_if = "is_empty_vec",
-        serialize_with = "comma_separated"
-    )]
-    pub league: Option<Vec<String>>,
-    #[serde(
-        skip_serializing_if = "is_empty_vec",
-        serialize_with = "comma_separated"
-    )]
-    pub name: Option<Vec<String>>,
-    #[serde(
-        skip_serializing_if = "is_empty_vec",
-        serialize_with = "comma_separated"
-    )]
-    pub abbreviation: Option<Vec<String>>,
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[builder(default)]
+    pub league: Vec<String>,
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[builder(default)]
+    pub name: Vec<String>,
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[builder(default)]
+    pub abbreviation: Vec<String>,
 }
 
 // =============================================================================
 // Request Types - Tags Endpoints
 // =============================================================================
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
 #[non_exhaustive]
 pub struct TagsRequest {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub order: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub ascending: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_template: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub is_carousel: Option<bool>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
 pub struct TagByIdRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
     pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_template: Option<bool>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
 pub struct TagBySlugRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
     pub slug: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_template: Option<bool>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
 pub struct RelatedTagsByIdRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
     pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub omit_empty: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<RelatedTagsStatus>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
 pub struct RelatedTagsBySlugRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
     pub slug: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub omit_empty: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<RelatedTagsStatus>,
 }
 
@@ -176,94 +156,68 @@ pub struct RelatedTagsBySlugRequest {
 // Request Types - Events Endpoints
 // =============================================================================
 
+#[serde_as]
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
 #[non_exhaustive]
 pub struct EventsRequest {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub order: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub ascending: Option<bool>,
-    #[serde(
-        skip_serializing_if = "is_empty_vec",
-        serialize_with = "comma_separated"
-    )]
-    pub id: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[builder(default)]
+    pub id: Vec<String>,
     #[builder(into)]
     pub tag_id: Option<String>,
-    #[serde(
-        skip_serializing_if = "is_empty_vec",
-        serialize_with = "comma_separated"
-    )]
-    pub exclude_tag_id: Option<Vec<String>>,
-    #[serde(
-        skip_serializing_if = "is_empty_vec",
-        serialize_with = "comma_separated"
-    )]
-    pub slug: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[builder(default)]
+    pub exclude_tag_id: Vec<String>,
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[builder(default)]
+    pub slug: Vec<String>,
     pub tag_slug: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub related_tags: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub active: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub archived: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub featured: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub cyom: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_chat: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_template: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub recurrence: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub closed: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub liquidity_min: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub liquidity_max: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub volume_min: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub volume_max: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "rfc3339")]
     pub start_date_min: Option<DateTime<Utc>>,
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "rfc3339")]
     pub start_date_max: Option<DateTime<Utc>>,
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "rfc3339")]
     pub end_date_min: Option<DateTime<Utc>>,
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "rfc3339")]
     pub end_date_max: Option<DateTime<Utc>>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
 pub struct EventByIdRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
     pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_chat: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_template: Option<bool>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
 pub struct EventBySlugRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
     pub slug: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_chat: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_template: Option<bool>,
 }
 
@@ -279,104 +233,79 @@ pub struct EventTagsRequest {
 // Request Types - Markets Endpoints
 // =============================================================================
 
+#[serde_as]
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
 #[non_exhaustive]
 pub struct MarketsRequest {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub order: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub ascending: Option<bool>,
-    #[serde(
-        skip_serializing_if = "is_empty_vec",
-        serialize_with = "comma_separated"
-    )]
-    pub id: Option<Vec<String>>,
-    #[serde(
-        skip_serializing_if = "is_empty_vec",
-        serialize_with = "comma_separated"
-    )]
-    pub slug: Option<Vec<String>>,
-    #[serde(
-        skip_serializing_if = "is_empty_vec",
-        serialize_with = "comma_separated"
-    )]
-    pub clob_token_ids: Option<Vec<String>>,
-    #[serde(
-        skip_serializing_if = "is_empty_vec",
-        serialize_with = "comma_separated"
-    )]
-    pub condition_ids: Option<Vec<String>>,
-    #[serde(
-        skip_serializing_if = "is_empty_vec",
-        serialize_with = "comma_separated"
-    )]
-    pub market_maker_address: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[builder(default)]
+    pub id: Vec<String>,
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[builder(default)]
+    pub slug: Vec<String>,
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[builder(default)]
+    pub clob_token_ids: Vec<String>,
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[builder(default)]
+    pub condition_ids: Vec<String>,
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[builder(default)]
+    pub market_maker_address: Vec<String>,
     pub liquidity_num_min: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub liquidity_num_max: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub volume_num_min: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub volume_num_max: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "rfc3339")]
     pub start_date_min: Option<DateTime<Utc>>,
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "rfc3339")]
     pub start_date_max: Option<DateTime<Utc>>,
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "rfc3339")]
     pub end_date_min: Option<DateTime<Utc>>,
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "rfc3339")]
     pub end_date_max: Option<DateTime<Utc>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[builder(into)]
     pub tag_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub related_tags: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub cyom: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub uma_resolution_status: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub game_id: Option<String>,
-    #[serde(
-        skip_serializing_if = "is_empty_vec",
-        serialize_with = "comma_separated"
-    )]
-    pub sports_market_types: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[builder(default)]
+    pub sports_market_types: Vec<String>,
     pub rewards_min_size: Option<f64>,
-    #[serde(
-        skip_serializing_if = "is_empty_vec",
-        serialize_with = "comma_separated"
-    )]
-    pub question_ids: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[builder(default)]
+    pub question_ids: Vec<String>,
     pub include_tag: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub closed: Option<bool>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
 pub struct MarketByIdRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
     pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_tag: Option<bool>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
 pub struct MarketBySlugRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
     pub slug: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_tag: Option<bool>,
 }
 
@@ -392,47 +321,39 @@ pub struct MarketTagsRequest {
 // Request Types - Series Endpoints
 // =============================================================================
 
+#[serde_as]
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
 #[non_exhaustive]
 pub struct SeriesListRequest {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub order: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub ascending: Option<bool>,
-    #[serde(
-        skip_serializing_if = "is_empty_vec",
-        serialize_with = "comma_separated"
-    )]
-    pub slug: Option<Vec<String>>,
-    #[serde(
-        skip_serializing_if = "is_empty_vec",
-        serialize_with = "comma_separated"
-    )]
-    pub categories_ids: Option<Vec<String>>,
-    #[serde(
-        skip_serializing_if = "is_empty_vec",
-        serialize_with = "comma_separated"
-    )]
-    pub categories_labels: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[builder(default)]
+    pub slug: Vec<String>,
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[builder(default)]
+    pub categories_ids: Vec<String>,
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[builder(default)]
+    pub categories_labels: Vec<String>,
     pub closed: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_chat: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub recurrence: Option<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
 pub struct SeriesByIdRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
     pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_chat: Option<bool>,
 }
 
@@ -440,51 +361,41 @@ pub struct SeriesByIdRequest {
 // Request Types - Comments Endpoints
 // =============================================================================
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
 #[non_exhaustive]
 pub struct CommentsRequest {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub order: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub ascending: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub parent_entity_type: Option<ParentEntityType>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[builder(into)]
     pub parent_entity_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub get_positions: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub holders_only: Option<bool>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
 pub struct CommentsByIdRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
     pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub get_positions: Option<bool>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
 pub struct CommentsByUserAddressRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
     pub user_address: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub order: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub ascending: Option<bool>,
 }
 
@@ -503,42 +414,31 @@ pub struct PublicProfileRequest {
 // Request Types - Search Endpoints
 // =============================================================================
 
+#[serde_as]
+#[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
 pub struct SearchRequest {
     #[builder(into)]
     pub q: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub cache: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub events_status: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit_per_type: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub page: Option<i32>,
-    #[serde(
-        skip_serializing_if = "is_empty_vec",
-        serialize_with = "comma_separated"
-    )]
-    pub events_tag: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[builder(default)]
+    pub events_tag: Vec<String>,
     pub keep_closed_markets: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub sort: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub ascending: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub search_tags: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub search_profiles: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub recurrence: Option<String>,
-    #[serde(
-        skip_serializing_if = "is_empty_vec",
-        serialize_with = "comma_separated"
-    )]
-    pub exclude_tag_id: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[builder(default)]
+    pub exclude_tag_id: Vec<String>,
     pub optimized: Option<bool>,
 }
 

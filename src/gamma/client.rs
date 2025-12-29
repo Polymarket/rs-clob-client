@@ -37,10 +37,10 @@ use super::types::{
     Comment, CommentsByIdRequest, CommentsByUserAddressRequest, CommentsRequest, Event,
     EventByIdRequest, EventBySlugRequest, EventTagsRequest, EventsRequest, HealthResponse, Market,
     MarketByIdRequest, MarketBySlugRequest, MarketTagsRequest, MarketsRequest, PublicProfile,
-    PublicProfileRequest, QueryParams, RelatedTag, RelatedTagsByIdRequest,
-    RelatedTagsBySlugRequest, SearchRequest, SearchResults, Series, SeriesByIdRequest,
-    SeriesListRequest, SportsMarketTypesResponse, SportsMetadata, Tag, TagByIdRequest,
-    TagBySlugRequest, TagsRequest, Team, TeamsRequest,
+    PublicProfileRequest, RelatedTag, RelatedTagsByIdRequest, RelatedTagsBySlugRequest,
+    SearchRequest, SearchResults, Series, SeriesByIdRequest, SeriesListRequest,
+    SportsMarketTypesResponse, SportsMetadata, Tag, TagByIdRequest, TagBySlugRequest, TagsRequest,
+    Team, TeamsRequest, query_string,
 };
 use crate::Result;
 use crate::error::Error;
@@ -210,12 +210,12 @@ impl Client {
         &self.host
     }
 
-    async fn get<Req: QueryParams, Res: DeserializeOwned + Serialize>(
+    async fn get<Req: Serialize, Res: DeserializeOwned + Serialize>(
         &self,
         path: &str,
         req: &Req,
     ) -> Result<Res> {
-        let params = req.query_string();
+        let params = query_string(req);
         let request = self
             .client
             .request(Method::GET, format!("{}{path}{params}", self.host))
