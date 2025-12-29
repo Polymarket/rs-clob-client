@@ -272,33 +272,25 @@ pub enum LeaderboardOrderBy {
 pub enum MarketFilter {
     /// Filter by condition IDs (market identifiers).
     #[serde(rename = "market")]
-    Markets(
-        #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
-        #[serde(skip_serializing_if = "Vec::is_empty")]
-        Vec<String>,
-    ),
+    Markets(#[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")] Vec<String>),
     /// Filter by event IDs (groups of related markets).
     #[serde(rename = "eventId")]
-    EventIds(
-        #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
-        #[serde(skip_serializing_if = "Vec::is_empty")]
-        Vec<String>,
-    ),
+    EventIds(#[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")] Vec<String>),
 }
 
 impl MarketFilter {
     /// Creates a filter for specific markets by their condition IDs.
     #[must_use]
-    pub fn markets<I: IntoIterator<Item = String>>(ids: I) -> Option<Self> {
+    pub fn markets<I: IntoIterator<Item = String>>(ids: I) -> Self {
         let v: Vec<String> = ids.into_iter().collect();
-        (!v.is_empty()).then_some(MarketFilter::Markets(v))
+        MarketFilter::Markets(v)
     }
 
     /// Creates a filter for all markets within the specified events.
     #[must_use]
-    pub fn event_ids<I: IntoIterator<Item = String>>(ids: I) -> Option<Self> {
+    pub fn event_ids<I: IntoIterator<Item = String>>(ids: I) -> Self {
         let v: Vec<String> = ids.into_iter().collect();
-        (!v.is_empty()).then_some(MarketFilter::EventIds(v))
+        MarketFilter::EventIds(v)
     }
 }
 
