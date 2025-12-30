@@ -6,7 +6,7 @@
 //! # Example
 //!
 //! ```no_run
-//! use polymarket_client_sdk::gamma::{Client, types::EventsRequest};
+//! use polymarket_client_sdk::gamma::{Client, types::request::EventsRequest};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let client = Client::default();
@@ -33,14 +33,16 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use url::Url;
 
-use super::types::{
-    Comment, CommentsByIdRequest, CommentsByUserAddressRequest, CommentsRequest, Event,
-    EventByIdRequest, EventBySlugRequest, EventTagsRequest, EventsRequest, HealthResponse, Market,
-    MarketByIdRequest, MarketBySlugRequest, MarketTagsRequest, MarketsRequest, PublicProfile,
-    PublicProfileRequest, RelatedTag, RelatedTagsByIdRequest, RelatedTagsBySlugRequest,
-    SearchRequest, SearchResults, Series, SeriesByIdRequest, SeriesListRequest,
-    SportsMarketTypesResponse, SportsMetadata, Tag, TagByIdRequest, TagBySlugRequest, TagsRequest,
-    Team, TeamsRequest,
+use super::types::request::{
+    CommentsByIdRequest, CommentsByUserAddressRequest, CommentsRequest, EventByIdRequest,
+    EventBySlugRequest, EventTagsRequest, EventsRequest, MarketByIdRequest, MarketBySlugRequest,
+    MarketTagsRequest, MarketsRequest, PublicProfileRequest, RelatedTagsByIdRequest,
+    RelatedTagsBySlugRequest, SearchRequest, SeriesByIdRequest, SeriesListRequest, TagByIdRequest,
+    TagBySlugRequest, TagsRequest, TeamsRequest,
+};
+use super::types::response::{
+    Comment, Event, HealthResponse, Market, PublicProfile, RelatedTag, SearchResults, Series,
+    SportsMarketTypesResponse, SportsMetadata, Tag, Team,
 };
 use crate::Result;
 use crate::error::Error;

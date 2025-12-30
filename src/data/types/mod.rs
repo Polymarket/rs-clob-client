@@ -1,17 +1,12 @@
-//! Common types for the Polymarket Data API.
-//!
-//! This module contains fundamental types used across the Data API,
-//! including type aliases, enums for sorting and filtering, bounded
-//! integer types, and filter constructs.
-
-use std::error::Error as StdError;
 use std::fmt;
 
-/// Re-export of alloy's Address type for Ethereum addresses.
-pub use alloy::primitives::Address;
 use rust_decimal::Decimal;
+use serde::de::StdError;
 use serde::{Deserialize, Serialize};
 use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as};
+
+pub mod request;
+pub mod response;
 
 /// Type alias for 64-character hex hashes (condition IDs, market identifiers).
 pub type Hash64 = String;
@@ -263,7 +258,7 @@ pub enum LeaderboardOrderBy {
 /// # Example
 ///
 /// ```
-/// use polymarket_client_sdk::data_api::common::MarketFilter;
+/// use polymarket_client_sdk::data::types::MarketFilter;
 ///
 /// // Filter by specific markets (condition IDs)
 /// let by_markets = MarketFilter::markets(["0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917".to_string()]);
@@ -344,7 +339,7 @@ impl StdError for BoundedIntError {}
 /// # Example
 ///
 /// ```
-/// use polymarket_client_sdk::data_api::common::TradeFilter;
+/// use polymarket_client_sdk::data::types::TradeFilter;
 /// use rust_decimal_macros::dec;
 ///
 /// // Filter trades with at least $100 USDC value

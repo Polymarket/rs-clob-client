@@ -2,11 +2,12 @@
 //!
 //! This module contains structs representing API responses from the Data API endpoints.
 
+use alloy::primitives::Address;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Deserializer};
 use serde_with::{DefaultOnNull, serde_as};
 
-use super::common::{ActivityType, Address, Hash64, Side};
+use super::{ActivityType, Hash64, Side};
 
 /// Deserializes an optional Side, treating empty strings as None.
 fn deserialize_optional_side<'de, D>(deserializer: D) -> Result<Option<Side>, D::Error>

@@ -8,13 +8,14 @@
     reason = "Request suffix is intentional for clarity"
 )]
 
+use alloy::primitives::Address;
 use bon::Builder;
 use rust_decimal::Decimal;
 use serde::Serialize;
 use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as, skip_serializing_none};
 
-use super::common::{
-    ActivitySortBy, ActivityType, Address, BoundedIntError, ClosedPositionSortBy, Hash64,
+use super::{
+    ActivitySortBy, ActivityType, BoundedIntError, ClosedPositionSortBy, Hash64,
     LeaderboardCategory, LeaderboardOrderBy, MarketFilter, PositionSortBy, Side, SortDirection,
     TimePeriod, Title, TradeFilter,
 };
@@ -72,7 +73,7 @@ fn validate_bound(
 ///
 /// ```
 /// use alloy::primitives::address;
-/// use polymarket_client_sdk::data_api::{request::PositionsRequest, common::{PositionSortBy, SortDirection}};
+/// use polymarket_client_sdk::data::{types::request::PositionsRequest, types::{PositionSortBy, SortDirection}};
 ///
 /// let request = PositionsRequest::builder()
 ///     .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
@@ -141,7 +142,7 @@ fn filter_is_none_or_empty(f: &Option<MarketFilter>) -> bool {
 ///
 /// ```
 /// use alloy::primitives::address;
-/// use polymarket_client_sdk::data_api::{request::TradesRequest, common::{Side, TradeFilter}};
+/// use polymarket_client_sdk::data::{types::request::TradesRequest, types::{Side, TradeFilter}};
 /// use rust_decimal_macros::dec;
 ///
 /// let request = TradesRequest::builder()
@@ -201,7 +202,7 @@ pub struct TradesRequest {
 ///
 /// ```
 /// use alloy::primitives::address;
-/// use polymarket_client_sdk::data_api::{request::ActivityRequest, common::ActivityType};
+/// use polymarket_client_sdk::data::{types::request::ActivityRequest, types::ActivityType};
 ///
 /// let request = ActivityRequest::builder()
 ///     .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
@@ -261,7 +262,7 @@ pub struct ActivityRequest {
 /// # Example
 ///
 /// ```
-/// use polymarket_client_sdk::data_api::request::HoldersRequest;
+/// use polymarket_client_sdk::data::types::request::HoldersRequest;
 ///
 /// let request = HoldersRequest::builder()
 ///     .markets(vec!["0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917".to_string()])
@@ -384,7 +385,7 @@ pub struct LiveVolumeRequest {
 ///
 /// ```
 /// use alloy::primitives::address;
-/// use polymarket_client_sdk::data_api::{request::ClosedPositionsRequest, common::ClosedPositionSortBy};
+/// use polymarket_client_sdk::data::{types::request::ClosedPositionsRequest, types::ClosedPositionSortBy};
 ///
 /// let request = ClosedPositionsRequest::builder()
 ///     .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
@@ -433,7 +434,7 @@ pub struct ClosedPositionsRequest {
 /// # Example
 ///
 /// ```
-/// use polymarket_client_sdk::data_api::{request::BuilderLeaderboardRequest, common::TimePeriod};
+/// use polymarket_client_sdk::data::{types::request::BuilderLeaderboardRequest, types::TimePeriod};
 ///
 /// let request = BuilderLeaderboardRequest::builder()
 ///     .time_period(TimePeriod::Week)
@@ -466,7 +467,7 @@ pub struct BuilderLeaderboardRequest {
 /// # Example
 ///
 /// ```
-/// use polymarket_client_sdk::data_api::{request::BuilderVolumeRequest, common::TimePeriod};
+/// use polymarket_client_sdk::data::{types::request::BuilderVolumeRequest, types::TimePeriod};
 ///
 /// let request = BuilderVolumeRequest::builder()
 ///     .time_period(TimePeriod::Month)
@@ -499,7 +500,7 @@ pub struct BuilderVolumeRequest {
 /// # Example
 ///
 /// ```
-/// use polymarket_client_sdk::data_api::{request::TraderLeaderboardRequest, common::{LeaderboardCategory, TimePeriod, LeaderboardOrderBy}};
+/// use polymarket_client_sdk::data::{types::request::TraderLeaderboardRequest, types::{LeaderboardCategory, TimePeriod, LeaderboardOrderBy}};
 ///
 /// let request = TraderLeaderboardRequest::builder()
 ///     .category(LeaderboardCategory::Politics)
