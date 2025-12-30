@@ -51,10 +51,6 @@ macro_rules! log_warn {
 /// Logs a message at the error level, gated by `#[cfg(feature = "tracing")]`.
 ///
 /// Accepts the same arguments as `tracing::error!`.
-#[cfg_attr(
-    not(feature = "ws"),
-    expect(unused_macros, reason = "only used when ws feature is enabled")
-)]
 macro_rules! log_error {
     ($($args:tt)*) => {{
         #[cfg(feature = "tracing")]
@@ -88,7 +84,6 @@ macro_rules! log_suppress {
 }
 
 pub(crate) use log_debug;
-#[cfg(any(feature = "ws", test))]
 pub(crate) use log_error;
 #[cfg(any(feature = "ws", test))]
 pub(crate) use log_suppress;
