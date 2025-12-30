@@ -20,6 +20,8 @@ pub enum Kind {
     Internal,
     /// Error related to WebSocket connections
     WebSocket,
+    /// Error related to geographic restrictions blocking access
+    Geoblock,
 }
 
 #[derive(Debug)]
@@ -175,6 +177,39 @@ impl From<MissingContractConfig> for Error {
     }
 }
 
+/// Error indicating that the user is blocked from accessing Polymarket due to geographic
+/// restrictions.
+///
+/// This error contains information about the user's detected location.
+#[non_exhaustive]
+#[derive(Debug, Clone)]
+pub struct Geoblock {
+    /// The detected IP address
+    pub ip: String,
+    /// ISO 3166-1 alpha-2 country code
+    pub country: String,
+    /// Region/state code
+    pub region: String,
+}
+
+impl fmt::Display for Geoblock {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "access blocked from country: {}, region: {}, ip: {}",
+            self.country, self.region, self.ip
+        )
+    }
+}
+
+impl StdError for Geoblock {}
+
+impl From<Geoblock> for Error {
+    fn from(err: Geoblock) -> Self {
+        Error::with_source(Kind::Geoblock, err)
+    }
+}
+
 impl From<base64::DecodeError> for Error {
     fn from(e: base64::DecodeError) -> Self {
         Error::with_source(Kind::Internal, e)
@@ -238,5 +273,38 @@ impl From<Status> for Error {
 impl From<Synchronization> for Error {
     fn from(err: Synchronization) -> Self {
         Error::with_source(Kind::Synchronization, err)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn geoblock_display_should_succeed() {
+        let geoblock = Geoblock {
+            ip: "192.168.1.1".to_owned(),
+            country: "US".to_owned(),
+            region: "NY".to_owned(),
+        };
+
+        assert_eq!(
+            geoblock.to_string(),
+            "access blocked from country: US, region: NY, ip: 192.168.1.1"
+        );
+    }
+
+    #[test]
+    fn geoblock_into_error_should_succeed() {
+        let geoblock = Geoblock {
+            ip: "10.0.0.1".to_owned(),
+            country: "CU".to_owned(),
+            region: "HAV".to_owned(),
+        };
+
+        let error: Error = geoblock.into();
+
+        assert_eq!(error.kind(), Kind::Geoblock);
+        assert!(error.to_string().contains("CU"));
     }
 }
