@@ -8,6 +8,7 @@
     reason = "Request suffix is intentional for clarity"
 )]
 
+use alloy::primitives::Address;
 use bon::Builder;
 use rust_decimal::Decimal;
 use serde::Serialize;
@@ -18,7 +19,6 @@ use super::{
     LeaderboardCategory, LeaderboardOrderBy, MarketFilter, PositionSortBy, Side, SortDirection,
     TimePeriod, Title, TradeFilter,
 };
-use crate::types::Address;
 
 /// Converts a serializable request to a URL query string.
 ///
