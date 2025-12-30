@@ -15,7 +15,9 @@ use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::TcpStream;
 use tokio::sync::{broadcast, mpsc, watch};
 use tokio::time::{interval, sleep, timeout};
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, client_async_tls, connect_async, tungstenite::Message};
+use tokio_tungstenite::{
+    MaybeTlsStream, WebSocketStream, client_async_tls, connect_async, tungstenite::Message,
+};
 use url::Url;
 
 use super::config::Config;
@@ -458,7 +460,11 @@ async fn connect_socks5(proxy: &Url, target_host: &str, target_port: u16) -> Res
 }
 
 /// Connect through an HTTP CONNECT tunnel.
-async fn connect_http_tunnel(proxy: &Url, target_host: &str, target_port: u16) -> Result<TcpStream> {
+async fn connect_http_tunnel(
+    proxy: &Url,
+    target_host: &str,
+    target_port: u16,
+) -> Result<TcpStream> {
     let proxy_host = proxy
         .host_str()
         .ok_or_else(|| Error::validation("HTTP proxy URL missing host"))?;
