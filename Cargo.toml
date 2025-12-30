@@ -25,7 +25,13 @@ data = []
 gamma = []
 bridge = []
 tracing = ["dep:tracing"]
-ws = ["dep:backoff", "dep:bitflags", "dep:tokio", "dep:tokio-tungstenite", "dep:tokio-socks"]
+ws = [
+    "dep:backoff",
+    "dep:bitflags",
+    "dep:tokio",
+    "dep:tokio-tungstenite",
+    "dep:tokio-socks",
+]
 rtds = ["dep:backoff", "dep:tokio", "dep:tokio-tungstenite"]
 
 [dependencies]

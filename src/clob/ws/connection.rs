@@ -3,6 +3,7 @@
     reason = "Connection types expose their domain in the name for clarity"
 )]
 
+use std::fmt::Write as _;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -131,7 +132,7 @@ impl ConnectionManager {
             _ = state_tx.send(ConnectionState::Connecting);
 
             // Attempt connection (with or without proxy)
-            let connect_result = if let Some(ref proxy_url) = config.proxy {
+            let connect_result = if let Some(proxy_url) = &config.proxy {
                 connect_via_proxy(&endpoint, proxy_url).await
             } else {
                 connect_async(&endpoint)
@@ -440,7 +441,11 @@ async fn connect_socks5(proxy: &Url, target_host: &str, target_port: u16) -> Res
     let proxy_port = proxy.port().unwrap_or(1080);
     let proxy_addr = format!("{proxy_host}:{proxy_port}");
 
-    let stream = if !proxy.username().is_empty() {
+    let stream = if proxy.username().is_empty() {
+        tokio_socks::tcp::Socks5Stream::connect(proxy_addr.as_str(), (target_host, target_port))
+            .await
+            .map_err(|e| Error::validation(format!("SOCKS5 connection failed: {e}")))?
+    } else {
         let password = proxy.password().unwrap_or("");
         tokio_socks::tcp::Socks5Stream::connect_with_password(
             proxy_addr.as_str(),
@@ -450,10 +455,6 @@ async fn connect_socks5(proxy: &Url, target_host: &str, target_port: u16) -> Res
         )
         .await
         .map_err(|e| Error::validation(format!("SOCKS5 connection failed: {e}")))?
-    } else {
-        tokio_socks::tcp::Socks5Stream::connect(proxy_addr.as_str(), (target_host, target_port))
-            .await
-            .map_err(|e| Error::validation(format!("SOCKS5 connection failed: {e}")))?
     };
 
     Ok(stream.into_inner())
@@ -485,7 +486,8 @@ async fn connect_http_tunnel(
     if !proxy.username().is_empty() {
         let credentials = format!("{}:{}", proxy.username(), proxy.password().unwrap_or(""));
         let encoded = base64::engine::general_purpose::STANDARD.encode(credentials);
-        connect_request.push_str(&format!("Proxy-Authorization: Basic {encoded}\r\n"));
+        write!(connect_request, "Proxy-Authorization: Basic {encoded}\r\n")
+            .map_err(|e| Error::validation(format!("failed to format CONNECT request: {e}")))?;
     }
 
     connect_request.push_str("\r\n");
@@ -497,7 +499,7 @@ async fn connect_http_tunnel(
         .map_err(|e| Error::validation(format!("failed to send CONNECT request: {e}")))?;
 
     // Read response
-    let mut buf = [0u8; 1024];
+    let mut buf = [0_u8; 1024];
     let n = stream
         .read(&mut buf)
         .await

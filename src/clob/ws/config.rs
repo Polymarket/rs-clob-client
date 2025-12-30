@@ -44,7 +44,7 @@ impl Default for Config {
 impl Config {
     /// Create a new Config with the specified proxy URL.
     #[must_use]
-    pub fn with_proxy(proxy: impl Into<String>) -> Self {
+    pub fn with_proxy<P: Into<String>>(proxy: P) -> Self {
         Self {
             proxy: Some(proxy.into()),
             ..Self::default()
