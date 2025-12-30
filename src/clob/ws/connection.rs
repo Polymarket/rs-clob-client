@@ -7,13 +7,16 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use backoff::backoff::Backoff as _;
+use base64::Engine as _;
 use futures::{SinkExt as _, StreamExt as _};
 use secrecy::ExposeSecret as _;
 use serde_json::{Value, json};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::TcpStream;
 use tokio::sync::{broadcast, mpsc, watch};
 use tokio::time::{interval, sleep, timeout};
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message};
+use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, client_async_tls, connect_async, tungstenite::Message};
+use url::Url;
 
 use super::config::Config;
 use super::error::WsError;
@@ -125,9 +128,18 @@ impl ConnectionManager {
 
             _ = state_tx.send(ConnectionState::Connecting);
 
-            // Attempt connection
-            match connect_async(&endpoint).await {
-                Ok((ws_stream, _)) => {
+            // Attempt connection (with or without proxy)
+            let connect_result = if let Some(ref proxy_url) = config.proxy {
+                connect_via_proxy(&endpoint, proxy_url).await
+            } else {
+                connect_async(&endpoint)
+                    .await
+                    .map(|(ws, _)| ws)
+                    .map_err(|e| Error::with_source(Kind::WebSocket, WsError::Connection(e)))
+            };
+
+            match connect_result {
+                Ok(ws_stream) => {
                     attempt = 0;
                     backoff.reset();
                     _ = state_tx.send(ConnectionState::Connected {
@@ -152,11 +164,10 @@ impl ConnectionManager {
                     }
                 }
                 Err(e) => {
-                    let error = Error::with_source(Kind::WebSocket, WsError::Connection(e));
                     #[cfg(feature = "tracing")]
-                    tracing::warn!("Unable to connect: {error:?}");
+                    tracing::warn!("Unable to connect: {e:?}");
                     #[cfg(not(feature = "tracing"))]
-                    let _ = &error;
+                    let _ = &e;
                     attempt = attempt.saturating_add(1);
                 }
             }
@@ -382,4 +393,119 @@ impl ConnectionManager {
     pub fn state_receiver(&self) -> watch::Receiver<ConnectionState> {
         self.state_tx.subscribe()
     }
+}
+
+/// Connect to a WebSocket endpoint via a proxy.
+///
+/// Supports:
+/// - SOCKS5 proxies: `socks5://[user:pass@]host:port`
+/// - HTTP CONNECT proxies: `http://[user:pass@]host:port`
+async fn connect_via_proxy(endpoint: &str, proxy_url: &str) -> Result<WsStream> {
+    let proxy = Url::parse(proxy_url)
+        .map_err(|e| Error::validation(format!("invalid proxy URL '{proxy_url}': {e}")))?;
+
+    let target = Url::parse(endpoint)
+        .map_err(|e| Error::validation(format!("invalid WebSocket URL '{endpoint}': {e}")))?;
+
+    let target_host = target
+        .host_str()
+        .ok_or_else(|| Error::validation("WebSocket URL missing host"))?;
+    let target_port = target.port_or_known_default().unwrap_or(443);
+
+    let stream = match proxy.scheme() {
+        "socks5" | "socks5h" => connect_socks5(&proxy, target_host, target_port).await?,
+        "http" | "https" => connect_http_tunnel(&proxy, target_host, target_port).await?,
+        scheme => {
+            return Err(Error::validation(format!(
+                "unsupported proxy scheme '{scheme}', expected socks5 or http"
+            )));
+        }
+    };
+
+    // Upgrade the TCP connection to WebSocket with TLS
+    let (ws_stream, _) = client_async_tls(endpoint, stream)
+        .await
+        .map_err(|e| Error::with_source(Kind::WebSocket, WsError::Connection(e)))?;
+
+    Ok(ws_stream)
+}
+
+/// Connect through a SOCKS5 proxy.
+async fn connect_socks5(proxy: &Url, target_host: &str, target_port: u16) -> Result<TcpStream> {
+    let proxy_host = proxy
+        .host_str()
+        .ok_or_else(|| Error::validation("SOCKS5 proxy URL missing host"))?;
+    let proxy_port = proxy.port().unwrap_or(1080);
+    let proxy_addr = format!("{proxy_host}:{proxy_port}");
+
+    let stream = if !proxy.username().is_empty() {
+        let password = proxy.password().unwrap_or("");
+        tokio_socks::tcp::Socks5Stream::connect_with_password(
+            proxy_addr.as_str(),
+            (target_host, target_port),
+            proxy.username(),
+            password,
+        )
+        .await
+        .map_err(|e| Error::validation(format!("SOCKS5 connection failed: {e}")))?
+    } else {
+        tokio_socks::tcp::Socks5Stream::connect(proxy_addr.as_str(), (target_host, target_port))
+            .await
+            .map_err(|e| Error::validation(format!("SOCKS5 connection failed: {e}")))?
+    };
+
+    Ok(stream.into_inner())
+}
+
+/// Connect through an HTTP CONNECT tunnel.
+async fn connect_http_tunnel(proxy: &Url, target_host: &str, target_port: u16) -> Result<TcpStream> {
+    let proxy_host = proxy
+        .host_str()
+        .ok_or_else(|| Error::validation("HTTP proxy URL missing host"))?;
+    let proxy_port = proxy.port().unwrap_or(8080);
+
+    // Connect to the proxy
+    let mut stream = TcpStream::connect((proxy_host, proxy_port))
+        .await
+        .map_err(|e| Error::validation(format!("failed to connect to HTTP proxy: {e}")))?;
+
+    // Build CONNECT request
+    let mut connect_request = format!(
+        "CONNECT {target_host}:{target_port} HTTP/1.1\r\n\
+         Host: {target_host}:{target_port}\r\n"
+    );
+
+    // Add proxy authentication if provided
+    if !proxy.username().is_empty() {
+        let credentials = format!("{}:{}", proxy.username(), proxy.password().unwrap_or(""));
+        let encoded = base64::engine::general_purpose::STANDARD.encode(credentials);
+        connect_request.push_str(&format!("Proxy-Authorization: Basic {encoded}\r\n"));
+    }
+
+    connect_request.push_str("\r\n");
+
+    // Send CONNECT request
+    stream
+        .write_all(connect_request.as_bytes())
+        .await
+        .map_err(|e| Error::validation(format!("failed to send CONNECT request: {e}")))?;
+
+    // Read response
+    let mut buf = [0u8; 1024];
+    let n = stream
+        .read(&mut buf)
+        .await
+        .map_err(|e| Error::validation(format!("failed to read CONNECT response: {e}")))?;
+
+    let response = String::from_utf8_lossy(&buf[..n]);
+
+    // Check for successful tunnel establishment (HTTP 200)
+    if !response.starts_with("HTTP/1.1 200") && !response.starts_with("HTTP/1.0 200") {
+        return Err(Error::validation(format!(
+            "HTTP CONNECT tunnel failed: {}",
+            response.lines().next().unwrap_or("unknown error")
+        )));
+    }
+
+    Ok(stream)
 }

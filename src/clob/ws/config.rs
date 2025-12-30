@@ -23,6 +23,11 @@ pub struct Config {
     pub heartbeat_timeout: Duration,
     /// Reconnection strategy configuration
     pub reconnect: ReconnectConfig,
+    /// Optional proxy URL for routing WebSocket connections.
+    ///
+    /// Supports HTTP CONNECT and SOCKS5 proxies.
+    /// Example: `"http://user:pass@proxy:8080"` or `"socks5://127.0.0.1:1080"`
+    pub proxy: Option<String>,
 }
 
 impl Default for Config {
@@ -31,6 +36,18 @@ impl Default for Config {
             heartbeat_interval: DEFAULT_HEARTBEAT_INTERVAL_DURATION,
             heartbeat_timeout: DEFAULT_HEARTBEAT_TIMEOUT_DURATION,
             reconnect: ReconnectConfig::default(),
+            proxy: None,
+        }
+    }
+}
+
+impl Config {
+    /// Create a new Config with the specified proxy URL.
+    #[must_use]
+    pub fn with_proxy(proxy: impl Into<String>) -> Self {
+        Self {
+            proxy: Some(proxy.into()),
+            ..Self::default()
         }
     }
 }
