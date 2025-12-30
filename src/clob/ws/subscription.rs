@@ -75,6 +75,10 @@ pub struct SubscriptionManager {
     interest: Arc<InterestTracker>,
     subscribed_assets: DashSet<String>,
     subscribed_markets: DashSet<String>,
+    /// Reference counts for each asset (for multiplexing)
+    asset_refcounts: DashMap<String, usize>,
+    /// Reference counts for each market (for multiplexing)
+    market_refcounts: DashMap<String, usize>,
     last_auth: Arc<RwLock<Option<Credentials>>>,
 }
 
@@ -88,6 +92,8 @@ impl SubscriptionManager {
             interest,
             subscribed_assets: DashSet::new(),
             subscribed_markets: DashSet::new(),
+            asset_refcounts: DashMap::new(),
+            market_refcounts: DashMap::new(),
             last_auth: Arc::new(RwLock::new(None)),
         }
     }
@@ -202,12 +208,24 @@ impl SubscriptionManager {
 
         self.interest.add(MessageInterest::MARKET);
 
-        // Determine which assets are not yet subscribed
+        // Increment refcounts and determine which assets are truly new
         let new_assets: Vec<String> = asset_ids
             .iter()
-            .filter(|id| !self.subscribed_assets.contains(*id))
-            .inspect(|id| _ = self.subscribed_assets.insert((*id).to_owned()))
-            .map(ToOwned::to_owned)
+            .filter_map(|id| {
+                let mut is_new = false;
+                self.asset_refcounts
+                    .entry(id.clone())
+                    .and_modify(|count| *count += 1)
+                    .or_insert_with(|| {
+                        is_new = true;
+                        1
+                    });
+
+                is_new.then(|| {
+                    self.subscribed_assets.insert(id.clone());
+                    id.clone()
+                })
+            })
             .collect();
 
         // Only send subscription request for new assets
@@ -289,12 +307,24 @@ impl SubscriptionManager {
             .write()
             .unwrap_or_else(PoisonError::into_inner) = Some(auth.clone());
 
-        // Determine which markets are not yet subscribed
+        // Increment refcounts and determine which markets are truly new
         let new_markets: Vec<String> = markets
             .iter()
-            .filter(|m| !self.subscribed_markets.contains(*m))
-            .inspect(|id| _ = self.subscribed_markets.insert((*id).to_owned()))
-            .map(ToOwned::to_owned)
+            .filter_map(|m| {
+                let mut is_new = false;
+                self.market_refcounts
+                    .entry(m.clone())
+                    .and_modify(|count| *count += 1)
+                    .or_insert_with(|| {
+                        is_new = true;
+                        1
+                    });
+
+                is_new.then(|| {
+                    self.subscribed_markets.insert(m.clone());
+                    m.clone()
+                })
+            })
             .collect();
 
         // Only send subscription request for new markets (or if subscribing to all)
@@ -363,5 +393,108 @@ impl SubscriptionManager {
     #[must_use]
     pub fn subscription_count(&self) -> usize {
         self.active_subs.len()
+    }
+
+    /// Unsubscribe from market data for specific assets.
+    ///
+    /// This decrements the reference count for each asset. Only sends an unsubscribe
+    /// request to the server when the reference count reaches zero (no other streams
+    /// are using that asset).
+    pub fn unsubscribe_market(&self, asset_ids: &[String]) -> Result<()> {
+        if asset_ids.is_empty() {
+            return Err(WsError::SubscriptionFailed(
+                "asset_ids cannot be empty: at least one asset ID must be provided for unsubscription"
+                    .to_owned(),
+            )
+            .into());
+        }
+
+        let mut to_unsubscribe = Vec::new();
+
+        // Decrement refcounts and collect assets that reach zero
+        for id in asset_ids {
+            if let Some(mut refcount) = self.asset_refcounts.get_mut(id) {
+                *refcount = refcount.saturating_sub(1);
+                if *refcount == 0 {
+                    to_unsubscribe.push(id.clone());
+                }
+            }
+        }
+
+        // Clean up tracking structures for zero-refcount assets
+        for id in &to_unsubscribe {
+            self.asset_refcounts.remove(id);
+            self.subscribed_assets.remove(id);
+        }
+
+        // Send unsubscribe only for zero-refcount assets
+        if !to_unsubscribe.is_empty() {
+            #[cfg(feature = "tracing")]
+            tracing::debug!(
+                count = to_unsubscribe.len(),
+                ?to_unsubscribe,
+                "Unsubscribing from market assets"
+            );
+            let request = SubscriptionRequest::market_unsubscribe(to_unsubscribe);
+            self.connection.send(&request)?;
+        }
+
+        Ok(())
+    }
+
+    /// Unsubscribe from user events for specific markets.
+    ///
+    /// This decrements the reference count for each market. Only sends an unsubscribe
+    /// request to the server when the reference count reaches zero (no other streams
+    /// are using that market).
+    pub fn unsubscribe_user(&self, markets: &[String]) -> Result<()> {
+        if markets.is_empty() {
+            return Err(WsError::SubscriptionFailed(
+                "markets cannot be empty: at least one market ID must be provided for unsubscription"
+                    .to_owned(),
+            )
+            .into());
+        }
+
+        let mut to_unsubscribe = Vec::new();
+
+        // Decrement refcounts and collect markets that reach zero
+        for m in markets {
+            if let Some(mut refcount) = self.market_refcounts.get_mut(m) {
+                *refcount = refcount.saturating_sub(1);
+                if *refcount == 0 {
+                    to_unsubscribe.push(m.clone());
+                }
+            }
+        }
+
+        // Clean up tracking structures for zero-refcount markets
+        for m in &to_unsubscribe {
+            self.market_refcounts.remove(m);
+            self.subscribed_markets.remove(m);
+        }
+
+        // Send unsubscribe only for zero-refcount markets
+        if !to_unsubscribe.is_empty() {
+            #[cfg(feature = "tracing")]
+            tracing::debug!(
+                count = to_unsubscribe.len(),
+                ?to_unsubscribe,
+                "Unsubscribing from user markets"
+            );
+
+            // Get auth for unsubscribe request
+            let auth = self
+                .last_auth
+                .read()
+                .unwrap_or_else(PoisonError::into_inner)
+                .clone()
+                .ok_or(WsError::AuthenticationFailed)?;
+
+            let request = SubscriptionRequest::user_unsubscribe(to_unsubscribe, auth);
+            self.connection.send(&request)?;
+        }
+
+        Ok(())
     }
 }

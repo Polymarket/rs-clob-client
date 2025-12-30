@@ -78,6 +78,7 @@ aws-sdk-kms = "1.97.0"
 futures-util = "0.3.31"
 httpmock = "0.8.2"
 tokio = { version = "1.48.0", features = ["rt-multi-thread", "macros"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [[example]]
 name = "async"
@@ -136,6 +137,11 @@ required-features = ["ws"]
 name = "rtds_crypto_prices"
 path = "examples/rtds_crypto_prices.rs"
 required-features = ["rtds"]
+
+[[example]]
+name = "websocket_unsubscribe"
+path = "examples/clob/ws/unsubscribe.rs"
+required-features = ["ws"]
 
 # https://rust-lang.github.io/rust-clippy/master/index.html?versions=lte%3A88
 [lints.clippy]
