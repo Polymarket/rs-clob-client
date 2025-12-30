@@ -181,7 +181,6 @@ pub struct MarketsRequest {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub slug: Vec<String>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub clob_token_ids: Vec<String>,
