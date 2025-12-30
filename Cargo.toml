@@ -109,7 +109,7 @@ path = "examples/approvals.rs"
 [[example]]
 name = "data"
 path = "examples/data.rs"
-required-features = ["data-api"]
+required-features = ["data"]
 
 [[example]]
 name = "gamma"

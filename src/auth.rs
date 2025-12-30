@@ -34,6 +34,12 @@ impl Credentials {
             passphrase: Secret::from(passphrase),
         }
     }
+
+    /// Returns the API key.
+    #[must_use]
+    pub fn key(&self) -> ApiKey {
+        self.key
+    }
 }
 
 /// Each [`Client`] can exist in one state at a time, i.e. [`state::Unauthenticated`] or
@@ -538,5 +544,12 @@ mod tests {
         assert_eq!(signature, "4gJVbox-R6XlDK4nlaicig0_ANVL1qdcahiL8CXfXLM=");
 
         Ok(())
+    }
+
+    #[test]
+    fn credentials_key_returns_api_key() {
+        let key = Uuid::new_v4();
+        let credentials = Credentials::new(key, "secret".to_owned(), "passphrase".to_owned());
+        assert_eq!(credentials.key(), key);
     }
 }
