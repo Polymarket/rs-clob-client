@@ -242,7 +242,7 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
 }
 
 impl<K: AuthKind> OrderBuilder<Market, K> {
-    /// Sets the price for this limit builder. This is an optional field.
+    /// Sets the price for this market builder. This is an optional field.
     #[must_use]
     pub fn price(mut self, price: Decimal) -> Self {
         self.price = Some(price);
@@ -322,7 +322,7 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         }
     }
 
-    /// Validates and transforms this limit builder into a [`SignableOrder`]
+    /// Validates and transforms this market builder into a [`SignableOrder`]
     #[cfg_attr(
         feature = "tracing",
         tracing::instrument(skip(self), err(level = "warn"))
