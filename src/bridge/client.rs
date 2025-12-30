@@ -6,6 +6,7 @@ use url::Url;
 
 use super::types::{DepositRequest, DepositResponse, SupportedAssetsResponse};
 use crate::Result;
+use crate::error::Error;
 
 /// Client for the Polymarket Bridge API.
 ///

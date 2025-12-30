@@ -41,6 +41,7 @@ use super::types::response::{
     Activity, BuilderLeaderboardEntry, BuilderVolumeEntry, ClosedPosition, Health, LiveVolume,
     MetaHolder, OpenInterest, Position, Trade, Traded, TraderLeaderboardEntry, Value,
 };
+use crate::error::Error;
 use crate::{Result, ToQueryParams as _};
 
 /// HTTP client for the Polymarket Data API.
