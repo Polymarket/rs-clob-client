@@ -545,4 +545,11 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn credentials_key_returns_api_key() {
+        let key = Uuid::new_v4();
+        let credentials = Credentials::new(key, "secret".to_owned(), "passphrase".to_owned());
+        assert_eq!(credentials.key(), key);
+    }
 }
