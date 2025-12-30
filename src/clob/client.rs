@@ -29,12 +29,13 @@ use crate::clob::types::request::{
 use crate::clob::types::response::{
     ApiKeysResponse, BalanceAllowanceResponse, BanStatusResponse, BuilderApiKeyResponse,
     BuilderTradeResponse, CancelOrdersResponse, CurrentRewardResponse, FeeRateResponse,
-    LastTradePriceResponse, LastTradesPricesResponse, MarketResponse, MarketRewardResponse,
-    MidpointResponse, MidpointsResponse, NegRiskResponse, NotificationResponse, OpenOrderResponse,
-    OrderBookSummaryResponse, OrderScoringResponse, OrdersScoringResponse, Page, PostOrderResponse,
-    PriceResponse, PricesResponse, RewardsPercentagesResponse, SimplifiedMarketResponse,
-    SpreadResponse, SpreadsResponse, TickSizeResponse, TotalUserEarningResponse, TradeResponse,
-    UserEarningResponse, UserRewardsEarningResponse,
+    GeoblockResponse, LastTradePriceResponse, LastTradesPricesResponse, MarketResponse,
+    MarketRewardResponse, MidpointResponse, MidpointsResponse, NegRiskResponse,
+    NotificationResponse, OpenOrderResponse, OrderBookSummaryResponse, OrderScoringResponse,
+    OrdersScoringResponse, Page, PostOrderResponse, PriceResponse, PricesResponse,
+    RewardsPercentagesResponse, SimplifiedMarketResponse, SpreadResponse, SpreadsResponse,
+    TickSizeResponse, TotalUserEarningResponse, TradeResponse, UserEarningResponse,
+    UserRewardsEarningResponse,
 };
 use crate::clob::types::{SignableOrder, SignatureType, SignedOrder, TickSize};
 use crate::error::{Error, Synchronization};
@@ -167,6 +168,7 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
                 state,
                 config: inner.config,
                 host: inner.host,
+                geoblock_host: inner.geoblock_host,
                 client: inner.client,
                 tick_sizes: inner.tick_sizes,
                 neg_risk: inner.neg_risk,
@@ -251,8 +253,16 @@ impl Default for Client<Unauthenticated> {
 pub struct Config {
     /// Whether the [`Client`] will use the server time provided by Polymarket when creating auth
     /// headers. This adds another round trip to the requests.
+    #[builder(default)]
     use_server_time: bool,
+    /// Override for the geoblock API host. Defaults to `https://polymarket.com`.
+    /// This is primarily useful for testing.
+    #[builder(into)]
+    geoblock_host: Option<String>,
 }
+
+/// The default geoblock API host (separate from CLOB host)
+const DEFAULT_GEOBLOCK_HOST: &str = "https://polymarket.com";
 
 #[derive(Debug)]
 struct ClientInner<S: State> {
@@ -261,6 +271,8 @@ struct ClientInner<S: State> {
     state: S,
     /// The [`Url`] against which `client` is making requests.
     host: Url,
+    /// The [`Url`] for the geoblock API endpoint.
+    geoblock_host: Url,
     /// The inner [`ReqwestClient`] used to make requests to `host`.
     client: ReqwestClient,
     /// Local cache of [`TickSize`] per token ID
@@ -524,6 +536,62 @@ impl<S: State> Client<S> {
         Ok(response)
     }
 
+    /// Checks if the current IP address is geoblocked from accessing Polymarket.
+    ///
+    /// This method queries the Polymarket geoblock endpoint to determine if access
+    /// is restricted based on the caller's IP address and geographic location.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(GeoblockResponse)` containing the geoblock status and location info.
+    /// Check the `blocked` field to determine if access is restricted.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the HTTP request fails or the response cannot be parsed.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use polymarket_client_sdk::clob::{Client, Config};
+    /// use polymarket_client_sdk::error::{Kind, Geoblock};
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> anyhow::Result<()> {
+    ///     let client = Client::new("https://clob.polymarket.com", Config::default())?;
+    ///
+    ///     let geoblock = client.check_geoblock().await?;
+    ///
+    ///     if geoblock.blocked {
+    ///         eprintln!(
+    ///             "Trading not available in {}, {}",
+    ///             geoblock.country, geoblock.region
+    ///         );
+    ///         // Optionally convert to an error:
+    ///         // return Err(Geoblock {
+    ///         //     ip: geoblock.ip,
+    ///         //     country: geoblock.country,
+    ///         //     region: geoblock.region,
+    ///         // }.into());
+    ///     } else {
+    ///         println!("Trading available from IP: {}", geoblock.ip);
+    ///     }
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn check_geoblock(&self) -> Result<GeoblockResponse> {
+        let request = self
+            .client()
+            .request(
+                Method::GET,
+                format!("{}api/geoblock", self.inner.geoblock_host),
+            )
+            .build()?;
+
+        crate::request(&self.inner.client, request, None).await
+    }
+
     pub async fn order_book(
         &self,
         request: &OrderBookSummaryRequest,
@@ -693,10 +761,18 @@ impl Client<Unauthenticated> {
 
         let client = ReqwestClient::builder().default_headers(headers).build()?;
 
+        let geoblock_host = Url::parse(
+            config
+                .geoblock_host
+                .as_deref()
+                .unwrap_or(DEFAULT_GEOBLOCK_HOST),
+        )?;
+
         Ok(Self {
             inner: Arc::new(ClientInner {
                 config,
                 host: Url::parse(host)?,
+                geoblock_host,
                 client,
                 tick_sizes: DashMap::new(),
                 neg_risk: DashMap::new(),
@@ -765,6 +841,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             inner: Arc::new(ClientInner {
                 state: Unauthenticated,
                 host: inner.host,
+                geoblock_host: inner.geoblock_host,
                 config: inner.config,
                 client: inner.client,
                 tick_sizes: inner.tick_sizes,
@@ -1263,6 +1340,7 @@ impl Client<Authenticated<Normal>> {
             config: inner.config,
             state,
             host: inner.host,
+            geoblock_host: inner.geoblock_host,
             client: inner.client,
             tick_sizes: inner.tick_sizes,
             neg_risk: inner.neg_risk,
