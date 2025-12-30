@@ -439,6 +439,16 @@ impl SubscriptionManager {
             self.connection.send(&request)?;
         }
 
+        // Remove active_subs entries where all assets are now unsubscribed
+        self.active_subs.retain(|_, info| {
+            if let SubscriptionTarget::Assets(assets) = &info.target {
+                // Keep entry only if at least one asset is still subscribed
+                assets.iter().any(|a| self.subscribed_assets.contains(a))
+            } else {
+                true // Keep non-market subscriptions
+            }
+        });
+
         Ok(())
     }
 
@@ -494,6 +504,16 @@ impl SubscriptionManager {
             let request = SubscriptionRequest::user_unsubscribe(to_unsubscribe, auth);
             self.connection.send(&request)?;
         }
+
+        // Remove active_subs entries where all markets are now unsubscribed
+        self.active_subs.retain(|_, info| {
+            if let SubscriptionTarget::Markets(markets) = &info.target {
+                // Keep entry only if at least one market is still subscribed
+                markets.iter().any(|m| self.subscribed_markets.contains(m))
+            } else {
+                true // Keep non-user subscriptions
+            }
+        });
 
         Ok(())
     }

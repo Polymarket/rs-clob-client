@@ -849,6 +849,221 @@ mod reconnection {
     }
 }
 
+mod unsubscribe {
+    use super::*;
+    use crate::payloads::OTHER_ASSET_ID;
+
+    #[tokio::test]
+    async fn unsubscribe_sends_request_when_refcount_reaches_zero() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        let asset_id = payloads::ASSET_ID;
+
+        // Subscribe once
+        let _stream = client
+            .subscribe_orderbook(vec![asset_id.to_owned()])
+            .unwrap();
+        let sub = server.recv_subscription().await.unwrap();
+        assert!(sub.contains(asset_id));
+
+        // Unsubscribe - should send unsubscribe request since refcount goes to 0
+        client
+            .unsubscribe_orderbook(&[asset_id.to_owned()])
+            .unwrap();
+
+        let unsub = server.recv_subscription().await.unwrap();
+        assert!(
+            unsub.contains("\"operation\":\"unsubscribe\""),
+            "Should send unsubscribe request, got: {unsub}"
+        );
+        assert!(unsub.contains(asset_id));
+    }
+
+    #[tokio::test]
+    async fn unsubscribe_does_not_send_request_when_refcount_above_zero() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        let asset_id = payloads::ASSET_ID;
+
+        // Subscribe twice to same asset
+        let _stream1 = client
+            .subscribe_orderbook(vec![asset_id.to_owned()])
+            .unwrap();
+        let _: Option<String> = server.recv_subscription().await;
+
+        let _stream2 = client
+            .subscribe_orderbook(vec![asset_id.to_owned()])
+            .unwrap();
+        // Second subscribe should not send (multiplexed)
+
+        // Unsubscribe once - refcount goes from 2 to 1, should NOT send request
+        client
+            .unsubscribe_orderbook(&[asset_id.to_owned()])
+            .unwrap();
+
+        // Subscribe to different asset to verify server is still responsive
+        let _stream3 = client
+            .subscribe_orderbook(vec![OTHER_ASSET_ID.to_owned()])
+            .unwrap();
+
+        let next_msg = server.recv_subscription().await.unwrap();
+        // Should be a subscribe for OTHER_ASSET_ID, not an unsubscribe for ASSET_ID
+        assert!(
+            next_msg.contains(OTHER_ASSET_ID),
+            "Should receive subscribe for new asset, not unsubscribe. Got: {next_msg}"
+        );
+        assert!(
+            !next_msg.contains("\"operation\":\"unsubscribe\""),
+            "Should not have sent unsubscribe yet"
+        );
+    }
+
+    #[tokio::test]
+    async fn multiple_streams_unsubscribe_independently() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        let asset_id = payloads::ASSET_ID;
+
+        // Subscribe three times
+        let _stream1 = client
+            .subscribe_orderbook(vec![asset_id.to_owned()])
+            .unwrap();
+        let _: Option<String> = server.recv_subscription().await;
+
+        let _stream2 = client
+            .subscribe_orderbook(vec![asset_id.to_owned()])
+            .unwrap();
+        let _stream3 = client
+            .subscribe_orderbook(vec![asset_id.to_owned()])
+            .unwrap();
+
+        // Unsubscribe twice - still one stream left
+        client
+            .unsubscribe_orderbook(&[asset_id.to_owned()])
+            .unwrap();
+        client
+            .unsubscribe_orderbook(&[asset_id.to_owned()])
+            .unwrap();
+
+        // Third unsubscribe - now refcount hits 0, should send request
+        client
+            .unsubscribe_orderbook(&[asset_id.to_owned()])
+            .unwrap();
+
+        let unsub = server.recv_subscription().await.unwrap();
+        assert!(
+            unsub.contains("\"operation\":\"unsubscribe\""),
+            "Should send unsubscribe when last stream unsubscribes, got: {unsub}"
+        );
+    }
+
+    #[tokio::test]
+    async fn resubscribe_after_full_unsubscribe() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        let asset_id = payloads::ASSET_ID;
+
+        // Subscribe
+        let _stream1 = client
+            .subscribe_orderbook(vec![asset_id.to_owned()])
+            .unwrap();
+        let sub1 = server.recv_subscription().await.unwrap();
+        assert!(sub1.contains(asset_id));
+
+        // Fully unsubscribe
+        client
+            .unsubscribe_orderbook(&[asset_id.to_owned()])
+            .unwrap();
+        let unsub = server.recv_subscription().await.unwrap();
+        assert!(unsub.contains("\"operation\":\"unsubscribe\""));
+
+        // Re-subscribe should send a new subscription request
+        let stream2 = client
+            .subscribe_orderbook(vec![asset_id.to_owned()])
+            .unwrap();
+        let mut stream2 = Box::pin(stream2);
+
+        let sub2 = server.recv_subscription().await.unwrap();
+        assert!(
+            sub2.contains("\"type\":\"market\""),
+            "Should send new subscribe request after full unsubscribe"
+        );
+        assert!(sub2.contains(asset_id));
+
+        // Verify stream works
+        server.send(&payloads::book().to_string());
+        let result = timeout(Duration::from_secs(2), stream2.next()).await;
+        assert!(
+            result.is_ok(),
+            "Should receive messages on re-subscribed stream"
+        );
+    }
+
+    #[tokio::test]
+    async fn unsubscribe_empty_asset_ids_returns_error() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        // Subscribe to something first
+        let _stream = client
+            .subscribe_orderbook(vec![payloads::ASSET_ID.to_owned()])
+            .unwrap();
+        let _: Option<String> = server.recv_subscription().await;
+
+        // Unsubscribe with empty array should error
+        let result = client.unsubscribe_orderbook(&[]);
+        assert!(result.is_err(), "Should return error for empty asset_ids");
+    }
+
+    #[tokio::test]
+    async fn unsubscribe_nonexistent_subscription_is_noop() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        let asset_id = payloads::ASSET_ID;
+        let nonexistent_asset = OTHER_ASSET_ID;
+
+        // Subscribe to one asset
+        let _stream = client
+            .subscribe_orderbook(vec![asset_id.to_owned()])
+            .unwrap();
+        let _: Option<String> = server.recv_subscription().await;
+
+        // Unsubscribe from asset we never subscribed to - should be no-op
+        client
+            .unsubscribe_orderbook(&[nonexistent_asset.to_owned()])
+            .unwrap();
+
+        // Subscribe to another asset to verify server didn't receive unsubscribe
+        let _stream2 = client
+            .subscribe_orderbook(vec![nonexistent_asset.to_owned()])
+            .unwrap();
+
+        let next_msg = server.recv_subscription().await.unwrap();
+        // Should be a subscribe, not an unsubscribe
+        assert!(
+            next_msg.contains("\"type\":\"market\""),
+            "Should receive subscribe, not unsubscribe for non-existent sub. Got: {next_msg}"
+        );
+    }
+}
+
 mod message_parsing {
     use polymarket_client_sdk::clob::types::Side;
     use polymarket_client_sdk::clob::ws::{LastTradePrice, TickSizeChange};
