@@ -113,7 +113,7 @@ pub struct UserRewardsEarningRequest {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ToQueryParam as _;
+    use crate::ToQueryParams as _;
 
     #[test]
     fn trades_request_as_params_should_succeed() {
@@ -125,11 +125,11 @@ mod tests {
             .build();
 
         assert_eq!(
-            request.query_param(None),
+            request.query_params(None),
             "?id=aa-bb&maker_address=0x0000000000000000000000000000000000000000&market=10000&asset_id=100"
         );
         assert_eq!(
-            request.query_param(Some("1")),
+            request.query_params(Some("1")),
             "?id=aa-bb&maker_address=0x0000000000000000000000000000000000000000&market=10000&asset_id=100&next_cursor=1"
         );
     }
@@ -143,11 +143,11 @@ mod tests {
             .build();
 
         assert_eq!(
-            request.query_param(None),
+            request.query_params(None),
             "?order_id=aa-bb&market=10000&asset_id=100"
         );
         assert_eq!(
-            request.query_param(Some("1")),
+            request.query_params(Some("1")),
             "?order_id=aa-bb&market=10000&asset_id=100&next_cursor=1"
         );
     }
@@ -159,8 +159,8 @@ mod tests {
             .notification_ids(vec!["1".to_owned(), "2".to_owned()])
             .build();
 
-        assert_eq!(empty_request.query_param(None), "");
-        assert_eq!(request.query_param(None), "?ids=1%2C2");
+        assert_eq!(empty_request.query_params(None), "");
+        assert_eq!(request.query_params(None), "?ids=1%2C2");
     }
 
     #[test]
@@ -172,7 +172,7 @@ mod tests {
             .build();
 
         assert_eq!(
-            request.query_param(None),
+            request.query_params(None),
             "?asset_type=COLLATERAL&token_id=1&signature_type=0"
         );
     }
@@ -184,7 +184,7 @@ mod tests {
             .build();
 
         assert_eq!(
-            request.query_param(Some("1")),
+            request.query_params(Some("1")),
             "?date=-262143-01-01&order_by=&position=&no_competition=false&next_cursor=1"
         );
     }

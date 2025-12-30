@@ -41,7 +41,7 @@ use super::types::response::{
     Activity, BuilderLeaderboardEntry, BuilderVolumeEntry, ClosedPosition, Health, LiveVolume,
     MetaHolder, OpenInterest, Position, Trade, Traded, TraderLeaderboardEntry, Value,
 };
-use crate::{Result, ToQueryParam as _};
+use crate::{Result, ToQueryParams as _};
 
 /// HTTP client for the Polymarket Data API.
 ///
@@ -112,7 +112,7 @@ impl Client {
         path: &str,
         req: &Req,
     ) -> Result<Res> {
-        let query = req.query_param(None);
+        let query = req.query_params(None);
         let request = self
             .client
             .request(Method::GET, format!("{}{path}{query}", self.host))

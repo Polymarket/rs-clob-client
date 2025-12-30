@@ -83,14 +83,22 @@ pub fn contract_config(chain_id: ChainId, is_neg_risk: bool) -> Option<&'static 
 ///
 /// This trait is automatically implemented for all types that implement [`Serialize`].
 /// It uses [`serde_urlencoded`] to serialize the struct fields into a query string.
-pub trait ToQueryParam: Serialize {
+pub trait ToQueryParams: Serialize {
     /// Converts the request to a URL query string.
     ///
     /// Returns an empty string if no parameters are set, otherwise returns
     /// a string starting with `?` followed by URL-encoded key-value pairs.
     /// Also uses an optional cursor as a parameter, if provided.
-    fn query_param(&self, next_cursor: Option<&str>) -> String {
-        let mut params = serde_urlencoded::to_string(self).unwrap_or_default();
+    fn query_params(&self, next_cursor: Option<&str>) -> String {
+        let mut params = serde_urlencoded::to_string(self)
+            .inspect_err(|e| {
+                #[cfg(not(feature = "tracing"))]
+                let _: &serde_urlencoded::ser::Error = e;
+
+                #[cfg(feature = "tracing")]
+                tracing::error!("Unable to convert to URL-encoded string {e:?}");
+            })
+            .unwrap_or_default();
 
         if let Some(cursor) = next_cursor {
             if !params.is_empty() {
@@ -107,7 +115,7 @@ pub trait ToQueryParam: Serialize {
     }
 }
 
-impl<T: Serialize> ToQueryParam for T {}
+impl<T: Serialize> ToQueryParams for T {}
 
 #[cfg_attr(
     feature = "tracing",

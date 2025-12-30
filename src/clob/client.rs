@@ -38,7 +38,7 @@ use crate::clob::types::response::{
 };
 use crate::clob::types::{SignableOrder, SignatureType, SignedOrder, TickSize};
 use crate::error::{Error, Synchronization};
-use crate::{AMOY, POLYGON, Result, Timestamp, ToQueryParam as _, auth, contract_config};
+use crate::{AMOY, POLYGON, Result, Timestamp, ToQueryParams as _, auth, contract_config};
 
 const ORDER_NAME: Option<Cow<'static, str>> = Some(Cow::Borrowed("Polymarket CTF Exchange"));
 const VERSION: Option<Cow<'static, str>> = Some(Cow::Borrowed("1"));
@@ -907,7 +907,7 @@ impl<K: Kind> Client<Authenticated<K>> {
         request: &OrdersRequest,
         next_cursor: Option<String>,
     ) -> Result<Page<OpenOrderResponse>> {
-        let params = request.query_param(next_cursor.as_deref());
+        let params = request.query_params(next_cursor.as_deref());
         let request = self
             .client()
             .request(Method::GET, format!("{}data/orders{params}", self.host()))
@@ -973,7 +973,7 @@ impl<K: Kind> Client<Authenticated<K>> {
         request: &TradesRequest,
         next_cursor: Option<String>,
     ) -> Result<Page<TradeResponse>> {
-        let params = request.query_param(next_cursor.as_deref());
+        let params = request.query_params(next_cursor.as_deref());
         let request = self
             .client()
             .request(Method::GET, format!("{}data/trades{params}", self.host()))
@@ -995,7 +995,7 @@ impl<K: Kind> Client<Authenticated<K>> {
     }
 
     pub async fn delete_notifications(&self, request: &DeleteNotificationsRequest) -> Result<()> {
-        let params = request.query_param(None);
+        let params = request.query_params(None);
         let mut request = self
             .client()
             .request(
@@ -1022,7 +1022,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             request.signature_type = Some(self.inner.signature_type);
         }
 
-        let params = request.query_param(None);
+        let params = request.query_params(None);
         let request = self
             .client()
             .request(
@@ -1043,7 +1043,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             request.signature_type = Some(self.inner.signature_type);
         }
 
-        let params = request.query_param(None);
+        let params = request.query_params(None);
         let mut request = self
             .client()
             .request(
@@ -1131,7 +1131,7 @@ impl<K: Kind> Client<Authenticated<K>> {
         request: &UserRewardsEarningRequest,
         next_cursor: Option<String>,
     ) -> Result<Vec<UserRewardsEarningResponse>> {
-        let params = request.query_param(next_cursor.as_deref());
+        let params = request.query_params(next_cursor.as_deref());
         let request = self
             .client()
             .request(
@@ -1313,7 +1313,7 @@ impl Client<Authenticated<Builder>> {
         request: &TradesRequest,
         next_cursor: Option<String>,
     ) -> Result<Page<BuilderTradeResponse>> {
-        let params = request.query_param(next_cursor.as_deref());
+        let params = request.query_params(next_cursor.as_deref());
 
         let request = self
             .client()
