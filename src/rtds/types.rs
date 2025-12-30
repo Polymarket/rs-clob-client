@@ -189,6 +189,12 @@ pub enum SubscriptionAction {
 }
 
 /// Individual subscription configuration.
+///
+/// # Security
+///
+/// When serialized, this struct exposes sensitive credentials (`clob_auth`) in plaintext.
+/// Ensure subscription requests are only sent over secure WebSocket connections (`wss://`)
+/// and never logged or exposed in error messages.
 #[non_exhaustive]
 #[derive(Clone, Debug)]
 pub struct Subscription {
@@ -296,6 +302,8 @@ impl Serialize for Subscription {
             }
         }
 
+        // SECURITY: Credentials are intentionally revealed here for the WebSocket auth protocol.
+        // This data is only sent over wss:// connections to the RTDS server.
         if let Some(creds) = &self.clob_auth {
             let auth = serde_json::json!({
                 "key": creds.key.to_string(),
