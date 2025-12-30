@@ -11,15 +11,43 @@ use super::subscription::SubscriptionManager;
 use super::types::{ChainlinkPrice, Comment, CommentType, CryptoPrice, RtdsMessage, Subscription};
 use crate::Result;
 use crate::auth::Credentials;
-use crate::auth::state::{Authenticated, State, Unauthenticated};
-use crate::auth::{Kind as AuthKind, Normal};
 use crate::error::Error;
+
+/// Authentication type for RTDS subscriptions.
+#[non_exhaustive]
+#[derive(Clone, Debug)]
+pub enum Auth {
+    /// CLOB credentials (key, secret, passphrase)
+    Clob(Credentials),
+    /// Gamma auth (wallet address)
+    Gamma(Address),
+}
+
+/// Unauthenticated state.
+#[non_exhaustive]
+#[derive(Clone, Debug, Default)]
+pub struct Unauthenticated;
+
+/// Authenticated state with either CLOB or Gamma auth.
+#[non_exhaustive]
+#[derive(Clone, Debug)]
+pub struct Authenticated(pub(crate) Auth);
+
+/// Sealed trait for client state.
+pub trait State: sealed::Sealed + Clone {}
+impl State for Unauthenticated {}
+impl State for Authenticated {}
+
+mod sealed {
+    pub trait Sealed {}
+    impl Sealed for super::Unauthenticated {}
+    impl Sealed for super::Authenticated {}
+}
 
 /// RTDS (Real-Time Data Socket) client for streaming Polymarket data.
 ///
-/// This client uses a type-state pattern to enforce authentication requirements at compile time:
-/// - [`Client<Unauthenticated>`]: Can only access public data streams
-/// - [`Client<Authenticated<K>>`]: Can access both public and authenticated data streams
+/// - [`Client<Unauthenticated>`]: All streams, comments without auth
+/// - [`Client<Authenticated>`]: All streams, comments with auth
 ///
 /// # Examples
 ///
@@ -49,7 +77,7 @@ pub struct Client<S: State = Unauthenticated> {
 }
 
 struct ClientInner<S: State> {
-    /// Current state of the client (authenticated or unauthenticated)
+    /// Current state of the client
     state: S,
     /// Configuration for the RTDS connection
     config: RtdsConfig,
@@ -104,46 +132,58 @@ impl Client<Unauthenticated> {
         })
     }
 
-    /// Authenticate this client and elevate to authenticated state.
-    ///
-    /// Returns an error if there are other references to this client (e.g., from clones).
-    /// Ensure all clones are dropped before calling this method.
-    ///
-    /// # Arguments
-    ///
-    /// * `credentials` - CLOB API credentials (key, secret, passphrase)
-    /// * `address` - User's wallet address
-    pub fn authenticate(
-        self,
-        credentials: Credentials,
-        address: Address,
-    ) -> Result<Client<Authenticated<Normal>>> {
+    /// Authenticate with CLOB credentials.
+    pub fn authenticate_clob(self, credentials: Credentials) -> Result<Client<Authenticated>> {
         let inner = Arc::into_inner(self.inner).ok_or(Error::validation(
-            "Cannot authenticate while other references to this client exist; \
-                 drop all clones before calling authenticate",
+            "Cannot authenticate while other references to this client exist",
         ))?;
-
-        let ClientInner {
-            config,
-            endpoint,
-            connection,
-            subscriptions,
-            ..
-        } = inner;
 
         Ok(Client {
             inner: Arc::new(ClientInner {
-                state: Authenticated {
-                    address,
-                    credentials,
-                    kind: Normal,
-                },
-                config,
-                endpoint,
-                connection,
-                subscriptions,
+                state: Authenticated(Auth::Clob(credentials)),
+                config: inner.config,
+                endpoint: inner.endpoint,
+                connection: inner.connection,
+                subscriptions: inner.subscriptions,
             }),
         })
+    }
+
+    /// Authenticate with Gamma (wallet address).
+    pub fn authenticate_gamma(self, address: Address) -> Result<Client<Authenticated>> {
+        let inner = Arc::into_inner(self.inner).ok_or(Error::validation(
+            "Cannot authenticate while other references to this client exist",
+        ))?;
+
+        Ok(Client {
+            inner: Arc::new(ClientInner {
+                state: Authenticated(Auth::Gamma(address)),
+                config: inner.config,
+                endpoint: inner.endpoint,
+                connection: inner.connection,
+                subscriptions: inner.subscriptions,
+            }),
+        })
+    }
+
+    /// Subscribe to comment events.
+    ///
+    /// # Arguments
+    ///
+    /// * `comment_type` - Optional comment event type to filter
+    pub fn subscribe_comments(
+        &self,
+        comment_type: Option<CommentType>,
+    ) -> Result<impl Stream<Item = Result<Comment>>> {
+        let subscription = Subscription::comments(comment_type);
+        let stream = self.inner.subscriptions.subscribe(subscription)?;
+
+        Ok(stream.filter_map(|msg_result| async move {
+            match msg_result {
+                Ok(msg) => msg.as_comment().map(Ok),
+                Err(e) => Some(Err(e)),
+            }
+        }))
     }
 }
 
@@ -238,49 +278,6 @@ impl<S: State> Client<S> {
         }))
     }
 
-    /// Subscribe to comment events.
-    ///
-    /// # Arguments
-    ///
-    /// * `comment_type` - Optional comment event type to filter (e.g., `CommentType::CommentCreated`).
-    ///   If `None`, receives all comment events.
-    ///
-    /// # Returns
-    ///
-    /// A stream of [`Comment`] events.
-    ///
-    /// # Examples
-    ///
-    /// ```rust, no_run
-    /// use polymarket_client_sdk::rtds::{Client, CommentType};
-    /// use futures::StreamExt;
-    ///
-    /// # async fn example() -> anyhow::Result<()> {
-    /// let client = Client::default();
-    ///
-    /// // Subscribe to new comment events only
-    /// let stream = client.subscribe_comments(Some(CommentType::CommentCreated))?;
-    ///
-    /// // Or subscribe to all comment events
-    /// let stream = client.subscribe_comments(None)?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn subscribe_comments(
-        &self,
-        comment_type: Option<CommentType>,
-    ) -> Result<impl Stream<Item = Result<Comment>>> {
-        let subscription = Subscription::comments(comment_type);
-        let stream = self.inner.subscriptions.subscribe(subscription)?;
-
-        Ok(stream.filter_map(|msg_result| async move {
-            match msg_result {
-                Ok(msg) => msg.as_comment().map(Ok),
-                Err(e) => Some(Err(e)),
-            }
-        }))
-    }
-
     /// Subscribe to raw RTDS messages for a custom topic/type combination.
     ///
     /// This is a low-level method that allows subscribing to any topic/type
@@ -332,67 +329,20 @@ impl<S: State> Client<S> {
     }
 }
 
-// Methods only available for authenticated clients
-impl<K: AuthKind> Client<Authenticated<K>> {
-    /// Subscribe to Binance cryptocurrency price updates with CLOB authentication.
+impl Client<Authenticated> {
+    /// Subscribe to comment events with authentication.
     ///
-    /// Uses the credentials stored in the client state.
-    ///
-    /// # Arguments
-    ///
-    /// * `symbols` - Optional list of trading pairs to filter
-    pub fn subscribe_crypto_prices_with_clob_auth(
-        &self,
-        symbols: Option<Vec<String>>,
-    ) -> Result<impl Stream<Item = Result<CryptoPrice>>> {
-        let subscription = Subscription::crypto_prices(symbols)
-            .with_clob_auth(self.inner.state.credentials.clone());
-        let stream = self.inner.subscriptions.subscribe(subscription)?;
-
-        Ok(stream.filter_map(|msg_result| async move {
-            match msg_result {
-                Ok(msg) => msg.as_crypto_price().map(Ok),
-                Err(e) => Some(Err(e)),
-            }
-        }))
-    }
-
-    /// Subscribe to Chainlink price feed updates with CLOB authentication.
-    ///
-    /// Uses the credentials stored in the client state.
-    ///
-    /// # Arguments
-    ///
-    /// * `symbol` - Optional trading pair to filter
-    pub fn subscribe_chainlink_prices_with_clob_auth(
-        &self,
-        symbol: Option<String>,
-    ) -> Result<impl Stream<Item = Result<ChainlinkPrice>>> {
-        let subscription = Subscription::chainlink_prices(symbol)
-            .with_clob_auth(self.inner.state.credentials.clone());
-        let stream = self.inner.subscriptions.subscribe(subscription)?;
-
-        Ok(stream.filter_map(|msg_result| async move {
-            match msg_result {
-                Ok(msg) => msg.as_chainlink_price().map(Ok),
-                Err(e) => Some(Err(e)),
-            }
-        }))
-    }
-
-    /// Subscribe to comment events with Gamma authentication.
-    ///
-    /// Uses the address stored in the client state.
-    ///
-    /// # Arguments
-    ///
-    /// * `comment_type` - Optional comment event type to filter
-    pub fn subscribe_comments_with_gamma_auth(
+    /// Uses whichever auth type was provided during authentication.
+    pub fn subscribe_comments(
         &self,
         comment_type: Option<CommentType>,
     ) -> Result<impl Stream<Item = Result<Comment>>> {
-        let subscription =
-            Subscription::comments(comment_type).with_gamma_auth(self.inner.state.address);
+        let subscription = match &self.inner.state.0 {
+            Auth::Clob(credentials) => {
+                Subscription::comments(comment_type).with_clob_auth(credentials.clone())
+            }
+            Auth::Gamma(address) => Subscription::comments(comment_type).with_gamma_auth(*address),
+        };
         let stream = self.inner.subscriptions.subscribe(subscription)?;
 
         Ok(stream.filter_map(|msg_result| async move {
@@ -404,30 +354,18 @@ impl<K: AuthKind> Client<Authenticated<K>> {
     }
 
     /// Deauthenticate and return to unauthenticated state.
-    ///
-    /// Returns an error if there are other references to this client (e.g., from clones).
-    /// Ensure all clones are dropped before calling this method.
     pub fn deauthenticate(self) -> Result<Client<Unauthenticated>> {
         let inner = Arc::into_inner(self.inner).ok_or(Error::validation(
-            "Cannot deauthenticate while other references to this client exist; \
-                 drop all clones before calling deauthenticate",
+            "Cannot deauthenticate while other references to this client exist",
         ))?;
-
-        let ClientInner {
-            config,
-            endpoint,
-            connection,
-            subscriptions,
-            ..
-        } = inner;
 
         Ok(Client {
             inner: Arc::new(ClientInner {
                 state: Unauthenticated,
-                config,
-                endpoint,
-                connection,
-                subscriptions,
+                config: inner.config,
+                endpoint: inner.endpoint,
+                connection: inner.connection,
+                subscriptions: inner.subscriptions,
             }),
         })
     }

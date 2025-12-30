@@ -45,7 +45,7 @@ pub mod subscription;
 pub mod types;
 
 // Re-export commonly used types
-pub use client::Client;
+pub use client::{Auth, Authenticated, Client, State, Unauthenticated};
 pub use config::{ReconnectConfig, RtdsConfig};
 pub use connection::ConnectionState;
 pub use error::RtdsError;
