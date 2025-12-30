@@ -17,7 +17,18 @@
 //! - ERC-1155 approval for Conditional Tokens (outcome tokens)
 //!
 //! You only need to run these approvals once per wallet.
+//!
+//! ## Usage
+//!
+//! ```sh
+//! # Execute approvals (requires PRIVATE_KEY env var)
+//! cargo run --example approvals
+//!
+//! # Dry run - show what would be approved without executing
+//! cargo run --example approvals -- --dry-run
+//! ```
 
+use std::env;
 use std::str::FromStr as _;
 
 use alloy::primitives::{Address, U256, address};
@@ -49,24 +60,12 @@ sol! {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let args: Vec<String> = env::args().collect();
+    let dry_run = args.iter().any(|arg| arg == "--dry-run");
+
     let chain = POLYGON;
-
-    let private_key = std::env::var(PRIVATE_KEY_VAR).expect("Need a private key");
-    let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(chain));
-
-    let provider = ProviderBuilder::new()
-        .wallet(signer.clone())
-        .connect(RPC_URL)
-        .await?;
-
-    let owner = signer.address();
-    println!("Using address: {owner:?}");
-
     let config = contract_config(chain, false).unwrap();
     let neg_risk_config = contract_config(chain, true).unwrap();
-
-    let token = IERC20::new(TOKEN_TO_APPROVE, provider.clone());
-    let ctf = IERC1155::new(config.conditional_tokens, provider.clone());
 
     // Collect all contracts that need approval
     let mut targets: Vec<(&str, Address)> = vec![
@@ -78,6 +77,39 @@ async fn main() -> Result<()> {
     if let Some(adapter) = neg_risk_config.neg_risk_adapter {
         targets.push(("Neg Risk Adapter", adapter));
     }
+
+    if dry_run {
+        println!();
+        println!("=== APPROVALS DRY RUN ===");
+        println!("Shows what contracts would be approved (no transactions executed)");
+        println!();
+        println!("Contracts that WOULD receive approvals:");
+        println!();
+
+        for (name, target) in &targets {
+            println!("  {name}");
+            println!("    -> {target}");
+            println!();
+        }
+
+        println!("Total: {} contracts would be approved", targets.len());
+        println!();
+        return Ok(());
+    }
+
+    let private_key = env::var(PRIVATE_KEY_VAR).expect("Need a private key");
+    let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(chain));
+
+    let provider = ProviderBuilder::new()
+        .wallet(signer.clone())
+        .connect(RPC_URL)
+        .await?;
+
+    let owner = signer.address();
+    println!("Using address: {owner:?}");
+
+    let token = IERC20::new(TOKEN_TO_APPROVE, provider.clone());
+    let ctf = IERC1155::new(config.conditional_tokens, provider.clone());
 
     println!("\n=== Checking current allowances ===\n");
 
