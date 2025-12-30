@@ -1195,7 +1195,12 @@ mod query_string {
         assert!(qs.contains("ascending=false"));
         assert!(qs.contains("id=1%2C2"));
         assert!(qs.contains("slug=market-1"));
-        assert!(qs.contains("clob_token_ids=token1%2Ctoken2"));
+        // clob_token_ids is handled separately via clob_token_ids_query() for repeated params
+        assert!(!qs.contains("clob_token_ids"));
+        let clob_qs = request.clob_token_ids_query();
+        assert!(clob_qs.contains("clob_token_ids=token1"));
+        assert!(clob_qs.contains("clob_token_ids=token2"));
+        assert!(clob_qs.contains('&')); // Repeated params format
         assert!(qs.contains("condition_ids=cond1"));
         assert!(qs.contains("market_maker_address=0x123"));
         assert!(qs.contains("liquidity_num_min=1000"));
