@@ -21,7 +21,7 @@
 //! ## Usage
 //!
 //! ```sh
-//! # Execute approvals (requires PRIVATE_KEY env var)
+//! # Execute approvals (requires POLYMARKET_PRIVATE_KEY env var)
 //! cargo run --example approvals
 //!
 //! # Dry run - show what would be approved without executing
