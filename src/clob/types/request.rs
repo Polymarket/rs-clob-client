@@ -7,6 +7,7 @@ use alloy::primitives::Address;
 use bon::Builder;
 use chrono::NaiveDate;
 use serde::Serialize;
+use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as};
 
 use crate::clob::types::{AssetType, Side, SignatureType};
 
@@ -55,7 +56,7 @@ pub struct CancelMarketOrderRequest {
 }
 
 #[non_exhaustive]
-#[derive(Debug, Default, Clone, Builder)]
+#[derive(Debug, Default, Clone, Builder, Serialize)]
 #[builder(on(String, into))]
 pub struct TradesRequest {
     pub id: Option<String>,
@@ -64,28 +65,6 @@ pub struct TradesRequest {
     pub asset_id: Option<String>,
     pub before: Option<i64>,
     pub after: Option<i64>,
-}
-
-impl TradesRequest {
-    pub(crate) fn as_params(&self, next_cursor: Option<&String>) -> String {
-        let id = self.id.as_ref().map(|o| format!("id={o}"));
-        let maker_address = self
-            .maker_address
-            .as_ref()
-            .map(|m| format!("maker_address={m}"));
-        let market = self.market.as_ref().map(|a| format!("market={a}"));
-        let asset_id = self.asset_id.as_ref().map(|a| format!("asset_id={a}"));
-        let before = self.before.as_ref().map(|a| format!("before={a}"));
-        let after = self.after.as_ref().map(|a| format!("after={a}"));
-
-        let params = [id, maker_address, market, asset_id, before, after]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<String>>()
-            .join("&");
-
-        format_params_with_cursor(params.as_str(), next_cursor)
-    }
 }
 
 #[non_exhaustive]
@@ -97,72 +76,23 @@ pub struct OrdersRequest {
     pub asset_id: Option<String>,
 }
 
-impl OrdersRequest {
-    pub(crate) fn as_params(&self, next_cursor: Option<&String>) -> String {
-        let order_id = self.order_id.as_ref().map(|o| format!("order_id={o}"));
-        let market = self.market.as_ref().map(|m| format!("market={m}"));
-        let asset_id = self.asset_id.as_ref().map(|a| format!("asset_id={a}"));
-
-        let params = [order_id, market, asset_id]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<String>>()
-            .join("&");
-
-        format_params_with_cursor(params.as_str(), next_cursor)
-    }
-}
-
 #[non_exhaustive]
+#[serde_as]
 #[derive(Debug, Default, Serialize, Builder)]
 pub struct DeleteNotificationsRequest {
-    pub notification_ids: Option<Vec<String>>,
-}
-
-impl DeleteNotificationsRequest {
-    pub(crate) fn as_params(&self) -> String {
-        self.notification_ids.as_ref().map_or(String::new(), |ids| {
-            if ids.is_empty() {
-                String::new()
-            } else {
-                format!("?ids={}", ids.join(","))
-            }
-        })
-    }
+    #[serde(rename = "ids", skip_serializing_if = "Vec::is_empty")]
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[builder(default)]
+    pub notification_ids: Vec<String>,
 }
 
 #[non_exhaustive]
-#[derive(Debug, Default, Clone, Builder)]
+#[derive(Debug, Default, Clone, Builder, Serialize)]
 #[builder(on(String, into))]
 pub struct BalanceAllowanceRequest {
     pub asset_type: AssetType,
     pub token_id: Option<String>,
     pub signature_type: Option<SignatureType>,
-}
-
-impl BalanceAllowanceRequest {
-    pub(crate) fn as_params(&self, default_signature_type: SignatureType) -> String {
-        let token_id = self.token_id.as_ref().map(|m| format!("token_id={m}"));
-        let signature_type = self.signature_type.unwrap_or(default_signature_type);
-
-        let signature_type = format!("signature_type={}", signature_type as u8);
-
-        let params = [
-            Some(format!("asset_type={}", self.asset_type)),
-            token_id,
-            Some(signature_type),
-        ]
-        .into_iter()
-        .flatten()
-        .collect::<Vec<String>>()
-        .join("&");
-
-        if params.is_empty() {
-            String::new()
-        } else {
-            format!("?{params}")
-        }
-    }
 }
 
 pub type UpdateBalanceAllowanceRequest = BalanceAllowanceRequest;
@@ -180,30 +110,10 @@ pub struct UserRewardsEarningRequest {
     pub no_competition: bool,
 }
 
-impl UserRewardsEarningRequest {
-    pub(crate) fn as_params(&self, next_cursor: Option<&String>) -> String {
-        let order_by = format!("order_by={}", self.order_by);
-        let position = format!("position={}", self.position);
-        let no_competition = format!("no_competition={}", self.no_competition);
-
-        let params = format!("date={}&{order_by}&{position}&{no_competition}", self.date);
-
-        format_params_with_cursor(params.as_str(), next_cursor)
-    }
-}
-
-fn format_params_with_cursor(params: &str, next_cursor: Option<&String>) -> String {
-    match (params, next_cursor) {
-        ("", Some(cursor)) => format!("?next_cursor={cursor}"),
-        ("", None) => String::new(),
-        (params, Some(cursor)) => format!("?{params}&next_cursor={cursor}"),
-        (params, None) => format!("?{params}"),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ToQueryParam as _;
 
     #[test]
     fn trades_request_as_params_should_succeed() {
@@ -215,11 +125,11 @@ mod tests {
             .build();
 
         assert_eq!(
-            request.as_params(None),
+            request.query_param(None),
             "?id=aa-bb&maker_address=0x0000000000000000000000000000000000000000&market=10000&asset_id=100"
         );
         assert_eq!(
-            request.as_params(Some(&"1".to_owned())),
+            request.query_param(Some("1")),
             "?id=aa-bb&maker_address=0x0000000000000000000000000000000000000000&market=10000&asset_id=100&next_cursor=1"
         );
     }
@@ -233,11 +143,11 @@ mod tests {
             .build();
 
         assert_eq!(
-            request.as_params(None),
+            request.query_param(None),
             "?order_id=aa-bb&market=10000&asset_id=100"
         );
         assert_eq!(
-            request.as_params(Some(&"1".to_owned())),
+            request.query_param(Some("1")),
             "?order_id=aa-bb&market=10000&asset_id=100&next_cursor=1"
         );
     }
@@ -249,8 +159,8 @@ mod tests {
             .notification_ids(vec!["1".to_owned(), "2".to_owned()])
             .build();
 
-        assert_eq!(empty_request.as_params(), "");
-        assert_eq!(request.as_params(), "?ids=1,2");
+        assert_eq!(empty_request.query_param(None), "");
+        assert_eq!(request.query_param(None), "?ids=1%2C2");
     }
 
     #[test]
@@ -258,10 +168,11 @@ mod tests {
         let request = BalanceAllowanceRequest::builder()
             .asset_type(AssetType::Collateral)
             .token_id("1".to_owned())
+            .signature_type(SignatureType::Eoa)
             .build();
 
         assert_eq!(
-            request.as_params(SignatureType::Eoa),
+            request.query_param(None),
             "?asset_type=COLLATERAL&token_id=1&signature_type=0"
         );
     }
@@ -273,7 +184,7 @@ mod tests {
             .build();
 
         assert_eq!(
-            request.as_params(Some(&"1".to_owned())),
+            request.query_param(Some("1")),
             "?date=-262143-01-01&order_by=&position=&no_competition=false&next_cursor=1"
         );
     }

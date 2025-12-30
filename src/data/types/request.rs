@@ -20,19 +20,6 @@ use super::{
     TimePeriod, Title, TradeFilter,
 };
 
-/// Converts a serializable request to a URL query string.
-///
-/// Returns an empty string if no parameters are set, otherwise returns
-/// a string starting with `?` followed by URL-encoded key-value pairs.
-pub fn to_query_string<T: Serialize>(req: &T) -> String {
-    let params = serde_urlencoded::to_string(req).unwrap_or_default();
-    if params.is_empty() {
-        params
-    } else {
-        format!("?{params}")
-    }
-}
-
 /// Validates that an i32 value is within the specified bounds.
 fn validate_bound(
     value: i32,

@@ -26,7 +26,7 @@
 //! ```
 
 use reqwest::{
-    Client as ReqwestClient, Method, Request, StatusCode,
+    Client as ReqwestClient, Method,
     header::{HeaderMap, HeaderValue},
 };
 use serde::Serialize;
@@ -44,8 +44,8 @@ use super::types::response::{
     Comment, Event, HealthResponse, Market, PublicProfile, RelatedTag, SearchResults, Series,
     SportsMarketTypesResponse, SportsMetadata, Tag, Team,
 };
-use crate::Result;
 use crate::error::Error;
+use crate::{Result, ToQueryParam as _};
 
 /// HTTP client for the Polymarket Gamma API.
 ///
@@ -105,69 +105,6 @@ impl Client {
         })
     }
 
-    #[cfg_attr(
-        feature = "tracing",
-        tracing::instrument(
-            level = "debug",
-            skip(self, request, headers),
-            fields(method, path, status_code)
-        )
-    )]
-    async fn request<Response: DeserializeOwned + Serialize>(
-        &self,
-        mut request: Request,
-        headers: Option<HeaderMap>,
-    ) -> Result<Response> {
-        let method = request.method().clone();
-        let path = request.url().path().to_owned();
-
-        #[cfg(feature = "tracing")]
-        {
-            let span = tracing::Span::current();
-            span.record("method", method.as_str());
-            span.record("path", path.as_str());
-        }
-
-        if let Some(h) = headers {
-            *request.headers_mut() = h;
-        }
-
-        let response = self.client.execute(request).await?;
-        let status_code = response.status();
-
-        #[cfg(feature = "tracing")]
-        tracing::Span::current().record("status_code", status_code.as_u16());
-
-        if !status_code.is_success() {
-            let message = response.text().await.unwrap_or_default();
-
-            #[cfg(feature = "tracing")]
-            tracing::warn!(
-                status = %status_code,
-                method = %method,
-                path = %path,
-                message = %message,
-                "Gamma API request failed"
-            );
-
-            return Err(Error::status(status_code, method, path, message));
-        }
-
-        if let Some(response) = response.json::<Option<Response>>().await? {
-            Ok(response)
-        } else {
-            #[cfg(feature = "tracing")]
-            tracing::warn!(method = %method, path = %path, "Gamma API resource not found");
-
-            Err(Error::status(
-                StatusCode::NOT_FOUND,
-                method,
-                path,
-                "Unable to find requested resource",
-            ))
-        }
-    }
-
     /// Returns the base URL of the API.
     #[must_use]
     pub fn host(&self) -> &Url {
@@ -179,17 +116,12 @@ impl Client {
         path: &str,
         req: &Req,
     ) -> Result<Res> {
-        let params = serde_urlencoded::to_string(req).unwrap_or_default();
-        let query = if params.is_empty() {
-            params
-        } else {
-            format!("?{params}")
-        };
+        let query = req.query_param(None);
         let request = self
             .client
             .request(Method::GET, format!("{}{path}{query}", self.host))
             .build()?;
-        self.request(request, None).await
+        crate::request(&self.client, request, None).await
     }
 
     /// Performs a health check on the API.

@@ -10,8 +10,16 @@ pub mod error;
 #[cfg(feature = "gamma")]
 pub mod gamma;
 
+use std::fmt::Write as _;
+
 use alloy::primitives::{Address, ChainId, address};
 use phf::phf_map;
+use reqwest::header::HeaderMap;
+use reqwest::{Request, StatusCode};
+use serde::Serialize;
+use serde::de::DeserializeOwned;
+
+use crate::error::Error;
 
 pub type Result<T> = std::result::Result<T, error::Error>;
 
@@ -68,6 +76,98 @@ pub fn contract_config(chain_id: ChainId, is_neg_risk: bool) -> Option<&'static 
         NEG_RISK_CONFIG.get(&chain_id)
     } else {
         CONFIG.get(&chain_id)
+    }
+}
+
+/// Trait for converting request types to URL query parameters.
+///
+/// This trait is automatically implemented for all types that implement [`Serialize`].
+/// It uses [`serde_urlencoded`] to serialize the struct fields into a query string.
+pub trait ToQueryParam: Serialize {
+    /// Converts the request to a URL query string.
+    ///
+    /// Returns an empty string if no parameters are set, otherwise returns
+    /// a string starting with `?` followed by URL-encoded key-value pairs.
+    /// Also uses an optional cursor as a parameter, if provided.
+    fn query_param(&self, next_cursor: Option<&str>) -> String {
+        let mut params = serde_urlencoded::to_string(self).unwrap_or_default();
+
+        if let Some(cursor) = next_cursor {
+            if !params.is_empty() {
+                params.push('&');
+            }
+            let _ = write!(params, "next_cursor={cursor}");
+        }
+
+        if params.is_empty() {
+            String::new()
+        } else {
+            format!("?{params}")
+        }
+    }
+}
+
+impl<T: Serialize> ToQueryParam for T {}
+
+#[cfg_attr(
+    feature = "tracing",
+    tracing::instrument(
+        level = "debug",
+        skip(client, request, headers),
+        fields(method, path, status_code)
+    )
+)]
+async fn request<Response: DeserializeOwned>(
+    client: &reqwest::Client,
+    mut request: Request,
+    headers: Option<HeaderMap>,
+) -> Result<Response> {
+    let method = request.method().clone();
+    let path = request.url().path().to_owned();
+
+    #[cfg(feature = "tracing")]
+    {
+        let span = tracing::Span::current();
+        span.record("method", method.as_str());
+        span.record("path", path.as_str());
+    }
+
+    if let Some(h) = headers {
+        *request.headers_mut() = h;
+    }
+
+    let response = client.execute(request).await?;
+    let status_code = response.status();
+
+    #[cfg(feature = "tracing")]
+    tracing::Span::current().record("status_code", status_code.as_u16());
+
+    if !status_code.is_success() {
+        let message = response.text().await.unwrap_or_default();
+
+        #[cfg(feature = "tracing")]
+        tracing::warn!(
+            status = %status_code,
+            method = %method,
+            path = %path,
+            message = %message,
+            "API request failed"
+        );
+
+        return Err(Error::status(status_code, method, path, message));
+    }
+
+    if let Some(response) = response.json::<Option<Response>>().await? {
+        Ok(response)
+    } else {
+        #[cfg(feature = "tracing")]
+        tracing::warn!(method = %method, path = %path, "API resource not found");
+        Err(Error::status(
+            StatusCode::NOT_FOUND,
+            method,
+            path,
+            "Unable to find requested resource",
+        ))
     }
 }
 

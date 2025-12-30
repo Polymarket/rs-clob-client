@@ -1884,7 +1884,7 @@ mod authenticated {
             .asset_type(AssetType::Collateral)
             .token_id("1")
             .build();
-        let response = client.balance_allowance(&request).await?;
+        let response = client.balance_allowance(request).await?;
 
         let expected = BalanceAllowanceResponse::builder()
             .balance(Decimal::ZERO)
@@ -1918,7 +1918,7 @@ mod authenticated {
             .asset_type(AssetType::Collateral)
             .token_id("1")
             .build();
-        client.update_balance_allowance(&request).await?;
+        client.update_balance_allowance(request).await?;
 
         mock.assert();
 

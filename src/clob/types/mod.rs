@@ -9,6 +9,7 @@ use rust_decimal_macros::dec;
 use serde::ser::{Error as _, SerializeStruct as _};
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 use serde_json::Value;
+use serde_repr::Serialize_repr;
 use serde_with::{DisplayFromStr, serde_as};
 use strum_macros::Display;
 
@@ -134,7 +135,19 @@ impl Amount {
 }
 
 #[non_exhaustive]
-#[derive(Clone, Copy, Display, Debug, Default, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(
+    Clone,
+    Copy,
+    Display,
+    Debug,
+    Default,
+    Eq,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Serialize_repr,
+    Deserialize,
+)]
 #[repr(u8)]
 pub enum SignatureType {
     #[default]
