@@ -34,6 +34,12 @@ impl Credentials {
             passphrase: Secret::from(passphrase),
         }
     }
+
+    /// Returns the API key.
+    #[must_use]
+    pub fn key(&self) -> ApiKey {
+        self.key
+    }
 }
 
 /// Each [`Client`] can exist in one state at a time, i.e. [`state::Unauthenticated`] or
