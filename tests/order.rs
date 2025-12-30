@@ -2046,6 +2046,44 @@ mod market {
             assert_eq!(signable_order.order.takerAmount, U256::from(250_000_000));
             Ok(())
         }
+
+        #[tokio::test]
+        async fn market_buy_with_price_should_succeed() -> anyhow::Result<()> {
+            let server = MockServer::start();
+            let client = create_authenticated(&server).await?;
+
+            // cutoff price should end at 0.4 for 250 shares
+            ensure_requirements_for_market_price(
+                &server,
+                TOKEN_1,
+                &[],
+                &[
+                    OrderSummary::builder()
+                        .price(dec!(0.5))
+                        .size(dec!(100))
+                        .build(),
+                    OrderSummary::builder()
+                        .price(dec!(0.4))
+                        .size(dec!(300))
+                        .build(),
+                ],
+            );
+
+            let signable_order = client
+                .market_order()
+                .token_id(TOKEN_1)
+                .amount(Amount::shares(dec!(250))?)
+                .side(Side::Buy)
+                .price(dec!(0.5))
+                .order_type(OrderType::FOK)
+                .build()
+                .await?;
+
+            // maker = USDC, taker = shares
+            assert_eq!(signable_order.order.makerAmount, U256::from(125_000_000)); // 250 * 0.5 = 125
+            assert_eq!(signable_order.order.takerAmount, U256::from(250_000_000));
+            Ok(())
+        }
     }
 
     mod sell {
