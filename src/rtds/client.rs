@@ -314,8 +314,9 @@ impl<S: State> Client<S> {
     /// # Returns
     ///
     /// The current [`ConnectionState`] of the WebSocket connection.
-    pub async fn connection_state(&self) -> ConnectionState {
-        self.inner.connection.state().await
+    #[must_use]
+    pub fn connection_state(&self) -> ConnectionState {
+        self.inner.connection.state()
     }
 
     /// Get the number of active subscriptions.

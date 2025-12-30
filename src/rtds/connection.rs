@@ -9,7 +9,7 @@ use std::time::Instant;
 use backoff::backoff::Backoff as _;
 use futures::{SinkExt as _, StreamExt as _};
 use tokio::net::TcpStream;
-use tokio::sync::{RwLock, broadcast, mpsc, watch};
+use tokio::sync::{broadcast, mpsc, watch};
 use tokio::time::{interval, sleep, timeout};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message};
 
@@ -58,10 +58,10 @@ impl ConnectionState {
 /// Manages WebSocket connection lifecycle, reconnection, and heartbeat.
 #[derive(Clone)]
 pub struct ConnectionManager {
-    /// Current connection state
-    state: Arc<RwLock<ConnectionState>>,
     /// Watch channel sender for state changes (enables reconnection detection)
     state_tx: watch::Sender<ConnectionState>,
+    /// Watch channel receiver for state changes (for use in checking the current state)
+    state_rx: watch::Receiver<ConnectionState>,
     /// Sender channel for outgoing messages
     sender_tx: mpsc::UnboundedSender<String>,
     /// Broadcast sender for incoming messages
@@ -80,12 +80,9 @@ impl ConnectionManager {
     ) -> Result<Self> {
         let (sender_tx, sender_rx) = mpsc::unbounded_channel();
         let (broadcast_tx, _) = broadcast::channel(BROADCAST_CAPACITY);
-        let (state_tx, _) = watch::channel(ConnectionState::Disconnected);
-
-        let state = Arc::new(RwLock::new(ConnectionState::Disconnected));
+        let (state_tx, state_rx) = watch::channel(ConnectionState::Disconnected);
 
         // Spawn connection task
-        let connection_state = Arc::clone(&state);
         let connection_config = config;
         let connection_endpoint = endpoint;
         let broadcast_tx_clone = broadcast_tx.clone();
@@ -95,7 +92,6 @@ impl ConnectionManager {
         tokio::spawn(async move {
             Self::connection_loop(
                 connection_endpoint,
-                connection_state,
                 connection_config,
                 sender_rx,
                 broadcast_tx_clone,
@@ -106,8 +102,8 @@ impl ConnectionManager {
         });
 
         Ok(Self {
-            state,
             state_tx,
+            state_rx,
             sender_tx,
             broadcast_tx,
         })
@@ -116,7 +112,6 @@ impl ConnectionManager {
     /// Main connection loop with automatic reconnection.
     async fn connection_loop(
         endpoint: String,
-        state: Arc<RwLock<ConnectionState>>,
         config: RtdsConfig,
         mut sender_rx: mpsc::UnboundedReceiver<String>,
         broadcast_tx: broadcast::Sender<RtdsMessage>,
@@ -127,28 +122,25 @@ impl ConnectionManager {
         let mut backoff: backoff::ExponentialBackoff = config.reconnect.clone().into();
 
         loop {
-            // Update state to connecting
-            let connecting = ConnectionState::Connecting;
-            *state.write().await = connecting;
-            _ = state_tx.send(connecting);
+            let state_rx = state_tx.subscribe();
+
+            _ = state_tx.send(ConnectionState::Connecting);
 
             // Attempt connection
             match connect_async(&endpoint).await {
                 Ok((ws_stream, _)) => {
                     attempt = 0;
                     backoff.reset();
-                    let connected = ConnectionState::Connected {
+                    _ = state_tx.send(ConnectionState::Connected {
                         since: Instant::now(),
-                    };
-                    *state.write().await = connected;
-                    _ = state_tx.send(connected);
+                    });
 
                     // Handle connection
                     if let Err(e) = Self::handle_connection(
                         ws_stream,
                         &mut sender_rx,
                         &broadcast_tx,
-                        Arc::clone(&state),
+                        state_rx,
                         config.clone(),
                         &interest,
                     )
@@ -174,16 +166,12 @@ impl ConnectionManager {
             if let Some(max) = config.reconnect.max_attempts
                 && attempt >= max
             {
-                let disconnected = ConnectionState::Disconnected;
-                *state.write().await = disconnected;
-                _ = state_tx.send(disconnected);
+                _ = state_tx.send(ConnectionState::Disconnected);
                 break;
             }
 
             // Update state and wait with exponential backoff
-            let reconnecting = ConnectionState::Reconnecting { attempt };
-            *state.write().await = reconnecting;
-            _ = state_tx.send(reconnecting);
+            _ = state_tx.send(ConnectionState::Reconnecting { attempt });
 
             if let Some(duration) = backoff.next_backoff() {
                 sleep(duration).await;
@@ -196,7 +184,7 @@ impl ConnectionManager {
         ws_stream: WsStream,
         sender_rx: &mut mpsc::UnboundedReceiver<String>,
         broadcast_tx: &broadcast::Sender<RtdsMessage>,
-        state: Arc<RwLock<ConnectionState>>,
+        state_rx: watch::Receiver<ConnectionState>,
         config: RtdsConfig,
         interest: &Arc<InterestTracker>,
     ) -> Result<()> {
@@ -208,7 +196,7 @@ impl ConnectionManager {
         let (ping_tx, mut ping_rx) = mpsc::unbounded_channel();
 
         let heartbeat_handle = tokio::spawn(async move {
-            Self::heartbeat_loop(ping_tx, state, &config, pong_rx).await;
+            Self::heartbeat_loop(ping_tx, state_rx, &config, pong_rx).await;
         });
 
         loop {
@@ -295,7 +283,7 @@ impl ConnectionManager {
     /// Heartbeat loop that sends PING messages and monitors PONG responses.
     async fn heartbeat_loop(
         ping_tx: mpsc::UnboundedSender<()>,
-        state: Arc<RwLock<ConnectionState>>,
+        state_rx: watch::Receiver<ConnectionState>,
         config: &RtdsConfig,
         mut pong_rx: watch::Receiver<Instant>,
     ) {
@@ -305,7 +293,7 @@ impl ConnectionManager {
             ping_interval.tick().await;
 
             // Check if still connected
-            if !state.read().await.is_connected() {
+            if !state_rx.borrow().is_connected() {
                 break;
             }
 
@@ -362,8 +350,8 @@ impl ConnectionManager {
 
     /// Get the current connection state.
     #[must_use]
-    pub async fn state(&self) -> ConnectionState {
-        *self.state.read().await
+    pub fn state(&self) -> ConnectionState {
+        *self.state_rx.borrow()
     }
 
     /// Subscribe to incoming messages.
