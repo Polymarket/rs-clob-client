@@ -589,7 +589,7 @@ impl<S: State> Client<S> {
             )
             .build()?;
 
-        self.request(request, None).await
+        crate::request(&self.inner.client, request, None).await
     }
 
     pub async fn order_book(
