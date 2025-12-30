@@ -174,7 +174,7 @@ async fn approve<P: alloy::providers::Provider>(
     spender: Address,
     amount: U256,
 ) -> Result<()> {
-    println!("  Calling USDC.approve({spender:?}, max)...");
+    println!("  Calling USDC.approve({spender:?}, {amount})...");
 
     let receipt = usdc.approve(spender, amount).send().await?.watch().await?;
 
