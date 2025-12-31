@@ -8,7 +8,7 @@ use std::sync::{Arc, PoisonError, RwLock};
 use std::time::Instant;
 
 use async_stream::try_stream;
-use dashmap::{DashMap, DashSet};
+use dashmap::DashMap;
 use futures::Stream;
 use tokio::sync::broadcast::error::RecvError;
 
@@ -73,12 +73,10 @@ pub struct SubscriptionManager {
     connection: ConnectionManager,
     active_subs: DashMap<String, SubscriptionInfo>,
     interest: Arc<InterestTracker>,
-    subscribed_assets: DashSet<String>,
-    subscribed_markets: DashSet<String>,
-    /// Reference counts for each asset (for multiplexing)
-    asset_refcounts: DashMap<String, usize>,
-    /// Reference counts for each market (for multiplexing)
-    market_refcounts: DashMap<String, usize>,
+    /// Subscribed assets with reference counts (for multiplexing)
+    subscribed_assets: DashMap<String, usize>,
+    /// Subscribed markets with reference counts (for multiplexing)
+    subscribed_markets: DashMap<String, usize>,
     last_auth: Arc<RwLock<Option<Credentials>>>,
 }
 
@@ -90,10 +88,8 @@ impl SubscriptionManager {
             connection,
             active_subs: DashMap::new(),
             interest,
-            subscribed_assets: DashSet::new(),
-            subscribed_markets: DashSet::new(),
-            asset_refcounts: DashMap::new(),
-            market_refcounts: DashMap::new(),
+            subscribed_assets: DashMap::new(),
+            subscribed_markets: DashMap::new(),
             last_auth: Arc::new(RwLock::new(None)),
         }
     }
@@ -213,7 +209,7 @@ impl SubscriptionManager {
             .iter()
             .filter_map(|id| {
                 let mut is_new = false;
-                self.asset_refcounts
+                self.subscribed_assets
                     .entry(id.clone())
                     .and_modify(|count| *count += 1)
                     .or_insert_with(|| {
@@ -221,10 +217,7 @@ impl SubscriptionManager {
                         1
                     });
 
-                is_new.then(|| {
-                    self.subscribed_assets.insert(id.clone());
-                    id.clone()
-                })
+                is_new.then(|| id.clone())
             })
             .collect();
 
@@ -312,7 +305,7 @@ impl SubscriptionManager {
             .iter()
             .filter_map(|m| {
                 let mut is_new = false;
-                self.market_refcounts
+                self.subscribed_markets
                     .entry(m.clone())
                     .and_modify(|count| *count += 1)
                     .or_insert_with(|| {
@@ -320,10 +313,7 @@ impl SubscriptionManager {
                         1
                     });
 
-                is_new.then(|| {
-                    self.subscribed_markets.insert(m.clone());
-                    m.clone()
-                })
+                is_new.then(|| m.clone())
             })
             .collect();
 
@@ -413,7 +403,7 @@ impl SubscriptionManager {
 
         // Decrement refcounts and collect assets that reach zero
         for id in asset_ids {
-            if let Some(mut refcount) = self.asset_refcounts.get_mut(id) {
+            if let Some(mut refcount) = self.subscribed_assets.get_mut(id) {
                 *refcount = refcount.saturating_sub(1);
                 if *refcount == 0 {
                     to_unsubscribe.push(id.clone());
@@ -423,7 +413,6 @@ impl SubscriptionManager {
 
         // Clean up tracking structures for zero-refcount assets
         for id in &to_unsubscribe {
-            self.asset_refcounts.remove(id);
             self.subscribed_assets.remove(id);
         }
 
@@ -443,7 +432,9 @@ impl SubscriptionManager {
         self.active_subs.retain(|_, info| {
             if let SubscriptionTarget::Assets(assets) = &info.target {
                 // Keep entry only if at least one asset is still subscribed
-                assets.iter().any(|a| self.subscribed_assets.contains(a))
+                assets
+                    .iter()
+                    .any(|a| self.subscribed_assets.contains_key(a))
             } else {
                 true // Keep non-market subscriptions
             }
@@ -470,7 +461,7 @@ impl SubscriptionManager {
 
         // Decrement refcounts and collect markets that reach zero
         for m in markets {
-            if let Some(mut refcount) = self.market_refcounts.get_mut(m) {
+            if let Some(mut refcount) = self.subscribed_markets.get_mut(m) {
                 *refcount = refcount.saturating_sub(1);
                 if *refcount == 0 {
                     to_unsubscribe.push(m.clone());
@@ -480,7 +471,6 @@ impl SubscriptionManager {
 
         // Clean up tracking structures for zero-refcount markets
         for m in &to_unsubscribe {
-            self.market_refcounts.remove(m);
             self.subscribed_markets.remove(m);
         }
 
@@ -509,7 +499,9 @@ impl SubscriptionManager {
         self.active_subs.retain(|_, info| {
             if let SubscriptionTarget::Markets(markets) = &info.target {
                 // Keep entry only if at least one market is still subscribed
-                markets.iter().any(|m| self.subscribed_markets.contains(m))
+                markets
+                    .iter()
+                    .any(|m| self.subscribed_markets.contains_key(m))
             } else {
                 true // Keep non-user subscriptions
             }
