@@ -25,14 +25,6 @@ pub struct Credentials {
     pub(crate) passphrase: SecretString,
 }
 
-impl PartialEq for Credentials {
-    fn eq(&self, other: &Self) -> bool {
-        self.key == other.key
-            && self.secret.expose_secret() == other.secret.expose_secret()
-            && self.passphrase.expose_secret() == other.passphrase.expose_secret()
-    }
-}
-
 impl Credentials {
     #[must_use]
     pub fn new(key: Uuid, secret: String, passphrase: String) -> Self {
