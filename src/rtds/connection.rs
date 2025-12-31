@@ -3,7 +3,6 @@
     reason = "Connection types expose their domain in the name for clarity"
 )]
 
-use std::sync::Arc;
 use std::time::Instant;
 
 use backoff::backoff::Backoff as _;
@@ -15,9 +14,8 @@ use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungsten
 
 use super::config::Config;
 use super::error::RtdsError;
-use super::interest::InterestTracker;
 use super::types::request::SubscriptionRequest;
-use super::types::response::{RtdsMessage, parse_if_interested};
+use super::types::response::{RtdsMessage, parse_messages};
 use crate::{
     Result,
     error::{Error, Kind},
@@ -71,10 +69,7 @@ pub struct ConnectionManager {
 
 impl ConnectionManager {
     /// Create a new connection manager and start the connection loop.
-    ///
-    /// The `interest` tracker is used to determine which message types to deserialize.
-    /// Only messages that have active consumers will be fully parsed.
-    pub fn new(endpoint: String, config: Config, interest: &Arc<InterestTracker>) -> Result<Self> {
+    pub fn new(endpoint: String, config: Config) -> Result<Self> {
         let (sender_tx, sender_rx) = mpsc::unbounded_channel();
         let (broadcast_tx, _) = broadcast::channel(BROADCAST_CAPACITY);
         let (state_tx, state_rx) = watch::channel(ConnectionState::Disconnected);
@@ -83,7 +78,6 @@ impl ConnectionManager {
         let connection_config = config;
         let connection_endpoint = endpoint;
         let broadcast_tx_clone = broadcast_tx.clone();
-        let connection_interest = Arc::clone(interest);
         let state_tx_clone = state_tx.clone();
 
         tokio::spawn(async move {
@@ -92,7 +86,6 @@ impl ConnectionManager {
                 connection_config,
                 sender_rx,
                 broadcast_tx_clone,
-                connection_interest,
                 state_tx_clone,
             )
             .await;
@@ -112,7 +105,6 @@ impl ConnectionManager {
         config: Config,
         mut sender_rx: mpsc::UnboundedReceiver<String>,
         broadcast_tx: broadcast::Sender<RtdsMessage>,
-        interest: Arc<InterestTracker>,
         state_tx: watch::Sender<ConnectionState>,
     ) {
         let mut attempt = 0_u32;
@@ -139,7 +131,6 @@ impl ConnectionManager {
                         &broadcast_tx,
                         state_rx,
                         config.clone(),
-                        &interest,
                     )
                     .await
                     {
@@ -183,7 +174,6 @@ impl ConnectionManager {
         broadcast_tx: &broadcast::Sender<RtdsMessage>,
         state_rx: watch::Receiver<ConnectionState>,
         config: Config,
-        interest: &Arc<InterestTracker>,
     ) -> Result<()> {
         let (mut write, mut read) = ws_stream.split();
 
@@ -208,8 +198,7 @@ impl ConnectionManager {
                             #[cfg(feature = "tracing")]
                             tracing::trace!(%text, "Received RTDS text message");
 
-                            // Only deserialize message types that have active consumers
-                            match parse_if_interested(text.as_bytes(), &interest.get()) {
+                            match parse_messages(text.as_bytes()) {
                                 Ok(messages) => {
                                     for message in messages {
                                         #[cfg(feature = "tracing")]

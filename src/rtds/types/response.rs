@@ -1,12 +1,6 @@
-use std::fmt;
-
 use rust_decimal::Decimal;
-use serde::de::{MapAccess, Visitor};
-use serde::{Deserialize, Deserializer as _, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
-
-use crate::error::Kind;
-use crate::rtds::interest::MessageInterest;
 
 /// Top-level RTDS message wrapper.
 ///
@@ -26,19 +20,6 @@ pub struct RtdsMessage {
 }
 
 impl RtdsMessage {
-    /// Get the message interest for this message based on its topic.
-    #[must_use]
-    pub fn interest(&self) -> MessageInterest {
-        MessageInterest::from_topic(&self.topic)
-    }
-
-    /// Check if this message matches the given interest filter.
-    #[must_use]
-    pub fn matches_interest(&self, interest: MessageInterest) -> bool {
-        let msg_interest = self.interest();
-        !msg_interest.is_empty() && interest.contains(msg_interest)
-    }
-
     /// Try to extract the payload as a crypto price update.
     #[must_use]
     pub fn as_crypto_price(&self) -> Option<CryptoPrice> {
@@ -165,82 +146,16 @@ pub enum CommentType {
     ReactionRemoved,
 }
 
-/// Result of peeking at the message structure without full deserialization.
-enum MessageShape {
-    /// Single object with the given topic (if present).
-    Single(Option<String>),
-    /// Array of messages requiring full deserialization.
-    Array,
-}
-
-/// Peeks at the JSON structure to determine if it's a single object or array,
-/// and extracts the topic for single objects without full deserialization.
-fn peek_message_shape(bytes: &[u8]) -> Result<MessageShape, serde_json::Error> {
-    struct ShapePeeker;
-
-    impl<'de> Visitor<'de> for ShapePeeker {
-        type Value = MessageShape;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("a JSON object or array")
-        }
-
-        fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-        where
-            A: MapAccess<'de>,
-        {
-            let mut topic: Option<String> = None;
-            while let Some(key) = map.next_key::<&str>()? {
-                if key == "topic" {
-                    topic = Some(map.next_value::<String>()?);
-                } else {
-                    map.next_value::<serde::de::IgnoredAny>()?;
-                }
-            }
-            Ok(MessageShape::Single(topic))
-        }
-
-        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-        where
-            A: serde::de::SeqAccess<'de>,
-        {
-            // Consume the entire sequence to avoid "trailing characters" error
-            while seq.next_element::<serde::de::IgnoredAny>()?.is_some() {}
-            Ok(MessageShape::Array)
-        }
-    }
-
-    let mut de = serde_json::Deserializer::from_slice(bytes);
-    de.deserialize_any(ShapePeeker)
-}
-
-/// Deserialize messages from the byte slice, filtering by interest.
+/// Deserialize messages from the byte slice.
 ///
-/// For single objects, the topic is extracted first to skip uninteresting messages
-/// without full deserialization. For arrays, all messages are deserialized and filtered.
-pub fn parse_if_interested(
-    bytes: &[u8],
-    interest: &MessageInterest,
-) -> crate::Result<Vec<RtdsMessage>> {
-    let shape = peek_message_shape(bytes)
-        .map_err(|e| crate::error::Error::with_source(Kind::Internal, e))?;
-
-    match shape {
-        MessageShape::Single(None) => Ok(vec![]),
-        MessageShape::Single(Some(topic)) => {
-            if !interest.is_interested_in_topic(&topic) {
-                return Ok(vec![]);
-            }
-            let msg: RtdsMessage = serde_json::from_slice(bytes)?;
-            Ok(vec![msg])
-        }
-        MessageShape::Array => {
-            let messages: Vec<RtdsMessage> = serde_json::from_slice(bytes)?;
-            Ok(messages
-                .into_iter()
-                .filter(|msg| msg.matches_interest(*interest))
-                .collect())
-        }
+/// Handles both single objects and arrays of messages.
+pub fn parse_messages(bytes: &[u8]) -> crate::Result<Vec<RtdsMessage>> {
+    // Try parsing as array first, fall back to single object
+    if bytes.first() == Some(&b'[') {
+        Ok(serde_json::from_slice(bytes)?)
+    } else {
+        let msg: RtdsMessage = serde_json::from_slice(bytes)?;
+        Ok(vec![msg])
     }
 }
 
@@ -263,7 +178,7 @@ mod tests {
             }
         }"#;
 
-        let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::ALL).unwrap();
+        let msgs = parse_messages(json.as_bytes()).unwrap();
         assert_eq!(msgs.len(), 1);
 
         let msg = &msgs[0];
@@ -288,7 +203,7 @@ mod tests {
             }
         }"#;
 
-        let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::ALL).unwrap();
+        let msgs = parse_messages(json.as_bytes()).unwrap();
         assert_eq!(msgs.len(), 1);
 
         let msg = &msgs[0];
@@ -326,7 +241,7 @@ mod tests {
             }
         }"#;
 
-        let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::ALL).unwrap();
+        let msgs = parse_messages(json.as_bytes()).unwrap();
         assert_eq!(msgs.len(), 1);
 
         let msg = &msgs[0];
@@ -340,8 +255,8 @@ mod tests {
     }
 
     #[test]
-    fn parse_filters_by_interest() {
-        let json = r#"{
+    fn parse_message_array() {
+        let json = r#"[{
             "topic": "crypto_prices",
             "type": "update",
             "timestamp": 1753314064237,
@@ -350,14 +265,10 @@ mod tests {
                 "timestamp": 1753314064213,
                 "value": 67234.50
             }
-        }"#;
+        }]"#;
 
-        // Only interested in comments, not crypto prices
-        let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::COMMENTS).unwrap();
-        assert_eq!(msgs.len(), 0);
-
-        // Interested in crypto prices
-        let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::CRYPTO_PRICES).unwrap();
+        let msgs = parse_messages(json.as_bytes()).unwrap();
         assert_eq!(msgs.len(), 1);
+        assert_eq!(msgs[0].topic, "crypto_prices");
     }
 }

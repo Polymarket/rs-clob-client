@@ -13,7 +13,6 @@ use tokio::sync::broadcast::error::RecvError;
 
 use super::connection::{ConnectionManager, ConnectionState};
 use super::error::RtdsError;
-use super::interest::{InterestTracker, MessageInterest};
 use super::types::request::{Subscription, SubscriptionRequest};
 use super::types::response::RtdsMessage;
 use crate::Result;
@@ -55,21 +54,19 @@ pub struct SubscriptionInfo {
 pub struct SubscriptionManager {
     connection: ConnectionManager,
     active_subs: DashMap<String, SubscriptionInfo>,
-    interest: Arc<InterestTracker>,
     subscribed_topics: DashSet<TopicType>,
-    last_auth: Arc<RwLock<Option<Credentials>>>,
+    last_auth: RwLock<Option<Credentials>>,
 }
 
 impl SubscriptionManager {
     /// Create a new subscription manager.
     #[must_use]
-    pub fn new(connection: ConnectionManager, interest: Arc<InterestTracker>) -> Self {
+    pub fn new(connection: ConnectionManager) -> Self {
         Self {
             connection,
             active_subs: DashMap::new(),
-            interest,
             subscribed_topics: DashSet::new(),
-            last_auth: Arc::new(RwLock::new(None)),
+            last_auth: RwLock::new(None),
         }
     }
 
@@ -173,10 +170,6 @@ impl SubscriptionManager {
         subscription: Subscription,
     ) -> Result<impl Stream<Item = Result<RtdsMessage>>> {
         let topic_type = TopicType::new(subscription.topic.clone(), subscription.msg_type.clone());
-
-        // Add interest for this topic
-        let interest = MessageInterest::from_topic(&subscription.topic);
-        self.interest.add(interest);
 
         // Store auth for re-subscription on reconnect.
         // We can recover from poisoned lock because Option<Credentials> has no inconsistent intermediate state.

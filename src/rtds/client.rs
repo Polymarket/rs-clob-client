@@ -6,7 +6,6 @@ use futures::StreamExt as _;
 
 use super::config::Config;
 use super::connection::{ConnectionManager, ConnectionState};
-use super::interest::InterestTracker;
 use super::subscription::SubscriptionManager;
 use super::types::request::Subscription;
 use super::types::response::{ChainlinkPrice, Comment, CommentType, CryptoPrice, RtdsMessage};
@@ -70,9 +69,8 @@ struct ClientInner<S: State> {
 impl Client<Unauthenticated> {
     /// Create a new unauthenticated RTDS client with the specified endpoint and configuration.
     pub fn new(endpoint: &str, config: Config) -> Result<Self> {
-        let interest = Arc::new(InterestTracker::new());
-        let connection = ConnectionManager::new(endpoint.to_owned(), config.clone(), &interest)?;
-        let subscriptions = Arc::new(SubscriptionManager::new(connection.clone(), interest));
+        let connection = ConnectionManager::new(endpoint.to_owned(), config.clone())?;
+        let subscriptions = Arc::new(SubscriptionManager::new(connection.clone()));
 
         // Start reconnection handler to re-subscribe on connection recovery
         subscriptions.start_reconnection_handler();
