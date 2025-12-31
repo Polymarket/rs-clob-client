@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use alloy::primitives::Address;
 use futures::Stream;
 use futures::StreamExt as _;
 
@@ -13,6 +12,7 @@ use crate::Result;
 use crate::auth::state::{Authenticated, State, Unauthenticated};
 use crate::auth::{Credentials, Normal};
 use crate::error::Error;
+use crate::types::Address;
 
 /// RTDS (Real-Time Data Socket) client for streaming Polymarket data.
 ///

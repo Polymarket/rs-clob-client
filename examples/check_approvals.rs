@@ -16,10 +16,11 @@
 
 use std::env;
 
-use alloy::primitives::{Address, U256, address};
+use alloy::primitives::U256;
 use alloy::providers::ProviderBuilder;
 use alloy::sol;
 use anyhow::Result;
+use polymarket_client_sdk::types::{Address, address};
 use polymarket_client_sdk::{POLYGON, contract_config};
 
 const RPC_URL: &str = "https://polygon-rpc.com";

@@ -31,12 +31,13 @@
 use std::env;
 use std::str::FromStr as _;
 
-use alloy::primitives::{Address, U256, address};
+use alloy::primitives::U256;
 use alloy::providers::ProviderBuilder;
 use alloy::signers::Signer as _;
 use alloy::signers::local::LocalSigner;
 use alloy::sol;
 use anyhow::Result;
+use polymarket_client_sdk::types::{Address, address};
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR, contract_config};
 
 const RPC_URL: &str = "https://polygon-rpc.com";

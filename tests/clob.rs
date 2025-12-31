@@ -1232,7 +1232,7 @@ mod unauthenticated {
 }
 
 mod authenticated {
-    use alloy::primitives::{Address, Signature, address};
+    use alloy::primitives::Signature;
     use alloy::signers::Signer as _;
     use alloy::signers::local::LocalSigner;
     use chrono::NaiveDate;
@@ -1252,6 +1252,7 @@ mod authenticated {
         AssetType, OrderStatusType, OrderType, Side, SignableOrder, SignedOrder, TickSize,
         TraderSide,
     };
+    use polymarket_client_sdk::types::{Address, address};
 
     use super::*;
     use crate::common::{

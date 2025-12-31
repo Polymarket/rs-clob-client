@@ -7,6 +7,7 @@ mod deposit {
         Client,
         types::{DepositAddresses, DepositRequest, DepositResponse},
     };
+    use polymarket_client_sdk::types::address;
     use reqwest::StatusCode;
     use serde_json::json;
 
@@ -33,9 +34,7 @@ mod deposit {
         });
 
         let request = DepositRequest::builder()
-            .address(alloy::primitives::address!(
-                "56687bf447db6ffa42ffe2204a05edaa20f55839"
-            ))
+            .address(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
             .build();
 
         let response = client.deposit(&request).await?;
@@ -77,9 +76,7 @@ mod deposit {
         });
 
         let request = DepositRequest::builder()
-            .address(alloy::primitives::address!(
-                "56687bf447db6ffa42ffe2204a05edaa20f55839"
-            ))
+            .address(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
             .build();
 
         let response = client.deposit(&request).await?;
@@ -106,9 +103,7 @@ mod deposit {
         });
 
         let request = DepositRequest::builder()
-            .address(alloy::primitives::address!(
-                "0000000000000000000000000000000000000000"
-            ))
+            .address(address!("0000000000000000000000000000000000000000"))
             .build();
 
         let result = client.deposit(&request).await;
