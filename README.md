@@ -161,7 +161,7 @@ use alloy::signers::local::LocalSigner;
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 use polymarket_client_sdk::clob::{Client, Config};
 use polymarket_client_sdk::clob::types::{Amount, OrderType, Side};
-use rust_decimal::Decimal;
+use polymarket_client_sdk::types::Decimal;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -197,7 +197,7 @@ use alloy::signers::local::LocalSigner;
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 use polymarket_client_sdk::clob::{Client, Config};
 use polymarket_client_sdk::clob::types::{Amount, OrderType, Side};
-use rust_decimal::Decimal;
+use polymarket_client_sdk::types::Decimal;
 use rust_decimal_macros::dec;
 
 #[tokio::main]

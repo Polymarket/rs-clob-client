@@ -10,6 +10,7 @@ pub(crate) mod deser_warn;
 pub mod error;
 #[cfg(feature = "gamma")]
 pub mod gamma;
+pub mod types;
 
 use std::fmt::Write as _;
 

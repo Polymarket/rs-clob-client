@@ -6,9 +6,9 @@ use serde::{Deserialize, Deserializer as _, Serialize};
 use serde_json::Deserializer;
 use serde_with::{DisplayFromStr, serde_as};
 
-use super::interest::MessageInterest;
-use crate::auth::Credentials;
+use crate::auth::ApiKey;
 use crate::clob::types::{Side, TraderSide};
+use crate::clob::ws::interest::MessageInterest;
 use crate::error::Kind;
 
 /// Top-level WebSocket message wrapper.
@@ -170,15 +170,15 @@ pub struct MakerOrder {
     /// Asset/token identifier of the maker order
     pub asset_id: String,
     /// Amount of maker order matched in trade
-    pub matched_amount: String,
+    pub matched_amount: Decimal,
     /// Maker order ID
     pub order_id: String,
     /// Outcome (Yes/No)
     pub outcome: String,
     /// Owner (API key) of maker order
-    pub owner: String,
+    pub owner: ApiKey,
     /// Price of maker order
-    pub price: String,
+    pub price: Decimal,
 }
 
 /// User trade execution message (authenticated channel only).
@@ -194,9 +194,9 @@ pub struct TradeMessage {
     /// Side of the trade (BUY or SELL)
     pub side: Side,
     /// Size of the trade
-    pub size: String,
+    pub size: Decimal,
     /// Execution price
-    pub price: String,
+    pub price: Decimal,
     /// Trade status (MATCHED, MINED, CONFIRMED, etc.)
     pub status: String,
     /// Message type (always "TRADE")
@@ -216,10 +216,10 @@ pub struct TradeMessage {
     pub outcome: Option<String>,
     /// API key of event owner
     #[serde(default)]
-    pub owner: Option<String>,
+    pub owner: Option<ApiKey>,
     /// API key of trade owner
     #[serde(default)]
-    pub trade_owner: Option<String>,
+    pub trade_owner: Option<ApiKey>,
     /// ID of taker order
     #[serde(default)]
     pub taker_order_id: Option<String>,
@@ -250,7 +250,7 @@ pub struct OrderMessage {
     /// Side of the order (BUY or SELL)
     pub side: Side,
     /// Order price
-    pub price: String,
+    pub price: Decimal,
     /// Message type (PLACEMENT, UPDATE, or CANCELLATION)
     #[serde(rename = "type", default)]
     pub msg_type: Option<String>,
@@ -259,16 +259,16 @@ pub struct OrderMessage {
     pub outcome: Option<String>,
     /// Owner (API key)
     #[serde(default)]
-    pub owner: Option<String>,
+    pub owner: Option<ApiKey>,
     /// Order owner (API key of order originator)
     #[serde(default)]
-    pub order_owner: Option<String>,
+    pub order_owner: Option<ApiKey>,
     /// Original order size
     #[serde(default)]
-    pub original_size: Option<String>,
+    pub original_size: Option<Decimal>,
     /// Amount matched so far
     #[serde(default)]
-    pub size_matched: Option<String>,
+    pub size_matched: Option<Decimal>,
     /// Unix timestamp of event
     #[serde(default)]
     pub timestamp: Option<String>,
@@ -296,51 +296,6 @@ pub enum OrderStatus {
     Update,
     /// Order cancellation in progress
     Cancellation,
-}
-
-/// Subscription request message sent to the WebSocket server.
-#[non_exhaustive]
-#[derive(Clone, Debug, Serialize)]
-pub struct SubscriptionRequest {
-    /// Subscription type ("market" or "user")
-    pub r#type: String,
-    /// List of market IDs
-    pub markets: Vec<String>,
-    /// List of asset IDs
-    #[serde(rename = "assets_ids")]
-    pub asset_ids: Vec<String>,
-    /// Request initial state dump
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub initial_dump: Option<bool>,
-    /// Authentication credentials
-    #[serde(skip)]
-    pub auth: Option<Credentials>,
-}
-
-impl SubscriptionRequest {
-    /// Create a market subscription request.
-    #[must_use]
-    pub fn market(asset_ids: Vec<String>) -> Self {
-        Self {
-            r#type: "market".to_owned(),
-            markets: vec![],
-            asset_ids,
-            initial_dump: Some(true),
-            auth: None,
-        }
-    }
-
-    /// Create a user subscription request.
-    #[must_use]
-    pub fn user(markets: Vec<String>, auth: Credentials) -> Self {
-        Self {
-            r#type: "user".to_owned(),
-            markets,
-            asset_ids: vec![],
-            initial_dump: Some(true),
-            auth: Some(auth),
-        }
-    }
 }
 
 /// Calculated midpoint update (derived from orderbook).
@@ -455,7 +410,6 @@ mod tests {
     use rust_decimal_macros::dec;
 
     use super::*;
-    use crate::auth::ApiKey;
 
     #[test]
     fn parse_book_message() {
@@ -628,30 +582,5 @@ mod tests {
         // Interested in both
         let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::ALL).unwrap();
         assert_eq!(msgs.len(), 2);
-    }
-
-    #[test]
-    fn serialize_market_subscription_request() {
-        let request = SubscriptionRequest::market(vec!["asset1".to_owned(), "asset2".to_owned()]);
-
-        let json = serde_json::to_string(&request).unwrap();
-        assert!(json.contains("\"type\":\"market\""));
-        assert!(json.contains("\"assets_ids\""));
-        assert!(json.contains("\"initial_dump\":true"));
-    }
-
-    #[test]
-    fn serialize_user_subscription_request() {
-        let credentials = Credentials::new(
-            ApiKey::nil(),
-            "test-secret".to_owned(),
-            "test-pass".to_owned(),
-        );
-        let request = SubscriptionRequest::user(vec!["market1".to_owned()], credentials);
-
-        let json = serde_json::to_string(&request).unwrap();
-        assert!(json.contains("\"type\":\"user\""));
-        assert!(json.contains("\"markets\""));
-        assert!(json.contains("\"initial_dump\":true"));
     }
 }

@@ -181,8 +181,7 @@ pub struct MarketsRequest {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub slug: Vec<String>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing)]
     #[builder(default)]
     pub clob_token_ids: Vec<String>,
     #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
@@ -218,6 +217,22 @@ pub struct MarketsRequest {
     pub question_ids: Vec<String>,
     pub include_tag: Option<bool>,
     pub closed: Option<bool>,
+}
+
+impl MarketsRequest {
+    /// Returns the repeated query parameters for `clob_token_ids`.
+    ///
+    /// The Gamma API expects `clob_token_ids` as repeated query parameters
+    /// (`?clob_token_ids=id1&clob_token_ids=id2`), not comma-separated.
+    /// This method builds that portion of the query string.
+    #[must_use]
+    pub fn clob_token_ids_query(&self) -> String {
+        self.clob_token_ids
+            .iter()
+            .map(|id| format!("clob_token_ids={id}"))
+            .collect::<Vec<_>>()
+            .join("&")
+    }
 }
 
 #[skip_serializing_none]

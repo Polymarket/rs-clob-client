@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0](https://github.com/Polymarket/rs-clob-client/compare/v0.2.1...v0.3.0) - 2025-12-31
+
+### Added
+
+- *(auth)* add key() getter to Credentials ([#69](https://github.com/Polymarket/rs-clob-client/pull/69))
+- add geographic restrictions check ([#63](https://github.com/Polymarket/rs-clob-client/pull/63))
+- add bridge API client ([#55](https://github.com/Polymarket/rs-clob-client/pull/55))
+
+### Fixed
+
+- *(gamma)* use repeated query params for clob_token_ids ([#65](https://github.com/Polymarket/rs-clob-client/pull/65))
+- correct data example required-features name ([#68](https://github.com/Polymarket/rs-clob-client/pull/68))
+- *(clob)* allow market orders to supply price ([#67](https://github.com/Polymarket/rs-clob-client/pull/67))
+- add CTF Exchange approval to approvals example ([#45](https://github.com/Polymarket/rs-clob-client/pull/45))
+
+### Other
+
+- [**breaking**] ws types ([#52](https://github.com/Polymarket/rs-clob-client/pull/52))
+- consolidate request and query params ([#64](https://github.com/Polymarket/rs-clob-client/pull/64))
+- [**breaking**] rescope data types and rename feature ([#62](https://github.com/Polymarket/rs-clob-client/pull/62))
+- [**breaking**] rescope gamma types ([#61](https://github.com/Polymarket/rs-clob-client/pull/61))
+- [**breaking**] scope clob types into request/response ([#60](https://github.com/Polymarket/rs-clob-client/pull/60))
+- [**breaking**] WS cleanup ([#58](https://github.com/Polymarket/rs-clob-client/pull/58))
+- [**breaking**] minor cleanup ([#57](https://github.com/Polymarket/rs-clob-client/pull/57))
+
 ## [0.2.1](https://github.com/Polymarket/rs-clob-client/compare/v0.2.0...v0.2.1) - 2025-12-29
 
 ### Added

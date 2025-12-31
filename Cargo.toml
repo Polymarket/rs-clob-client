@@ -1,7 +1,7 @@
 [package]
 name = "polymarket-client-sdk"
 description = "Polymarket CLOB (Central Limit Order Book) API client SDK"
-version = "0.2.1"
+version = "0.3.0"
 authors = [
     "Polymarket Engineering <engineering@polymarket.com>",
     "Chaz Byrnes <chaz@polymarket.com>",
@@ -111,7 +111,7 @@ path = "examples/approvals.rs"
 [[example]]
 name = "data"
 path = "examples/data.rs"
-required-features = ["data-api"]
+required-features = ["data"]
 
 [[example]]
 name = "gamma"

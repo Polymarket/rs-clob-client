@@ -16,7 +16,8 @@ pub use client::Client;
 pub use config::{Config, ReconnectConfig};
 pub use error::WsError;
 pub use subscription::{ChannelType, SubscriptionInfo, SubscriptionTarget};
-pub use types::{
+pub use types::request::SubscriptionRequest;
+pub use types::response::{
     BookUpdate, LastTradePrice, MakerOrder, MidpointUpdate, OrderMessage, OrderStatus, PriceChange,
-    SubscriptionRequest, TickSizeChange, TradeMessage, WsMessage,
+    TickSizeChange, TradeMessage, WsMessage,
 };

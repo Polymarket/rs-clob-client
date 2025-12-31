@@ -17,7 +17,8 @@ use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungsten
 use super::config::Config;
 use super::error::WsError;
 use super::interest::InterestTracker;
-use super::types::{SubscriptionRequest, WsMessage, parse_if_interested};
+use super::types::request::SubscriptionRequest;
+use super::types::response::{WsMessage, parse_if_interested};
 use crate::{
     Result,
     error::{Error, Kind},

@@ -526,6 +526,83 @@ mod markets {
 
         Ok(())
     }
+
+    #[tokio::test]
+    async fn markets_empty_request() -> anyhow::Result<()> {
+        // Tests (true, true): no base params, no clob_token_ids
+        let server = MockServer::start();
+        let client = Client::new(&server.base_url())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(GET).path("/markets");
+            then.status(StatusCode::OK).json_body(json!([]));
+        });
+
+        let request = MarketsRequest::default();
+        let response = client.markets(&request).await?;
+
+        assert!(response.is_empty());
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn markets_only_clob_token_ids() -> anyhow::Result<()> {
+        // Tests (true, false): only clob_token_ids, no base params
+        let server = MockServer::start();
+        let client = Client::new(&server.base_url())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(GET)
+                .path("/markets")
+                .query_param("clob_token_ids", "token1")
+                .query_param("clob_token_ids", "token2");
+            then.status(StatusCode::OK).json_body(json!([
+                {"id": "1", "question": "Market 1?", "slug": "market-1"}
+            ]));
+        });
+
+        let request = MarketsRequest::builder()
+            .clob_token_ids(vec!["token1".to_owned(), "token2".to_owned()])
+            .build();
+        let response = client.markets(&request).await?;
+
+        assert_eq!(response.len(), 1);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn markets_with_base_and_clob_params() -> anyhow::Result<()> {
+        // Tests (false, false): both base params and clob_token_ids
+        let server = MockServer::start();
+        let client = Client::new(&server.base_url())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(GET)
+                .path("/markets")
+                .query_param("limit", "50")
+                .query_param("clob_token_ids", "abc")
+                .query_param("clob_token_ids", "def");
+            then.status(StatusCode::OK).json_body(json!([
+                {"id": "1", "question": "Market 1?", "slug": "market-1"},
+                {"id": "2", "question": "Market 2?", "slug": "market-2"}
+            ]));
+        });
+
+        let request = MarketsRequest::builder()
+            .limit(50)
+            .clob_token_ids(vec!["abc".to_owned(), "def".to_owned()])
+            .build();
+        let response = client.markets(&request).await?;
+
+        assert_eq!(response.len(), 2);
+        mock.assert();
+
+        Ok(())
+    }
 }
 
 mod search {
@@ -1195,7 +1272,12 @@ mod query_string {
         assert!(qs.contains("ascending=false"));
         assert!(qs.contains("id=1%2C2"));
         assert!(qs.contains("slug=market-1"));
-        assert!(qs.contains("clob_token_ids=token1%2Ctoken2"));
+        // clob_token_ids is handled separately via clob_token_ids_query() for repeated params
+        assert!(!qs.contains("clob_token_ids"));
+        let clob_qs = request.clob_token_ids_query();
+        assert!(clob_qs.contains("clob_token_ids=token1"));
+        assert!(clob_qs.contains("clob_token_ids=token2"));
+        assert!(clob_qs.contains('&')); // Repeated params format
         assert!(qs.contains("condition_ids=cond1"));
         assert!(qs.contains("market_maker_address=0x123"));
         assert!(qs.contains("liquidity_num_min=1000"));

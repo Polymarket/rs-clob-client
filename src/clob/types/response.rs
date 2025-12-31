@@ -76,6 +76,23 @@ pub struct FeeRateResponse {
     pub base_fee: u32,
 }
 
+/// Response from the Polymarket geoblock endpoint.
+///
+/// This indicates whether the requesting IP address is blocked from placing orders
+/// due to geographic restrictions.
+#[non_exhaustive]
+#[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
+pub struct GeoblockResponse {
+    /// Whether the user is blocked from placing orders
+    pub blocked: bool,
+    /// The detected IP address
+    pub ip: String,
+    /// ISO 3166-1 alpha-2 country code
+    pub country: String,
+    /// Region/state code
+    pub region: String,
+}
+
 #[non_exhaustive]
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize, Builder, PartialEq)]

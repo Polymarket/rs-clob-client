@@ -243,7 +243,25 @@ impl Client {
 
     /// Lists markets with optional filters.
     pub async fn markets(&self, request: &MarketsRequest) -> Result<Vec<Market>> {
-        self.get("markets", request).await
+        // Build base query string using the standard ToQueryParams trait
+        let base_query = request.query_params(None);
+
+        // Build repeated params for clob_token_ids (API expects repeated keys, not comma-separated)
+        let clob_params = request.clob_token_ids_query();
+
+        // Combine query string parts
+        let query = match (base_query.is_empty(), clob_params.is_empty()) {
+            (true, true) => String::new(),
+            (true, false) => format!("?{clob_params}"),
+            (false, true) => base_query,
+            (false, false) => format!("{base_query}&{clob_params}"),
+        };
+
+        let req = self
+            .client
+            .request(Method::GET, format!("{}markets{query}", self.host))
+            .build()?;
+        crate::request(&self.client, req, None).await
     }
 
     /// Gets a market by ID.

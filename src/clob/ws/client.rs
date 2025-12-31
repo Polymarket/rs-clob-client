@@ -11,7 +11,7 @@ use super::config::Config;
 use super::connection::{ConnectionManager, ConnectionState};
 use super::interest::InterestTracker;
 use super::subscription::{ChannelType, SubscriptionManager};
-use super::types::{
+use super::types::response::{
     BookUpdate, MidpointUpdate, OrderMessage, PriceChange, TradeMessage, WsMessage,
 };
 use crate::Result;
