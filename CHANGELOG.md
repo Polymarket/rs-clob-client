@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1](https://github.com/Polymarket/rs-clob-client/compare/v0.3.0...v0.3.1) - 2025-12-31
+
+### Added
+
+- *(ws)* add unsubscribe support with reference counting ([#70](https://github.com/Polymarket/rs-clob-client/pull/70))
+- *(auth)* add secret and passphrase accessors to Credentials ([#78](https://github.com/Polymarket/rs-clob-client/pull/78))
+- add RTDS (Real-Time Data Socket) client ([#56](https://github.com/Polymarket/rs-clob-client/pull/56))
+
+### Fixed
+
+- *(clob)* align API implementation with OpenAPI spec ([#72](https://github.com/Polymarket/rs-clob-client/pull/72))
+
+### Other
+
+- *(auth)* migrate from sec to secrecy crate ([#75](https://github.com/Polymarket/rs-clob-client/pull/75))
+- use re-exported types ([#74](https://github.com/Polymarket/rs-clob-client/pull/74))
+
 ## [0.3.0](https://github.com/Polymarket/rs-clob-client/compare/v0.2.1...v0.3.0) - 2025-12-31
 
 ### Added
