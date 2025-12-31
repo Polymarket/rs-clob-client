@@ -3,23 +3,19 @@
     reason = "Connection types expose their domain in the name for clarity"
 )]
 
-use std::sync::Arc;
 use std::time::Instant;
 
 use backoff::backoff::Backoff as _;
 use futures::{SinkExt as _, StreamExt as _};
-use secrecy::ExposeSecret as _;
-use serde_json::{Value, json};
 use tokio::net::TcpStream;
 use tokio::sync::{broadcast, mpsc, watch};
 use tokio::time::{interval, sleep, timeout};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message};
 
 use super::config::Config;
-use super::error::WsError;
-use super::interest::InterestTracker;
+use super::error::RtdsError;
 use super::types::request::SubscriptionRequest;
-use super::types::response::{WsMessage, parse_if_interested};
+use super::types::response::{RtdsMessage, parse_messages};
 use crate::{
     Result,
     error::{Error, Kind},
@@ -68,15 +64,12 @@ pub struct ConnectionManager {
     /// Sender channel for outgoing messages
     sender_tx: mpsc::UnboundedSender<String>,
     /// Broadcast sender for incoming messages
-    broadcast_tx: broadcast::Sender<WsMessage>,
+    broadcast_tx: broadcast::Sender<RtdsMessage>,
 }
 
 impl ConnectionManager {
     /// Create a new connection manager and start the connection loop.
-    ///
-    /// The `interest` tracker is used to determine which message types to deserialize.
-    /// Only messages that have active consumers will be fully parsed.
-    pub fn new(endpoint: String, config: Config, interest: &Arc<InterestTracker>) -> Result<Self> {
+    pub fn new(endpoint: String, config: Config) -> Result<Self> {
         let (sender_tx, sender_rx) = mpsc::unbounded_channel();
         let (broadcast_tx, _) = broadcast::channel(BROADCAST_CAPACITY);
         let (state_tx, state_rx) = watch::channel(ConnectionState::Disconnected);
@@ -85,7 +78,6 @@ impl ConnectionManager {
         let connection_config = config;
         let connection_endpoint = endpoint;
         let broadcast_tx_clone = broadcast_tx.clone();
-        let connection_interest = Arc::clone(interest);
         let state_tx_clone = state_tx.clone();
 
         tokio::spawn(async move {
@@ -94,7 +86,6 @@ impl ConnectionManager {
                 connection_config,
                 sender_rx,
                 broadcast_tx_clone,
-                connection_interest,
                 state_tx_clone,
             )
             .await;
@@ -113,8 +104,7 @@ impl ConnectionManager {
         endpoint: String,
         config: Config,
         mut sender_rx: mpsc::UnboundedReceiver<String>,
-        broadcast_tx: broadcast::Sender<WsMessage>,
-        interest: Arc<InterestTracker>,
+        broadcast_tx: broadcast::Sender<RtdsMessage>,
         state_tx: watch::Sender<ConnectionState>,
     ) {
         let mut attempt = 0_u32;
@@ -141,22 +131,21 @@ impl ConnectionManager {
                         &broadcast_tx,
                         state_rx,
                         config.clone(),
-                        &interest,
                     )
                     .await
                     {
                         #[cfg(feature = "tracing")]
-                        tracing::error!("Error handling connection: {e:?}");
+                        tracing::error!("Error handling RTDS connection: {e:?}");
                         #[cfg(not(feature = "tracing"))]
-                        let _ = &e;
+                        let _: &Error = &e;
                     }
                 }
                 Err(e) => {
-                    let error = Error::with_source(Kind::WebSocket, WsError::Connection(e));
+                    let error = Error::with_source(Kind::WebSocket, RtdsError::Connection(e));
                     #[cfg(feature = "tracing")]
-                    tracing::warn!("Unable to connect: {error:?}");
+                    tracing::warn!("Unable to connect to RTDS: {error:?}");
                     #[cfg(not(feature = "tracing"))]
-                    let _ = &error;
+                    let _: &Error = &error;
                     attempt = attempt.saturating_add(1);
                 }
             }
@@ -182,10 +171,9 @@ impl ConnectionManager {
     async fn handle_connection(
         ws_stream: WsStream,
         sender_rx: &mut mpsc::UnboundedReceiver<String>,
-        broadcast_tx: &broadcast::Sender<WsMessage>,
+        broadcast_tx: &broadcast::Sender<RtdsMessage>,
         state_rx: watch::Receiver<ConnectionState>,
         config: Config,
-        interest: &Arc<InterestTracker>,
     ) -> Result<()> {
         let (mut write, mut read) = ws_stream.split();
 
@@ -208,23 +196,21 @@ impl ConnectionManager {
                         }
                         Ok(Message::Text(text)) => {
                             #[cfg(feature = "tracing")]
-                            tracing::trace!(%text, "Received WebSocket text message");
+                            tracing::trace!(%text, "Received RTDS text message");
 
-                            // Only deserialize message types that have active consumers
-                            match parse_if_interested(text.as_bytes(), &interest.get()) {
+                            match parse_messages(text.as_bytes()) {
                                 Ok(messages) => {
                                     for message in messages {
                                         #[cfg(feature = "tracing")]
-                                        tracing::trace!(?message, "Parsed WebSocket message");
+                                        tracing::trace!(?message, "Parsed RTDS message");
                                         _ = broadcast_tx.send(message);
                                     }
-
                                 }
                                 Err(e) => {
                                     #[cfg(feature = "tracing")]
-                                    tracing::warn!(%text, error = %e, "Failed to parse WebSocket message");
+                                    tracing::warn!(%text, error = %e, "Failed to parse RTDS message");
                                     #[cfg(not(feature = "tracing"))]
-                                    let _ = (&text, &e);
+                                    let _: (&str, &Error) = (&text, &e);
                                 }
                             }
                         }
@@ -232,14 +218,14 @@ impl ConnectionManager {
                             heartbeat_handle.abort();
                             return Err(Error::with_source(
                                 Kind::WebSocket,
-                                WsError::ConnectionClosed,
+                                RtdsError::ConnectionClosed,
                             ))
                         }
                         Err(e) => {
                             heartbeat_handle.abort();
                             return Err(Error::with_source(
                                 Kind::WebSocket,
-                                WsError::Connection(e),
+                                RtdsError::Connection(e),
                             ));
                         }
                         _ => {
@@ -250,6 +236,8 @@ impl ConnectionManager {
 
                 // Handle outgoing messages from subscriptions
                 Some(text) = sender_rx.recv() => {
+                    #[cfg(feature = "tracing")]
+                    tracing::trace!(%text, "Sending RTDS message");
                     if write.send(Message::Text(text.into())).await.is_err() {
                         break;
                     }
@@ -325,7 +313,7 @@ impl ConnectionManager {
                     // Timeout waiting for PONG
                     #[cfg(feature = "tracing")]
                     tracing::warn!(
-                        "Heartbeat timeout: no PONG received within {:?}",
+                        "RTDS heartbeat timeout: no PONG received within {:?}",
                         config.heartbeat_timeout
                     );
                     break;
@@ -335,27 +323,11 @@ impl ConnectionManager {
     }
 
     /// Send a subscription request to the WebSocket server.
-    pub fn send(&self, message: &SubscriptionRequest) -> Result<()> {
-        let mut v = serde_json::to_value(message)?;
-
-        // Only expose credentials when serializing on the wire, otherwise do not include
-        // credentials in other serialization contexts
-        if let Some(creds) = message.auth.as_ref() {
-            let auth = json!({
-                "apiKey": creds.key.to_string(),
-                "secret": creds.secret.expose_secret(),
-                "passphrase": creds.passphrase.expose_secret(),
-            });
-
-            if let Value::Object(ref mut obj) = v {
-                obj.insert("auth".to_owned(), auth);
-            }
-        }
-
-        let json = serde_json::to_string(&v)?;
+    pub fn send(&self, request: &SubscriptionRequest) -> Result<()> {
+        let json = serde_json::to_string(request)?;
         self.sender_tx
             .send(json)
-            .map_err(|_e| WsError::ConnectionClosed)?;
+            .map_err(|_e| RtdsError::ConnectionClosed)?;
         Ok(())
     }
 
@@ -370,7 +342,7 @@ impl ConnectionManager {
     /// Each call returns a new independent receiver. Multiple subscribers can
     /// receive messages concurrently without blocking each other.
     #[must_use]
-    pub fn subscribe(&self) -> broadcast::Receiver<WsMessage> {
+    pub fn subscribe(&self) -> broadcast::Receiver<RtdsMessage> {
         self.broadcast_tx.subscribe()
     }
 

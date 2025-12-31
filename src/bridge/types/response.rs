@@ -1,6 +1,7 @@
 use bon::Builder;
-use rust_decimal::Decimal;
 use serde::Deserialize;
+
+use crate::types::Decimal;
 
 /// Response containing deposit addresses for different blockchain networks.
 #[non_exhaustive]

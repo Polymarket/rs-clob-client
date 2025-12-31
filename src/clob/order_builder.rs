@@ -2,10 +2,9 @@ use std::marker::PhantomData;
 use std::str::FromStr as _;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use alloy::primitives::{Address, U256};
+use alloy::primitives::U256;
 use chrono::{DateTime, Utc};
 use rand::Rng as _;
-use rust_decimal::Decimal;
 use rust_decimal::prelude::ToPrimitive as _;
 
 use crate::Result;
@@ -17,6 +16,7 @@ use crate::clob::types::{
     Amount, AmountInner, Order, OrderType, Side, SignableOrder, SignatureType,
 };
 use crate::error::Error;
+use crate::types::{Address, Decimal};
 
 pub(crate) const USDC_DECIMALS: u32 = 6;
 
@@ -276,6 +276,7 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
             .client
             .order_book(&OrderBookSummaryRequest {
                 token_id: token_id.to_owned(),
+                side: None,
             })
             .await?;
 

@@ -12,6 +12,7 @@ use std::time::Duration;
 
 use futures_util::{SinkExt as _, StreamExt as _};
 use polymarket_client_sdk::clob::ws::{Client, Config, WsMessage};
+use polymarket_client_sdk::types::Address;
 use serde_json::json;
 use tokio::net::TcpListener;
 use tokio::sync::{broadcast, mpsc};
@@ -401,7 +402,6 @@ mod market_channel {
 }
 
 mod user_channel {
-    use alloy::primitives::Address;
     use polymarket_client_sdk::auth::Credentials;
     use polymarket_client_sdk::clob::types::Side;
     use rust_decimal_macros::dec;
@@ -425,7 +425,7 @@ mod user_channel {
         let config = Config::default();
         let client = Client::new(&base_endpoint, config)
             .unwrap()
-            .authenticate(test_credentials(), alloy::primitives::Address::ZERO)
+            .authenticate(test_credentials(), Address::ZERO)
             .unwrap();
 
         // Wait for connections to establish
@@ -525,7 +525,7 @@ mod user_channel {
         let config = Config::default();
         let client = Client::new(&base_endpoint, config)
             .unwrap()
-            .authenticate(test_credentials(), alloy::primitives::Address::ZERO)
+            .authenticate(test_credentials(), Address::ZERO)
             .unwrap();
 
         // Wait for connections to establish

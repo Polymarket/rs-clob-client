@@ -1,11 +1,9 @@
 use std::collections::{HashMap, hash_map::Entry};
 use std::sync::Arc;
 
-use alloy::primitives::Address;
 use async_stream::try_stream;
 use futures::Stream;
 use futures::StreamExt as _;
-use rust_decimal::Decimal;
 
 use super::config::Config;
 use super::connection::{ConnectionManager, ConnectionState};
@@ -18,6 +16,7 @@ use crate::Result;
 use crate::auth::state::{Authenticated, State, Unauthenticated};
 use crate::auth::{Credentials, Kind as AuthKind, Normal};
 use crate::error::Error;
+use crate::types::{Address, Decimal};
 
 /// WebSocket client for real-time market data and user updates.
 ///

@@ -26,6 +26,7 @@ gamma = []
 bridge = []
 tracing = ["dep:tracing", "dep:serde_ignored"]
 ws = ["dep:backoff", "dep:bitflags", "dep:tokio", "dep:tokio-tungstenite"]
+rtds = ["dep:backoff", "dep:tokio", "dep:tokio-tungstenite"]
 
 [dependencies]
 alloy = { version = "1.2.1", default-features = false, features = [
@@ -49,7 +50,7 @@ rand = "0.9.2"
 reqwest = { version = "0.12.28", features = ["json"] }
 rust_decimal = { version = "1.39.0", features = ["serde"] }
 rust_decimal_macros = "1.39.0"
-sec = { version = "1.0.0", features = ["deserialize"] }
+secrecy = { version = "0.10", features = ["serde"] }
 serde = "1.0.228"
 serde_ignored = { version = "0.1", optional = true }
 serde_json = "1.0.148"
@@ -132,6 +133,11 @@ required-features = ["ws"]
 name = "websocket_user"
 path = "examples/clob/ws/user.rs"
 required-features = ["ws"]
+
+[[example]]
+name = "rtds_crypto_prices"
+path = "examples/rtds_crypto_prices.rs"
+required-features = ["rtds"]
 
 # https://rust-lang.github.io/rust-clippy/master/index.html?versions=lte%3A88
 [lints.clippy]

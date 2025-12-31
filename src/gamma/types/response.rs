@@ -4,8 +4,9 @@
 )]
 
 use chrono::{DateTime, Utc};
-use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
+
+use crate::types::Decimal;
 
 /// Image optimization metadata.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

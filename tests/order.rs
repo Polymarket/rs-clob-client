@@ -7,13 +7,13 @@ mod common;
 
 use std::str::FromStr as _;
 
-use alloy::primitives::{Address, U256};
+use alloy::primitives::U256;
 use chrono::{DateTime, Utc};
 use httpmock::MockServer;
 use polymarket_client_sdk::clob::types::response::OrderSummary;
 use polymarket_client_sdk::clob::types::{Amount, OrderType, Side, SignatureType, TickSize};
+use polymarket_client_sdk::types::{Address, Decimal, address};
 use reqwest::StatusCode;
-use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 
 use crate::common::{
@@ -22,7 +22,6 @@ use crate::common::{
 
 /// Tests for the lifecycle of a [`Client`] as it moves from [`Unauthenticated`] to [`Authenticated`]
 mod lifecycle {
-    use alloy::primitives::address;
     use alloy::signers::Signer as _;
     use alloy::signers::local::LocalSigner;
     use polymarket_client_sdk::POLYGON;

@@ -1,9 +1,10 @@
 use std::fmt;
 
-use rust_decimal::Decimal;
 use serde::de::StdError;
 use serde::{Deserialize, Serialize};
 use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as};
+
+use crate::types::Decimal;
 
 pub mod request;
 pub mod response;

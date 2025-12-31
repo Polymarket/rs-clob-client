@@ -19,8 +19,8 @@ use polymarket_client_sdk::auth::Normal;
 use polymarket_client_sdk::auth::state::Authenticated;
 use polymarket_client_sdk::clob::types::{SignatureType, TickSize};
 use polymarket_client_sdk::clob::{Client, Config};
+use polymarket_client_sdk::types::Decimal;
 use reqwest::StatusCode;
-use rust_decimal::Decimal;
 use serde_json::json;
 use uuid::Uuid;
 

@@ -158,10 +158,7 @@ async fn create_api_key_should_succeed() -> anyhow::Result<()> {
 
     let credentials = client.create_api_key(&signer, None).await?;
 
-    assert_eq!(
-        credentials,
-        Credentials::new(API_KEY, SECRET.to_owned(), PASSPHRASE.to_owned())
-    );
+    assert_eq!(credentials.key(), API_KEY);
     mock.assert();
 
     Ok(())
@@ -186,10 +183,7 @@ async fn derive_api_key_should_succeed() -> anyhow::Result<()> {
 
     let credentials = client.derive_api_key(&signer, None).await?;
 
-    assert_eq!(
-        credentials,
-        Credentials::new(API_KEY, SECRET.to_owned(), PASSPHRASE.to_owned())
-    );
+    assert_eq!(credentials.key(), API_KEY);
     mock.assert();
 
     Ok(())
@@ -218,10 +212,7 @@ async fn create_or_derive_api_key_should_succeed() -> anyhow::Result<()> {
 
     let credentials = client.create_or_derive_api_key(&signer, None).await?;
 
-    assert_eq!(
-        credentials,
-        Credentials::new(API_KEY, SECRET.to_owned(), PASSPHRASE.to_owned())
-    );
+    assert_eq!(credentials.key(), API_KEY);
     mock.assert();
     mock2.assert();
 

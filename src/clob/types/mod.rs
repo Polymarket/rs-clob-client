@@ -3,7 +3,6 @@ use std::fmt;
 use alloy::core::sol;
 use alloy::primitives::{Signature, U256};
 use bon::Builder;
-use rust_decimal::Decimal;
 use rust_decimal::prelude::ToPrimitive as _;
 use rust_decimal_macros::dec;
 use serde::ser::{Error as _, SerializeStruct as _};
@@ -17,6 +16,7 @@ use crate::Result;
 use crate::auth::ApiKey;
 use crate::clob::order_builder::{LOT_SIZE_SCALE, USDC_DECIMALS};
 use crate::error::Error;
+use crate::types::Decimal;
 
 pub mod request;
 pub mod response;
@@ -74,6 +74,36 @@ impl TryFrom<u8> for Side {
             ))),
         }
     }
+}
+
+/// Time interval for price history queries.
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq, Serialize, Deserialize)]
+pub enum Interval {
+    /// 1 minute
+    #[serde(rename = "1m")]
+    #[strum(serialize = "1m")]
+    OneMinute,
+    /// 1 hour
+    #[serde(rename = "1h")]
+    #[strum(serialize = "1h")]
+    OneHour,
+    /// 6 hours
+    #[serde(rename = "6h")]
+    #[strum(serialize = "6h")]
+    SixHours,
+    /// 1 day
+    #[serde(rename = "1d")]
+    #[strum(serialize = "1d")]
+    OneDay,
+    /// 1 week
+    #[serde(rename = "1w")]
+    #[strum(serialize = "1w")]
+    OneWeek,
+    /// Maximum available history
+    #[serde(rename = "max")]
+    #[strum(serialize = "max")]
+    Max,
 }
 
 #[derive(Clone, Copy, Debug)]

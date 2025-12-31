@@ -20,7 +20,7 @@
 //! # Example
 //!
 //! ```no_run
-//! use alloy::primitives::address;
+//! use polymarket_client_sdk::types::address;
 //! use polymarket_client_sdk::bridge::{Client, types::DepositRequest};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {

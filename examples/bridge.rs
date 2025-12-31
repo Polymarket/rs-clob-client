@@ -1,8 +1,8 @@
 #![allow(clippy::print_stdout, reason = "Examples are okay to print to stdout")]
 
-use alloy::primitives::address;
 use polymarket_client_sdk::bridge::Client;
 use polymarket_client_sdk::bridge::types::DepositRequest;
+use polymarket_client_sdk::types::address;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

@@ -1,6 +1,6 @@
 #![cfg(feature = "data")]
 
-use alloy::primitives::{Address, address};
+use polymarket_client_sdk::types::{Address, address};
 
 const TEST_USER: Address = address!("1234567890abcdef1234567890abcdef12345678");
 const TEST_CONDITION_ID_STR: &str =
@@ -275,12 +275,10 @@ mod holders {
     use rust_decimal_macros::dec;
     use serde_json::json;
 
-    use super::{test_asset, test_condition_id, test_user};
+    use super::{address, test_asset, test_condition_id, test_user};
 
     #[tokio::test]
     async fn holders_should_succeed() -> anyhow::Result<()> {
-        use alloy::primitives::address;
-
         let server = MockServer::start();
         let client = Client::new(&server.base_url())?;
 
@@ -449,12 +447,10 @@ mod leaderboard {
     use rust_decimal_macros::dec;
     use serde_json::json;
 
-    use super::test_user;
+    use super::{address, test_user};
 
     #[tokio::test]
     async fn leaderboard_should_succeed() -> anyhow::Result<()> {
-        use alloy::primitives::address;
-
         let server = MockServer::start();
         let client = Client::new(&server.base_url())?;
 
@@ -955,7 +951,6 @@ mod client {
 }
 
 mod types {
-    use alloy::primitives::address;
     use polymarket_client_sdk::ToQueryParams as _;
     use polymarket_client_sdk::data::{
         types::request::{
@@ -968,6 +963,8 @@ mod types {
         },
     };
     use rust_decimal_macros::dec;
+
+    use super::address;
 
     #[test]
     fn bounded_limits() {
@@ -1218,9 +1215,10 @@ mod types {
 }
 
 mod error_display {
-    use alloy::primitives::address;
     use polymarket_client_sdk::data::{types::TradeFilter, types::request::PositionsRequest};
     use rust_decimal_macros::dec;
+
+    use super::address;
 
     #[test]
     fn bounded_int_error_display() {
@@ -1242,7 +1240,6 @@ mod error_display {
 }
 
 mod request_query_string_extended {
-    use alloy::primitives::{Address, address};
     use polymarket_client_sdk::ToQueryParams as _;
     use polymarket_client_sdk::data::types::{
         ActivitySortBy, ClosedPositionSortBy, MarketFilter, PositionSortBy, Side, SortDirection,
@@ -1254,6 +1251,8 @@ mod request_query_string_extended {
         },
     };
     use rust_decimal_macros::dec;
+
+    use super::{Address, address};
 
     fn test_addr() -> Address {
         address!("56687bf447db6ffa42ffe2204a05edaa20f55839")
