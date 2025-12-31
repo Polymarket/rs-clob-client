@@ -263,7 +263,7 @@ mod unauthenticated {
             .start_ts(1000)
             .end_ts(2000)
             .interval(Interval::OneHour)
-            .fidelity(10u32)
+            .fidelity(10_u32)
             .build();
         let response = client.price_history(&request).await?;
 
