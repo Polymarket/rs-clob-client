@@ -221,6 +221,36 @@ impl<S: State> Client<S> {
             .sum()
     }
 
+    /// Unsubscribe from orderbook updates for specific assets.
+    ///
+    /// This decrements the reference count for each asset. The server unsubscribe
+    /// is only sent when no other subscriptions are using those assets.
+    pub fn unsubscribe_orderbook(&self, asset_ids: &[String]) -> Result<()> {
+        self.market_handles()?
+            .subscriptions
+            .unsubscribe_market(asset_ids)
+    }
+
+    /// Unsubscribe from price changes for specific assets.
+    ///
+    /// This decrements the reference count for each asset. The server unsubscribe
+    /// is only sent when no other subscriptions are using those assets.
+    pub fn unsubscribe_prices(&self, asset_ids: &[String]) -> Result<()> {
+        self.market_handles()?
+            .subscriptions
+            .unsubscribe_market(asset_ids)
+    }
+
+    /// Unsubscribe from midpoint updates for specific assets.
+    ///
+    /// This decrements the reference count for each asset. The server unsubscribe
+    /// is only sent when no other subscriptions are using those assets.
+    pub fn unsubscribe_midpoints(&self, asset_ids: &[String]) -> Result<()> {
+        self.market_handles()?
+            .subscriptions
+            .unsubscribe_market(asset_ids)
+    }
+
     fn market_handles(&self) -> Result<&ChannelHandles> {
         self.inner
             .channel(ChannelType::Market)
@@ -275,6 +305,35 @@ impl<K: AuthKind> Client<Authenticated<K>> {
                 _ => None,
             }
         }))
+    }
+
+    /// Unsubscribe from user channel events for specific markets.
+    ///
+    /// This decrements the reference count for each market. The server unsubscribe
+    /// is only sent when no other subscriptions are using those markets.
+    pub fn unsubscribe_user_events(&self, markets: &[String]) -> Result<()> {
+        let handles = self
+            .inner
+            .channel(ChannelType::User)
+            .ok_or_else(|| Error::validation("User channel unavailable; authenticate first"))?;
+
+        handles.subscriptions.unsubscribe_user(markets)
+    }
+
+    /// Unsubscribe from user's order updates for specific markets.
+    ///
+    /// This decrements the reference count for each market. The server unsubscribe
+    /// is only sent when no other subscriptions are using those markets.
+    pub fn unsubscribe_orders(&self, markets: &[String]) -> Result<()> {
+        self.unsubscribe_user_events(markets)
+    }
+
+    /// Unsubscribe from user's trade executions for specific markets.
+    ///
+    /// This decrements the reference count for each market. The server unsubscribe
+    /// is only sent when no other subscriptions are using those markets.
+    pub fn unsubscribe_trades(&self, markets: &[String]) -> Result<()> {
+        self.unsubscribe_user_events(markets)
     }
 
     /// Deauthenticate and return to unauthenticated state.
