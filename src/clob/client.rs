@@ -13,8 +13,7 @@ use chrono::{NaiveDate, Utc};
 use dashmap::DashMap;
 use futures::Stream;
 use reqwest::header::{HeaderMap, HeaderValue};
-use reqwest::{Client as ReqwestClient, Method, Request, StatusCode};
-use serde::de::DeserializeOwned;
+use reqwest::{Client as ReqwestClient, Method, Request};
 use serde_json::json;
 use url::Url;
 
@@ -30,16 +29,17 @@ use crate::clob::types::request::{
 use crate::clob::types::response::{
     ApiKeysResponse, BalanceAllowanceResponse, BanStatusResponse, BuilderApiKeyResponse,
     BuilderTradeResponse, CancelOrdersResponse, CurrentRewardResponse, FeeRateResponse,
-    LastTradePriceResponse, LastTradesPricesResponse, MarketResponse, MarketRewardResponse,
-    MidpointResponse, MidpointsResponse, NegRiskResponse, NotificationResponse, OpenOrderResponse,
-    OrderBookSummaryResponse, OrderScoringResponse, OrdersScoringResponse, Page, PostOrderResponse,
-    PriceResponse, PricesResponse, RewardsPercentagesResponse, SimplifiedMarketResponse,
-    SpreadResponse, SpreadsResponse, TickSizeResponse, TotalUserEarningResponse, TradeResponse,
-    UserEarningResponse, UserRewardsEarningResponse,
+    GeoblockResponse, LastTradePriceResponse, LastTradesPricesResponse, MarketResponse,
+    MarketRewardResponse, MidpointResponse, MidpointsResponse, NegRiskResponse,
+    NotificationResponse, OpenOrderResponse, OrderBookSummaryResponse, OrderScoringResponse,
+    OrdersScoringResponse, Page, PostOrderResponse, PriceResponse, PricesResponse,
+    RewardsPercentagesResponse, SimplifiedMarketResponse, SpreadResponse, SpreadsResponse,
+    TickSizeResponse, TotalUserEarningResponse, TradeResponse, UserEarningResponse,
+    UserRewardsEarningResponse,
 };
 use crate::clob::types::{SignableOrder, SignatureType, SignedOrder, TickSize};
 use crate::error::{Error, Synchronization};
-use crate::{AMOY, POLYGON, Result, Timestamp, auth, contract_config};
+use crate::{AMOY, POLYGON, Result, Timestamp, ToQueryParams as _, auth, contract_config};
 
 const ORDER_NAME: Option<Cow<'static, str>> = Some(Cow::Borrowed("Polymarket CTF Exchange"));
 const VERSION: Option<Cow<'static, str>> = Some(Cow::Borrowed("1"));
@@ -168,6 +168,7 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
                 state,
                 config: inner.config,
                 host: inner.host,
+                geoblock_host: inner.geoblock_host,
                 client: inner.client,
                 tick_sizes: inner.tick_sizes,
                 neg_risk: inner.neg_risk,
@@ -252,8 +253,16 @@ impl Default for Client<Unauthenticated> {
 pub struct Config {
     /// Whether the [`Client`] will use the server time provided by Polymarket when creating auth
     /// headers. This adds another round trip to the requests.
+    #[builder(default)]
     use_server_time: bool,
+    /// Override for the geoblock API host. Defaults to `https://polymarket.com`.
+    /// This is primarily useful for testing.
+    #[builder(into)]
+    geoblock_host: Option<String>,
 }
+
+/// The default geoblock API host (separate from CLOB host)
+const DEFAULT_GEOBLOCK_HOST: &str = "https://polymarket.com";
 
 #[derive(Debug)]
 struct ClientInner<S: State> {
@@ -262,6 +271,8 @@ struct ClientInner<S: State> {
     state: S,
     /// The [`Url`] against which `client` is making requests.
     host: Url,
+    /// The [`Url`] for the geoblock API endpoint.
+    geoblock_host: Url,
     /// The inner [`ReqwestClient`] used to make requests to `host`.
     client: ReqwestClient,
     /// Local cache of [`TickSize`] per token ID
@@ -281,75 +292,13 @@ struct ClientInner<S: State> {
 }
 
 impl<S: State> ClientInner<S> {
-    #[cfg_attr(
-        feature = "tracing",
-        tracing::instrument(
-            level = "debug",
-            skip(self, request, headers),
-            fields(method, path, status_code)
-        )
-    )]
-    async fn request<Response: DeserializeOwned>(
-        &self,
-        mut request: Request,
-        headers: Option<HeaderMap>,
-    ) -> Result<Response> {
-        let method = request.method().clone();
-        let path = request.url().path().to_owned();
-
-        #[cfg(feature = "tracing")]
-        {
-            let span = tracing::Span::current();
-            span.record("method", method.as_str());
-            span.record("path", path.as_str());
-        }
-
-        if let Some(h) = headers {
-            *request.headers_mut() = h;
-        }
-
-        let response = self.client.execute(request).await?;
-        let status_code = response.status();
-
-        #[cfg(feature = "tracing")]
-        tracing::Span::current().record("status_code", status_code.as_u16());
-
-        if !status_code.is_success() {
-            let message = response.text().await.unwrap_or_default();
-
-            #[cfg(feature = "tracing")]
-            tracing::warn!(
-                status = %status_code,
-                method = %method,
-                path = %path,
-                message = %message,
-                "CLOB API request failed"
-            );
-
-            return Err(Error::status(status_code, method, path, message));
-        }
-
-        if let Some(response) = response.json::<Option<Response>>().await? {
-            Ok(response)
-        } else {
-            #[cfg(feature = "tracing")]
-            tracing::warn!(method = %method, path = %path, "CLOB API resource not found");
-            Err(Error::status(
-                StatusCode::NOT_FOUND,
-                method,
-                path,
-                "Unable to find requested resource",
-            ))
-        }
-    }
-
     pub async fn server_time(&self) -> Result<Timestamp> {
         let request = self
             .client
             .request(Method::GET, format!("{}time", self.host))
             .build()?;
 
-        self.request(request, None).await
+        crate::request(&self.client, request, None).await
     }
 }
 
@@ -365,7 +314,7 @@ impl ClientInner<Unauthenticated> {
             .build()?;
         let headers = self.create_headers(signer, nonce).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.client, request, Some(headers)).await
     }
 
     pub async fn derive_api_key<S: Signer>(
@@ -379,7 +328,7 @@ impl ClientInner<Unauthenticated> {
             .build()?;
         let headers = self.create_headers(signer, nonce).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.client, request, Some(headers)).await
     }
 
     async fn create_or_derive_api_key<S: Signer>(
@@ -426,7 +375,7 @@ impl<S: State> Client<S> {
             .request(Method::GET, self.host().to_owned())
             .build()?;
 
-        self.request(request, None).await
+        crate::request(&self.inner.client, request, None).await
     }
 
     pub async fn server_time(&self) -> Result<Timestamp> {
@@ -440,7 +389,7 @@ impl<S: State> Client<S> {
             .query(&[("token_id", request.token_id.as_str())])
             .build()?;
 
-        self.request(request, None).await
+        crate::request(&self.inner.client, request, None).await
     }
 
     pub async fn midpoints(&self, requests: &[MidpointRequest]) -> Result<MidpointsResponse> {
@@ -450,7 +399,7 @@ impl<S: State> Client<S> {
             .json(requests)
             .build()?;
 
-        self.request(request, None).await
+        crate::request(&self.inner.client, request, None).await
     }
 
     pub async fn price(&self, request: &PriceRequest) -> Result<PriceResponse> {
@@ -463,7 +412,7 @@ impl<S: State> Client<S> {
             ])
             .build()?;
 
-        self.request(request, None).await
+        crate::request(&self.inner.client, request, None).await
     }
 
     pub async fn prices(&self, requests: &[PriceRequest]) -> Result<PricesResponse> {
@@ -473,7 +422,7 @@ impl<S: State> Client<S> {
             .json(requests)
             .build()?;
 
-        self.request(request, None).await
+        crate::request(&self.inner.client, request, None).await
     }
 
     pub async fn spread(&self, request: &SpreadRequest) -> Result<SpreadResponse> {
@@ -483,7 +432,7 @@ impl<S: State> Client<S> {
             .query(&[("token_id", request.token_id.as_str())])
             .build()?;
 
-        self.request(request, None).await
+        crate::request(&self.inner.client, request, None).await
     }
 
     pub async fn spreads(&self, requests: &[SpreadRequest]) -> Result<SpreadsResponse> {
@@ -493,7 +442,7 @@ impl<S: State> Client<S> {
             .json(requests)
             .build()?;
 
-        self.request(request, None).await
+        crate::request(&self.inner.client, request, None).await
     }
 
     pub async fn tick_size(&self, token_id: &str) -> Result<TickSizeResponse> {
@@ -514,7 +463,8 @@ impl<S: State> Client<S> {
             .query(&[("token_id", token_id)])
             .build()?;
 
-        let response = self.request::<TickSizeResponse>(request, None).await?;
+        let response =
+            crate::request::<TickSizeResponse>(&self.inner.client, request, None).await?;
 
         self.inner
             .tick_sizes
@@ -544,7 +494,7 @@ impl<S: State> Client<S> {
             .query(&[("token_id", token_id)])
             .build()?;
 
-        let response = self.request::<NegRiskResponse>(request, None).await?;
+        let response = crate::request::<NegRiskResponse>(&self.inner.client, request, None).await?;
 
         self.inner
             .neg_risk
@@ -574,7 +524,7 @@ impl<S: State> Client<S> {
             .query(&[("token_id", token_id)])
             .build()?;
 
-        let response = self.request::<FeeRateResponse>(request, None).await?;
+        let response = crate::request::<FeeRateResponse>(&self.inner.client, request, None).await?;
 
         self.inner
             .fee_rate_bps
@@ -584,6 +534,62 @@ impl<S: State> Client<S> {
         tracing::trace!(token_id = %token_id, "cached fee_rate_bps");
 
         Ok(response)
+    }
+
+    /// Checks if the current IP address is geoblocked from accessing Polymarket.
+    ///
+    /// This method queries the Polymarket geoblock endpoint to determine if access
+    /// is restricted based on the caller's IP address and geographic location.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(GeoblockResponse)` containing the geoblock status and location info.
+    /// Check the `blocked` field to determine if access is restricted.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the HTTP request fails or the response cannot be parsed.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use polymarket_client_sdk::clob::{Client, Config};
+    /// use polymarket_client_sdk::error::{Kind, Geoblock};
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> anyhow::Result<()> {
+    ///     let client = Client::new("https://clob.polymarket.com", Config::default())?;
+    ///
+    ///     let geoblock = client.check_geoblock().await?;
+    ///
+    ///     if geoblock.blocked {
+    ///         eprintln!(
+    ///             "Trading not available in {}, {}",
+    ///             geoblock.country, geoblock.region
+    ///         );
+    ///         // Optionally convert to an error:
+    ///         // return Err(Geoblock {
+    ///         //     ip: geoblock.ip,
+    ///         //     country: geoblock.country,
+    ///         //     region: geoblock.region,
+    ///         // }.into());
+    ///     } else {
+    ///         println!("Trading available from IP: {}", geoblock.ip);
+    ///     }
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn check_geoblock(&self) -> Result<GeoblockResponse> {
+        let request = self
+            .client()
+            .request(
+                Method::GET,
+                format!("{}api/geoblock", self.inner.geoblock_host),
+            )
+            .build()?;
+
+        crate::request(&self.inner.client, request, None).await
     }
 
     pub async fn order_book(
@@ -596,7 +602,7 @@ impl<S: State> Client<S> {
             .query(&[("token_id", request.token_id.as_str())])
             .build()?;
 
-        self.request(request, None).await
+        crate::request(&self.inner.client, request, None).await
     }
 
     pub async fn order_books(
@@ -609,7 +615,7 @@ impl<S: State> Client<S> {
             .json(requests)
             .build()?;
 
-        self.request(request, None).await
+        crate::request(&self.inner.client, request, None).await
     }
 
     pub async fn last_trade_price(
@@ -622,7 +628,7 @@ impl<S: State> Client<S> {
             .query(&[("token_id", request.token_id.as_str())])
             .build()?;
 
-        self.request(request, None).await
+        crate::request(&self.inner.client, request, None).await
     }
 
     pub async fn last_trades_prices(
@@ -635,7 +641,7 @@ impl<S: State> Client<S> {
             .json(token_ids)
             .build()?;
 
-        self.request(request, None).await
+        crate::request(&self.inner.client, request, None).await
     }
 
     pub async fn market(&self, condition_id: &str) -> Result<MarketResponse> {
@@ -647,7 +653,7 @@ impl<S: State> Client<S> {
             )
             .build()?;
 
-        self.request(request, None).await
+        crate::request(&self.inner.client, request, None).await
     }
 
     pub async fn markets(&self, next_cursor: Option<String>) -> Result<Page<MarketResponse>> {
@@ -657,7 +663,7 @@ impl<S: State> Client<S> {
             .request(Method::GET, format!("{}markets{cursor}", self.host()))
             .build()?;
 
-        self.request(request, None).await
+        crate::request(&self.inner.client, request, None).await
     }
 
     pub async fn sampling_markets(
@@ -673,7 +679,7 @@ impl<S: State> Client<S> {
             )
             .build()?;
 
-        self.request(request, None).await
+        crate::request(&self.inner.client, request, None).await
     }
 
     pub async fn simplified_markets(
@@ -689,7 +695,7 @@ impl<S: State> Client<S> {
             )
             .build()?;
 
-        self.request(request, None).await
+        crate::request(&self.inner.client, request, None).await
     }
 
     pub async fn sampling_simplified_markets(
@@ -705,7 +711,7 @@ impl<S: State> Client<S> {
             )
             .build()?;
 
-        self.request(request, None).await
+        crate::request(&self.inner.client, request, None).await
     }
 
     /// Returns a stream of results, using `self` to repeatedly invoke the provided closure,
@@ -739,14 +745,6 @@ impl<S: State> Client<S> {
         }
     }
 
-    async fn request<Response: DeserializeOwned>(
-        &self,
-        request: Request,
-        headers: Option<HeaderMap>,
-    ) -> Result<Response> {
-        self.inner.request(request, headers).await
-    }
-
     fn client(&self) -> &ReqwestClient {
         &self.inner.client
     }
@@ -763,10 +761,18 @@ impl Client<Unauthenticated> {
 
         let client = ReqwestClient::builder().default_headers(headers).build()?;
 
+        let geoblock_host = Url::parse(
+            config
+                .geoblock_host
+                .as_deref()
+                .unwrap_or(DEFAULT_GEOBLOCK_HOST),
+        )?;
+
         Ok(Self {
             inner: Arc::new(ClientInner {
                 config,
                 host: Url::parse(host)?,
+                geoblock_host,
                 client,
                 tick_sizes: DashMap::new(),
                 neg_risk: DashMap::new(),
@@ -835,6 +841,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             inner: Arc::new(ClientInner {
                 state: Unauthenticated,
                 host: inner.host,
+                geoblock_host: inner.geoblock_host,
                 config: inner.config,
                 client: inner.client,
                 tick_sizes: inner.tick_sizes,
@@ -867,7 +874,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     pub async fn delete_api_key(&self) -> Result<serde_json::Value> {
@@ -877,7 +884,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     pub async fn closed_only_mode(&self) -> Result<BanStatusResponse> {
@@ -890,7 +897,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     /// Creates an [`OrderBuilder<Limit, K>`] used to construct a limit order.
@@ -958,7 +965,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     /// Attempts to return the corresponding order at the provided `order_id`
@@ -969,7 +976,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     pub async fn orders(
@@ -977,14 +984,14 @@ impl<K: Kind> Client<Authenticated<K>> {
         request: &OrdersRequest,
         next_cursor: Option<String>,
     ) -> Result<Page<OpenOrderResponse>> {
-        let params = request.as_params(next_cursor.as_ref());
+        let params = request.query_params(next_cursor.as_deref());
         let request = self
             .client()
             .request(Method::GET, format!("{}data/orders{params}", self.host()))
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     pub async fn cancel_order(&self, order_id: &str) -> Result<CancelOrdersResponse> {
@@ -995,7 +1002,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     pub async fn cancel_orders(&self, order_ids: &[&str]) -> Result<CancelOrdersResponse> {
@@ -1006,7 +1013,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     pub async fn cancel_all_orders(&self) -> Result<CancelOrdersResponse> {
@@ -1016,7 +1023,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     /// Attempts to cancel all open orders for a particular [`CancelMarketOrderRequest::market`]
@@ -1035,7 +1042,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     pub async fn trades(
@@ -1043,14 +1050,14 @@ impl<K: Kind> Client<Authenticated<K>> {
         request: &TradesRequest,
         next_cursor: Option<String>,
     ) -> Result<Page<TradeResponse>> {
-        let params = request.as_params(next_cursor.as_ref());
+        let params = request.query_params(next_cursor.as_deref());
         let request = self
             .client()
             .request(Method::GET, format!("{}data/trades{params}", self.host()))
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     pub async fn notifications(&self) -> Result<Vec<NotificationResponse>> {
@@ -1061,11 +1068,11 @@ impl<K: Kind> Client<Authenticated<K>> {
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     pub async fn delete_notifications(&self, request: &DeleteNotificationsRequest) -> Result<()> {
-        let params = request.as_params();
+        let params = request.query_params(None);
         let mut request = self
             .client()
             .request(
@@ -1086,9 +1093,13 @@ impl<K: Kind> Client<Authenticated<K>> {
 
     pub async fn balance_allowance(
         &self,
-        request: &BalanceAllowanceRequest,
+        mut request: BalanceAllowanceRequest,
     ) -> Result<BalanceAllowanceResponse> {
-        let params = request.as_params(self.inner.signature_type);
+        if request.signature_type.is_none() {
+            request.signature_type = Some(self.inner.signature_type);
+        }
+
+        let params = request.query_params(None);
         let request = self
             .client()
             .request(
@@ -1098,14 +1109,18 @@ impl<K: Kind> Client<Authenticated<K>> {
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     pub async fn update_balance_allowance(
         &self,
-        request: &UpdateBalanceAllowanceRequest,
+        mut request: UpdateBalanceAllowanceRequest,
     ) -> Result<()> {
-        let params = request.as_params(self.inner.signature_type);
+        if request.signature_type.is_none() {
+            request.signature_type = Some(self.inner.signature_type);
+        }
+
+        let params = request.query_params(None);
         let mut request = self
             .client()
             .request(
@@ -1132,7 +1147,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     pub async fn are_orders_scoring(&self, order_ids: &[&str]) -> Result<OrdersScoringResponse> {
@@ -1143,7 +1158,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     pub async fn earnings_for_user_for_day(
@@ -1165,7 +1180,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     pub async fn total_earnings_for_user_for_day(
@@ -1185,7 +1200,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     pub async fn user_earnings_and_markets_config(
@@ -1193,7 +1208,7 @@ impl<K: Kind> Client<Authenticated<K>> {
         request: &UserRewardsEarningRequest,
         next_cursor: Option<String>,
     ) -> Result<Vec<UserRewardsEarningResponse>> {
-        let params = request.as_params(next_cursor.as_ref());
+        let params = request.query_params(next_cursor.as_deref());
         let request = self
             .client()
             .request(
@@ -1207,7 +1222,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     pub async fn reward_percentages(&self) -> Result<RewardsPercentagesResponse> {
@@ -1224,7 +1239,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     pub async fn current_rewards(
@@ -1241,7 +1256,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     pub async fn raw_rewards_for_market(
@@ -1259,7 +1274,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     pub async fn create_builder_api_key(&self) -> Result<Credentials> {
@@ -1269,7 +1284,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     async fn create_headers(&self, request: &Request) -> Result<HeaderMap> {
@@ -1325,6 +1340,7 @@ impl Client<Authenticated<Normal>> {
             config: inner.config,
             state,
             host: inner.host,
+            geoblock_host: inner.geoblock_host,
             client: inner.client,
             tick_sizes: inner.tick_sizes,
             neg_risk: inner.neg_risk,
@@ -1348,7 +1364,7 @@ impl Client<Authenticated<Builder>> {
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     pub async fn revoke_builder_api_key(&self) -> Result<()> {
@@ -1375,7 +1391,7 @@ impl Client<Authenticated<Builder>> {
         request: &TradesRequest,
         next_cursor: Option<String>,
     ) -> Result<Page<BuilderTradeResponse>> {
-        let params = request.as_params(next_cursor.as_ref());
+        let params = request.query_params(next_cursor.as_deref());
 
         let request = self
             .client()
@@ -1386,7 +1402,7 @@ impl Client<Authenticated<Builder>> {
             .build()?;
         let headers = self.create_headers(&request).await?;
 
-        self.request(request, Some(headers)).await
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 }
 

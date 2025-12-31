@@ -242,6 +242,13 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
 }
 
 impl<K: AuthKind> OrderBuilder<Market, K> {
+    /// Sets the price for this market builder. This is an optional field.
+    #[must_use]
+    pub fn price(mut self, price: Decimal) -> Self {
+        self.price = Some(price);
+        self
+    }
+
     /// Sets the [`Amount`] for this market order. This is a required field.
     #[must_use]
     pub fn amount(mut self, amount: Amount) -> Self {
@@ -315,7 +322,7 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         }
     }
 
-    /// Validates and transforms this limit builder into a [`SignableOrder`]
+    /// Validates and transforms this market builder into a [`SignableOrder`]
     #[cfg_attr(
         feature = "tracing",
         tracing::instrument(skip(self), err(level = "warn"))
@@ -340,14 +347,11 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         let nonce = self.nonce.unwrap_or(0);
         let taker = self.taker.unwrap_or(Address::ZERO);
 
-        if let Some(price) = self.price {
-            return Err(Error::validation(format!(
-                "Unable to build Order due to supplied price {price}"
-            )));
-        }
-
         let order_type = self.order_type.unwrap_or(OrderType::FAK);
-        let price = self.calculate_price(order_type).await?;
+        let price = match self.price {
+            Some(price) => price,
+            None => self.calculate_price(order_type).await?,
+        };
 
         let minimum_tick_size = self
             .client

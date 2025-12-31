@@ -61,13 +61,13 @@ async fn main() -> anyhow::Result<()> {
     println!(
         "balance -- {:#?}",
         client
-            .balance_allowance(&BalanceAllowanceRequest::default())
+            .balance_allowance(BalanceAllowanceRequest::default())
             .await
     );
     println!(
         "update balance -- {:#?}",
         client
-            .update_balance_allowance(&UpdateBalanceAllowanceRequest::default())
+            .update_balance_allowance(UpdateBalanceAllowanceRequest::default())
             .await
     );
 

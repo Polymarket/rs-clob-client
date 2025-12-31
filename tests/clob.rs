@@ -35,10 +35,10 @@ mod unauthenticated {
         SpreadRequest,
     };
     use polymarket_client_sdk::clob::types::response::{
-        FeeRateResponse, LastTradePriceResponse, LastTradesPricesResponse, MarketResponse,
-        MidpointResponse, MidpointsResponse, NegRiskResponse, OrderBookSummaryResponse,
-        OrderSummary, Page, PriceResponse, PricesResponse, Rewards, SimplifiedMarketResponse,
-        SpreadResponse, SpreadsResponse, TickSizeResponse, Token,
+        FeeRateResponse, GeoblockResponse, LastTradePriceResponse, LastTradesPricesResponse,
+        MarketResponse, MidpointResponse, MidpointsResponse, NegRiskResponse,
+        OrderBookSummaryResponse, OrderSummary, Page, PriceResponse, PricesResponse, Rewards,
+        SimplifiedMarketResponse, SpreadResponse, SpreadsResponse, TickSizeResponse, Token,
     };
     use polymarket_client_sdk::clob::types::{Side, TickSize};
     use polymarket_client_sdk::error::Status;
@@ -1100,6 +1100,62 @@ mod unauthenticated {
 
         Ok(())
     }
+
+    #[tokio::test]
+    async fn check_geoblock_should_succeed() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let config = Config::builder().geoblock_host(server.base_url()).build();
+        let client = Client::new(&server.base_url(), config)?;
+
+        let mock = server.mock(|when, then| {
+            when.method(httpmock::Method::GET).path("/api/geoblock");
+            then.status(StatusCode::OK).json_body(json!({
+                "blocked": false,
+                "ip": "192.168.1.1",
+                "country": "US",
+                "region": "NY"
+            }));
+        });
+
+        let response = client.check_geoblock().await?;
+
+        let expected = GeoblockResponse::builder()
+            .blocked(false)
+            .ip("192.168.1.1".to_owned())
+            .country("US".to_owned())
+            .region("NY".to_owned())
+            .build();
+
+        assert_eq!(response, expected);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn check_geoblock_blocked_should_succeed() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let config = Config::builder().geoblock_host(server.base_url()).build();
+        let client = Client::new(&server.base_url(), config)?;
+
+        let mock = server.mock(|when, then| {
+            when.method(httpmock::Method::GET).path("/api/geoblock");
+            then.status(StatusCode::OK).json_body(json!({
+                "blocked": true,
+                "ip": "10.0.0.1",
+                "country": "CU",
+                "region": "HAV"
+            }));
+        });
+
+        let response = client.check_geoblock().await?;
+
+        assert!(response.blocked);
+        assert_eq!(response.country, "CU");
+        mock.assert();
+
+        Ok(())
+    }
 }
 
 mod authenticated {
@@ -1884,7 +1940,7 @@ mod authenticated {
             .asset_type(AssetType::Collateral)
             .token_id("1")
             .build();
-        let response = client.balance_allowance(&request).await?;
+        let response = client.balance_allowance(request).await?;
 
         let expected = BalanceAllowanceResponse::builder()
             .balance(Decimal::ZERO)
@@ -1918,7 +1974,7 @@ mod authenticated {
             .asset_type(AssetType::Collateral)
             .token_id("1")
             .build();
-        client.update_balance_allowance(&request).await?;
+        client.update_balance_allowance(request).await?;
 
         mock.assert();
 
