@@ -12,8 +12,8 @@ use chrono::{DateTime, Utc};
 use httpmock::MockServer;
 use polymarket_client_sdk::clob::types::response::OrderSummary;
 use polymarket_client_sdk::clob::types::{Amount, OrderType, Side, SignatureType, TickSize};
+use polymarket_client_sdk::types::Decimal;
 use reqwest::StatusCode;
-use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 
 use crate::common::{

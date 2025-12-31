@@ -6,10 +6,8 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use alloy::primitives::Address;
 use bon::Builder;
 use chrono::{DateTime, NaiveDate, Utc};
-use rust_decimal::Decimal;
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, de};
 use serde_with::{DefaultOnNull, TimestampMilliSeconds, TimestampSeconds, TryFromInto, serde_as};
@@ -18,6 +16,7 @@ use sha2::{Digest as _, Sha256};
 use crate::Result;
 use crate::auth::ApiKey;
 use crate::clob::types::{OrderStatusType, OrderType, Side, TickSize, TraderSide};
+use crate::types::{Address, Decimal};
 
 #[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]

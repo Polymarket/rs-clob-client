@@ -45,9 +45,8 @@ impl Credentials {
 /// Each [`Client`] can exist in one state at a time, i.e. [`state::Unauthenticated`] or
 /// [`state::Authenticated`].
 pub mod state {
-    use alloy::primitives::Address;
-
     use crate::auth::{Credentials, Kind};
+    use crate::types::Address;
 
     /// The initial state of the [`super::Client`]
     #[non_exhaustive]
@@ -394,7 +393,6 @@ fn hmac(secret: &Secret<String>, message: &str) -> Result<String> {
 mod tests {
     use std::str::FromStr as _;
 
-    use alloy::primitives::address;
     use alloy::signers::Signer as _;
     use alloy::signers::local::LocalSigner;
     use reqwest::{Client, Method, RequestBuilder};
@@ -405,6 +403,7 @@ mod tests {
     use super::*;
     use crate::auth::builder::Config;
     use crate::auth::state::Authenticated;
+    use crate::types::address;
     use crate::{AMOY, Result};
 
     // publicly known private key

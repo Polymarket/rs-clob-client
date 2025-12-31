@@ -4,10 +4,10 @@
 
 use std::str::FromStr as _;
 
-use alloy::primitives::Address;
 use futures::StreamExt as _;
 use polymarket_client_sdk::auth::Credentials;
 use polymarket_client_sdk::clob::ws::{Client, WsMessage};
+use polymarket_client_sdk::types::Address;
 use uuid::Uuid;
 
 #[tokio::main]

@@ -230,11 +230,11 @@ Remote signing
 ```rust,no_run
 use std::str::FromStr as _;
 
-use alloy::primitives::{Address, address};
 use alloy::signers::Signer as _;
 use alloy::signers::local::LocalSigner;
 use polymarket_client_sdk::auth::builder::Config as BuilderConfig;
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
+use polymarket_client_sdk::types::{Address, address};
 use polymarket_client_sdk::clob::{Client, Config};
 use polymarket_client_sdk::clob::types::SignatureType;
 use polymarket_client_sdk::clob::types::request::TradesRequest;

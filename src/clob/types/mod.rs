@@ -3,7 +3,6 @@ use std::fmt;
 use alloy::core::sol;
 use alloy::primitives::{Signature, U256};
 use bon::Builder;
-use rust_decimal::Decimal;
 use rust_decimal::prelude::ToPrimitive as _;
 use rust_decimal_macros::dec;
 use serde::ser::{Error as _, SerializeStruct as _};
@@ -17,6 +16,7 @@ use crate::Result;
 use crate::auth::ApiKey;
 use crate::clob::order_builder::{LOT_SIZE_SCALE, USDC_DECIMALS};
 use crate::error::Error;
+use crate::types::Decimal;
 
 pub mod request;
 pub mod response;

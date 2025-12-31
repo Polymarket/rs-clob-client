@@ -5,11 +5,11 @@
 
 use bon::Builder;
 use chrono::{DateTime, Utc};
-use rust_decimal::Decimal;
 use serde::Serialize;
 use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as, skip_serializing_none};
 
 use crate::gamma::types::{ParentEntityType, RelatedTagsStatus};
+use crate::types::Decimal;
 
 #[serde_as]
 #[skip_serializing_none]

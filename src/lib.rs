@@ -13,7 +13,7 @@ pub mod types;
 
 use std::fmt::Write as _;
 
-use alloy::primitives::{Address, ChainId, address};
+use alloy::primitives::ChainId;
 use phf::phf_map;
 use reqwest::header::HeaderMap;
 use reqwest::{Request, StatusCode};
@@ -21,8 +21,9 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::error::Error;
+use crate::types::{Address, address};
 
-pub type Result<T> = std::result::Result<T, error::Error>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 /// [`ChainId`] for Polygon mainnet
 pub const POLYGON: ChainId = 137;

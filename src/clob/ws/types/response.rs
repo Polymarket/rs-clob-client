@@ -1,6 +1,5 @@
 use std::fmt;
 
-use rust_decimal::Decimal;
 use serde::de::{IgnoredAny, MapAccess, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer as _, Serialize};
 use serde_json::Deserializer;
@@ -10,6 +9,7 @@ use crate::auth::ApiKey;
 use crate::clob::types::{Side, TraderSide};
 use crate::clob::ws::interest::MessageInterest;
 use crate::error::Kind;
+use crate::types::Decimal;
 
 /// Top-level WebSocket message wrapper.
 ///
@@ -334,6 +334,15 @@ fn peek_message_shape(bytes: &[u8]) -> Result<MessageShape, serde_json::Error> {
             formatter.write_str("a JSON object or array")
         }
 
+        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+        where
+            A: SeqAccess<'de>,
+        {
+            // Consume the entire sequence to avoid "trailing characters" error
+            while seq.next_element::<IgnoredAny>()?.is_some() {}
+            Ok(MessageShape::Array)
+        }
+
         fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
         where
             A: MapAccess<'de>,
@@ -347,15 +356,6 @@ fn peek_message_shape(bytes: &[u8]) -> Result<MessageShape, serde_json::Error> {
                 }
             }
             Ok(MessageShape::Single(event_type))
-        }
-
-        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-        where
-            A: SeqAccess<'de>,
-        {
-            // Consume the entire sequence to avoid "trailing characters" error
-            while seq.next_element::<IgnoredAny>()?.is_some() {}
-            Ok(MessageShape::Array)
         }
     }
 

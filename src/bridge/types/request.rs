@@ -1,13 +1,14 @@
-use alloy::primitives::Address;
 use bon::Builder;
 use serde::Serialize;
+
+use crate::types::Address;
 
 /// Request to create deposit addresses for a Polymarket wallet.
 ///
 /// # Example
 ///
 /// ```
-/// use alloy::primitives::address;
+/// use polymarket_client_sdk::types::address;
 /// use polymarket_client_sdk::bridge::types::DepositRequest;
 ///
 /// let request = DepositRequest::builder()

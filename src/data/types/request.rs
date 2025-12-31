@@ -8,9 +8,7 @@
     reason = "Request suffix is intentional for clarity"
 )]
 
-use alloy::primitives::Address;
 use bon::Builder;
-use rust_decimal::Decimal;
 use serde::Serialize;
 use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as, skip_serializing_none};
 
@@ -19,6 +17,7 @@ use super::{
     LeaderboardCategory, LeaderboardOrderBy, MarketFilter, PositionSortBy, Side, SortDirection,
     TimePeriod, Title, TradeFilter,
 };
+use crate::types::{Address, Decimal};
 
 /// Validates that an i32 value is within the specified bounds.
 fn validate_bound(
@@ -59,7 +58,7 @@ fn validate_bound(
 /// # Example
 ///
 /// ```
-/// use alloy::primitives::address;
+/// use polymarket_client_sdk::types::address;
 /// use polymarket_client_sdk::data::{types::request::PositionsRequest, types::{PositionSortBy, SortDirection}};
 ///
 /// let request = PositionsRequest::builder()
@@ -128,7 +127,7 @@ fn filter_is_none_or_empty(f: &Option<MarketFilter>) -> bool {
 /// # Example
 ///
 /// ```
-/// use alloy::primitives::address;
+/// use polymarket_client_sdk::types::address;
 /// use polymarket_client_sdk::data::{types::request::TradesRequest, types::{Side, TradeFilter}};
 /// use rust_decimal_macros::dec;
 ///
@@ -188,7 +187,7 @@ pub struct TradesRequest {
 /// # Example
 ///
 /// ```
-/// use alloy::primitives::address;
+/// use polymarket_client_sdk::types::address;
 /// use polymarket_client_sdk::data::{types::request::ActivityRequest, types::ActivityType};
 ///
 /// let request = ActivityRequest::builder()
@@ -371,7 +370,7 @@ pub struct LiveVolumeRequest {
 /// # Example
 ///
 /// ```
-/// use alloy::primitives::address;
+/// use polymarket_client_sdk::types::address;
 /// use polymarket_client_sdk::data::{types::request::ClosedPositionsRequest, types::ClosedPositionSortBy};
 ///
 /// let request = ClosedPositionsRequest::builder()
