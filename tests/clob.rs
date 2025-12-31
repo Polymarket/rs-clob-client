@@ -1355,56 +1355,50 @@ mod authenticated {
 
         let mock = server.mock(|when, then| {
             when.method(POST)
-                .path("/orders")
+                .path("/order")
                 .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
                 .header(POLY_API_KEY, API_KEY)
                 .header(POLY_PASSPHRASE, PASSPHRASE)
-                .json_body(json!([
-                    {
-                        "order": {
-                            "expiration": "0",
-                            "feeRateBps": "0",
-                            "maker": Address::ZERO,
-                            "makerAmount": "0",
-                            "nonce": "0",
-                            "salt": 0,
-                            "side": Side::Buy,
-                            "signature": "0x0d18c04a653d89bf7375636adb7db69cffe362755960dc6ce8a0d46b04355b767958fae51c48e0e4b0908347442cb461e811d2f5a751303f7a8c1f75e17b3e701b",
-                            "signatureType": 0,
-                            "signer": Address::ZERO,
-                            "taker": Address::ZERO,
-                            "takerAmount": "0",
-                            "tokenId": "0"
-                        },
-                        "orderType": "FOK",
-                        "owner": "00000000-0000-0000-0000-000000000000"
-                    }
-                ]));
-            then.status(StatusCode::OK).json_body(json!([
-                {
-                    "error_msg": "",
-                    "makingAmount": "",
-                    "orderID": "0x23b457271bce9fa09b4f79125c9ec09e968235a462de82e318ef4eb6fe0ffeb0",
-                    "status": "live",
-                    "success": true,
-                    "takingAmount": ""
-                }
-            ]));
+                .json_body(json!({
+                    "order": {
+                        "expiration": "0",
+                        "feeRateBps": "0",
+                        "maker": Address::ZERO,
+                        "makerAmount": "0",
+                        "nonce": "0",
+                        "salt": 0,
+                        "side": Side::Buy,
+                        "signature": "0x0d18c04a653d89bf7375636adb7db69cffe362755960dc6ce8a0d46b04355b767958fae51c48e0e4b0908347442cb461e811d2f5a751303f7a8c1f75e17b3e701b",
+                        "signatureType": 0,
+                        "signer": Address::ZERO,
+                        "taker": Address::ZERO,
+                        "takerAmount": "0",
+                        "tokenId": "0"
+                    },
+                    "orderType": "FOK",
+                    "owner": "00000000-0000-0000-0000-000000000000"
+                }));
+            then.status(StatusCode::OK).json_body(json!({
+                "error_msg": "",
+                "makingAmount": "",
+                "orderID": "0x23b457271bce9fa09b4f79125c9ec09e968235a462de82e318ef4eb6fe0ffeb0",
+                "status": "live",
+                "success": true,
+                "takingAmount": ""
+            }));
         });
 
         let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
         let signed_order = client.sign(&signer, SignableOrder::default()).await?;
         let response = client.post_order(signed_order).await?;
 
-        let expected = vec![
-            PostOrderResponse::builder()
-                .making_amount(Decimal::ZERO)
-                .taking_amount(Decimal::ZERO)
-                .order_id("0x23b457271bce9fa09b4f79125c9ec09e968235a462de82e318ef4eb6fe0ffeb0")
-                .status(OrderStatusType::Live)
-                .success(true)
-                .build(),
-        ];
+        let expected = PostOrderResponse::builder()
+            .making_amount(Decimal::ZERO)
+            .taking_amount(Decimal::ZERO)
+            .order_id("0x23b457271bce9fa09b4f79125c9ec09e968235a462de82e318ef4eb6fe0ffeb0")
+            .status(OrderStatusType::Live)
+            .success(true)
+            .build();
 
         assert_eq!(response, expected);
         mock.assert();
@@ -1435,7 +1429,7 @@ mod authenticated {
             "outcome": "YES",
             "created_at": 1_705_322_096,
             "expiration": "1705708800",
-            "order_type": "gtd"
+            "type": "gtd"
         });
 
         let mock = server.mock(|when, then| {
@@ -1498,7 +1492,7 @@ mod authenticated {
                     "outcome": "YES",
                     "created_at": 1_705_322_096,
                     "expiration": "1705708800",
-                    "order_type": "GTC"
+                    "type": "GTC"
                 }
             ],
             "limit": 1,
@@ -1512,7 +1506,7 @@ mod authenticated {
                 .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
                 .header(POLY_API_KEY, API_KEY)
                 .header(POLY_PASSPHRASE, PASSPHRASE)
-                .query_param("order_id", "1");
+                .query_param("id", "1");
             then.status(StatusCode::OK).json_body(json);
         });
 
@@ -2014,7 +2008,7 @@ mod authenticated {
         let client = create_authenticated(&server).await?;
 
         let mock = server.mock(|when, then| {
-            when.method(GET)
+            when.method(POST)
                 .path("/orders-scoring")
                 .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
                 .header(POLY_API_KEY, API_KEY)

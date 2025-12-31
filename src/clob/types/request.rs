@@ -9,7 +9,7 @@ use chrono::NaiveDate;
 use serde::Serialize;
 use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as};
 
-use crate::clob::types::{AssetType, Side, SignatureType};
+use crate::clob::types::{AssetType, Interval, Side, SignatureType};
 
 #[non_exhaustive]
 #[derive(Debug, Serialize, Builder)]
@@ -31,6 +31,8 @@ pub struct PriceRequest {
 #[builder(on(String, into))]
 pub struct SpreadRequest {
     pub token_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub side: Option<Side>,
 }
 
 #[non_exhaustive]
@@ -38,6 +40,8 @@ pub struct SpreadRequest {
 #[builder(on(String, into))]
 pub struct OrderBookSummaryRequest {
     pub token_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub side: Option<Side>,
 }
 
 #[non_exhaustive]
@@ -45,6 +49,21 @@ pub struct OrderBookSummaryRequest {
 #[builder(on(String, into))]
 pub struct LastTradePriceRequest {
     pub token_id: String,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Serialize, Builder)]
+#[builder(on(String, into))]
+pub struct PriceHistoryRequest {
+    pub market: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start_ts: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub end_ts: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub interval: Option<Interval>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fidelity: Option<u32>,
 }
 
 #[non_exhaustive]
@@ -60,6 +79,9 @@ pub struct CancelMarketOrderRequest {
 #[builder(on(String, into))]
 pub struct TradesRequest {
     pub id: Option<String>,
+    #[serde(rename = "taker")]
+    pub taker_address: Option<Address>,
+    #[serde(rename = "maker")]
     pub maker_address: Option<Address>,
     pub market: Option<String>,
     pub asset_id: Option<String>,
@@ -71,6 +93,7 @@ pub struct TradesRequest {
 #[derive(Debug, Default, Serialize, Builder)]
 #[builder(on(String, into))]
 pub struct OrdersRequest {
+    #[serde(rename = "id")]
     pub order_id: Option<String>,
     pub market: Option<String>,
     pub asset_id: Option<String>,
@@ -126,11 +149,11 @@ mod tests {
 
         assert_eq!(
             request.query_params(None),
-            "?id=aa-bb&maker_address=0x0000000000000000000000000000000000000000&market=10000&asset_id=100"
+            "?id=aa-bb&maker=0x0000000000000000000000000000000000000000&market=10000&asset_id=100"
         );
         assert_eq!(
             request.query_params(Some("1")),
-            "?id=aa-bb&maker_address=0x0000000000000000000000000000000000000000&market=10000&asset_id=100&next_cursor=1"
+            "?id=aa-bb&maker=0x0000000000000000000000000000000000000000&market=10000&asset_id=100&next_cursor=1"
         );
     }
 
@@ -144,11 +167,11 @@ mod tests {
 
         assert_eq!(
             request.query_params(None),
-            "?order_id=aa-bb&market=10000&asset_id=100"
+            "?id=aa-bb&market=10000&asset_id=100"
         );
         assert_eq!(
             request.query_params(Some("1")),
-            "?order_id=aa-bb&market=10000&asset_id=100&next_cursor=1"
+            "?id=aa-bb&market=10000&asset_id=100&next_cursor=1"
         );
     }
 

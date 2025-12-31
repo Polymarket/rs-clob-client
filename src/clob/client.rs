@@ -23,8 +23,9 @@ use crate::auth::{Credentials, Kind, Normal};
 use crate::clob::order_builder::{Limit, Market, OrderBuilder, generate_seed};
 use crate::clob::types::request::{
     BalanceAllowanceRequest, CancelMarketOrderRequest, DeleteNotificationsRequest,
-    LastTradePriceRequest, MidpointRequest, OrderBookSummaryRequest, OrdersRequest, PriceRequest,
-    SpreadRequest, TradesRequest, UpdateBalanceAllowanceRequest, UserRewardsEarningRequest,
+    LastTradePriceRequest, MidpointRequest, OrderBookSummaryRequest, OrdersRequest,
+    PriceHistoryRequest, PriceRequest, SpreadRequest, TradesRequest, UpdateBalanceAllowanceRequest,
+    UserRewardsEarningRequest,
 };
 use crate::clob::types::response::{
     ApiKeysResponse, BalanceAllowanceResponse, BanStatusResponse, BuilderApiKeyResponse,
@@ -32,10 +33,10 @@ use crate::clob::types::response::{
     GeoblockResponse, LastTradePriceResponse, LastTradesPricesResponse, MarketResponse,
     MarketRewardResponse, MidpointResponse, MidpointsResponse, NegRiskResponse,
     NotificationResponse, OpenOrderResponse, OrderBookSummaryResponse, OrderScoringResponse,
-    OrdersScoringResponse, Page, PostOrderResponse, PriceResponse, PricesResponse,
-    RewardsPercentagesResponse, SimplifiedMarketResponse, SpreadResponse, SpreadsResponse,
-    TickSizeResponse, TotalUserEarningResponse, TradeResponse, UserEarningResponse,
-    UserRewardsEarningResponse,
+    OrdersScoringResponse, Page, PostOrderResponse, PriceHistoryResponse, PriceResponse,
+    PricesResponse, RewardsPercentagesResponse, SimplifiedMarketResponse, SpreadResponse,
+    SpreadsResponse, TickSizeResponse, TotalUserEarningResponse, TradeResponse,
+    UserEarningResponse, UserRewardsEarningResponse,
 };
 use crate::clob::types::{SignableOrder, SignatureType, SignedOrder, TickSize};
 use crate::error::{Error, Synchronization};
@@ -423,6 +424,40 @@ impl<S: State> Client<S> {
             .build()?;
 
         crate::request(&self.inner.client, request, None).await
+    }
+
+    pub async fn all_prices(&self) -> Result<PricesResponse> {
+        let request = self
+            .client()
+            .request(Method::GET, format!("{}prices", self.host()))
+            .build()?;
+
+        crate::request(&self.inner.client, request, None).await
+    }
+
+    pub async fn price_history(
+        &self,
+        request: &PriceHistoryRequest,
+    ) -> Result<PriceHistoryResponse> {
+        let mut req = self
+            .client()
+            .request(Method::GET, format!("{}prices-history", self.host()))
+            .query(&[("market", request.market.as_str())]);
+
+        if let Some(start_ts) = request.start_ts {
+            req = req.query(&[("startTs", start_ts)]);
+        }
+        if let Some(end_ts) = request.end_ts {
+            req = req.query(&[("endTs", end_ts)]);
+        }
+        if let Some(interval) = &request.interval {
+            req = req.query(&[("interval", interval.to_string())]);
+        }
+        if let Some(fidelity) = request.fidelity {
+            req = req.query(&[("fidelity", fidelity)]);
+        }
+
+        crate::request(&self.inner.client, req.build()?, None).await
     }
 
     pub async fn spread(&self, request: &SpreadRequest) -> Result<SpreadResponse> {
@@ -953,8 +988,15 @@ impl<K: Kind> Client<Authenticated<K>> {
         })
     }
 
-    pub async fn post_order(&self, order: SignedOrder) -> Result<Vec<PostOrderResponse>> {
-        self.post_orders(vec![order]).await
+    pub async fn post_order(&self, order: SignedOrder) -> Result<PostOrderResponse> {
+        let request = self
+            .client()
+            .request(Method::POST, format!("{}order", self.host()))
+            .json(&order)
+            .build()?;
+        let headers = self.create_headers(&request).await?;
+
+        crate::request(&self.inner.client, request, Some(headers)).await
     }
 
     pub async fn post_orders(&self, orders: Vec<SignedOrder>) -> Result<Vec<PostOrderResponse>> {
@@ -1153,7 +1195,7 @@ impl<K: Kind> Client<Authenticated<K>> {
     pub async fn are_orders_scoring(&self, order_ids: &[&str]) -> Result<OrdersScoringResponse> {
         let request = self
             .client()
-            .request(Method::GET, format!("{}orders-scoring", self.host()))
+            .request(Method::POST, format!("{}orders-scoring", self.host()))
             .json(&order_ids)
             .build()?;
         let headers = self.create_headers(&request).await?;
