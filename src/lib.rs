@@ -9,6 +9,9 @@ pub mod data;
 pub mod error;
 #[cfg(feature = "gamma")]
 pub mod gamma;
+mod http;
+#[cfg(any(feature = "ws", feature = "rtds"))]
+pub mod proxy;
 #[cfg(feature = "rtds")]
 pub mod rtds;
 pub mod types;

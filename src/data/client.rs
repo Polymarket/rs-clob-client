@@ -24,10 +24,7 @@
 //! # }
 //! ```
 
-use reqwest::{
-    Client as ReqwestClient, Method,
-    header::{HeaderMap, HeaderValue},
-};
+use reqwest::{Client as ReqwestClient, Method};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use url::Url;
@@ -41,7 +38,6 @@ use super::types::response::{
     Activity, BuilderLeaderboardEntry, BuilderVolumeEntry, ClosedPosition, Health, LiveVolume,
     MetaHolder, OpenInterest, Position, Trade, Traded, TraderLeaderboardEntry, Value,
 };
-use crate::error::Error;
 use crate::{Result, ToQueryParams as _};
 
 /// HTTP client for the Polymarket Data API.
@@ -102,22 +98,7 @@ impl Client {
     ///
     /// Returns an error if the URL is invalid, the proxy URL is invalid, or the HTTP client cannot be created.
     pub fn new_with_proxy(host: &str, proxy: Option<&str>) -> Result<Client> {
-        let mut headers = HeaderMap::new();
-
-        headers.insert("User-Agent", HeaderValue::from_static("rs_clob_client"));
-        headers.insert("Accept", HeaderValue::from_static("*/*"));
-        headers.insert("Connection", HeaderValue::from_static("keep-alive"));
-        headers.insert("Content-Type", HeaderValue::from_static("application/json"));
-
-        let mut builder = ReqwestClient::builder().default_headers(headers);
-
-        if let Some(proxy_url) = proxy {
-            let proxy = reqwest::Proxy::all(proxy_url)
-                .map_err(|e| Error::validation(format!("invalid proxy URL '{proxy_url}': {e}")))?;
-            builder = builder.proxy(proxy);
-        }
-
-        let client = builder.build()?;
+        let client = crate::http::client_builder(proxy)?.build()?;
 
         Ok(Self {
             host: Url::parse(host)?,

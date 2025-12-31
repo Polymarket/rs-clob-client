@@ -12,7 +12,7 @@ use bon::Builder;
 use chrono::{NaiveDate, Utc};
 use dashmap::DashMap;
 use futures::Stream;
-use reqwest::header::{HeaderMap, HeaderValue};
+use reqwest::header::HeaderMap;
 use reqwest::{Client as ReqwestClient, Method, Request};
 use serde_json::json;
 use url::Url;
@@ -794,22 +794,7 @@ impl<S: State> Client<S> {
 
 impl Client<Unauthenticated> {
     pub fn new(host: &str, config: Config) -> Result<Client<Unauthenticated>> {
-        let mut headers = HeaderMap::new();
-
-        headers.insert("User-Agent", HeaderValue::from_static("rs_clob_client"));
-        headers.insert("Accept", HeaderValue::from_static("*/*"));
-        headers.insert("Connection", HeaderValue::from_static("keep-alive"));
-        headers.insert("Content-Type", HeaderValue::from_static("application/json"));
-
-        let mut builder = ReqwestClient::builder().default_headers(headers);
-
-        if let Some(proxy_url) = &config.proxy {
-            let proxy = reqwest::Proxy::all(proxy_url)
-                .map_err(|e| Error::validation(format!("invalid proxy URL '{proxy_url}': {e}")))?;
-            builder = builder.proxy(proxy);
-        }
-
-        let client = builder.build()?;
+        let client = crate::http::client_builder(config.proxy.as_deref())?.build()?;
 
         let geoblock_host = Url::parse(
             config
