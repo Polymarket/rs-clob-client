@@ -13,10 +13,11 @@ use tokio::sync::{broadcast, mpsc, watch};
 use tokio::time::{interval, sleep, timeout};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message};
 
-use super::config::RtdsConfig;
+use super::config::Config;
 use super::error::RtdsError;
 use super::interest::InterestTracker;
-use super::types::{RtdsMessage, SubscriptionRequest, parse_if_interested};
+use super::types::request::SubscriptionRequest;
+use super::types::response::{RtdsMessage, parse_if_interested};
 use crate::{
     Result,
     error::{Error, Kind},
@@ -73,11 +74,7 @@ impl ConnectionManager {
     ///
     /// The `interest` tracker is used to determine which message types to deserialize.
     /// Only messages that have active consumers will be fully parsed.
-    pub fn new(
-        endpoint: String,
-        config: RtdsConfig,
-        interest: &Arc<InterestTracker>,
-    ) -> Result<Self> {
+    pub fn new(endpoint: String, config: Config, interest: &Arc<InterestTracker>) -> Result<Self> {
         let (sender_tx, sender_rx) = mpsc::unbounded_channel();
         let (broadcast_tx, _) = broadcast::channel(BROADCAST_CAPACITY);
         let (state_tx, state_rx) = watch::channel(ConnectionState::Disconnected);
@@ -112,7 +109,7 @@ impl ConnectionManager {
     /// Main connection loop with automatic reconnection.
     async fn connection_loop(
         endpoint: String,
-        config: RtdsConfig,
+        config: Config,
         mut sender_rx: mpsc::UnboundedReceiver<String>,
         broadcast_tx: broadcast::Sender<RtdsMessage>,
         interest: Arc<InterestTracker>,
@@ -185,7 +182,7 @@ impl ConnectionManager {
         sender_rx: &mut mpsc::UnboundedReceiver<String>,
         broadcast_tx: &broadcast::Sender<RtdsMessage>,
         state_rx: watch::Receiver<ConnectionState>,
-        config: RtdsConfig,
+        config: Config,
         interest: &Arc<InterestTracker>,
     ) -> Result<()> {
         let (mut write, mut read) = ws_stream.split();
@@ -204,13 +201,10 @@ impl ConnectionManager {
                 // Handle incoming messages
                 Some(msg) = read.next() => {
                     match msg {
+                        Ok(Message::Text(text)) if text == "PONG" => {
+                            _ = pong_tx.send(Instant::now());
+                        }
                         Ok(Message::Text(text)) => {
-                            // Notify heartbeat loop when PONG is received
-                            if text == "PONG" {
-                                _ = pong_tx.send(Instant::now());
-                                continue;
-                            }
-
                             #[cfg(feature = "tracing")]
                             tracing::trace!(%text, "Received RTDS text message");
 
@@ -284,7 +278,7 @@ impl ConnectionManager {
     async fn heartbeat_loop(
         ping_tx: mpsc::UnboundedSender<()>,
         state_rx: watch::Receiver<ConnectionState>,
-        config: &RtdsConfig,
+        config: &Config,
         mut pong_rx: watch::Receiver<Instant>,
     ) {
         let mut ping_interval = interval(config.heartbeat_interval);

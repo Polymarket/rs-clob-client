@@ -21,7 +21,7 @@ const DEFAULT_BACKOFF_MULTIPLIER: f64 = 2.0;
 /// Configuration for RTDS WebSocket client behavior.
 #[non_exhaustive]
 #[derive(Debug, Clone)]
-pub struct RtdsConfig {
+pub struct Config {
     /// Interval for sending PING messages to keep connection alive (5 seconds recommended for RTDS)
     pub heartbeat_interval: Duration,
     /// Maximum time to wait for PONG response before considering connection dead
@@ -30,7 +30,7 @@ pub struct RtdsConfig {
     pub reconnect: ReconnectConfig,
 }
 
-impl Default for RtdsConfig {
+impl Default for Config {
     fn default() -> Self {
         Self {
             heartbeat_interval: DEFAULT_HEARTBEAT_INTERVAL_DURATION,
@@ -115,7 +115,7 @@ mod tests {
 
     #[test]
     fn default_heartbeat_is_five_seconds() {
-        let config = RtdsConfig::default();
+        let config = Config::default();
         assert_eq!(config.heartbeat_interval, Duration::from_secs(5));
     }
 }

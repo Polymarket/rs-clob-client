@@ -3,10 +3,9 @@
     reason = "Subscription types deliberately include the module name for clarity"
 )]
 
-use std::sync::Arc;
+use std::sync::{Arc, PoisonError, RwLock};
 use std::time::Instant;
 
-use alloy::primitives::Address;
 use async_stream::try_stream;
 use dashmap::{DashMap, DashSet};
 use futures::Stream;
@@ -15,7 +14,8 @@ use tokio::sync::broadcast::error::RecvError;
 use super::connection::{ConnectionManager, ConnectionState};
 use super::error::RtdsError;
 use super::interest::{InterestTracker, MessageInterest};
-use super::types::{RtdsMessage, Subscription, SubscriptionRequest};
+use super::types::request::{Subscription, SubscriptionRequest};
+use super::types::response::RtdsMessage;
 use crate::Result;
 use crate::auth::Credentials;
 
@@ -47,8 +47,6 @@ pub struct SubscriptionInfo {
     pub filters: Option<String>,
     /// CLOB authentication if required
     pub clob_auth: Option<Credentials>,
-    /// Gamma authentication if required
-    pub gamma_auth: Option<Address>,
     /// When the subscription was created
     pub created_at: Instant,
 }
@@ -59,6 +57,7 @@ pub struct SubscriptionManager {
     active_subs: DashMap<String, SubscriptionInfo>,
     interest: Arc<InterestTracker>,
     subscribed_topics: DashSet<TopicType>,
+    last_auth: Arc<RwLock<Option<Credentials>>>,
 }
 
 impl SubscriptionManager {
@@ -70,6 +69,7 @@ impl SubscriptionManager {
             active_subs: DashMap::new(),
             interest,
             subscribed_topics: DashSet::new(),
+            last_auth: Arc::new(RwLock::new(None)),
         }
     }
 
@@ -118,6 +118,14 @@ impl SubscriptionManager {
 
     /// Re-send subscription requests for all tracked topics.
     fn resubscribe_all(&self) {
+        // Get stored auth for re-subscription on reconnect.
+        // We can recover from poisoned lock because Option<Credentials> has no inconsistent intermediate state.
+        let auth = self
+            .last_auth
+            .read()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
+
         let subscriptions: Vec<Subscription> = self
             .active_subs
             .iter()
@@ -128,13 +136,12 @@ impl SubscriptionManager {
                     msg_type: info.topic_type.msg_type.clone(),
                     filters: info.filters.clone(),
                     clob_auth: None,
-                    gamma_auth: None,
                 };
-                if let Some(auth) = &info.clob_auth {
-                    sub = sub.with_clob_auth(auth.clone());
-                }
-                if let Some(addr) = &info.gamma_auth {
-                    sub = sub.with_gamma_auth(*addr);
+                // Apply stored auth if subscription originally had auth
+                if info.clob_auth.is_some()
+                    && let Some(creds) = &auth
+                {
+                    sub = sub.with_clob_auth(creds.clone());
                 }
                 sub
             })
@@ -171,6 +178,15 @@ impl SubscriptionManager {
         let interest = MessageInterest::from_topic(&subscription.topic);
         self.interest.add(interest);
 
+        // Store auth for re-subscription on reconnect.
+        // We can recover from poisoned lock because Option<Credentials> has no inconsistent intermediate state.
+        if let Some(auth) = &subscription.clob_auth {
+            *self
+                .last_auth
+                .write()
+                .unwrap_or_else(PoisonError::into_inner) = Some(auth.clone());
+        }
+
         // Check if we need to send a new subscription request
         let is_new = !self.subscribed_topics.contains(&topic_type);
         if is_new {
@@ -202,7 +218,6 @@ impl SubscriptionManager {
                 topic_type: topic_type.clone(),
                 filters: subscription.filters.clone(),
                 clob_auth: subscription.clob_auth.clone(),
-                gamma_auth: subscription.gamma_auth,
                 created_at: Instant::now(),
             },
         );

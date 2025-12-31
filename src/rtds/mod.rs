@@ -45,12 +45,12 @@ pub mod subscription;
 pub mod types;
 
 // Re-export commonly used types
-pub use client::{Auth, Authenticated, Client, State, Unauthenticated};
-pub use config::{ReconnectConfig, RtdsConfig};
+pub use client::Client;
+pub use config::{Config, ReconnectConfig};
 pub use connection::ConnectionState;
 pub use error::RtdsError;
 pub use subscription::{SubscriptionInfo, TopicType};
-pub use types::{
-    ChainlinkPrice, Comment, CommentProfile, CommentType, CryptoPrice, RtdsMessage, Subscription,
-    SubscriptionAction, SubscriptionRequest,
+pub use types::request::{Subscription, SubscriptionAction, SubscriptionRequest};
+pub use types::response::{
+    ChainlinkPrice, Comment, CommentProfile, CommentType, CryptoPrice, RtdsMessage,
 };

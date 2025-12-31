@@ -1,43 +1,31 @@
 use std::sync::atomic::{AtomicU8, Ordering};
 
-/// Flags representing interest in specific RTDS message types.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct MessageInterest(u8);
+use bitflags::bitflags;
+
+bitflags! {
+    #[repr(transparent)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub struct MessageInterest: u8 {
+        /// No interest in any message types.
+        const NONE = 0;
+
+        /// Interest in Binance crypto price updates.
+        const CRYPTO_PRICES = 1;
+
+        /// Interest in Chainlink price feed updates.
+        const CHAINLINK_PRICES = 1 << 1;
+
+        /// Interest in comment events.
+        const COMMENTS = 1 << 2;
+
+        /// Interest in all RTDS message types.
+        const ALL = Self::CRYPTO_PRICES.bits()
+            | Self::CHAINLINK_PRICES.bits()
+            | Self::COMMENTS.bits();
+    }
+}
 
 impl MessageInterest {
-    /// No interest in any message types.
-    pub const NONE: Self = Self(0);
-
-    /// Interest in Binance crypto price updates.
-    pub const CRYPTO_PRICES: Self = Self(1 << 0);
-
-    /// Interest in Chainlink price feed updates.
-    pub const CHAINLINK_PRICES: Self = Self(1 << 1);
-
-    /// Interest in comment events.
-    pub const COMMENTS: Self = Self(1 << 2);
-
-    /// Interest in all RTDS message types.
-    pub const ALL: Self = Self(Self::CRYPTO_PRICES.0 | Self::CHAINLINK_PRICES.0 | Self::COMMENTS.0);
-
-    /// Check if this interest set contains a specific interest.
-    #[must_use]
-    pub const fn contains(self, other: Self) -> bool {
-        (self.0 & other.0) == other.0
-    }
-
-    /// Combine two interest sets.
-    #[must_use]
-    pub const fn union(self, other: Self) -> Self {
-        Self(self.0 | other.0)
-    }
-
-    /// Check if any interest is set.
-    #[must_use]
-    pub const fn is_empty(self) -> bool {
-        self.0 == 0
-    }
-
     /// Get the interest flag for a given topic string.
     #[must_use]
     pub fn from_topic(topic: &str) -> Self {
@@ -63,28 +51,6 @@ impl Default for MessageInterest {
     }
 }
 
-impl std::ops::BitOr for MessageInterest {
-    type Output = Self;
-
-    fn bitor(self, rhs: Self) -> Self::Output {
-        Self(self.0 | rhs.0)
-    }
-}
-
-impl std::ops::BitOrAssign for MessageInterest {
-    fn bitor_assign(&mut self, rhs: Self) {
-        self.0 |= rhs.0;
-    }
-}
-
-impl std::ops::BitAnd for MessageInterest {
-    type Output = Self;
-
-    fn bitand(self, rhs: Self) -> Self::Output {
-        Self(self.0 & rhs.0)
-    }
-}
-
 /// Thread-safe interest tracker that can be shared between subscription manager and connection.
 #[derive(Debug, Default)]
 pub struct InterestTracker {
@@ -102,13 +68,14 @@ impl InterestTracker {
 
     /// Add interest in specific message types.
     pub fn add(&self, interest: MessageInterest) {
-        self.interest.fetch_or(interest.0, Ordering::Release);
+        self.interest.fetch_or(interest.bits(), Ordering::Release);
     }
 
     /// Get the current interest set.
     #[must_use]
     pub fn get(&self) -> MessageInterest {
-        MessageInterest(self.interest.load(Ordering::Acquire))
+        MessageInterest::from_bits(self.interest.load(Ordering::Acquire))
+            .unwrap_or(MessageInterest::NONE)
     }
 
     /// Check if there's interest in a specific message type.

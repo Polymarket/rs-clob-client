@@ -26,7 +26,7 @@ gamma = []
 bridge = []
 tracing = ["dep:tracing"]
 ws = ["dep:backoff", "dep:bitflags", "dep:tokio", "dep:tokio-tungstenite"]
-rtds = ["dep:backoff", "dep:tokio", "dep:tokio-tungstenite"]
+rtds = ["dep:backoff", "dep:bitflags", "dep:tokio", "dep:tokio-tungstenite"]
 
 [dependencies]
 alloy = { version = "1.2.1", default-features = false, features = [
