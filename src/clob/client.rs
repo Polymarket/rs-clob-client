@@ -1195,7 +1195,7 @@ impl<K: Kind> Client<Authenticated<K>> {
     pub async fn are_orders_scoring(&self, order_ids: &[&str]) -> Result<OrdersScoringResponse> {
         let request = self
             .client()
-            .request(Method::GET, format!("{}orders-scoring", self.host()))
+            .request(Method::POST, format!("{}orders-scoring", self.host()))
             .json(&order_ids)
             .build()?;
         let headers = self.create_headers(&request).await?;

@@ -2008,7 +2008,7 @@ mod authenticated {
         let client = create_authenticated(&server).await?;
 
         let mock = server.mock(|when, then| {
-            when.method(GET)
+            when.method(POST)
                 .path("/orders-scoring")
                 .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
                 .header(POLY_API_KEY, API_KEY)
