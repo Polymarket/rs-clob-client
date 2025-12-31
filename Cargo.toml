@@ -32,7 +32,7 @@ ws = [
     "dep:tokio-tungstenite",
     "dep:tokio-socks",
 ]
-rtds = ["dep:backoff", "dep:tokio", "dep:tokio-tungstenite"]
+rtds = ["dep:backoff", "dep:tokio", "dep:tokio-tungstenite", "dep:tokio-socks"]
 
 [dependencies]
 alloy = { version = "1.2.1", default-features = false, features = [
