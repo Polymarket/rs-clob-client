@@ -1597,4 +1597,89 @@ mod rtds_proxy_connection {
 
         assert!(result.is_err(), "Should timeout when proxy is unreachable");
     }
+
+    #[tokio::test]
+    async fn rtds_connects_directly_without_proxy() {
+        let rtds_server = MockRtdsServer::start().await;
+
+        // Use default config (no proxy)
+        let config = Config::default();
+        assert!(config.proxy.is_none());
+
+        let client = Client::new(&rtds_server.base_url(), config).unwrap();
+
+        let stream = client
+            .subscribe_crypto_prices(Some(vec![SYMBOL.to_owned()]))
+            .unwrap();
+        let mut stream = Box::pin(stream);
+
+        let result = timeout(Duration::from_secs(5), stream.next()).await;
+
+        assert!(
+            result.is_ok(),
+            "Should receive message via direct connection"
+        );
+        let price = result.unwrap().unwrap().unwrap();
+        assert_eq!(price.symbol, SYMBOL);
+    }
+
+    #[tokio::test]
+    async fn rtds_connection_state_transitions_to_connected() {
+        use polymarket_client_sdk::rtds::ConnectionState;
+
+        let rtds_server = MockRtdsServer::start().await;
+        let config = Config::default();
+        let client = Client::new(&rtds_server.base_url(), config).unwrap();
+
+        // Subscribe to trigger connection
+        let stream = client
+            .subscribe_crypto_prices(Some(vec![SYMBOL.to_owned()]))
+            .unwrap();
+        let mut stream = Box::pin(stream);
+
+        // Wait for first message (confirms connection)
+        _ = timeout(Duration::from_secs(5), stream.next()).await;
+
+        // Check state is connected
+        let state = client.connection_state();
+        assert!(
+            state.is_connected(),
+            "State should be Connected after receiving message"
+        );
+
+        // Verify it matches the Connected variant
+        assert!(
+            matches!(state, ConnectionState::Connected { .. }),
+            "State should be ConnectionState::Connected"
+        );
+    }
+
+    #[tokio::test]
+    async fn rtds_subscription_count_tracks_active_subscriptions() {
+        let rtds_server = MockRtdsServer::start().await;
+        let config = Config::default();
+        let client = Client::new(&rtds_server.base_url(), config).unwrap();
+
+        assert_eq!(
+            client.subscription_count(),
+            0,
+            "Should start with 0 subscriptions"
+        );
+
+        let _stream1 = client
+            .subscribe_crypto_prices(Some(vec!["btcusdt".to_owned()]))
+            .unwrap();
+
+        assert_eq!(client.subscription_count(), 1, "Should have 1 subscription");
+
+        let _stream2 = client
+            .subscribe_chainlink_prices(Some("eth/usd".to_owned()))
+            .unwrap();
+
+        assert_eq!(
+            client.subscription_count(),
+            2,
+            "Should have 2 subscriptions"
+        );
+    }
 }
