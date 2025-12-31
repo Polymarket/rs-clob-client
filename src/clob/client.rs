@@ -425,6 +425,15 @@ impl<S: State> Client<S> {
         crate::request(&self.inner.client, request, None).await
     }
 
+    pub async fn all_prices(&self) -> Result<PricesResponse> {
+        let request = self
+            .client()
+            .request(Method::GET, format!("{}prices", self.host()))
+            .build()?;
+
+        crate::request(&self.inner.client, request, None).await
+    }
+
     pub async fn spread(&self, request: &SpreadRequest) -> Result<SpreadResponse> {
         let request = self
             .client()
