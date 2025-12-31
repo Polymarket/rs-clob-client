@@ -9,6 +9,7 @@ use chrono::Utc;
 use hmac::{Hmac, Mac as _};
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::{Client as ReqwestClient, Method, Request, StatusCode};
+use secrecy::ExposeSecret as _;
 use sha2::Sha256;
 use url::Url;
 
@@ -129,7 +130,7 @@ impl Client {
         map.insert(POLY_API_KEY, self.credentials.key.to_string().parse()?);
         map.insert(
             POLY_PASSPHRASE,
-            self.credentials.passphrase.reveal().parse()?,
+            self.credentials.passphrase.expose_secret().parse()?,
         );
         map.insert(POLY_SIGNATURE, signature.parse()?);
         map.insert(POLY_TIMESTAMP, timestamp.to_string().parse()?);
@@ -408,7 +409,7 @@ fn to_message(request: &Request, timestamp: i64) -> String {
 
 /// Creates an HMAC-SHA256 signature.
 fn hmac(credentials: &Credentials, message: &str) -> Result<String> {
-    let decoded_secret = URL_SAFE.decode(credentials.secret.reveal())?;
+    let decoded_secret = URL_SAFE.decode(credentials.secret.expose_secret())?;
     let mut mac = Hmac::<Sha256>::new_from_slice(&decoded_secret)?;
     mac.update(message.as_bytes());
 
