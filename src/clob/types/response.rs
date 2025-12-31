@@ -58,6 +58,19 @@ pub struct SpreadsResponse {
 
 #[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
+pub struct PriceHistoryResponse {
+    pub history: Vec<PricePoint>,
+}
+
+#[non_exhaustive]
+#[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
+pub struct PricePoint {
+    pub t: i64,
+    pub p: Decimal,
+}
+
+#[non_exhaustive]
+#[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
 #[builder(on(TickSize, into))]
 pub struct TickSizeResponse {
     pub minimum_tick_size: TickSize,
@@ -301,6 +314,7 @@ pub struct OpenOrderResponse {
     pub created_at: DateTime<Utc>,
     #[serde_as(as = "TimestampSeconds<String>")]
     pub expiration: DateTime<Utc>,
+    #[serde(rename = "type")]
     pub order_type: OrderType,
 }
 

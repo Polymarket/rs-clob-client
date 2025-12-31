@@ -31,16 +31,17 @@ mod unauthenticated {
     use futures_util::future;
     use futures_util::stream::StreamExt as _;
     use polymarket_client_sdk::clob::types::request::{
-        LastTradePriceRequest, MidpointRequest, OrderBookSummaryRequest, PriceRequest,
-        SpreadRequest,
+        LastTradePriceRequest, MidpointRequest, OrderBookSummaryRequest, PriceHistoryRequest,
+        PriceRequest, SpreadRequest,
     };
     use polymarket_client_sdk::clob::types::response::{
         FeeRateResponse, GeoblockResponse, LastTradePriceResponse, LastTradesPricesResponse,
         MarketResponse, MidpointResponse, MidpointsResponse, NegRiskResponse,
-        OrderBookSummaryResponse, OrderSummary, Page, PriceResponse, PricesResponse, Rewards,
-        SimplifiedMarketResponse, SpreadResponse, SpreadsResponse, TickSizeResponse, Token,
+        OrderBookSummaryResponse, OrderSummary, Page, PriceHistoryResponse, PricePoint,
+        PriceResponse, PricesResponse, Rewards, SimplifiedMarketResponse, SpreadResponse,
+        SpreadsResponse, TickSizeResponse, Token,
     };
-    use polymarket_client_sdk::clob::types::{Side, TickSize};
+    use polymarket_client_sdk::clob::types::{Interval, Side, TickSize};
     use polymarket_client_sdk::error::Status;
     use reqwest::Method;
 
@@ -201,6 +202,78 @@ mod unauthenticated {
         let response = client.prices(&[request]).await?;
 
         let expected = PricesResponse::builder().prices(price_map).build();
+
+        assert_eq!(response, expected);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn all_prices_should_succeed() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = Client::new(&server.base_url(), Config::default())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(httpmock::Method::GET).path("/prices");
+            then.status(StatusCode::OK)
+                .json_body(json!({ "1": { "BUY": 0.5, "SELL": 0.6 } }));
+        });
+
+        let response = client.all_prices().await?;
+
+        let mut price_map = HashMap::new();
+        let mut side_map = HashMap::new();
+        side_map.insert(Side::Buy, dec!(0.5));
+        side_map.insert(Side::Sell, dec!(0.6));
+        price_map.insert("1".to_owned(), side_map);
+
+        let expected = PricesResponse::builder().prices(price_map).build();
+
+        assert_eq!(response, expected);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn price_history_should_succeed() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = Client::new(&server.base_url(), Config::default())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(httpmock::Method::GET)
+                .path("/prices-history")
+                .query_param("market", "0x123")
+                .query_param("startTs", "1000")
+                .query_param("endTs", "2000")
+                .query_param("interval", "1h")
+                .query_param("fidelity", "10");
+            then.status(StatusCode::OK).json_body(json!({
+                "history": [
+                    { "t": 1000, "p": "0.5" },
+                    { "t": 1500, "p": "0.55" },
+                    { "t": 2000, "p": "0.6" }
+                ]
+            }));
+        });
+
+        let request = PriceHistoryRequest::builder()
+            .market("0x123")
+            .start_ts(1000)
+            .end_ts(2000)
+            .interval(Interval::OneHour)
+            .fidelity(10_u32)
+            .build();
+        let response = client.price_history(&request).await?;
+
+        let expected = PriceHistoryResponse::builder()
+            .history(vec![
+                PricePoint::builder().t(1000).p(dec!(0.5)).build(),
+                PricePoint::builder().t(1500).p(dec!(0.55)).build(),
+                PricePoint::builder().t(2000).p(dec!(0.6)).build(),
+            ])
+            .build();
 
         assert_eq!(response, expected);
         mock.assert();
@@ -1355,56 +1428,50 @@ mod authenticated {
 
         let mock = server.mock(|when, then| {
             when.method(POST)
-                .path("/orders")
+                .path("/order")
                 .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
                 .header(POLY_API_KEY, API_KEY)
                 .header(POLY_PASSPHRASE, PASSPHRASE)
-                .json_body(json!([
-                    {
-                        "order": {
-                            "expiration": "0",
-                            "feeRateBps": "0",
-                            "maker": Address::ZERO,
-                            "makerAmount": "0",
-                            "nonce": "0",
-                            "salt": 0,
-                            "side": Side::Buy,
-                            "signature": "0x0d18c04a653d89bf7375636adb7db69cffe362755960dc6ce8a0d46b04355b767958fae51c48e0e4b0908347442cb461e811d2f5a751303f7a8c1f75e17b3e701b",
-                            "signatureType": 0,
-                            "signer": Address::ZERO,
-                            "taker": Address::ZERO,
-                            "takerAmount": "0",
-                            "tokenId": "0"
-                        },
-                        "orderType": "FOK",
-                        "owner": "00000000-0000-0000-0000-000000000000"
-                    }
-                ]));
-            then.status(StatusCode::OK).json_body(json!([
-                {
-                    "error_msg": "",
-                    "makingAmount": "",
-                    "orderID": "0x23b457271bce9fa09b4f79125c9ec09e968235a462de82e318ef4eb6fe0ffeb0",
-                    "status": "live",
-                    "success": true,
-                    "takingAmount": ""
-                }
-            ]));
+                .json_body(json!({
+                    "order": {
+                        "expiration": "0",
+                        "feeRateBps": "0",
+                        "maker": Address::ZERO,
+                        "makerAmount": "0",
+                        "nonce": "0",
+                        "salt": 0,
+                        "side": Side::Buy,
+                        "signature": "0x0d18c04a653d89bf7375636adb7db69cffe362755960dc6ce8a0d46b04355b767958fae51c48e0e4b0908347442cb461e811d2f5a751303f7a8c1f75e17b3e701b",
+                        "signatureType": 0,
+                        "signer": Address::ZERO,
+                        "taker": Address::ZERO,
+                        "takerAmount": "0",
+                        "tokenId": "0"
+                    },
+                    "orderType": "FOK",
+                    "owner": "00000000-0000-0000-0000-000000000000"
+                }));
+            then.status(StatusCode::OK).json_body(json!({
+                "error_msg": "",
+                "makingAmount": "",
+                "orderID": "0x23b457271bce9fa09b4f79125c9ec09e968235a462de82e318ef4eb6fe0ffeb0",
+                "status": "live",
+                "success": true,
+                "takingAmount": ""
+            }));
         });
 
         let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
         let signed_order = client.sign(&signer, SignableOrder::default()).await?;
         let response = client.post_order(signed_order).await?;
 
-        let expected = vec![
-            PostOrderResponse::builder()
-                .making_amount(Decimal::ZERO)
-                .taking_amount(Decimal::ZERO)
-                .order_id("0x23b457271bce9fa09b4f79125c9ec09e968235a462de82e318ef4eb6fe0ffeb0")
-                .status(OrderStatusType::Live)
-                .success(true)
-                .build(),
-        ];
+        let expected = PostOrderResponse::builder()
+            .making_amount(Decimal::ZERO)
+            .taking_amount(Decimal::ZERO)
+            .order_id("0x23b457271bce9fa09b4f79125c9ec09e968235a462de82e318ef4eb6fe0ffeb0")
+            .status(OrderStatusType::Live)
+            .success(true)
+            .build();
 
         assert_eq!(response, expected);
         mock.assert();
@@ -1435,7 +1502,7 @@ mod authenticated {
             "outcome": "YES",
             "created_at": 1_705_322_096,
             "expiration": "1705708800",
-            "order_type": "gtd"
+            "type": "gtd"
         });
 
         let mock = server.mock(|when, then| {
@@ -1498,7 +1565,7 @@ mod authenticated {
                     "outcome": "YES",
                     "created_at": 1_705_322_096,
                     "expiration": "1705708800",
-                    "order_type": "GTC"
+                    "type": "GTC"
                 }
             ],
             "limit": 1,
@@ -1512,7 +1579,7 @@ mod authenticated {
                 .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
                 .header(POLY_API_KEY, API_KEY)
                 .header(POLY_PASSPHRASE, PASSPHRASE)
-                .query_param("order_id", "1");
+                .query_param("id", "1");
             then.status(StatusCode::OK).json_body(json);
         });
 
@@ -2014,7 +2081,7 @@ mod authenticated {
         let client = create_authenticated(&server).await?;
 
         let mock = server.mock(|when, then| {
-            when.method(GET)
+            when.method(POST)
                 .path("/orders-scoring")
                 .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
                 .header(POLY_API_KEY, API_KEY)

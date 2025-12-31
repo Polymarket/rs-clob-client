@@ -26,6 +26,7 @@ gamma = []
 bridge = []
 tracing = ["dep:tracing"]
 ws = ["dep:backoff", "dep:bitflags", "dep:tokio", "dep:tokio-tungstenite"]
+rtds = ["dep:backoff", "dep:tokio", "dep:tokio-tungstenite"]
 
 [dependencies]
 alloy = { version = "1.2.1", default-features = false, features = [
@@ -130,6 +131,11 @@ required-features = ["ws"]
 name = "websocket_user"
 path = "examples/clob/ws/user.rs"
 required-features = ["ws"]
+
+[[example]]
+name = "rtds_crypto_prices"
+path = "examples/rtds_crypto_prices.rs"
+required-features = ["rtds"]
 
 # https://rust-lang.github.io/rust-clippy/master/index.html?versions=lte%3A88
 [lints.clippy]

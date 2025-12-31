@@ -76,6 +76,36 @@ impl TryFrom<u8> for Side {
     }
 }
 
+/// Time interval for price history queries.
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq, Serialize, Deserialize)]
+pub enum Interval {
+    /// 1 minute
+    #[serde(rename = "1m")]
+    #[strum(serialize = "1m")]
+    OneMinute,
+    /// 1 hour
+    #[serde(rename = "1h")]
+    #[strum(serialize = "1h")]
+    OneHour,
+    /// 6 hours
+    #[serde(rename = "6h")]
+    #[strum(serialize = "6h")]
+    SixHours,
+    /// 1 day
+    #[serde(rename = "1d")]
+    #[strum(serialize = "1d")]
+    OneDay,
+    /// 1 week
+    #[serde(rename = "1w")]
+    #[strum(serialize = "1w")]
+    OneWeek,
+    /// Maximum available history
+    #[serde(rename = "max")]
+    #[strum(serialize = "max")]
+    Max,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum AmountInner {
     Usdc(Decimal),

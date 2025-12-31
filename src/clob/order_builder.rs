@@ -276,6 +276,7 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
             .client
             .order_book(&OrderBookSummaryRequest {
                 token_id: token_id.to_owned(),
+                side: None,
             })
             .await?;
 
