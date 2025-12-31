@@ -35,8 +35,8 @@ use crate::clob::types::response::{
     NotificationResponse, OpenOrderResponse, OrderBookSummaryResponse, OrderScoringResponse,
     OrdersScoringResponse, Page, PostOrderResponse, PriceHistoryResponse, PriceResponse,
     PricesResponse, RewardsPercentagesResponse, SimplifiedMarketResponse, SpreadResponse,
-    SpreadsResponse, TickSizeResponse, TotalUserEarningResponse, TradeResponse, UserEarningResponse,
-    UserRewardsEarningResponse,
+    SpreadsResponse, TickSizeResponse, TotalUserEarningResponse, TradeResponse,
+    UserEarningResponse, UserRewardsEarningResponse,
 };
 use crate::clob::types::{SignableOrder, SignatureType, SignedOrder, TickSize};
 use crate::error::{Error, Synchronization};
