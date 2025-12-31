@@ -8,6 +8,7 @@ use std::time::Instant;
 
 use backoff::backoff::Backoff as _;
 use futures::{SinkExt as _, StreamExt as _};
+use secrecy::ExposeSecret as _;
 use serde_json::{Value, json};
 use tokio::net::TcpStream;
 use tokio::sync::{broadcast, mpsc, watch};
@@ -342,8 +343,8 @@ impl ConnectionManager {
         if let Some(creds) = message.auth.as_ref() {
             let auth = json!({
                 "apiKey": creds.key.to_string(),
-                "secret": creds.secret.reveal(),
-                "passphrase": creds.passphrase.reveal(),
+                "secret": creds.secret.expose_secret(),
+                "passphrase": creds.passphrase.expose_secret(),
             });
 
             if let Value::Object(ref mut obj) = v {

@@ -1,3 +1,4 @@
+use secrecy::ExposeSecret as _;
 use serde::Serialize;
 use serde_json::Value;
 
@@ -152,8 +153,8 @@ impl Serialize for Subscription {
         if let Some(creds) = &self.clob_auth {
             let auth = serde_json::json!({
                 "key": creds.key.to_string(),
-                "secret": creds.secret.reveal(),
-                "passphrase": creds.passphrase.reveal(),
+                "secret": creds.secret.expose_secret(),
+                "passphrase": creds.passphrase.expose_secret(),
             });
             map.serialize_entry("clob_auth", &auth)?;
         }
