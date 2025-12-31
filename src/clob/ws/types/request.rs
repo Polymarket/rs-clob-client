@@ -8,6 +8,9 @@ use crate::auth::Credentials;
 pub struct SubscriptionRequest {
     /// Subscription type ("market" or "user")
     pub r#type: String,
+    /// Operation type ("subscribe" or "unsubscribe")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub operation: Option<String>,
     /// List of market IDs
     pub markets: Vec<String>,
     /// List of asset IDs
@@ -27,9 +30,23 @@ impl SubscriptionRequest {
     pub fn market(asset_ids: Vec<String>) -> Self {
         Self {
             r#type: "market".to_owned(),
+            operation: Some("subscribe".to_owned()),
             markets: vec![],
             asset_ids,
             initial_dump: Some(true),
+            auth: None,
+        }
+    }
+
+    /// Create a market unsubscribe request.
+    #[must_use]
+    pub fn market_unsubscribe(asset_ids: Vec<String>) -> Self {
+        Self {
+            r#type: "market".to_owned(),
+            operation: Some("unsubscribe".to_owned()),
+            markets: vec![],
+            asset_ids,
+            initial_dump: None,
             auth: None,
         }
     }
@@ -39,9 +56,23 @@ impl SubscriptionRequest {
     pub fn user(markets: Vec<String>, auth: Credentials) -> Self {
         Self {
             r#type: "user".to_owned(),
+            operation: Some("subscribe".to_owned()),
             markets,
             asset_ids: vec![],
             initial_dump: Some(true),
+            auth: Some(auth),
+        }
+    }
+
+    /// Create a user unsubscribe request.
+    #[must_use]
+    pub fn user_unsubscribe(markets: Vec<String>, auth: Credentials) -> Self {
+        Self {
+            r#type: "user".to_owned(),
+            operation: Some("unsubscribe".to_owned()),
+            markets,
+            asset_ids: vec![],
+            initial_dump: None,
             auth: Some(auth),
         }
     }
