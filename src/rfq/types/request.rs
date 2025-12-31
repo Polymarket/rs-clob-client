@@ -5,7 +5,6 @@
     reason = "Request suffix is intentional for clarity"
 )]
 
-use alloy::primitives::Address;
 use bon::Builder;
 use serde::{Deserialize, Serialize};
 use serde_repr::Serialize_repr;
@@ -13,6 +12,7 @@ use strum_macros::Display;
 
 use crate::auth::ApiKey;
 use crate::clob::types::Side;
+use crate::types::Address;
 
 /// User type for RFQ participants.
 ///

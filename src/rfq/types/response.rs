@@ -5,12 +5,12 @@
     reason = "Response suffix is intentional for clarity"
 )]
 
-use alloy::primitives::Address;
 use bon::Builder;
 use rust_decimal::Decimal;
 use serde::Deserialize;
 
 use crate::clob::types::Side;
+use crate::types::Address;
 
 /// Response from creating an RFQ request.
 #[non_exhaustive]
