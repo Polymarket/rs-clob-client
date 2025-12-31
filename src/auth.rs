@@ -4,7 +4,7 @@ use base64::engine::general_purpose::URL_SAFE;
 use hmac::{Hmac, Mac as _};
 use reqwest::header::HeaderMap;
 use reqwest::{Body, Request};
-use secrecy::{ExposeSecret as _, SecretString};
+pub use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 use sha2::Sha256;
 use uuid::Uuid;
@@ -39,6 +39,18 @@ impl Credentials {
     #[must_use]
     pub fn key(&self) -> ApiKey {
         self.key
+    }
+
+    /// Returns the secret.
+    #[must_use]
+    pub fn secret(&self) -> &SecretString {
+        &self.secret
+    }
+
+    /// Returns the passphrase.
+    #[must_use]
+    pub fn passphrase(&self) -> &SecretString {
+        &self.passphrase
     }
 }
 

@@ -6,7 +6,7 @@ use alloy::signers::Signer as _;
 use alloy::signers::local::LocalSigner;
 use httpmock::MockServer;
 use polymarket_client_sdk::POLYGON;
-use polymarket_client_sdk::auth::Credentials;
+use polymarket_client_sdk::auth::{Credentials, ExposeSecret as _};
 use polymarket_client_sdk::clob::{Client, Config};
 use polymarket_client_sdk::error::{Synchronization, Validation};
 use reqwest::StatusCode;
@@ -217,4 +217,16 @@ async fn create_or_derive_api_key_should_succeed() -> anyhow::Result<()> {
     mock2.assert();
 
     Ok(())
+}
+
+#[test]
+fn credentials_secret_accessor_should_return_secret() {
+    let credentials = Credentials::new(API_KEY, SECRET.to_owned(), PASSPHRASE.to_owned());
+    assert_eq!(credentials.secret().expose_secret(), SECRET);
+}
+
+#[test]
+fn credentials_passphrase_accessor_should_return_passphrase() {
+    let credentials = Credentials::new(API_KEY, SECRET.to_owned(), PASSPHRASE.to_owned());
+    assert_eq!(credentials.passphrase().expose_secret(), PASSPHRASE);
 }
