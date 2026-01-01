@@ -19,6 +19,9 @@ pub struct SubscriptionRequest {
     /// Request initial state dump
     #[serde(skip_serializing_if = "Option::is_none")]
     pub initial_dump: Option<bool>,
+    /// Enable custom features (`best_bid_ask`, `new_market`, `market_resolved`)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub custom_feature_enabled: Option<bool>,
     /// Authentication credentials
     #[serde(skip)]
     pub auth: Option<Credentials>,
@@ -34,6 +37,7 @@ impl SubscriptionRequest {
             markets: vec![],
             asset_ids,
             initial_dump: Some(true),
+            custom_feature_enabled: None,
             auth: None,
         }
     }
@@ -47,6 +51,7 @@ impl SubscriptionRequest {
             markets: vec![],
             asset_ids,
             initial_dump: None,
+            custom_feature_enabled: None,
             auth: None,
         }
     }
@@ -60,6 +65,7 @@ impl SubscriptionRequest {
             markets,
             asset_ids: vec![],
             initial_dump: Some(true),
+            custom_feature_enabled: None,
             auth: Some(auth),
         }
     }
@@ -73,8 +79,19 @@ impl SubscriptionRequest {
             markets,
             asset_ids: vec![],
             initial_dump: None,
+            custom_feature_enabled: None,
             auth: Some(auth),
         }
+    }
+
+    /// Enable custom features on this subscription request.
+    ///
+    /// Enables receiving additional message types: `best_bid_ask`, `new_market`,
+    /// `market_resolved`.
+    #[must_use]
+    pub fn with_custom_features(mut self, enabled: bool) -> Self {
+        self.custom_feature_enabled = Some(enabled);
+        self
     }
 }
 

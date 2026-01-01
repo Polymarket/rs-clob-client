@@ -194,6 +194,20 @@ impl SubscriptionManager {
         &self,
         asset_ids: Vec<String>,
     ) -> Result<impl Stream<Item = Result<WsMessage>>> {
+        self.subscribe_market_with_options(asset_ids, false)
+    }
+
+    /// Subscribe to public market data channel with options.
+    ///
+    /// When `custom_features` is true, enables receiving additional message types:
+    /// `best_bid_ask`, `new_market`, `market_resolved`.
+    ///
+    /// This will fail if `asset_ids` is empty.
+    pub fn subscribe_market_with_options(
+        &self,
+        asset_ids: Vec<String>,
+        custom_features: bool,
+    ) -> Result<impl Stream<Item = Result<WsMessage>>> {
         if asset_ids.is_empty() {
             return Err(WsError::SubscriptionFailed(
                 "asset_ids cannot be empty: at least one asset ID must be provided for subscription"
@@ -230,9 +244,13 @@ impl SubscriptionManager {
             tracing::debug!(
                 count = new_assets.len(),
                 ?new_assets,
+                custom_features,
                 "Subscribing to new market assets"
             );
-            let request = SubscriptionRequest::market(new_assets);
+            let mut request = SubscriptionRequest::market(new_assets);
+            if custom_features {
+                request = request.with_custom_features(true);
+            }
             self.connection.send(&request)?;
         }
 
@@ -265,6 +283,13 @@ impl SubscriptionManager {
                             },
                             WsMessage::LastTradePrice(ltp) => asset_ids_set.contains(&ltp.asset_id),
                             WsMessage::TickSizeChange(tsc) => asset_ids_set.contains(&tsc.asset_id),
+                            WsMessage::BestBidAsk(bba) => asset_ids_set.contains(&bba.asset_id),
+                            WsMessage::NewMarket(nm) => {
+                                nm.asset_ids.iter().any(|id| asset_ids_set.contains(id))
+                            },
+                            WsMessage::MarketResolved(mr) => {
+                                mr.asset_ids.iter().any(|id| asset_ids_set.contains(id))
+                            },
                             _ => false,
                         };
 
