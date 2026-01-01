@@ -1225,23 +1225,28 @@ mod connection_edge_cases {
     }
 
     #[tokio::test]
-    async fn initial_message_send_failure_triggers_reconnect() {
-        // Server that immediately closes connections after handshake
+    async fn initial_message_send_failure_returns_connection_closed_error() {
+        // Server that completes handshake then aborts TCP connection (RST)
+        // This forces write.send() to fail, hitting the error return path
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
-        let connection_count = Arc::new(std::sync::atomic::AtomicU32::new(0));
-        let count_clone = Arc::clone(&connection_count);
+        let connected_count = Arc::new(std::sync::atomic::AtomicU32::new(0));
+        let count_clone = Arc::clone(&connected_count);
 
         tokio::spawn(async move {
             loop {
                 let Ok((stream, _)) = listener.accept().await else {
                     break;
                 };
-                // Accept WS handshake then immediately drop
+                // Complete WebSocket handshake
                 if let Ok(ws) = tokio_tungstenite::accept_async(stream).await {
                     count_clone.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                    drop(ws);
+                    // Get the underlying stream and abort it (sends RST)
+                    let stream = ws.into_inner();
+                    // Set linger to 0 to force RST on close
+                    drop(stream.set_linger(Some(Duration::from_secs(0))));
+                    drop(stream);
                 }
             }
         });
@@ -1261,13 +1266,14 @@ mod connection_edge_cases {
             polymarket_client_sdk::clob::ws::SubscriptionRequest::market(vec!["123".to_owned()]);
         manager.send(&sub_request).unwrap();
 
-        // Wait for multiple connection attempts (proves reconnection is happening)
+        // Wait for reconnection attempts
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let attempts = connection_count.load(std::sync::atomic::Ordering::SeqCst);
+        // Verify we actually connected multiple times (proves error triggered reconnection)
+        let attempts = connected_count.load(std::sync::atomic::Ordering::SeqCst);
         assert!(
             attempts >= 2,
-            "Should have multiple connection attempts due to reconnection, got {attempts}"
+            "Should have multiple connection attempts due to error in handle_connection, got {attempts}"
         );
     }
 }
