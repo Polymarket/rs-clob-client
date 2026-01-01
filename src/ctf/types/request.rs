@@ -5,6 +5,11 @@ use bon::Builder;
 
 use crate::types::Address;
 
+/// Standard partition for binary markets (YES/NO).
+/// Index 1 (0b01) represents the first outcome (typically YES).
+/// Index 2 (0b10) represents the second outcome (typically NO).
+pub const BINARY_PARTITION: [u64; 2] = [1, 2];
+
 /// Request to calculate a condition ID.
 ///
 /// The condition ID is derived from the oracle address, question hash, and number of outcome slots.
@@ -100,4 +105,104 @@ pub struct RedeemPositionsRequest {
     pub condition_id: B256,
     /// Array of disjoint index sets representing outcome slots to redeem
     pub index_sets: Vec<U256>,
+}
+
+/// Request to redeem positions using the `NegRisk` adapter.
+///
+/// This is used for negative risk markets where redemption requires specifying
+/// the amounts of each outcome token to redeem.
+#[non_exhaustive]
+#[derive(Debug, Clone, Builder)]
+pub struct RedeemNegRiskRequest {
+    /// The condition ID to redeem
+    pub condition_id: B256,
+    /// Array of amounts for each outcome token [yesAmount, noAmount]
+    /// For binary markets, this should have 2 elements
+    pub amounts: Vec<U256>,
+}
+
+// Convenience methods for binary markets
+impl SplitPositionRequest {
+    /// Creates a split request for a binary market (YES/NO).
+    ///
+    /// This is a convenience method that automatically uses the standard binary partition [1, 2].
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use polymarket_client_sdk::ctf::types::SplitPositionRequest;
+    /// # use polymarket_client_sdk::types::address;
+    /// # use alloy::primitives::{B256, U256};
+    /// let request = SplitPositionRequest::for_binary_market(
+    ///     address!("0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"), // USDC
+    ///     B256::default(),
+    ///     U256::from(1_000_000), // 1 USDC (6 decimals)
+    /// );
+    /// ```
+    #[must_use]
+    pub fn for_binary_market(collateral_token: Address, condition_id: B256, amount: U256) -> Self {
+        Self {
+            collateral_token,
+            parent_collection_id: B256::default(),
+            condition_id,
+            partition: BINARY_PARTITION.iter().map(|&i| U256::from(i)).collect(),
+            amount,
+        }
+    }
+}
+
+impl MergePositionsRequest {
+    /// Creates a merge request for a binary market (YES/NO).
+    ///
+    /// This is a convenience method that automatically uses the standard binary partition [1, 2].
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use polymarket_client_sdk::ctf::types::MergePositionsRequest;
+    /// # use polymarket_client_sdk::types::address;
+    /// # use alloy::primitives::{B256, U256};
+    /// let request = MergePositionsRequest::for_binary_market(
+    ///     address!("0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"), // USDC
+    ///     B256::default(),
+    ///     U256::from(1_000_000), // 1 full set
+    /// );
+    /// ```
+    #[must_use]
+    pub fn for_binary_market(collateral_token: Address, condition_id: B256, amount: U256) -> Self {
+        Self {
+            collateral_token,
+            parent_collection_id: B256::default(),
+            condition_id,
+            partition: BINARY_PARTITION.iter().map(|&i| U256::from(i)).collect(),
+            amount,
+        }
+    }
+}
+
+impl RedeemPositionsRequest {
+    /// Creates a redeem request for a binary market (YES/NO).
+    ///
+    /// This is a convenience method that automatically uses the standard binary index sets [1, 2].
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use polymarket_client_sdk::ctf::types::RedeemPositionsRequest;
+    /// # use polymarket_client_sdk::types::address;
+    /// # use alloy::primitives::{B256, U256};
+    /// let request = RedeemPositionsRequest::for_binary_market(
+    ///     address!("0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"), // USDC
+    ///     B256::default(),
+    /// );
+    /// ```
+    #[must_use]
+    pub fn for_binary_market(collateral_token: Address, condition_id: B256) -> Self {
+        Self {
+            collateral_token,
+            parent_collection_id: B256::default(),
+            condition_id,
+            index_sets: BINARY_PARTITION.iter().map(|&i| U256::from(i)).collect(),
+        }
+    }
 }

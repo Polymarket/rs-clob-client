@@ -39,7 +39,8 @@ use super::error::CtfError;
 use super::types::{
     CollectionIdRequest, CollectionIdResponse, ConditionIdRequest, ConditionIdResponse,
     MergePositionsRequest, MergePositionsResponse, PositionIdRequest, PositionIdResponse,
-    RedeemPositionsRequest, RedeemPositionsResponse, SplitPositionRequest, SplitPositionResponse,
+    RedeemNegRiskRequest, RedeemNegRiskResponse, RedeemPositionsRequest, RedeemPositionsResponse,
+    SplitPositionRequest, SplitPositionResponse,
 };
 use crate::{Result, contract_config};
 
@@ -112,6 +113,15 @@ sol! {
             uint256[] calldata indexSets
         ) external;
     }
+
+    #[sol(rpc)]
+    interface INegRiskAdapter {
+        /// Redeems positions from negative risk markets with specific amounts.
+        function redeemPositions(
+            bytes32 conditionId,
+            uint256[] calldata amounts
+        ) external;
+    }
 }
 
 /// Client for interacting with the Conditional Token Framework contract.
@@ -121,6 +131,7 @@ sol! {
 #[derive(Clone, Debug)]
 pub struct Client<P: Provider> {
     contract: IConditionalTokens::IConditionalTokensInstance<P>,
+    neg_risk_adapter: Option<INegRiskAdapter::INegRiskAdapterInstance<P>>,
     provider: P,
 }
 
@@ -144,7 +155,44 @@ impl<P: Provider + Clone> Client<P> {
 
         let contract = IConditionalTokens::new(config.conditional_tokens, provider.clone());
 
-        Ok(Self { contract, provider })
+        Ok(Self {
+            contract,
+            neg_risk_adapter: None,
+            provider,
+        })
+    }
+
+    /// Creates a new CTF client with `NegRisk` adapter support.
+    ///
+    /// Use this constructor when you need to work with negative risk markets.
+    ///
+    /// # Arguments
+    ///
+    /// * `provider` - An alloy provider instance
+    /// * `chain_id` - The chain ID (137 for Polygon mainnet, 80002 for Amoy testnet)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the contract configuration is not found for the given chain,
+    /// or if the `NegRisk` adapter is not configured for the chain.
+    pub fn with_neg_risk(provider: P, chain_id: ChainId) -> Result<Self> {
+        let config = contract_config(chain_id, true).ok_or_else(|| {
+            CtfError::ContractCall(format!(
+                "NegRisk contract configuration not found for chain ID {chain_id}"
+            ))
+        })?;
+
+        let contract = IConditionalTokens::new(config.conditional_tokens, provider.clone());
+
+        let neg_risk_adapter = config
+            .neg_risk_adapter
+            .map(|addr| INegRiskAdapter::new(addr, provider.clone()));
+
+        Ok(Self {
+            contract,
+            neg_risk_adapter,
+            provider,
+        })
     }
 
     /// Calculates a condition ID.
@@ -384,6 +432,59 @@ impl<P: Provider + Clone> Client<P> {
             .map_err(|e| CtfError::ContractCall(format!("Failed to get redeem receipt: {e}")))?;
 
         Ok(RedeemPositionsResponse {
+            transaction_hash,
+            block_number: receipt.block_number.ok_or_else(|| {
+                CtfError::ContractCall("Block number not available in receipt".to_owned())
+            })?,
+        })
+    }
+
+    /// Redeems positions from negative risk markets.
+    ///
+    /// This method uses the `NegRisk` adapter to redeem positions by specifying
+    /// the exact amounts of each outcome token to redeem. This is different from
+    /// the standard `redeem_positions` which uses index sets.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The client was not created with `with_neg_risk()` (adapter not available)
+    /// - The transaction fails to send
+    /// - The transaction fails to be mined
+    /// - The condition hasn't been resolved
+    /// - The wallet doesn't have the specified outcome token amounts
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(level = "debug", skip(self), fields(
+            condition_id = %request.condition_id,
+            amounts_len = request.amounts.len()
+        ))
+    )]
+    pub async fn redeem_neg_risk(
+        &self,
+        request: &RedeemNegRiskRequest,
+    ) -> Result<RedeemNegRiskResponse> {
+        let adapter = self.neg_risk_adapter.as_ref().ok_or_else(|| {
+            CtfError::ContractCall(
+                "NegRisk adapter not available. Use Client::with_neg_risk() to enable NegRisk support".to_owned()
+            )
+        })?;
+
+        let pending_tx = adapter
+            .redeemPositions(request.condition_id, request.amounts.clone())
+            .send()
+            .await
+            .map_err(|e| {
+                CtfError::ContractCall(format!("Failed to send NegRisk redeem transaction: {e}"))
+            })?;
+
+        let transaction_hash = *pending_tx.tx_hash();
+
+        let receipt = pending_tx.get_receipt().await.map_err(|e| {
+            CtfError::ContractCall(format!("Failed to get NegRisk redeem receipt: {e}"))
+        })?;
+
+        Ok(RedeemNegRiskResponse {
             transaction_hash,
             block_number: receipt.block_number.ok_or_else(|| {
                 CtfError::ContractCall("Block number not available in receipt".to_owned())

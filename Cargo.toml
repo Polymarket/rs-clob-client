@@ -110,6 +110,11 @@ name = "approvals"
 path = "examples/approvals.rs"
 
 [[example]]
+name = "ctf"
+path = "examples/ctf.rs"
+required-features = ["ctf"]
+
+[[example]]
 name = "data"
 path = "examples/data.rs"
 required-features = ["data"]
@@ -143,11 +148,6 @@ required-features = ["rtds"]
 name = "websocket_unsubscribe"
 path = "examples/clob/ws/unsubscribe.rs"
 required-features = ["ws"]
-
-[[example]]
-name = "ctf"
-path = "examples/ctf.rs"
-required-features = ["ctf"]
 
 # https://rust-lang.github.io/rust-clippy/master/index.html?versions=lte%3A88
 [lints.clippy]

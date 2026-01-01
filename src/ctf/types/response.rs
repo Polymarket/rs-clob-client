@@ -55,3 +55,13 @@ pub struct RedeemPositionsResponse {
     /// Block number where the transaction was mined
     pub block_number: u64,
 }
+
+/// Response from a `NegRisk` redeem transaction.
+#[non_exhaustive]
+#[derive(Debug, Clone)]
+pub struct RedeemNegRiskResponse {
+    /// Transaction hash
+    pub transaction_hash: B256,
+    /// Block number where the transaction was mined
+    pub block_number: u64,
+}

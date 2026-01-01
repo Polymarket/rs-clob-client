@@ -13,10 +13,12 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
 //! use polymarket_client_sdk::ctf::{Client, types::*};
+//! use polymarket_client_sdk::types::address;
+//! use polymarket_client_sdk::POLYGON;
 //! use alloy::providers::ProviderBuilder;
-//! use alloy::primitives::{FixedBytes, U256};
+//! use alloy::primitives::{B256, U256};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // Create a provider (requires a wallet for state-changing operations)
@@ -24,13 +26,11 @@
 //!     .connect("https://polygon-rpc.com")
 //!     .await?;
 //!
-//! // Create the CTF client for Polygon mainnet (chain ID 137)
-//! let client = Client::new(provider, 137)?;
+//! let client = Client::new(provider, POLYGON)?;
 //!
-//! // Calculate a condition ID
 //! let condition_id_req = ConditionIdRequest::builder()
-//!     .oracle(/* oracle address */)
-//!     .question_id(FixedBytes::<32>::default())
+//!     .oracle(address!("<oracle_address>"))
+//!     .question_id(B256::default())
 //!     .outcome_slot_count(U256::from(2))
 //!     .build();
 //!
@@ -39,7 +39,7 @@
 //!
 //! // Split USDC into outcome tokens
 //! let split_req = SplitPositionRequest::builder()
-//!     .collateral_token(/* USDC address */)
+//!     .collateral_token(address!("<collateral_token_address>"))
 //!     .condition_id(condition_id.condition_id)
 //!     .partition(vec![U256::from(1), U256::from(2)])
 //!     .amount(U256::from(1_000_000)) // 1 USDC (6 decimals)

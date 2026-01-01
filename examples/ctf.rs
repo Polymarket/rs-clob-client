@@ -27,7 +27,7 @@
 use std::env;
 use std::str::FromStr as _;
 
-use alloy::primitives::{FixedBytes, U256};
+use alloy::primitives::{B256, U256};
 use alloy::providers::ProviderBuilder;
 use alloy::signers::Signer as _;
 use alloy::signers::local::LocalSigner;
@@ -59,7 +59,7 @@ async fn main() -> Result<()> {
     // Example: Calculate a condition ID
     println!("--- Calculating Condition ID ---");
     let oracle = address!("0x0000000000000000000000000000000000000001");
-    let question_id = FixedBytes::<32>::ZERO;
+    let question_id = B256::ZERO;
     let outcome_slot_count = U256::from(2);
 
     let condition_req = ConditionIdRequest::builder()
@@ -76,7 +76,7 @@ async fn main() -> Result<()> {
 
     // Example: Calculate collection IDs for YES and NO tokens
     println!("--- Calculating Collection IDs ---");
-    let parent_collection_id = FixedBytes::<32>::ZERO;
+    let parent_collection_id = B256::ZERO;
 
     // Collection ID for YES token (index set = 0b01 = 1)
     let yes_collection_req = CollectionIdRequest::builder()
@@ -144,17 +144,17 @@ async fn main() -> Result<()> {
 
         println!("Using wallet: {wallet_address:?}\n");
 
-        // Example: Split 1 USDC into YES and NO tokens
-        println!("--- Splitting Position ---");
+        // Example: Split 1 USDC into YES and NO tokens (using convenience method)
+        println!("--- Splitting Position (Binary Market) ---");
         println!("This will split 1 USDC into 1 YES and 1 NO token");
         println!("Note: You must approve the CTF contract to spend your USDC first!\n");
 
-        let split_req = SplitPositionRequest::builder()
-            .collateral_token(usdc)
-            .condition_id(condition_resp.condition_id)
-            .partition(vec![U256::from(1), U256::from(2)])
-            .amount(U256::from(1_000_000)) // 1 USDC (6 decimals)
-            .build();
+        // Using the convenience method for binary markets
+        let split_req = SplitPositionRequest::for_binary_market(
+            usdc,
+            condition_resp.condition_id,
+            U256::from(1_000_000), // 1 USDC (6 decimals)
+        );
 
         match client.split_position(&split_req).await {
             Ok(split_resp) => {
@@ -170,16 +170,16 @@ async fn main() -> Result<()> {
             }
         }
 
-        // Example: Merge YES and NO tokens back into USDC
-        println!("--- Merging Positions ---");
+        // Example: Merge YES and NO tokens back into USDC (using convenience method)
+        println!("--- Merging Positions (Binary Market) ---");
         println!("This will merge 1 YES and 1 NO token back into 1 USDC\n");
 
-        let merge_req = MergePositionsRequest::builder()
-            .collateral_token(usdc)
-            .condition_id(condition_resp.condition_id)
-            .partition(vec![U256::from(1), U256::from(2)])
-            .amount(U256::from(1_000_000)) // 1 full set
-            .build();
+        // Using the convenience method for binary markets
+        let merge_req = MergePositionsRequest::for_binary_market(
+            usdc,
+            condition_resp.condition_id,
+            U256::from(1_000_000), // 1 full set
+        );
 
         match client.merge_positions(&merge_req).await {
             Ok(merge_resp) => {
@@ -197,11 +197,9 @@ async fn main() -> Result<()> {
         println!("--- Redeeming Positions ---");
         println!("This redeems winning tokens after market resolution\n");
 
-        let redeem_req = RedeemPositionsRequest::builder()
-            .collateral_token(usdc)
-            .condition_id(condition_resp.condition_id)
-            .index_sets(vec![U256::from(1)]) // Redeem YES tokens
-            .build();
+        // Using the convenience method for binary markets (redeems both YES and NO tokens)
+        let redeem_req =
+            RedeemPositionsRequest::for_binary_market(usdc, condition_resp.condition_id);
 
         match client.redeem_positions(&redeem_req).await {
             Ok(redeem_resp) => {

@@ -4,10 +4,10 @@ mod request;
 mod response;
 
 pub use request::{
-    CollectionIdRequest, ConditionIdRequest, MergePositionsRequest, PositionIdRequest,
-    RedeemPositionsRequest, SplitPositionRequest,
+    BINARY_PARTITION, CollectionIdRequest, ConditionIdRequest, MergePositionsRequest,
+    PositionIdRequest, RedeemNegRiskRequest, RedeemPositionsRequest, SplitPositionRequest,
 };
 pub use response::{
     CollectionIdResponse, ConditionIdResponse, MergePositionsResponse, PositionIdResponse,
-    RedeemPositionsResponse, SplitPositionResponse,
+    RedeemNegRiskResponse, RedeemPositionsResponse, SplitPositionResponse,
 };
