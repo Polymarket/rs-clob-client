@@ -154,6 +154,54 @@ mod tests {
     }
 
     #[test]
+    fn interest_from_event_type_custom_features() {
+        assert_eq!(
+            MessageInterest::from_event_type("best_bid_ask"),
+            MessageInterest::BEST_BID_ASK
+        );
+        assert_eq!(
+            MessageInterest::from_event_type("new_market"),
+            MessageInterest::NEW_MARKET
+        );
+        assert_eq!(
+            MessageInterest::from_event_type("market_resolved"),
+            MessageInterest::MARKET_RESOLVED
+        );
+    }
+
+    #[test]
+    fn market_contains_custom_feature_interests() {
+        assert!(MessageInterest::MARKET.contains(MessageInterest::BEST_BID_ASK));
+        assert!(MessageInterest::MARKET.contains(MessageInterest::NEW_MARKET));
+        assert!(MessageInterest::MARKET.contains(MessageInterest::MARKET_RESOLVED));
+    }
+
+    #[test]
+    fn tracker_is_interested_in_event() {
+        let tracker = InterestTracker::new();
+        tracker.add(MessageInterest::BEST_BID_ASK);
+
+        assert!(tracker.is_interested_in_event("best_bid_ask"));
+        assert!(!tracker.is_interested_in_event("book"));
+        assert!(!tracker.is_interested_in_event("unknown"));
+    }
+
+    #[test]
+    fn message_interest_is_interested_in_event() {
+        let interest = MessageInterest::MARKET;
+        assert!(interest.is_interested_in_event("book"));
+        assert!(interest.is_interested_in_event("best_bid_ask"));
+        assert!(!interest.is_interested_in_event("trade"));
+        assert!(!interest.is_interested_in_event("unknown"));
+    }
+
+    #[test]
+    fn message_interest_default() {
+        let interest = MessageInterest::default();
+        assert_eq!(interest, MessageInterest::ALL);
+    }
+
+    #[test]
     fn tracker_add_and_get() {
         let tracker = InterestTracker::new();
         assert!(tracker.get().is_empty());
