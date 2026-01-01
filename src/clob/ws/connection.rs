@@ -112,10 +112,6 @@ impl ConnectionManager {
     }
 
     /// Main connection loop with automatic reconnection.
-    ///
-    /// This loop is lazy: it waits for the first outgoing message before
-    /// establishing a connection. This prevents idle connections when no
-    /// subscriptions are active, avoiding server-side timeouts.
     async fn connection_loop(
         endpoint: String,
         config: Config,
@@ -127,31 +123,7 @@ impl ConnectionManager {
         let mut attempt = 0_u32;
         let mut backoff: backoff::ExponentialBackoff = config.reconnect.clone().into();
 
-        // Buffer for the first message that triggers connection
-        let mut pending_message: Option<String> = None;
-
-        // Track if we've ever successfully connected (for lazy connect logic)
-        let mut has_connected_before = false;
-
         loop {
-            // Wait for the first subscription before connecting (lazy connect).
-            // This prevents idle connections that may be reset by the server.
-            // On reconnection, skip this wait since we need to reconnect automatically.
-            if pending_message.is_none() && !has_connected_before {
-                #[cfg(feature = "tracing")]
-                tracing::debug!("WebSocket waiting for first subscription before connecting");
-
-                if let Some(msg) = sender_rx.recv().await {
-                    pending_message = Some(msg);
-                } else {
-                    // Channel closed, no subscribers - exit the loop
-                    #[cfg(feature = "tracing")]
-                    tracing::debug!("WebSocket sender channel closed, exiting connection loop");
-                    _ = state_tx.send(ConnectionState::Disconnected);
-                    return;
-                }
-            }
-
             let state_rx = state_tx.subscribe();
 
             _ = state_tx.send(ConnectionState::Connecting);
@@ -184,12 +156,11 @@ impl ConnectionManager {
                 Ok(ws_stream) => {
                     attempt = 0;
                     backoff.reset();
-                    has_connected_before = true;
                     _ = state_tx.send(ConnectionState::Connected {
                         since: Instant::now(),
                     });
 
-                    // Handle connection, passing the pending message to be sent first
+                    // Handle connection
                     if let Err(e) = Self::handle_connection(
                         ws_stream,
                         &mut sender_rx,
@@ -197,7 +168,6 @@ impl ConnectionManager {
                         state_rx,
                         config.clone(),
                         &interest,
-                        pending_message.take(),
                     )
                     .await
                     {
@@ -234,9 +204,6 @@ impl ConnectionManager {
     }
 
     /// Handle an active WebSocket connection.
-    ///
-    /// If `initial_message` is provided, it will be sent immediately after the
-    /// connection is established (before entering the main loop).
     async fn handle_connection(
         ws_stream: WsStream,
         sender_rx: &mut mpsc::UnboundedReceiver<String>,
@@ -244,19 +211,8 @@ impl ConnectionManager {
         state_rx: watch::Receiver<ConnectionState>,
         config: Config,
         interest: &Arc<InterestTracker>,
-        initial_message: Option<String>,
     ) -> Result<()> {
         let (mut write, mut read) = ws_stream.split();
-
-        // Send the initial message that triggered the connection
-        if let Some(msg) = initial_message
-            && write.send(Message::Text(msg.into())).await.is_err()
-        {
-            return Err(Error::with_source(
-                Kind::WebSocket,
-                WsError::ConnectionClosed,
-            ));
-        }
 
         // Channel to notify heartbeat loop when PONG is received
         let (pong_tx, pong_rx) = watch::channel(Instant::now());
