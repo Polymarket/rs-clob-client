@@ -4,6 +4,8 @@ pub mod auth;
 #[cfg(feature = "bridge")]
 pub mod bridge;
 pub mod clob;
+#[cfg(feature = "ctf")]
+pub mod ctf;
 #[cfg(feature = "data")]
 pub mod data;
 pub mod error;
