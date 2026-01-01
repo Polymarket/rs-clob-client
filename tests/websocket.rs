@@ -1182,3 +1182,92 @@ mod message_parsing {
         assert_eq!(ltp.timestamp, 1_750_428_146_322);
     }
 }
+
+mod connection_edge_cases {
+    use polymarket_client_sdk::clob::ws::connection::{ConnectionManager, ConnectionState};
+    use polymarket_client_sdk::clob::ws::interest::InterestTracker;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn channel_closed_before_first_message_exits_loop() {
+        // Start a server but we won't actually connect to it
+        let server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let config = Config::default();
+        let interest = Arc::new(InterestTracker::new());
+        let manager = ConnectionManager::new(endpoint, config, &interest).unwrap();
+
+        // Get state receiver before dropping
+        let mut state_rx = manager.state_receiver();
+
+        // Drop the manager - this closes the sender channel
+        // before any subscription messages are sent
+        drop(manager);
+
+        // The connection loop should exit and set state to Disconnected
+        let result = timeout(Duration::from_secs(2), async {
+            loop {
+                state_rx.changed().await.ok()?;
+                let state = *state_rx.borrow();
+                if matches!(state, ConnectionState::Disconnected) {
+                    return Some(state);
+                }
+            }
+        })
+        .await;
+
+        assert!(
+            result.is_ok(),
+            "Should transition to Disconnected when channel closes"
+        );
+    }
+
+    #[tokio::test]
+    async fn initial_message_send_failure_triggers_reconnect() {
+        // Server that immediately closes connections after handshake
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        let connection_count = Arc::new(std::sync::atomic::AtomicU32::new(0));
+        let count_clone = Arc::clone(&connection_count);
+
+        tokio::spawn(async move {
+            loop {
+                let Ok((stream, _)) = listener.accept().await else {
+                    break;
+                };
+                // Accept WS handshake then immediately drop
+                if let Ok(ws) = tokio_tungstenite::accept_async(stream).await {
+                    count_clone.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    drop(ws);
+                }
+            }
+        });
+
+        let endpoint = format!("ws://{addr}/ws/market");
+
+        let mut config = Config::default();
+        config.reconnect.max_attempts = Some(3);
+        config.reconnect.initial_backoff = Duration::from_millis(50);
+        config.reconnect.max_backoff = Duration::from_millis(100);
+
+        let interest = Arc::new(InterestTracker::new());
+        let manager = ConnectionManager::new(endpoint, config, &interest).unwrap();
+
+        // Send a subscription message to trigger connection
+        let sub_request =
+            polymarket_client_sdk::clob::ws::SubscriptionRequest::market(vec!["123".to_owned()]);
+        manager.send(&sub_request).unwrap();
+
+        // Wait for multiple connection attempts (proves reconnection is happening)
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let attempts = connection_count.load(std::sync::atomic::Ordering::SeqCst);
+        assert!(
+            attempts >= 2,
+            "Should have multiple connection attempts due to reconnection, got {attempts}"
+        );
+    }
+}
