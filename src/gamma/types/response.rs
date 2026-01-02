@@ -475,6 +475,21 @@ pub struct Market {
     pub twitter_card_last_refreshed: Option<String>,
     pub twitter_card_location: Option<String>,
     pub twitter_card_last_validated: Option<String>,
+    pub clob_rewards: Option<Vec<ClobReward>>,
+}
+
+/// CLOB rewards configuration for a market.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[non_exhaustive]
+pub struct ClobReward {
+    pub id: Option<String>,
+    pub asset_address: Option<String>,
+    pub condition_id: Option<String>,
+    pub start_date: Option<String>,
+    pub end_date: Option<String>,
+    pub rewards_amount: Option<Decimal>,
+    pub rewards_daily_rate: Option<Decimal>,
 }
 
 /// A series of related events.
