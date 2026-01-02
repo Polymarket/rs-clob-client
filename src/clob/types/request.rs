@@ -13,7 +13,9 @@ use crate::auth::ApiKey;
 use crate::clob::types::{AssetType, Interval, Side, SignatureType};
 #[cfg(feature = "rfq")]
 use crate::clob::types::{RfqSortBy, RfqSortDir, RfqState};
-use crate::types::{Address, Decimal};
+use crate::types::Address;
+#[cfg(feature = "rfq")]
+use crate::types::Decimal;
 
 #[non_exhaustive]
 #[derive(Debug, Serialize, Builder)]
@@ -148,9 +150,9 @@ pub struct CreateRfqRequestRequest {
     /// Token ID the Requester wants to give. "0" indicates USDC.
     pub asset_out: String,
     /// Amount of asset to receive (in base units).
-    pub amount_in: String,
+    pub amount_in: Decimal,
     /// Amount of asset to give (in base units).
-    pub amount_out: String,
+    pub amount_out: Decimal,
     /// Signature type (`EOA`, `Proxy`, or `GnosisSafe`).
     pub user_type: SignatureType,
 }
@@ -220,9 +222,9 @@ pub struct CreateRfqQuoteRequest {
     /// Token ID the Quoter wants to give. "0" indicates USDC.
     pub asset_out: String,
     /// Amount of asset to receive (in base units).
-    pub amount_in: String,
+    pub amount_in: Decimal,
     /// Amount of asset to give (in base units).
-    pub amount_out: String,
+    pub amount_out: Decimal,
     /// Signature type (`EOA`, `Proxy`, or `GnosisSafe`).
     pub user_type: SignatureType,
 }

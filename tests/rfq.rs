@@ -48,8 +48,8 @@ mod request {
         let request = CreateRfqRequestRequest::builder()
             .asset_in("12345")
             .asset_out("0")
-            .amount_in("50000000")
-            .amount_out("3000000")
+            .amount_in(dec!(50000000))
+            .amount_out(dec!(3000000))
             .user_type(SignatureType::Eoa)
             .build();
 
@@ -187,8 +187,8 @@ mod quote {
             .request_id("01968f1e-1182-71c4-9d40-172db9be82af")
             .asset_in("0")
             .asset_out("12345")
-            .amount_in("3000000")
-            .amount_out("50000000")
+            .amount_in(dec!(3000000))
+            .amount_out(dec!(50000000))
             .user_type(SignatureType::Eoa)
             .build();
 
@@ -376,8 +376,8 @@ mod error_handling {
         let request = CreateRfqRequestRequest::builder()
             .asset_in("12345")
             .asset_out("0")
-            .amount_in("50000000")
-            .amount_out("3000000")
+            .amount_in(dec!(50000000))
+            .amount_out(dec!(3000000))
             .user_type(SignatureType::Eoa)
             .build();
 
