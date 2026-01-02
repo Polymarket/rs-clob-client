@@ -11,6 +11,8 @@ use polymarket_client_sdk::gamma::types::request::{
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt::init();
+
     let client = Client::default();
 
     //---- health check
