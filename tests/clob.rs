@@ -1481,6 +1481,51 @@ mod authenticated {
     }
 
     #[tokio::test]
+    async fn post_order_should_accept_transactions_hashes_alias() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = create_authenticated(&server).await?;
+
+        ensure_requirements(&server, "1", TickSize::Hundredth);
+
+        let mock = server.mock(|when, then| {
+            when.method(POST)
+                .path("/order")
+                .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
+                .header(POLY_API_KEY, API_KEY)
+                .header(POLY_PASSPHRASE, PASSPHRASE);
+            then.status(StatusCode::OK).json_body(json!({
+                "error_msg": "",
+                "makingAmount": "100",
+                "orderID": "0x23b457271bce9fa09b4f79125c9ec09e968235a462de82e318ef4eb6fe0ffeb0",
+                "status": "matched",
+                "success": true,
+                "takingAmount": "50",
+                "transactionsHashes": ["0x2369f69af45a559ad6e769d3d209d2379af9d412315e27b9283594a6392557b6"]
+            }));
+        });
+
+        let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
+        let signed_order = client.sign(&signer, SignableOrder::default()).await?;
+        let response = client.post_order(signed_order).await?;
+
+        let expected = PostOrderResponse::builder()
+            .making_amount(Decimal::from(100))
+            .taking_amount(Decimal::from(50))
+            .order_id("0x23b457271bce9fa09b4f79125c9ec09e968235a462de82e318ef4eb6fe0ffeb0")
+            .status(OrderStatusType::Matched)
+            .success(true)
+            .transaction_hashes(vec![
+                "0x2369f69af45a559ad6e769d3d209d2379af9d412315e27b9283594a6392557b6".to_owned(),
+            ])
+            .build();
+
+        assert_eq!(response, expected);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn order_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
@@ -1632,6 +1677,42 @@ mod authenticated {
             then.status(StatusCode::OK).json_body(json!({
                     "canceled": [],
                     "notCanceled": {
+                        "1": "the order is already canceled"
+                    }
+                }
+            ));
+        });
+
+        let response = client.cancel_order("1").await?;
+
+        let expected = CancelOrdersResponse::builder()
+            .not_canceled(HashMap::from_iter([(
+                "1".to_owned(),
+                "the order is already canceled".to_owned(),
+            )]))
+            .build();
+
+        assert_eq!(response, expected);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn cancel_order_should_accept_snake_case_not_canceled() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = create_authenticated(&server).await?;
+
+        let mock = server.mock(|when, then| {
+            when.method(DELETE)
+                .path("/order")
+                .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
+                .header(POLY_API_KEY, API_KEY)
+                .header(POLY_PASSPHRASE, PASSPHRASE)
+                .json_body(json!({ "orderId": "1" }));
+            then.status(StatusCode::OK).json_body(json!({
+                    "canceled": [],
+                    "not_canceled": {
                         "1": "the order is already canceled"
                     }
                 }
