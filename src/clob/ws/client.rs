@@ -11,7 +11,8 @@ use super::connection::{ConnectionManager, ConnectionState};
 use super::interest::InterestTracker;
 use super::subscription::{ChannelType, SubscriptionManager};
 use super::types::response::{
-    BookUpdate, MidpointUpdate, OrderMessage, PriceChange, TradeMessage, WsMessage,
+    BestBidAsk, BookUpdate, MarketResolved, MidpointUpdate, NewMarket, OrderMessage, PriceChange,
+    TradeMessage, WsMessage,
 };
 use crate::Result;
 use crate::auth::state::{Authenticated, State, Unauthenticated};
@@ -204,6 +205,69 @@ impl<S: State> Client<S> {
                 }
             }
         })
+    }
+
+    /// Subscribe to best bid/ask updates with custom features enabled.
+    ///
+    /// Requires `custom_feature_enabled` flag on the server side.
+    pub fn subscribe_best_bid_ask(
+        &self,
+        asset_ids: Vec<String>,
+    ) -> Result<impl Stream<Item = Result<BestBidAsk>>> {
+        let stream = self
+            .market_handles()?
+            .subscriptions
+            .subscribe_market_with_options(asset_ids, true)?;
+
+        Ok(stream.filter_map(|msg_result| async move {
+            match msg_result {
+                Ok(WsMessage::BestBidAsk(bba)) => Some(Ok(bba)),
+                Err(e) => Some(Err(e)),
+                _ => None,
+            }
+        }))
+    }
+
+    /// Subscribe to new market events with custom features enabled.
+    ///
+    /// Requires `custom_feature_enabled` flag on the server side.
+    pub fn subscribe_new_markets(
+        &self,
+        asset_ids: Vec<String>,
+    ) -> Result<impl Stream<Item = Result<NewMarket>>> {
+        let stream = self
+            .market_handles()?
+            .subscriptions
+            .subscribe_market_with_options(asset_ids, true)?;
+
+        Ok(stream.filter_map(|msg_result| async move {
+            match msg_result {
+                Ok(WsMessage::NewMarket(nm)) => Some(Ok(nm)),
+                Err(e) => Some(Err(e)),
+                _ => None,
+            }
+        }))
+    }
+
+    /// Subscribe to market resolved events with custom features enabled.
+    ///
+    /// Requires `custom_feature_enabled` flag on the server side.
+    pub fn subscribe_market_resolutions(
+        &self,
+        asset_ids: Vec<String>,
+    ) -> Result<impl Stream<Item = Result<MarketResolved>>> {
+        let stream = self
+            .market_handles()?
+            .subscriptions
+            .subscribe_market_with_options(asset_ids, true)?;
+
+        Ok(stream.filter_map(|msg_result| async move {
+            match msg_result {
+                Ok(WsMessage::MarketResolved(mr)) => Some(Ok(mr)),
+                Err(e) => Some(Err(e)),
+                _ => None,
+            }
+        }))
     }
 
     /// Get the current connection state.

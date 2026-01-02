@@ -1,6 +1,7 @@
 #![allow(clippy::print_stdout, reason = "Examples are okay to print to stdout")]
 
 use polymarket_client_sdk::gamma::Client;
+use polymarket_client_sdk::gamma::types::ParentEntityType;
 use polymarket_client_sdk::gamma::types::request::{
     CommentsByIdRequest, CommentsByUserAddressRequest, CommentsRequest, EventByIdRequest,
     EventBySlugRequest, EventTagsRequest, EventsRequest, MarketByIdRequest, MarketBySlugRequest,
@@ -11,6 +12,8 @@ use polymarket_client_sdk::gamma::types::request::{
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt::init();
+
     let client = Client::default();
 
     //---- health check
@@ -111,7 +114,11 @@ async fn main() -> anyhow::Result<()> {
     println!("series_by_id -- {:?}", client.series_by_id(&request).await);
 
     //---- comments endpoints
-    let request = CommentsRequest::builder().limit(5).build();
+    let request = CommentsRequest::builder()
+        .parent_entity_type(ParentEntityType::Event)
+        .parent_entity_id("event-id")
+        .limit(5)
+        .build();
     println!("comments -- {:?}", client.comments(&request).await);
 
     let request = CommentsByIdRequest::builder().id("1").build();

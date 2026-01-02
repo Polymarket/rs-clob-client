@@ -300,16 +300,16 @@ pub struct SeriesByIdRequest {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Clone, Builder, Default, Serialize)]
+#[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
 pub struct CommentsRequest {
+    pub parent_entity_type: ParentEntityType,
+    #[builder(into)]
+    pub parent_entity_id: String,
     pub limit: Option<i32>,
     pub offset: Option<i32>,
     pub order: Option<String>,
     pub ascending: Option<bool>,
-    pub parent_entity_type: Option<ParentEntityType>,
-    #[builder(into)]
-    pub parent_entity_id: Option<String>,
     pub get_positions: Option<bool>,
     pub holders_only: Option<bool>,
 }

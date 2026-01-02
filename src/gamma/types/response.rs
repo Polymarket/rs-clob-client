@@ -52,18 +52,23 @@ pub struct Team {
     pub alias: Option<String>,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
+    pub color: Option<String>,
+    pub provider_id: Option<i32>,
 }
 
 /// Sports metadata information.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct SportsMetadata {
+    pub id: Option<i32>,
     pub sport: String,
     pub image: String,
     pub resolution: String,
     pub ordering: String,
     pub tags: String,
     pub series: String,
+    pub created_at: Option<DateTime<Utc>>,
 }
 
 /// Sports market types response.
@@ -90,6 +95,7 @@ pub struct Tag {
     pub updated_at: Option<DateTime<Utc>>,
     pub force_hide: Option<bool>,
     pub is_carousel: Option<bool>,
+    pub requires_translation: Option<bool>,
 }
 
 /// A relationship between tags.
@@ -235,6 +241,7 @@ pub struct Event {
     pub subcategory: Option<String>,
     pub is_template: Option<bool>,
     pub template_variables: Option<String>,
+    #[serde(alias = "published_at")]
     pub published_at: Option<String>,
     pub created_by: Option<String>,
     pub updated_by: Option<String>,
@@ -300,6 +307,9 @@ pub struct Event {
     pub deploying_timestamp: Option<DateTime<Utc>>,
     pub scheduled_deployment_timestamp: Option<DateTime<Utc>>,
     pub game_status: Option<String>,
+    pub requires_translation: Option<bool>,
+    pub neg_risk_augmented: Option<bool>,
+    pub game_id: Option<i64>,
 }
 
 /// A prediction market.
@@ -448,6 +458,38 @@ pub struct Market {
     pub scheduled_deployment_timestamp: Option<DateTime<Utc>>,
     pub rfq_enabled: Option<bool>,
     pub event_start_time: Option<DateTime<Utc>>,
+    #[serde(alias = "submitted_by")]
+    pub submitted_by: Option<String>,
+    pub requires_translation: Option<bool>,
+    pub pager_duty_notification_enabled: Option<bool>,
+    pub approved: Option<bool>,
+    pub cyom: Option<bool>,
+    pub fees_enabled: Option<bool>,
+    pub holding_rewards_enabled: Option<bool>,
+    pub neg_risk: Option<bool>,
+    #[serde(rename = "negRiskRequestID")]
+    pub neg_risk_request_id: Option<String>,
+    #[serde(rename = "negRiskMarketID")]
+    pub neg_risk_market_id: Option<String>,
+    pub sent_discord: Option<bool>,
+    pub twitter_card_last_refreshed: Option<String>,
+    pub twitter_card_location: Option<String>,
+    pub twitter_card_last_validated: Option<String>,
+    pub clob_rewards: Option<Vec<ClobReward>>,
+}
+
+/// CLOB rewards configuration for a market.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[non_exhaustive]
+pub struct ClobReward {
+    pub id: Option<String>,
+    pub asset_address: Option<String>,
+    pub condition_id: Option<String>,
+    pub start_date: Option<String>,
+    pub end_date: Option<String>,
+    pub rewards_amount: Option<Decimal>,
+    pub rewards_daily_rate: Option<Decimal>,
 }
 
 /// A series of related events.
@@ -495,6 +537,7 @@ pub struct Series {
     pub tags: Option<Vec<Tag>>,
     pub comment_count: Option<i32>,
     pub chats: Option<Vec<Chat>>,
+    pub requires_translation: Option<bool>,
 }
 
 /// A comment position.

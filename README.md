@@ -13,8 +13,12 @@ This crate provides strongly typed request builders, authenticated endpoints, `a
 
 - [Overview](#overview)
 - [Getting Started](#getting-started)
-- [Features](#features)
+- [Feature Flags](#feature-flags)
 - [Examples](#examples)
+  - [CLOB Client](#clob-client)
+  - [WebSocket Streaming](#websocket-streaming)
+  - [Optional APIs](#optional-apis)
+- [Additional CLOB Capabilities](#additional-clob-capabilities)
 - [Setting Token Allowances](#token-allowances)
 - [Minimum Supported Rust Version (MSRV)](#minimum-supported-rust-version-msrv)
 - [Contributing](#contributing)
@@ -43,7 +47,7 @@ Add the crate to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-polymarket-client-sdk = "0.1"
+polymarket-client-sdk = "0.3"
 ```
 
 or
@@ -57,26 +61,34 @@ Then run any of the examples
 cargo run --example unauthenticated
 ```
 
-## Features
+## Feature Flags
 
-### Tracing
+The crate is modular with optional features for different Polymarket APIs:
 
-This crate supports optional structured logging via the [`tracing`](https://docs.rs/tracing) crate. When enabled, it provides detailed instrumentation for HTTP requests, authentication flows, caching, and order building.
+| Feature | Description |
+|---------|-------------|
+| *(default)* | Core CLOB client for order placement, market data, and authentication |
+| `tracing` | Structured logging via [`tracing`](https://docs.rs/tracing) for HTTP requests, auth flows, and caching |
+| `ws` | WebSocket client for real-time orderbook, price, and user event streaming |
+| `rtds` | Real-time data streams for crypto prices (Binance, Chainlink) and comments |
+| `data` | Data API client for positions, trades, leaderboards, and analytics |
+| `gamma` | Gamma API client for market/event discovery, search, and metadata |
+| `bridge` | Bridge API client for cross-chain deposits (EVM, Solana, Bitcoin) |
 
-To enable tracing:
+Enable features in your `Cargo.toml`:
 
 ```toml
 [dependencies]
-polymarket-client-sdk = { version = "0.1", features = ["tracing"] }
+polymarket-client-sdk = { version = "0.3", features = ["ws", "data"] }
 ```
-
-When the `tracing` feature is disabled (the default), all logging code is compiled out with zero runtime overhead.
 
 ## Examples
 
-Some hand-picked examples. Please see `examples/` for more.
+See `examples/` for the complete set. Below are hand-picked examples for common use cases.
 
-### Unauthenticated client (read-only)
+### CLOB Client
+
+#### Unauthenticated client (read-only)
 ```rust
 use polymarket_client_sdk::clob::Client;
 
@@ -91,11 +103,11 @@ async fn main() -> anyhow::Result<()> {
 }
 ```
 
-### Authenticated client
+#### Authenticated client
 
 Set `POLYMARKET_PRIVATE_KEY` as an environment variable with your private key.
 
-#### [EOA](https://www.binance.com/en/academy/glossary/externally-owned-account-eoa) wallets
+##### [EOA](https://www.binance.com/en/academy/glossary/externally-owned-account-eoa) wallets
 If using MetaMask or hardware wallet, you must first set token allowances. See [Token Allowances](#token-allowances) section below.
 
 ```rust,no_run
@@ -125,7 +137,7 @@ async fn main() -> anyhow::Result<()> {
 }
 ```
 
-#### Proxy/Safe wallets
+##### Proxy/Safe wallets
 For proxy/Safe wallets, create your client as such:
 
 ```rust,ignore
@@ -137,21 +149,21 @@ let client = Client::new("https://clob.polymarket.com", Config::default())?
     .await?;
 ```
 
-#### Funder Address
+##### Funder Address
 The **funder address** is the actual address that holds your funds on Polymarket. When using proxy wallets (email wallets
 like Magic or browser extension wallets), the signing key differs from the address holding the funds. The funder address
 ensures orders are properly attributed to your funded account.
 
-#### Signature Types
+##### Signature Types
 The **signature_type** parameter tells the system how to verify your signatures:
 - `signature_type=0` (default): Standard EOA (Externally Owned Account) signatures - includes MetaMask, hardware wallets,
    and any wallet where you control the private key directly
 - `signature_type=1`: Email/Magic wallet signatures (delegated signing)
 - `signature_type=2`: Browser wallet proxy signatures (when using a proxy contract, not direct wallet connections)
 
-See [SignatureType](src/clob/types/mod.rs#L139) for more information.
+See [SignatureType](src/clob/types/mod.rs#L182) for more information.
 
-**Place a market order**
+##### Place a market order
 
 ```rust,no_run
 use std::str::FromStr as _;
@@ -174,7 +186,7 @@ async fn main() -> anyhow::Result<()> {
 
     let order = client
         .market_order()
-        .token_id("token")
+        .token_id("<token-id>")
         .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
         .side(Side::Buy)
         .order_type(OrderType::FOK)
@@ -182,12 +194,13 @@ async fn main() -> anyhow::Result<()> {
         .await?;
     let signed_order = client.sign(&signer, order).await?;
     let response = client.post_order(signed_order).await?;
+    println!("Order response: {:?}", response);
 
     Ok(())
 }
 ```
 
-**Place a limit order**
+##### Place a limit order
 
 ```rust,no_run
 use std::str::FromStr as _;
@@ -196,7 +209,7 @@ use alloy::signers::Signer as _;
 use alloy::signers::local::LocalSigner;
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 use polymarket_client_sdk::clob::{Client, Config};
-use polymarket_client_sdk::clob::types::{Amount, OrderType, Side};
+use polymarket_client_sdk::clob::types::Side;
 use polymarket_client_sdk::types::Decimal;
 use rust_decimal_macros::dec;
 
@@ -211,7 +224,7 @@ async fn main() -> anyhow::Result<()> {
 
     let order = client
         .limit_order()
-        .token_id("1")
+        .token_id("<token-id>")
         .size(Decimal::ONE_HUNDRED)
         .price(dec!(0.1))
         .side(Side::Buy)
@@ -219,14 +232,15 @@ async fn main() -> anyhow::Result<()> {
         .await?;
     let signed_order = client.sign(&signer, order).await?;
     let response = client.post_order(signed_order).await?;
+    println!("Order response: {:?}", response);
 
     Ok(())
 }
 ```
 
-### Builder-authenticated client
+#### Builder-authenticated client
 
-Remote signing
+For institutional/third-party app integrations with remote signing:
 ```rust,no_run
 use std::str::FromStr as _;
 
@@ -234,7 +248,7 @@ use alloy::signers::Signer as _;
 use alloy::signers::local::LocalSigner;
 use polymarket_client_sdk::auth::builder::Config as BuilderConfig;
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
-use polymarket_client_sdk::types::{Address, address};
+use polymarket_client_sdk::types::address;
 use polymarket_client_sdk::clob::{Client, Config};
 use polymarket_client_sdk::clob::types::SignatureType;
 use polymarket_client_sdk::clob::types::request::TradesRequest;
@@ -267,6 +281,136 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 ```
+
+### WebSocket Streaming
+
+Real-time orderbook and user event streaming. Requires the `ws` feature.
+
+```toml
+polymarket-client-sdk = { version = "0.3", features = ["ws"] }
+```
+
+```rust,ignore
+use futures::StreamExt as _;
+use polymarket_client_sdk::clob::ws::Client;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let client = Client::default();
+
+    // Subscribe to orderbook updates for specific assets
+    let asset_ids = vec!["<asset-id>".to_owned()];
+    let stream = client.subscribe_orderbook(asset_ids)?;
+    let mut stream = Box::pin(stream);
+
+    while let Some(book_result) = stream.next().await {
+        let book = book_result?;
+        println!("Orderbook update for {}: {} bids, {} asks",
+            book.asset_id, book.bids.len(), book.asks.len());
+    }
+    Ok(())
+}
+```
+
+Available streams:
+- `subscribe_orderbook()` - Bid/ask levels for assets
+- `subscribe_prices()` - Price change events
+- `subscribe_midpoints()` - Calculated midpoint prices
+- `subscribe_orders()` - User order updates (authenticated)
+- `subscribe_trades()` - User trade executions (authenticated)
+
+See [`examples/clob/ws/`](examples/clob/ws/) for more WebSocket examples including authenticated user streams.
+
+### Optional APIs
+
+#### Data API
+Trading analytics, positions, and leaderboards. Requires the `data` feature.
+
+```rust,ignore
+use polymarket_client_sdk::data::Client;
+use polymarket_client_sdk::data::types::request::PositionsRequest;
+use polymarket_client_sdk::types::address;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let client = Client::default();
+    let user = address!("0x0000000000000000000000000000000000000000"); // Your address
+
+    let request = PositionsRequest::builder().user(user).limit(10)?.build();
+    let positions = client.positions(&request).await?;
+    println!("Open positions: {:?}", positions);
+    Ok(())
+}
+```
+
+See [`examples/data.rs`](examples/data.rs) for trades, leaderboards, activity, and more.
+
+#### Gamma API
+Market and event discovery. Requires the `gamma` feature.
+
+```rust,ignore
+use polymarket_client_sdk::gamma::Client;
+use polymarket_client_sdk::gamma::types::request::{EventsRequest, SearchRequest};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let client = Client::default();
+
+    // Find active events
+    let request = EventsRequest::builder().active(true).limit(5).build();
+    let events = client.events(&request).await?;
+    println!("Found {} events", events.len());
+
+    // Search for markets
+    let search = SearchRequest::builder().q("bitcoin").build();
+    let results = client.search(&search).await?;
+    println!("Search results: {:?}", results);
+    Ok(())
+}
+```
+
+See [`examples/gamma.rs`](examples/gamma.rs) for tags, series, comments, and sports endpoints.
+
+#### Bridge API
+Cross-chain deposits from EVM chains, Solana, and Bitcoin. Requires the `bridge` feature.
+
+```rust,ignore
+use polymarket_client_sdk::bridge::Client;
+use polymarket_client_sdk::bridge::types::DepositRequest;
+use polymarket_client_sdk::types::address;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let client = Client::default();
+
+    // Get deposit addresses for your wallet
+    let request = DepositRequest::builder()
+        .address(address!("0x0000000000000000000000000000000000000000")) // Your address
+        .build();
+    let response = client.deposit(&request).await?;
+
+    println!("EVM: {}", response.address.evm);
+    println!("Solana: {}", response.address.svm);
+    println!("Bitcoin: {}", response.address.btc);
+    Ok(())
+}
+```
+
+See [`examples/bridge.rs`](examples/bridge.rs) for supported assets and minimum deposits.
+
+## Additional CLOB Capabilities
+
+Beyond basic order placement, the CLOB client supports:
+
+- **Rewards & Earnings** - Query maker rewards, daily earnings, and reward percentages
+- **Streaming Pagination** - `stream_data()` for iterating through large result sets
+- **Batch Operations** - `post_orders()` and `cancel_orders()` for multiple orders at once
+- **Order Scoring** - Check if orders qualify for maker rewards
+- **Notifications** - Manage trading notifications
+- **Balance Management** - Query and refresh balance/allowance caches
+- **Geoblock Detection** - Check if trading is available in your region
+
+See [`examples/clob/authenticated.rs`](examples/clob/authenticated.rs) for comprehensive usage.
 
 ## Token Allowances
 

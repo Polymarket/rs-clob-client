@@ -6,6 +6,7 @@ pub mod bridge;
 pub mod clob;
 #[cfg(feature = "data")]
 pub mod data;
+pub(crate) mod deser_warn;
 pub mod error;
 #[cfg(feature = "gamma")]
 pub mod gamma;
@@ -176,7 +177,10 @@ async fn request<Response: DeserializeOwned>(
         return Err(Error::status(status_code, method, path, message));
     }
 
-    if let Some(response) = response.json::<Option<Response>>().await? {
+    let json_value = response.json::<serde_json::Value>().await?;
+    let response_data: Option<Response> = deser_warn::deserialize_with_warnings(json_value)?;
+
+    if let Some(response) = response_data {
         Ok(response)
     } else {
         #[cfg(feature = "tracing")]
