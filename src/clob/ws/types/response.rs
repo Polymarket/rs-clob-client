@@ -30,6 +30,15 @@ pub enum WsMessage {
     /// Last trade price update
     #[serde(rename = "last_trade_price")]
     LastTradePrice(LastTradePrice),
+    /// Best bid/ask update (requires `custom_feature_enabled`)
+    #[serde(rename = "best_bid_ask")]
+    BestBidAsk(BestBidAsk),
+    /// New market created (requires `custom_feature_enabled`)
+    #[serde(rename = "new_market")]
+    NewMarket(NewMarket),
+    /// Market resolved (requires `custom_feature_enabled`)
+    #[serde(rename = "market_resolved")]
+    MarketResolved(MarketResolved),
     /// User trade execution (authenticated channel)
     #[serde(rename = "trade")]
     Trade(TradeMessage),
@@ -158,9 +167,117 @@ pub struct LastTradePrice {
     /// Side of the last trade
     #[serde(skip_serializing_if = "Option::is_none")]
     pub side: Option<Side>,
+    /// Size of the last trade
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub size: Option<Decimal>,
+    /// Fee rate in basis points
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fee_rate_bps: Option<String>,
     /// Unix timestamp in milliseconds
     #[serde_as(as = "DisplayFromStr")]
     pub timestamp: i64,
+}
+
+/// Best bid/ask update (requires `custom_feature_enabled` flag).
+///
+/// Emitted when the best bid and ask prices for a market change.
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct BestBidAsk {
+    /// Market identifier (condition ID)
+    pub market: String,
+    /// Asset/token identifier
+    pub asset_id: String,
+    /// Current best bid price
+    pub best_bid: Decimal,
+    /// Current best ask price
+    pub best_ask: Decimal,
+    /// Spread between best bid and ask
+    pub spread: Decimal,
+    /// Unix timestamp in milliseconds
+    #[serde_as(as = "DisplayFromStr")]
+    pub timestamp: i64,
+}
+
+/// New market created event (requires `custom_feature_enabled` flag).
+///
+/// Emitted when a new market is created.
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct NewMarket {
+    /// Market ID
+    pub id: String,
+    /// Market question
+    pub question: String,
+    /// Market identifier (condition ID)
+    pub market: String,
+    /// Market slug
+    pub slug: String,
+    /// Market description
+    pub description: String,
+    /// List of asset IDs
+    #[serde(rename = "assets_ids")]
+    pub asset_ids: Vec<String>,
+    /// List of outcomes (e.g., `["Yes", "No"]`)
+    pub outcomes: Vec<String>,
+    /// Event message object
+    #[serde(default)]
+    pub event_message: Option<EventMessage>,
+    /// Unix timestamp in milliseconds
+    #[serde_as(as = "DisplayFromStr")]
+    pub timestamp: i64,
+}
+
+/// Market resolved event (requires `custom_feature_enabled` flag).
+///
+/// Emitted when a market is resolved.
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MarketResolved {
+    /// Market ID
+    pub id: String,
+    /// Market question
+    pub question: String,
+    /// Market identifier (condition ID)
+    pub market: String,
+    /// Market slug
+    pub slug: String,
+    /// Market description
+    pub description: String,
+    /// List of asset IDs
+    #[serde(rename = "assets_ids")]
+    pub asset_ids: Vec<String>,
+    /// List of outcomes (e.g., `["Yes", "No"]`)
+    pub outcomes: Vec<String>,
+    /// Winning asset ID
+    pub winning_asset_id: String,
+    /// Winning outcome (e.g., "Yes" or "No")
+    pub winning_outcome: String,
+    /// Event message object
+    #[serde(default)]
+    pub event_message: Option<EventMessage>,
+    /// Unix timestamp in milliseconds
+    #[serde_as(as = "DisplayFromStr")]
+    pub timestamp: i64,
+}
+
+/// Event message object for market events.
+#[non_exhaustive]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct EventMessage {
+    /// Event message ID
+    pub id: String,
+    /// Event message ticker
+    pub ticker: String,
+    /// Event message slug
+    pub slug: String,
+    /// Event message title
+    pub title: String,
+    /// Event message description
+    pub description: String,
 }
 
 /// Maker order details within a trade message.
@@ -370,6 +487,9 @@ fn matches_interest(msg: &WsMessage, interest: MessageInterest) -> bool {
         WsMessage::PriceChange(_) => interest.contains(MessageInterest::PRICE_CHANGE),
         WsMessage::TickSizeChange(_) => interest.contains(MessageInterest::TICK_SIZE),
         WsMessage::LastTradePrice(_) => interest.contains(MessageInterest::LAST_TRADE_PRICE),
+        WsMessage::BestBidAsk(_) => interest.contains(MessageInterest::BEST_BID_ASK),
+        WsMessage::NewMarket(_) => interest.contains(MessageInterest::NEW_MARKET),
+        WsMessage::MarketResolved(_) => interest.contains(MessageInterest::MARKET_RESOLVED),
         WsMessage::Trade(_) => interest.contains(MessageInterest::TRADE),
         WsMessage::Order(_) => interest.contains(MessageInterest::ORDER),
     }
@@ -582,5 +702,292 @@ mod tests {
         // Interested in both
         let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::ALL).unwrap();
         assert_eq!(msgs.len(), 2);
+    }
+
+    #[test]
+    fn parse_best_bid_ask_message() {
+        let json = r#"{
+            "event_type": "best_bid_ask",
+            "market": "0x0005c0d312de0be897668695bae9f32b624b4a1ae8b140c49f08447fcc74f442",
+            "asset_id": "85354956062430465315924116860125388538595433819574542752031640332592237464430",
+            "best_bid": "0.73",
+            "best_ask": "0.77",
+            "spread": "0.04",
+            "timestamp": "1766789469958"
+        }"#;
+
+        let msg: WsMessage = serde_json::from_str(json).unwrap();
+        match msg {
+            WsMessage::BestBidAsk(bba) => {
+                assert_eq!(bba.best_bid, dec!(0.73));
+                assert_eq!(bba.best_ask, dec!(0.77));
+                assert_eq!(bba.spread, dec!(0.04));
+            }
+            _ => panic!("Expected BestBidAsk message"),
+        }
+    }
+
+    #[test]
+    fn parse_new_market_message() {
+        let json = r#"{
+            "id": "1031769",
+            "question": "Will NVIDIA (NVDA) close above $240 end of January?",
+            "market": "0x311d0c4b6671ab54af4970c06fcf58662516f5168997bdda209ec3db5aa6b0c1",
+            "slug": "nvda-above-240-on-january-30-2026",
+            "description": "This market will resolve to Yes or No.",
+            "assets_ids": [
+                "76043073756653678226373981964075571318267289248134717369284518995922789326425",
+                "31690934263385727664202099278545688007799199447969475608906331829650099442770"
+            ],
+            "outcomes": ["Yes", "No"],
+            "event_message": {
+                "id": "125819",
+                "ticker": "nvda-above-in-january-2026",
+                "slug": "nvda-above-in-january-2026",
+                "title": "Will NVIDIA (NVDA) close above ___ end of January?",
+                "description": "Market description"
+            },
+            "timestamp": "1766790415550",
+            "event_type": "new_market"
+        }"#;
+
+        let msg: WsMessage = serde_json::from_str(json).unwrap();
+        match msg {
+            WsMessage::NewMarket(nm) => {
+                assert_eq!(nm.id, "1031769");
+                assert_eq!(
+                    nm.question,
+                    "Will NVIDIA (NVDA) close above $240 end of January?"
+                );
+                assert_eq!(nm.asset_ids.len(), 2);
+                assert_eq!(nm.outcomes, vec!["Yes", "No"]);
+                assert!(nm.event_message.is_some());
+                let event = nm.event_message.unwrap();
+                assert_eq!(event.id, "125819");
+                assert_eq!(event.ticker, "nvda-above-in-january-2026");
+            }
+            _ => panic!("Expected NewMarket message"),
+        }
+    }
+
+    #[test]
+    fn parse_market_resolved_message() {
+        let json = r#"{
+            "id": "1031769",
+            "question": "Will NVIDIA (NVDA) close above $240 end of January?",
+            "market": "0x311d0c4b6671ab54af4970c06fcf58662516f5168997bdda209ec3db5aa6b0c1",
+            "slug": "nvda-above-240-on-january-30-2026",
+            "description": "This market will resolve to Yes or No.",
+            "assets_ids": [
+                "76043073756653678226373981964075571318267289248134717369284518995922789326425",
+                "31690934263385727664202099278545688007799199447969475608906331829650099442770"
+            ],
+            "outcomes": ["Yes", "No"],
+            "winning_asset_id": "76043073756653678226373981964075571318267289248134717369284518995922789326425",
+            "winning_outcome": "Yes",
+            "event_message": {
+                "id": "125819",
+                "ticker": "nvda-above-in-january-2026",
+                "slug": "nvda-above-in-january-2026",
+                "title": "Will NVIDIA (NVDA) close above ___ end of January?",
+                "description": "Market description"
+            },
+            "timestamp": "1766790415550",
+            "event_type": "market_resolved"
+        }"#;
+
+        let msg: WsMessage = serde_json::from_str(json).unwrap();
+        match msg {
+            WsMessage::MarketResolved(mr) => {
+                assert_eq!(mr.id, "1031769");
+                assert_eq!(mr.winning_outcome, "Yes");
+                assert_eq!(
+                    mr.winning_asset_id,
+                    "76043073756653678226373981964075571318267289248134717369284518995922789326425"
+                );
+                assert_eq!(mr.asset_ids.len(), 2);
+            }
+            _ => panic!("Expected MarketResolved message"),
+        }
+    }
+
+    #[test]
+    fn parse_last_trade_price_with_new_fields() {
+        let json = r#"{
+            "asset_id": "114122071509644379678018727908709560226618148003371446110114509806601493071694",
+            "event_type": "last_trade_price",
+            "fee_rate_bps": "0",
+            "market": "0x6a67b9d828d53862160e470329ffea5246f338ecfffdf2cab45211ec578b0347",
+            "price": "0.456",
+            "side": "BUY",
+            "size": "219.217767",
+            "timestamp": "1750428146322"
+        }"#;
+
+        let msg: WsMessage = serde_json::from_str(json).unwrap();
+        match msg {
+            WsMessage::LastTradePrice(ltp) => {
+                assert_eq!(ltp.price, dec!(0.456));
+                assert_eq!(ltp.size, Some(dec!(219.217767)));
+                assert_eq!(ltp.fee_rate_bps, Some("0".to_owned()));
+                assert_eq!(ltp.side, Some(Side::Buy));
+            }
+            _ => panic!("Expected LastTradePrice message"),
+        }
+    }
+
+    #[test]
+    fn parse_custom_feature_messages_filter_by_interest() {
+        let json = r#"[
+            {
+                "event_type": "best_bid_ask",
+                "market": "market1",
+                "asset_id": "asset1",
+                "best_bid": "0.5",
+                "best_ask": "0.6",
+                "spread": "0.1",
+                "timestamp": "1234567890"
+            },
+            {
+                "event_type": "book",
+                "asset_id": "asset1",
+                "market": "market1",
+                "timestamp": "1234567890",
+                "bids": [],
+                "asks": []
+            }
+        ]"#;
+
+        // Only interested in BEST_BID_ASK
+        let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::BEST_BID_ASK).unwrap();
+        assert_eq!(msgs.len(), 1);
+        assert!(matches!(&msgs[0], WsMessage::BestBidAsk(_)));
+
+        // Only interested in BOOK
+        let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::BOOK).unwrap();
+        assert_eq!(msgs.len(), 1);
+        assert!(matches!(&msgs[0], WsMessage::Book(_)));
+
+        // MARKET includes both
+        let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::MARKET).unwrap();
+        assert_eq!(msgs.len(), 2);
+    }
+
+    #[test]
+    fn parse_new_market_without_event_message() {
+        let json = r#"{
+            "id": "1031769",
+            "question": "Will NVIDIA (NVDA) close above $240 end of January?",
+            "market": "0x311d0c4b6671ab54af4970c06fcf58662516f5168997bdda209ec3db5aa6b0c1",
+            "slug": "nvda-above-240-on-january-30-2026",
+            "description": "This market will resolve to Yes or No.",
+            "assets_ids": ["asset1", "asset2"],
+            "outcomes": ["Yes", "No"],
+            "timestamp": "1766790415550",
+            "event_type": "new_market"
+        }"#;
+
+        let msg: WsMessage = serde_json::from_str(json).unwrap();
+        match msg {
+            WsMessage::NewMarket(nm) => {
+                assert_eq!(nm.id, "1031769");
+                assert!(nm.event_message.is_none());
+            }
+            _ => panic!("Expected NewMarket message"),
+        }
+    }
+
+    #[test]
+    fn parse_market_resolved_without_event_message() {
+        let json = r#"{
+            "id": "1031769",
+            "question": "Will NVIDIA (NVDA) close above $240 end of January?",
+            "market": "0x311d0c4b6671ab54af4970c06fcf58662516f5168997bdda209ec3db5aa6b0c1",
+            "slug": "nvda-above-240-on-january-30-2026",
+            "description": "This market will resolve to Yes or No.",
+            "assets_ids": ["asset1", "asset2"],
+            "outcomes": ["Yes", "No"],
+            "winning_asset_id": "asset1",
+            "winning_outcome": "Yes",
+            "timestamp": "1766790415550",
+            "event_type": "market_resolved"
+        }"#;
+
+        let msg: WsMessage = serde_json::from_str(json).unwrap();
+        match msg {
+            WsMessage::MarketResolved(mr) => {
+                assert_eq!(mr.id, "1031769");
+                assert!(mr.event_message.is_none());
+                assert_eq!(mr.winning_outcome, "Yes");
+            }
+            _ => panic!("Expected MarketResolved message"),
+        }
+    }
+
+    #[test]
+    fn parse_last_trade_price_without_optional_fields() {
+        let json = r#"{
+            "asset_id": "asset123",
+            "event_type": "last_trade_price",
+            "market": "0x123",
+            "price": "0.5",
+            "timestamp": "1750428146322"
+        }"#;
+
+        let msg: WsMessage = serde_json::from_str(json).unwrap();
+        match msg {
+            WsMessage::LastTradePrice(ltp) => {
+                assert_eq!(ltp.price, dec!(0.5));
+                assert!(ltp.size.is_none());
+                assert!(ltp.fee_rate_bps.is_none());
+                assert!(ltp.side.is_none());
+            }
+            _ => panic!("Expected LastTradePrice message"),
+        }
+    }
+
+    #[test]
+    fn matches_interest_custom_feature_messages() {
+        let bba = WsMessage::BestBidAsk(BestBidAsk {
+            market: "m".to_owned(),
+            asset_id: "a".to_owned(),
+            best_bid: dec!(0.5),
+            best_ask: dec!(0.6),
+            spread: dec!(0.1),
+            timestamp: 0,
+        });
+        assert!(matches_interest(&bba, MessageInterest::BEST_BID_ASK));
+        assert!(!matches_interest(&bba, MessageInterest::BOOK));
+        assert!(matches_interest(&bba, MessageInterest::MARKET));
+
+        let nm = WsMessage::NewMarket(NewMarket {
+            id: "1".to_owned(),
+            question: "q".to_owned(),
+            market: "m".to_owned(),
+            slug: "s".to_owned(),
+            description: "d".to_owned(),
+            asset_ids: vec![],
+            outcomes: vec![],
+            event_message: None,
+            timestamp: 0,
+        });
+        assert!(matches_interest(&nm, MessageInterest::NEW_MARKET));
+        assert!(matches_interest(&nm, MessageInterest::MARKET));
+
+        let mr = WsMessage::MarketResolved(MarketResolved {
+            id: "1".to_owned(),
+            question: "q".to_owned(),
+            market: "m".to_owned(),
+            slug: "s".to_owned(),
+            description: "d".to_owned(),
+            asset_ids: vec![],
+            outcomes: vec![],
+            winning_asset_id: "w".to_owned(),
+            winning_outcome: "Yes".to_owned(),
+            event_message: None,
+            timestamp: 0,
+        });
+        assert!(matches_interest(&mr, MessageInterest::MARKET_RESOLVED));
+        assert!(matches_interest(&mr, MessageInterest::MARKET));
     }
 }

@@ -314,7 +314,6 @@ pub struct OpenOrderResponse {
     pub created_at: DateTime<Utc>,
     #[serde_as(as = "TimestampSeconds<String>")]
     pub expiration: DateTime<Utc>,
-    #[serde(rename = "type")]
     pub order_type: OrderType,
 }
 
