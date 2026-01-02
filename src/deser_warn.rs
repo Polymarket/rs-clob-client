@@ -103,29 +103,11 @@ fn lookup_value<'value>(value: &'value Value, path: &str) -> Option<&'value Valu
     Some(current)
 }
 
-/// Format a JSON value for logging, truncating large values.
+/// Format a JSON value for logging.
 #[cfg(feature = "tracing")]
 fn format_value(value: Option<&Value>) -> String {
-    const MAX_CHARS: usize = 200;
-
     match value {
-        Some(v) => {
-            let s = match v {
-                Value::String(s) => format!("\"{s}\""),
-                Value::Array(arr) => format!("[{} items]", arr.len()),
-                Value::Object(obj) => format!("{{{} keys}}", obj.len()),
-                Value::Null => "null".to_owned(),
-                Value::Bool(b) => b.to_string(),
-                Value::Number(n) => n.to_string(),
-            };
-
-            if s.chars().count() > MAX_CHARS {
-                let truncated: String = s.chars().take(MAX_CHARS).collect();
-                format!("{truncated}...")
-            } else {
-                s
-            }
-        }
+        Some(v) => v.to_string(),
         None => "<unable to retrieve>".to_owned(),
     }
 }
