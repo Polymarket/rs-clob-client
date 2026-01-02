@@ -215,7 +215,7 @@ impl<S: State> Client<S> {
         asset_ids: Vec<String>,
     ) -> Result<impl Stream<Item = Result<BestBidAsk>>> {
         let stream = self
-            .market_handles()?
+            .market_resources()?
             .subscriptions
             .subscribe_market_with_options(asset_ids, true)?;
 
@@ -236,7 +236,7 @@ impl<S: State> Client<S> {
         asset_ids: Vec<String>,
     ) -> Result<impl Stream<Item = Result<NewMarket>>> {
         let stream = self
-            .market_handles()?
+            .market_resources()?
             .subscriptions
             .subscribe_market_with_options(asset_ids, true)?;
 
@@ -257,7 +257,7 @@ impl<S: State> Client<S> {
         asset_ids: Vec<String>,
     ) -> Result<impl Stream<Item = Result<MarketResolved>>> {
         let stream = self
-            .market_handles()?
+            .market_resources()?
             .subscriptions
             .subscribe_market_with_options(asset_ids, true)?;
 
