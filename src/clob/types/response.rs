@@ -271,6 +271,7 @@ pub struct PostOrderResponse {
     #[builder(default)]
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
+    #[serde(alias = "transactionsHashes")]
     pub transaction_hashes: Vec<String>,
     #[builder(default)]
     #[serde(default)]
@@ -329,6 +330,7 @@ pub struct CancelOrdersResponse {
     #[builder(default)]
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
+    #[serde(alias = "not_canceled")]
     pub not_canceled: HashMap<String, String>,
 }
 
