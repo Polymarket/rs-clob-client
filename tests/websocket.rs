@@ -621,6 +621,41 @@ mod user_channel {
     }
 
     #[tokio::test]
+    async fn unsubscribe_user_events_sends_request() {
+        let mut server = MockWsServer::start().await;
+        let base_endpoint = format!("ws://{}", server.addr);
+
+        let config = Config::default();
+        let client = Client::new(&base_endpoint, config)
+            .unwrap()
+            .authenticate(test_credentials(), Address::ZERO)
+            .unwrap();
+
+        // Wait for connections to establish
+        sleep(Duration::from_millis(100)).await;
+
+        let market = payloads::MARKET;
+
+        // Subscribe to user events for a specific market
+        let _stream = client
+            .subscribe_user_events(vec![market.to_owned()])
+            .unwrap();
+        let _: Option<String> = server.recv_subscription().await;
+
+        // Unsubscribe from user events
+        client
+            .unsubscribe_user_events(&[market.to_owned()])
+            .unwrap();
+
+        let unsub = server.recv_subscription().await.unwrap();
+        assert!(
+            unsub.contains("\"operation\":\"unsubscribe\""),
+            "Should send unsubscribe request, got: {unsub}"
+        );
+        assert!(unsub.contains(market));
+    }
+
+    #[tokio::test]
     async fn deauthenticate_returns_to_unauthenticated_state() {
         let mut server = MockWsServer::start().await;
         let base_endpoint = format!("ws://{}", server.addr);
@@ -1158,6 +1193,34 @@ mod client_state {
         let _: Option<String> = server.recv_subscription().await;
 
         assert_eq!(client.subscription_count(), 2);
+    }
+}
+
+mod client_clone {
+    use super::*;
+
+    #[tokio::test]
+    async fn cloned_client_can_subscribe_independently() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        // Clone the client before any subscription
+        let client_clone = client.clone();
+
+        // Original subscribes
+        let _stream1 = client
+            .subscribe_orderbook(vec![payloads::ASSET_ID.to_owned()])
+            .unwrap();
+        let _: Option<String> = server.recv_subscription().await;
+
+        // Clone can also subscribe (exercises Clone impl which creates new OnceCell)
+        let _stream2 = client_clone
+            .subscribe_prices(vec![payloads::OTHER_ASSET_ID.to_owned()])
+            .unwrap();
+        let sub = server.recv_subscription().await.unwrap();
+        assert!(sub.contains(payloads::OTHER_ASSET_ID));
     }
 }
 
