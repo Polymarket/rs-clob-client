@@ -476,16 +476,6 @@ struct ChannelHandles {
     resources: OnceCell<LazyChannelResources>,
 }
 
-impl Clone for ChannelHandles {
-    fn clone(&self) -> Self {
-        Self {
-            endpoint: self.endpoint.clone(),
-            config: self.config.clone(),
-            resources: OnceCell::new(),
-        }
-    }
-}
-
 impl ChannelHandles {
     fn new_lazy(endpoint: String, config: Config) -> Self {
         Self {

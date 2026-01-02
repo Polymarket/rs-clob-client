@@ -1196,34 +1196,6 @@ mod client_state {
     }
 }
 
-mod client_clone {
-    use super::*;
-
-    #[tokio::test]
-    async fn cloned_client_can_subscribe_independently() {
-        let mut server = MockWsServer::start().await;
-        let endpoint = server.ws_url("/ws/market");
-
-        let client = Client::new(&endpoint, Config::default()).unwrap();
-
-        // Clone the client before any subscription
-        let client_clone = client.clone();
-
-        // Original subscribes
-        let _stream1 = client
-            .subscribe_orderbook(vec![payloads::ASSET_ID.to_owned()])
-            .unwrap();
-        let _: Option<String> = server.recv_subscription().await;
-
-        // Clone can also subscribe (exercises Clone impl which creates new OnceCell)
-        let _stream2 = client_clone
-            .subscribe_prices(vec![payloads::OTHER_ASSET_ID.to_owned()])
-            .unwrap();
-        let sub = server.recv_subscription().await.unwrap();
-        assert!(sub.contains(payloads::OTHER_ASSET_ID));
-    }
-}
-
 mod unsubscribe_variants {
     use super::*;
 
@@ -1434,6 +1406,64 @@ mod custom_features {
         let result = timeout(Duration::from_secs(2), stream.next()).await;
         let bba = result.unwrap().unwrap().unwrap();
         assert_eq!(bba.best_bid, dec!(0.48));
+    }
+
+    #[tokio::test]
+    async fn subscribe_new_markets_filters_other_messages() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        let stream = client
+            .subscribe_new_markets(vec![payloads::ASSET_ID.to_owned()])
+            .unwrap();
+        let mut stream = Box::pin(stream);
+
+        let _: Option<String> = server.recv_subscription().await;
+
+        // Send a book message (should be filtered out)
+        server.send(&payloads::book().to_string());
+
+        // Send a best_bid_ask message (should also be filtered out)
+        server.send(&best_bid_ask().to_string());
+
+        // Send new_market message
+        server.send(&new_market().to_string());
+
+        // Should only receive new_market
+        let result = timeout(Duration::from_secs(2), stream.next()).await;
+        let nm = result.unwrap().unwrap().unwrap();
+        assert_eq!(nm.id, "12345");
+    }
+
+    #[tokio::test]
+    async fn subscribe_market_resolutions_filters_other_messages() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        let stream = client
+            .subscribe_market_resolutions(vec![payloads::ASSET_ID.to_owned()])
+            .unwrap();
+        let mut stream = Box::pin(stream);
+
+        let _: Option<String> = server.recv_subscription().await;
+
+        // Send a book message (should be filtered out)
+        server.send(&payloads::book().to_string());
+
+        // Send a new_market message (should also be filtered out)
+        server.send(&new_market().to_string());
+
+        // Send market_resolved message
+        server.send(&market_resolved().to_string());
+
+        // Should only receive market_resolved
+        let result = timeout(Duration::from_secs(2), stream.next()).await;
+        let mr = result.unwrap().unwrap().unwrap();
+        assert_eq!(mr.id, "12345");
     }
 }
 
