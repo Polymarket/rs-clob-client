@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
-use crate::serde_helpers::StringFromAny;
+use crate::serde_helpers::{StringFromAny, VecFromJsonString};
 use crate::types::Decimal;
 
 /// Image optimization metadata.
@@ -319,9 +319,12 @@ pub struct Event {
     pub election_type: Option<String>,
     pub country_name: Option<String>,
     pub color: Option<String>,
+    pub turn_provider_id: Option<String>,
+    pub sportsradar_match_id: Option<String>,
 }
 
 /// A prediction market.
+#[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
@@ -395,7 +398,8 @@ pub struct Market {
     pub volume_1yr: Option<Decimal>,
     pub game_start_time: Option<String>,
     pub seconds_delay: Option<i32>,
-    pub clob_token_ids: Option<String>,
+    #[serde_as(as = "Option<VecFromJsonString>")]
+    pub clob_token_ids: Option<Vec<String>>,
     pub disqus_thread: Option<String>,
     pub short_outcomes: Option<String>,
     #[serde(rename = "teamAID")]

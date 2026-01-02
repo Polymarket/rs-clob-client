@@ -104,6 +104,7 @@ path = "examples/clob/streaming.rs"
 [[example]]
 name = "unauthenticated"
 path = "examples/clob/unauthenticated.rs"
+required-features = ["gamma"]
 
 [[example]]
 name = "approvals"

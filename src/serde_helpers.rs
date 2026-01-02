@@ -72,6 +72,34 @@ impl serde_with::SerializeAs<String> for StringFromAny {
     }
 }
 
+/// A `serde_as` type that deserializes a JSON array encoded as a string into `Vec<String>`.
+pub struct VecFromJsonString;
+
+impl<'de> serde_with::DeserializeAs<'de, Vec<String>> for VecFromJsonString {
+    fn deserialize_as<D>(deserializer: D) -> std::result::Result<Vec<String>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::Deserialize as _;
+        use serde::de::Error as _;
+
+        let s = String::deserialize(deserializer)?;
+        serde_json::from_str(&s).map_err(D::Error::custom)
+    }
+}
+
+impl serde_with::SerializeAs<Vec<String>> for VecFromJsonString {
+    fn serialize_as<S>(source: &Vec<String>, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::Error as _;
+
+        let json = serde_json::to_string(source).map_err(S::Error::custom)?;
+        serializer.serialize_str(&json)
+    }
+}
+
 /// Deserialize JSON with unknown field warnings.
 ///
 /// This function deserializes JSON to a target type while detecting and logging
