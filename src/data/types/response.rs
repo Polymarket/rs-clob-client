@@ -91,6 +91,8 @@ pub struct Position {
     pub icon: String,
     /// Parent event URL slug.
     pub event_slug: String,
+    /// Parent event ID.
+    pub event_id: Option<String>,
     /// Outcome name (e.g., "Yes", "No", candidate name).
     pub outcome: String,
     /// Outcome index within the market (0 or 1 for binary markets).
@@ -278,6 +280,8 @@ pub struct Holder {
     pub profile_image: Option<String>,
     /// Holder's optimized profile image URL.
     pub profile_image_optimized: Option<String>,
+    /// Whether the holder is verified.
+    pub verified: Option<bool>,
 }
 
 /// Container for holders grouped by token.
