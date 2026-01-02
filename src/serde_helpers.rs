@@ -1,10 +1,76 @@
-//! Deserialization with unknown field warnings.
+//! Serde helpers for flexible deserialization.
 //!
-//! When the `tracing` feature is enabled, this module logs warnings for any
+//! When the `tracing` feature is enabled, this module also logs warnings for any
 //! unknown fields encountered during deserialization, helping detect API changes.
 
 use serde::de::DeserializeOwned;
 use serde_json::Value;
+
+/// A `serde_as` type that deserializes strings or integers as `String`.
+///
+/// Use with `#[serde_as(as = "StringFromAny")]` for `String` fields
+/// or `#[serde_as(as = "Option<StringFromAny>")]` for `Option<String>`.
+pub struct StringFromAny;
+
+impl<'de> serde_with::DeserializeAs<'de, String> for StringFromAny {
+    fn deserialize_as<D>(deserializer: D) -> std::result::Result<String, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use std::fmt;
+
+        use serde::de::{self, Visitor};
+
+        struct StringOrNumberVisitor;
+
+        impl Visitor<'_> for StringOrNumberVisitor {
+            type Value = String;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("string or integer")
+            }
+
+            fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(v.to_owned())
+            }
+
+            fn visit_string<E>(self, v: String) -> std::result::Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(v)
+            }
+
+            fn visit_i64<E>(self, v: i64) -> std::result::Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(v.to_string())
+            }
+
+            fn visit_u64<E>(self, v: u64) -> std::result::Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(v.to_string())
+            }
+        }
+
+        deserializer.deserialize_any(StringOrNumberVisitor)
+    }
+}
+
+impl serde_with::SerializeAs<String> for StringFromAny {
+    fn serialize_as<S>(source: &String, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(source)
+    }
+}
 
 /// Deserialize JSON with unknown field warnings.
 ///
@@ -40,9 +106,19 @@ pub fn deserialize_with_warnings<T: DeserializeOwned>(value: Value) -> crate::Re
     // Collect unknown field paths during deserialization
     let mut unknown_paths: Vec<String> = Vec::new();
 
-    let result: T = serde_ignored::deserialize(value, |path| {
+    let result: T = match serde_ignored::deserialize(value, |path| {
         unknown_paths.push(path.to_string());
-    })?;
+    }) {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::error!(
+                type_name = %type_name::<T>(),
+                error = %e,
+                "deserialization failed"
+            );
+            return Err(e.into());
+        }
+    };
 
     // Log warnings for unknown fields with their values
     if !unknown_paths.is_empty() {
