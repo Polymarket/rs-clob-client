@@ -106,19 +106,16 @@ pub fn deserialize_with_warnings<T: DeserializeOwned>(value: Value) -> crate::Re
     // Collect unknown field paths during deserialization
     let mut unknown_paths: Vec<String> = Vec::new();
 
-    let result: T = match serde_ignored::deserialize(value, |path| {
+    let result: T = serde_ignored::deserialize(value, |path| {
         unknown_paths.push(path.to_string());
-    }) {
-        Ok(v) => v,
-        Err(e) => {
-            tracing::error!(
-                type_name = %type_name::<T>(),
-                error = %e,
-                "deserialization failed"
-            );
-            return Err(e.into());
-        }
-    };
+    })
+    .inspect_err(|e| {
+        tracing::error!(
+            type_name = %type_name::<T>(),
+            error = %e,
+            "deserialization failed"
+        );
+    })?;
 
     // Log warnings for unknown fields with their values
     if !unknown_paths.is_empty() {
