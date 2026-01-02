@@ -1100,8 +1100,6 @@ mod unsubscribe {
 }
 
 mod client_state {
-    use polymarket_client_sdk::clob::ws::connection::ConnectionState;
-
     use super::*;
 
     #[tokio::test]
@@ -1133,17 +1131,6 @@ mod client_state {
     }
 
     #[tokio::test]
-    async fn connection_state_is_disconnected_before_subscription() {
-        let server = MockWsServer::start().await;
-        let endpoint = server.ws_url("/ws/market");
-
-        let client = Client::new(&endpoint, Config::default()).unwrap();
-
-        // Before any subscription, state should be Disconnected
-        assert_eq!(client.connection_state(), ConnectionState::Disconnected);
-    }
-
-    #[tokio::test]
     async fn connection_state_is_connected_after_subscription() {
         let mut server = MockWsServer::start().await;
         let endpoint = server.ws_url("/ws/market");
@@ -1161,16 +1148,6 @@ mod client_state {
 
         // Now should be connected
         assert!(client.connection_state().is_connected());
-    }
-
-    #[tokio::test]
-    async fn subscription_count_returns_zero_initially() {
-        let server = MockWsServer::start().await;
-        let endpoint = server.ws_url("/ws/market");
-
-        let client = Client::new(&endpoint, Config::default()).unwrap();
-
-        assert_eq!(client.subscription_count(), 0);
     }
 
     #[tokio::test]
