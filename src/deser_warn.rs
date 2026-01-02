@@ -283,32 +283,33 @@ mod tests {
 
     #[cfg(feature = "tracing")]
     #[test]
-    fn format_truncates_long_strings() {
+    fn format_shows_full_string() {
         let long_string = "a".repeat(300);
-        let value = Value::String(long_string);
+        let value = Value::String(long_string.clone());
 
         let formatted = format_value(Some(&value));
-        // 200 chars + "..." + 2 quotes = 205 chars max
-        assert!(formatted.chars().count() <= 205);
-        assert!(formatted.ends_with("..."));
+        // Full JSON string with quotes
+        assert_eq!(formatted, format!("\"{long_string}\""));
     }
 
     #[cfg(feature = "tracing")]
     #[test]
-    fn format_array_shows_count() {
+    fn format_array_shows_full_json() {
         let value = serde_json::json!([1, 2, 3, 4, 5]);
 
         let formatted = format_value(Some(&value));
-        assert_eq!(formatted, "[5 items]");
+        assert_eq!(formatted, "[1,2,3,4,5]");
     }
 
     #[cfg(feature = "tracing")]
     #[test]
-    fn format_object_shows_key_count() {
+    fn format_object_shows_full_json() {
         let value = serde_json::json!({"a": 1, "b": 2});
 
         let formatted = format_value(Some(&value));
-        assert_eq!(formatted, "{2 keys}");
+        // JSON object serialization order may vary, check both keys present
+        assert!(formatted.contains("\"a\":1"));
+        assert!(formatted.contains("\"b\":2"));
     }
 
     /// Test that verifies warnings are actually emitted for unknown fields.
