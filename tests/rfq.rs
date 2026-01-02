@@ -8,41 +8,29 @@ mod common;
 
 use alloy::primitives::Address;
 use httpmock::MockServer;
-use polymarket_client_sdk::auth::Credentials;
-use polymarket_client_sdk::clob::types::Side;
-use polymarket_client_sdk::rfq::Client;
-use polymarket_client_sdk::rfq::types::request::{
-    AcceptQuoteRequest, ApproveOrderRequest, CancelQuoteRequest, CancelRfqRequestRequest,
-    CreateQuoteRequest, CreateRfqRequestRequest, GetQuotesRequest, GetRfqRequestsRequest, UserType,
+use polymarket_client_sdk::clob::types::{
+    AcceptRfqQuoteRequest, ApproveRfqOrderRequest, CancelRfqQuoteRequest, CancelRfqRequestRequest,
+    CreateRfqQuoteRequest, CreateRfqRequestRequest, GetRfqQuotesRequest, GetRfqRequestsRequest,
+    Side, SignatureType,
 };
 use reqwest::StatusCode;
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::common::{PASSPHRASE, POLY_ADDRESS, POLY_API_KEY, POLY_PASSPHRASE, SECRET};
-
-const ADDRESS: &str = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266";
-
-fn create_client(server: &MockServer) -> Client {
-    let address: Address = ADDRESS.parse().unwrap();
-    let credentials = Credentials::new(Uuid::nil(), SECRET.to_owned(), PASSPHRASE.to_owned());
-    Client::new(&server.base_url(), address, credentials).unwrap()
-}
+use crate::common::{POLY_ADDRESS, create_authenticated};
 
 mod request {
     use super::*;
 
     #[tokio::test]
-    async fn create_request_should_succeed() -> anyhow::Result<()> {
+    async fn rfq_create_request_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
-        let client = create_client(&server);
+        let client = create_authenticated(&server).await?;
 
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::POST)
                 .path("/rfq/request")
                 .header_exists(POLY_ADDRESS)
-                .header_exists(POLY_API_KEY)
-                .header_exists(POLY_PASSPHRASE)
                 .json_body(json!({
                     "assetIn": "12345",
                     "assetOut": "0",
@@ -61,7 +49,7 @@ mod request {
             .asset_out("0")
             .amount_in("50000000")
             .amount_out("3000000")
-            .user_type(UserType::Eoa)
+            .user_type(SignatureType::Eoa)
             .build();
 
         let response = client.create_request(&request).await?;
@@ -74,9 +62,9 @@ mod request {
     }
 
     #[tokio::test]
-    async fn cancel_request_should_succeed() -> anyhow::Result<()> {
+    async fn rfq_cancel_request_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
-        let client = create_client(&server);
+        let client = create_authenticated(&server).await?;
 
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::DELETE)
@@ -99,9 +87,9 @@ mod request {
     }
 
     #[tokio::test]
-    async fn get_requests_should_succeed() -> anyhow::Result<()> {
+    async fn rfq_get_requests_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
-        let client = create_client(&server);
+        let client = create_authenticated(&server).await?;
 
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::GET)
@@ -142,9 +130,9 @@ mod request {
     }
 
     #[tokio::test]
-    async fn get_requests_with_cursor_should_succeed() -> anyhow::Result<()> {
+    async fn rfq_get_requests_with_cursor_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
-        let client = create_client(&server);
+        let client = create_authenticated(&server).await?;
 
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::GET)
@@ -173,9 +161,9 @@ mod quote {
     use super::*;
 
     #[tokio::test]
-    async fn create_quote_should_succeed() -> anyhow::Result<()> {
+    async fn rfq_create_quote_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
-        let client = create_client(&server);
+        let client = create_authenticated(&server).await?;
 
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::POST)
@@ -194,13 +182,13 @@ mod quote {
             }));
         });
 
-        let request = CreateQuoteRequest::builder()
+        let request = CreateRfqQuoteRequest::builder()
             .request_id("01968f1e-1182-71c4-9d40-172db9be82af")
             .asset_in("0")
             .asset_out("12345")
             .amount_in("3000000")
             .amount_out("50000000")
-            .user_type(UserType::Eoa)
+            .user_type(SignatureType::Eoa)
             .build();
 
         let response = client.create_quote(&request).await?;
@@ -212,9 +200,9 @@ mod quote {
     }
 
     #[tokio::test]
-    async fn cancel_quote_should_succeed() -> anyhow::Result<()> {
+    async fn rfq_cancel_quote_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
-        let client = create_client(&server);
+        let client = create_authenticated(&server).await?;
 
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::DELETE)
@@ -226,7 +214,7 @@ mod quote {
             then.status(StatusCode::OK).body("OK");
         });
 
-        let request = CancelQuoteRequest::builder()
+        let request = CancelRfqQuoteRequest::builder()
             .quote_id("0196f484-9fbd-74c1-bfc1-75ac21c1cf84")
             .build();
 
@@ -237,9 +225,9 @@ mod quote {
     }
 
     #[tokio::test]
-    async fn get_quotes_should_succeed() -> anyhow::Result<()> {
+    async fn rfq_get_quotes_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
-        let client = create_client(&server);
+        let client = create_authenticated(&server).await?;
 
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::GET)
@@ -265,7 +253,7 @@ mod quote {
             }));
         });
 
-        let request = GetQuotesRequest::default();
+        let request = GetRfqQuotesRequest::default();
         let response = client.get_quotes(&request).await?;
 
         assert_eq!(response.count, 1);
@@ -284,9 +272,9 @@ mod execution {
     use super::*;
 
     #[tokio::test]
-    async fn accept_quote_should_succeed() -> anyhow::Result<()> {
+    async fn rfq_accept_quote_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
-        let client = create_client(&server);
+        let client = create_authenticated(&server).await?;
 
         let maker: Address = "0x6e0c80c90ea6c15917308f820eac91ce2724b5b5".parse()?;
 
@@ -297,7 +285,7 @@ mod execution {
             then.status(StatusCode::OK).body("OK");
         });
 
-        let request = AcceptQuoteRequest::builder()
+        let request = AcceptRfqQuoteRequest::builder()
             .request_id("01968f1e-1182-71c4-9d40-172db9be82af")
             .quote_id("0196f484-9fbd-74c1-bfc1-75ac21c1cf84")
             .maker_amount("50000000")
@@ -322,9 +310,9 @@ mod execution {
     }
 
     #[tokio::test]
-    async fn approve_order_should_succeed() -> anyhow::Result<()> {
+    async fn rfq_approve_order_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
-        let client = create_client(&server);
+        let client = create_authenticated(&server).await?;
 
         let maker: Address = "0x6e0c80c90ea6c15917308f820eac91ce2724b5b5".parse()?;
 
@@ -337,7 +325,7 @@ mod execution {
             }));
         });
 
-        let request = ApproveOrderRequest::builder()
+        let request = ApproveRfqOrderRequest::builder()
             .request_id("01968f1e-1182-71c4-9d40-172db9be82af")
             .quote_id("0196f484-9fbd-74c1-bfc1-75ac21c1cf84")
             .maker_amount("50000000")
@@ -374,9 +362,9 @@ mod error_handling {
     use super::*;
 
     #[tokio::test]
-    async fn create_request_error_should_return_status() -> anyhow::Result<()> {
+    async fn rfq_create_request_error_should_return_status() -> anyhow::Result<()> {
         let server = MockServer::start();
-        let client = create_client(&server);
+        let client = create_authenticated(&server).await?;
 
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::POST).path("/rfq/request");
@@ -389,7 +377,7 @@ mod error_handling {
             .asset_out("0")
             .amount_in("50000000")
             .amount_out("3000000")
-            .user_type(UserType::Eoa)
+            .user_type(SignatureType::Eoa)
             .build();
 
         let result = client.create_request(&request).await;
@@ -403,9 +391,9 @@ mod error_handling {
     }
 
     #[tokio::test]
-    async fn cancel_request_error_should_return_status() -> anyhow::Result<()> {
+    async fn rfq_cancel_request_error_should_return_status() -> anyhow::Result<()> {
         let server = MockServer::start();
-        let client = create_client(&server);
+        let client = create_authenticated(&server).await?;
 
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::DELETE).path("/rfq/request");

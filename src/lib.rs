@@ -10,8 +10,6 @@ pub(crate) mod deser_warn;
 pub mod error;
 #[cfg(feature = "gamma")]
 pub mod gamma;
-#[cfg(feature = "rfq")]
-pub mod rfq;
 #[cfg(feature = "rtds")]
 pub mod rtds;
 pub mod types;
