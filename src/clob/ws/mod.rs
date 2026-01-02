@@ -18,6 +18,7 @@ pub use error::WsError;
 pub use subscription::{ChannelType, SubscriptionInfo, SubscriptionTarget};
 pub use types::request::SubscriptionRequest;
 pub use types::response::{
-    BookUpdate, LastTradePrice, MakerOrder, MidpointUpdate, OrderMessage, OrderStatus, PriceChange,
+    BestBidAsk, BookUpdate, EventMessage, LastTradePrice, MakerOrder, MarketResolved,
+    MidpointUpdate, NewMarket, OrderMessage, OrderStatus, PriceChange, PriceChangeBatchEntry,
     TickSizeChange, TradeMessage, WsMessage,
 };

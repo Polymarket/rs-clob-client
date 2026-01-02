@@ -1,11 +1,11 @@
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU16, Ordering};
 
 use bitflags::bitflags;
 
 bitflags! {
     #[repr(transparent)]
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-    pub struct MessageInterest: u8 {
+    pub struct MessageInterest: u16 {
         /// No interest in any message types.
         const NONE = 0;
 
@@ -27,11 +27,23 @@ bitflags! {
         /// Interest in order updates.
         const ORDER = 1 << 5;
 
-        /// Interest in all market data messages.
+        /// Interest in best bid/ask updates (requires `custom_feature_enabled`).
+        const BEST_BID_ASK = 1 << 6;
+
+        /// Interest in new market events (requires `custom_feature_enabled`).
+        const NEW_MARKET = 1 << 7;
+
+        /// Interest in market resolved events (requires `custom_feature_enabled`).
+        const MARKET_RESOLVED = 1 << 8;
+
+        /// Interest in all market data messages (including custom feature messages).
         const MARKET = Self::BOOK.bits()
             | Self::PRICE_CHANGE.bits()
             | Self::TICK_SIZE.bits()
-            | Self::LAST_TRADE_PRICE.bits();
+            | Self::LAST_TRADE_PRICE.bits()
+            | Self::BEST_BID_ASK.bits()
+            | Self::NEW_MARKET.bits()
+            | Self::MARKET_RESOLVED.bits();
 
         /// Interest in all user channel messages.
         const USER = Self::TRADE.bits() | Self::ORDER.bits();
@@ -52,6 +64,9 @@ impl MessageInterest {
             "last_trade_price" => Self::LAST_TRADE_PRICE,
             "trade" => Self::TRADE,
             "order" => Self::ORDER,
+            "best_bid_ask" => Self::BEST_BID_ASK,
+            "new_market" => Self::NEW_MARKET,
+            "market_resolved" => Self::MARKET_RESOLVED,
             _ => Self::NONE,
         }
     }
@@ -72,7 +87,7 @@ impl Default for MessageInterest {
 /// Thread-safe interest tracker that can be shared between subscription manager and connection.
 #[derive(Debug, Default)]
 pub struct InterestTracker {
-    interest: AtomicU8,
+    interest: AtomicU16,
 }
 
 impl InterestTracker {
@@ -80,7 +95,7 @@ impl InterestTracker {
     #[must_use]
     pub const fn new() -> Self {
         Self {
-            interest: AtomicU8::new(0),
+            interest: AtomicU16::new(0),
         }
     }
 
@@ -136,6 +151,54 @@ mod tests {
             MessageInterest::from_event_type("unknown"),
             MessageInterest::NONE
         );
+    }
+
+    #[test]
+    fn interest_from_event_type_custom_features() {
+        assert_eq!(
+            MessageInterest::from_event_type("best_bid_ask"),
+            MessageInterest::BEST_BID_ASK
+        );
+        assert_eq!(
+            MessageInterest::from_event_type("new_market"),
+            MessageInterest::NEW_MARKET
+        );
+        assert_eq!(
+            MessageInterest::from_event_type("market_resolved"),
+            MessageInterest::MARKET_RESOLVED
+        );
+    }
+
+    #[test]
+    fn market_contains_custom_feature_interests() {
+        assert!(MessageInterest::MARKET.contains(MessageInterest::BEST_BID_ASK));
+        assert!(MessageInterest::MARKET.contains(MessageInterest::NEW_MARKET));
+        assert!(MessageInterest::MARKET.contains(MessageInterest::MARKET_RESOLVED));
+    }
+
+    #[test]
+    fn tracker_is_interested_in_event() {
+        let tracker = InterestTracker::new();
+        tracker.add(MessageInterest::BEST_BID_ASK);
+
+        assert!(tracker.is_interested_in_event("best_bid_ask"));
+        assert!(!tracker.is_interested_in_event("book"));
+        assert!(!tracker.is_interested_in_event("unknown"));
+    }
+
+    #[test]
+    fn message_interest_is_interested_in_event() {
+        let interest = MessageInterest::MARKET;
+        assert!(interest.is_interested_in_event("book"));
+        assert!(interest.is_interested_in_event("best_bid_ask"));
+        assert!(!interest.is_interested_in_event("trade"));
+        assert!(!interest.is_interested_in_event("unknown"));
+    }
+
+    #[test]
+    fn message_interest_default() {
+        let interest = MessageInterest::default();
+        assert_eq!(interest, MessageInterest::ALL);
     }
 
     #[test]
