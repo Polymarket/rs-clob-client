@@ -1064,6 +1064,316 @@ mod unsubscribe {
     }
 }
 
+mod client_state {
+    use polymarket_client_sdk::clob::ws::connection::ConnectionState;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn is_connected_returns_false_before_subscription() {
+        let server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        // Before any subscription, connection should not be established
+        assert!(!client.is_connected());
+    }
+
+    #[tokio::test]
+    async fn is_connected_returns_true_after_subscription() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        // Subscribe to trigger connection
+        let _stream = client
+            .subscribe_orderbook(vec![payloads::ASSET_ID.to_owned()])
+            .unwrap();
+        let _: Option<String> = server.recv_subscription().await;
+
+        // Now should be connected
+        assert!(client.is_connected());
+    }
+
+    #[tokio::test]
+    async fn connection_state_is_disconnected_before_subscription() {
+        let server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        // Before any subscription, state should be Disconnected
+        assert_eq!(client.connection_state(), ConnectionState::Disconnected);
+    }
+
+    #[tokio::test]
+    async fn connection_state_is_connected_after_subscription() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        // Subscribe to trigger connection
+        let _stream = client
+            .subscribe_orderbook(vec![payloads::ASSET_ID.to_owned()])
+            .unwrap();
+        let _: Option<String> = server.recv_subscription().await;
+
+        // Allow connection to establish
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        // Now should be connected
+        assert!(client.connection_state().is_connected());
+    }
+
+    #[tokio::test]
+    async fn subscription_count_returns_zero_initially() {
+        let server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        assert_eq!(client.subscription_count(), 0);
+    }
+
+    #[tokio::test]
+    async fn subscription_count_increases_with_subscriptions() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        let _stream1 = client
+            .subscribe_orderbook(vec![payloads::ASSET_ID.to_owned()])
+            .unwrap();
+        let _: Option<String> = server.recv_subscription().await;
+
+        assert_eq!(client.subscription_count(), 1);
+
+        let _stream2 = client
+            .subscribe_prices(vec![payloads::OTHER_ASSET_ID.to_owned()])
+            .unwrap();
+        let _: Option<String> = server.recv_subscription().await;
+
+        assert_eq!(client.subscription_count(), 2);
+    }
+}
+
+mod unsubscribe_variants {
+    use super::*;
+
+    #[tokio::test]
+    async fn unsubscribe_prices_sends_request() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        let asset_id = payloads::ASSET_ID;
+
+        // Subscribe via prices
+        let _stream = client.subscribe_prices(vec![asset_id.to_owned()]).unwrap();
+        let _: Option<String> = server.recv_subscription().await;
+
+        // Unsubscribe via prices
+        client.unsubscribe_prices(&[asset_id.to_owned()]).unwrap();
+
+        let unsub = server.recv_subscription().await.unwrap();
+        assert!(unsub.contains("\"operation\":\"unsubscribe\""));
+        assert!(unsub.contains(asset_id));
+    }
+
+    #[tokio::test]
+    async fn unsubscribe_midpoints_sends_request() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        let asset_id = payloads::ASSET_ID;
+
+        // Subscribe via midpoints
+        let _stream = client
+            .subscribe_midpoints(vec![asset_id.to_owned()])
+            .unwrap();
+        let _: Option<String> = server.recv_subscription().await;
+
+        // Unsubscribe via midpoints
+        client
+            .unsubscribe_midpoints(&[asset_id.to_owned()])
+            .unwrap();
+
+        let unsub = server.recv_subscription().await.unwrap();
+        assert!(unsub.contains("\"operation\":\"unsubscribe\""));
+        assert!(unsub.contains(asset_id));
+    }
+}
+
+mod custom_features {
+    use rust_decimal_macros::dec;
+
+    use super::*;
+
+    pub fn best_bid_ask() -> serde_json::Value {
+        json!({
+            "event_type": "best_bid_ask",
+            "market": payloads::MARKET,
+            "asset_id": payloads::ASSET_ID,
+            "best_bid": "0.48",
+            "best_ask": "0.52",
+            "spread": "0.04",
+            "timestamp": "1234567890000"
+        })
+    }
+
+    pub fn new_market() -> serde_json::Value {
+        json!({
+            "event_type": "new_market",
+            "id": "12345",
+            "question": "Will it rain tomorrow?",
+            "market": payloads::MARKET,
+            "slug": "will-it-rain-tomorrow",
+            "description": "A test market",
+            "assets_ids": [payloads::ASSET_ID],
+            "outcomes": ["Yes", "No"],
+            "timestamp": "1234567890000"
+        })
+    }
+
+    pub fn market_resolved() -> serde_json::Value {
+        json!({
+            "event_type": "market_resolved",
+            "id": "12345",
+            "question": "Will it rain tomorrow?",
+            "market": payloads::MARKET,
+            "slug": "will-it-rain-tomorrow",
+            "description": "A test market",
+            "assets_ids": [payloads::ASSET_ID],
+            "outcomes": ["Yes", "No"],
+            "winning_asset_id": payloads::ASSET_ID,
+            "winning_outcome": "Yes",
+            "timestamp": "1234567890000"
+        })
+    }
+
+    #[tokio::test]
+    async fn subscribe_best_bid_ask_receives_updates() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        let stream = client
+            .subscribe_best_bid_ask(vec![payloads::ASSET_ID.to_owned()])
+            .unwrap();
+        let mut stream = Box::pin(stream);
+
+        // Verify subscription with custom_feature_enabled
+        let sub_request = server.recv_subscription().await.unwrap();
+        assert!(sub_request.contains("\"type\":\"market\""));
+        assert!(sub_request.contains("\"custom_feature_enabled\":true"));
+
+        // Send best_bid_ask message
+        server.send(&best_bid_ask().to_string());
+
+        let result = timeout(Duration::from_secs(2), stream.next()).await;
+        let bba = result.unwrap().unwrap().unwrap();
+
+        assert_eq!(bba.asset_id, payloads::ASSET_ID);
+        assert_eq!(bba.market, payloads::MARKET);
+        assert_eq!(bba.best_bid, dec!(0.48));
+        assert_eq!(bba.best_ask, dec!(0.52));
+        assert_eq!(bba.spread, dec!(0.04));
+    }
+
+    #[tokio::test]
+    async fn subscribe_new_markets_receives_updates() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        let stream = client
+            .subscribe_new_markets(vec![payloads::ASSET_ID.to_owned()])
+            .unwrap();
+        let mut stream = Box::pin(stream);
+
+        // Verify subscription with custom_feature_enabled
+        let sub_request = server.recv_subscription().await.unwrap();
+        assert!(sub_request.contains("\"custom_feature_enabled\":true"));
+
+        // Send new_market message
+        server.send(&new_market().to_string());
+
+        let result = timeout(Duration::from_secs(2), stream.next()).await;
+        let nm = result.unwrap().unwrap().unwrap();
+
+        assert_eq!(nm.id, "12345");
+        assert_eq!(nm.question, "Will it rain tomorrow?");
+        assert_eq!(nm.market, payloads::MARKET);
+        assert_eq!(nm.slug, "will-it-rain-tomorrow");
+        assert_eq!(nm.asset_ids, vec![payloads::ASSET_ID]);
+        assert_eq!(nm.outcomes, vec!["Yes", "No"]);
+    }
+
+    #[tokio::test]
+    async fn subscribe_market_resolutions_receives_updates() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        let stream = client
+            .subscribe_market_resolutions(vec![payloads::ASSET_ID.to_owned()])
+            .unwrap();
+        let mut stream = Box::pin(stream);
+
+        // Verify subscription with custom_feature_enabled
+        let sub_request = server.recv_subscription().await.unwrap();
+        assert!(sub_request.contains("\"custom_feature_enabled\":true"));
+
+        // Send market_resolved message
+        server.send(&market_resolved().to_string());
+
+        let result = timeout(Duration::from_secs(2), stream.next()).await;
+        let mr = result.unwrap().unwrap().unwrap();
+
+        assert_eq!(mr.id, "12345");
+        assert_eq!(mr.question, "Will it rain tomorrow?");
+        assert_eq!(mr.market, payloads::MARKET);
+        assert_eq!(mr.slug, "will-it-rain-tomorrow");
+        assert_eq!(mr.asset_ids, vec![payloads::ASSET_ID]);
+    }
+
+    #[tokio::test]
+    async fn subscribe_best_bid_ask_filters_other_messages() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        let stream = client
+            .subscribe_best_bid_ask(vec![payloads::ASSET_ID.to_owned()])
+            .unwrap();
+        let mut stream = Box::pin(stream);
+
+        let _: Option<String> = server.recv_subscription().await;
+
+        // Send a book message (should be filtered out)
+        server.send(&payloads::book().to_string());
+
+        // Send best_bid_ask message
+        server.send(&best_bid_ask().to_string());
+
+        // Should only receive best_bid_ask
+        let result = timeout(Duration::from_secs(2), stream.next()).await;
+        let bba = result.unwrap().unwrap().unwrap();
+        assert_eq!(bba.best_bid, dec!(0.48));
+    }
+}
+
 mod message_parsing {
     use polymarket_client_sdk::clob::types::Side;
     use polymarket_client_sdk::clob::ws::{LastTradePrice, TickSizeChange};
