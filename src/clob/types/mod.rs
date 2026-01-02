@@ -30,7 +30,7 @@ pub use request::{
 #[cfg(feature = "rfq")]
 pub use response::{
     AcceptRfqQuoteResponse, ApproveRfqOrderResponse, CreateRfqQuoteResponse,
-    CreateRfqRequestResponse, RfqPage, RfqQuote, RfqRequest,
+    CreateRfqRequestResponse, RfqQuote, RfqRequest,
 };
 
 #[non_exhaustive]

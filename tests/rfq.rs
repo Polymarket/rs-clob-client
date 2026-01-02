@@ -14,6 +14,7 @@ use polymarket_client_sdk::clob::types::{
     Side, SignatureType,
 };
 use reqwest::StatusCode;
+use rust_decimal_macros::dec;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -288,8 +289,8 @@ mod execution {
         let request = AcceptRfqQuoteRequest::builder()
             .request_id("01968f1e-1182-71c4-9d40-172db9be82af")
             .quote_id("0196f484-9fbd-74c1-bfc1-75ac21c1cf84")
-            .maker_amount("50000000")
-            .taker_amount("3000000")
+            .maker_amount(dec!(50000000))
+            .taker_amount(dec!(3000000))
             .token_id("12345")
             .maker(maker)
             .signer(maker)
@@ -328,8 +329,8 @@ mod execution {
         let request = ApproveRfqOrderRequest::builder()
             .request_id("01968f1e-1182-71c4-9d40-172db9be82af")
             .quote_id("0196f484-9fbd-74c1-bfc1-75ac21c1cf84")
-            .maker_amount("50000000")
-            .taker_amount("3000000")
+            .maker_amount(dec!(50000000))
+            .taker_amount(dec!(3000000))
             .token_id("12345")
             .maker(maker)
             .signer(maker)

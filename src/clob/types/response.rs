@@ -667,10 +667,6 @@ pub struct Page<T> {
     pub count: u64,
 }
 
-// =============================================================================
-// RFQ Response Types (feature-gated)
-// =============================================================================
-
 /// Response from creating an RFQ request.
 #[cfg(feature = "rfq")]
 #[non_exhaustive]
@@ -775,23 +771,6 @@ pub struct RfqQuote {
     /// Quoted price.
     pub price: Decimal,
 }
-
-/// Paginated response wrapper for RFQ queries.
-#[cfg(feature = "rfq")]
-#[non_exhaustive]
-#[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
-#[builder(on(String, into))]
-pub struct RfqPage<T> {
-    /// List of items in this page.
-    pub data: Vec<T>,
-    /// Cursor for the next page (base64 encoded).
-    pub next_cursor: String,
-    /// Maximum items per page.
-    pub limit: u64,
-    /// Number of items in this page.
-    pub count: u64,
-}
-
 fn string_from_number_or_string<'de, D>(deserializer: D) -> std::result::Result<String, D::Error>
 where
     D: Deserializer<'de>,
