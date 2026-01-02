@@ -13,6 +13,8 @@ const EXAMPLE_MARKET: &str = "0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt::init();
+
     let client = Client::default();
 
     let user = address!("56687bf447db6ffa42ffe2204a05edaa20f55839");

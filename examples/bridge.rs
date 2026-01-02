@@ -6,6 +6,8 @@ use polymarket_client_sdk::types::address;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt::init();
+
     let client = Client::default();
 
     // Get supported assets

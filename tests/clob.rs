@@ -1503,7 +1503,7 @@ mod authenticated {
             "outcome": "YES",
             "created_at": 1_705_322_096,
             "expiration": "1705708800",
-            "type": "gtd"
+            "order_type": "gtd"
         });
 
         let mock = server.mock(|when, then| {
@@ -1566,7 +1566,7 @@ mod authenticated {
                     "outcome": "YES",
                     "created_at": 1_705_322_096,
                     "expiration": "1705708800",
-                    "type": "GTC"
+                    "order_type": "GTC"
                 }
             ],
             "limit": 1,
