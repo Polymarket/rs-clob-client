@@ -12,11 +12,11 @@
 use polymarket_client_sdk::gamma::Client;
 use polymarket_client_sdk::gamma::types::ParentEntityType;
 use polymarket_client_sdk::gamma::types::request::{
-    CommentsByIdRequest, CommentsByUserAddressRequest, CommentsRequest, EventByIdRequest,
-    EventBySlugRequest, EventTagsRequest, EventsRequest, MarketByIdRequest, MarketBySlugRequest,
-    MarketTagsRequest, MarketsRequest, PublicProfileRequest, RelatedTagsByIdRequest,
-    RelatedTagsBySlugRequest, SearchRequest, SeriesByIdRequest, SeriesListRequest, TagByIdRequest,
-    TagBySlugRequest, TagsRequest, TeamsRequest,
+    CommentsByUserAddressRequest, CommentsRequest, EventByIdRequest, EventBySlugRequest,
+    EventTagsRequest, EventsRequest, MarketByIdRequest, MarketBySlugRequest, MarketTagsRequest,
+    MarketsRequest, PublicProfileRequest, RelatedTagsByIdRequest, RelatedTagsBySlugRequest,
+    SearchRequest, SeriesByIdRequest, SeriesListRequest, TagByIdRequest, TagBySlugRequest,
+    TagsRequest, TeamsRequest,
 };
 use polymarket_client_sdk::gamma::types::response::{
     Comment, Event, Market, RelatedTag, Series, Tag,
@@ -355,62 +355,34 @@ async fn main() -> anyhow::Result<()> {
                 );
             }
         }
-    } else {
-        // Try fetching comments directly
-        let request = CommentsRequest::builder().limit(10).build();
+    } else if let Some(event_id) = events.as_ref().ok().and_then(|ev| first_event_id(ev)) {
+        // No event with comments found, but we have events to test the endpoint
+        let request = CommentsRequest::builder()
+            .parent_entity_type(ParentEntityType::Event)
+            .parent_entity_id(event_id)
+            .limit(10)
+            .build();
         let comments = client.comments(&request).await;
         match &comments {
             Ok(c) => info!(endpoint = "comments", count = c.len()),
             Err(e) => error!(endpoint = "comments", error = %e),
         }
 
-        if let Ok(c) = &comments {
-            if let Some(comment) = c.first() {
-                let id_request = CommentsByIdRequest::builder().id(&comment.id).build();
-                match client.comments_by_id(&id_request).await {
-                    Ok(c) => info!(endpoint = "comments_by_id", count = c.len()),
-                    Err(e) => error!(endpoint = "comments_by_id", error = %e),
-                }
-
-                if let Some(addr) = &comment.user_address {
-                    let request = CommentsByUserAddressRequest::builder()
-                        .user_address(addr)
-                        .limit(5)
-                        .build();
-                    match client.comments_by_user_address(&request).await {
-                        Ok(c) => {
-                            info!(endpoint = "comments_by_user_address", count = c.len());
-                        }
-                        Err(e) => {
-                            error!(endpoint = "comments_by_user_address", error = %e);
-                        }
-                    }
-                } else {
-                    warn!(
-                        endpoint = "comments_by_user_address",
-                        reason = "no user address on comment"
-                    );
-                }
-            } else {
-                warn!(
-                    endpoint = "comments_by_id",
-                    reason = "no comments available"
-                );
-                warn!(
-                    endpoint = "comments_by_user_address",
-                    reason = "no comments available"
-                );
-            }
-        } else {
-            warn!(
-                endpoint = "comments_by_id",
-                reason = "no comments available"
-            );
-            warn!(
-                endpoint = "comments_by_user_address",
-                reason = "no comments available"
-            );
-        }
+        warn!(
+            endpoint = "comments_by_id",
+            reason = "no comments found for event"
+        );
+        warn!(
+            endpoint = "comments_by_user_address",
+            reason = "no comments found for event"
+        );
+    } else {
+        warn!(endpoint = "comments", reason = "no events available");
+        warn!(endpoint = "comments_by_id", reason = "no events available");
+        warn!(
+            endpoint = "comments_by_user_address",
+            reason = "no events available"
+        );
     }
 
     info!("═══ Profiles ═══");
