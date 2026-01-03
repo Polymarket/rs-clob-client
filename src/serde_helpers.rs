@@ -73,8 +73,10 @@ impl serde_with::SerializeAs<String> for StringFromAny {
 }
 
 /// A `serde_as` type that deserializes a JSON array encoded as a string into `Vec<String>`.
+#[cfg(feature = "gamma")]
 pub struct VecFromJsonString;
 
+#[cfg(feature = "gamma")]
 impl<'de> serde_with::DeserializeAs<'de, Vec<String>> for VecFromJsonString {
     fn deserialize_as<D>(deserializer: D) -> std::result::Result<Vec<String>, D::Error>
     where
@@ -88,6 +90,7 @@ impl<'de> serde_with::DeserializeAs<'de, Vec<String>> for VecFromJsonString {
     }
 }
 
+#[cfg(feature = "gamma")]
 impl serde_with::SerializeAs<Vec<String>> for VecFromJsonString {
     fn serialize_as<S>(source: &Vec<String>, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
