@@ -8,7 +8,7 @@ use chrono::NaiveDate;
 use serde::Serialize;
 use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as};
 
-use crate::clob::types::{AssetType, Interval, Side, SignatureType};
+use crate::clob::types::{AssetType, Side, SignatureType, TimeRange};
 use crate::types::Address;
 
 #[non_exhaustive]
@@ -55,13 +55,14 @@ pub struct LastTradePriceRequest {
 #[derive(Debug, Serialize, Builder)]
 #[builder(on(String, into))]
 pub struct PriceHistoryRequest {
+    /// The market (condition ID) to get price history for.
     pub market: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub start_ts: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub end_ts: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub interval: Option<Interval>,
+    /// The time range for the price history query.
+    /// Either a predefined interval or explicit start/end timestamps.
+    #[serde(flatten)]
+    #[builder(into)]
+    pub time_range: TimeRange,
+    /// Optional fidelity (number of data points).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fidelity: Option<u32>,
 }

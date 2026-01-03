@@ -440,20 +440,22 @@ impl<S: State> Client<S> {
         &self,
         request: &PriceHistoryRequest,
     ) -> Result<PriceHistoryResponse> {
+        use crate::clob::types::TimeRange;
+
         let mut req = self
             .client()
             .request(Method::GET, format!("{}prices-history", self.host()))
             .query(&[("market", request.market.as_str())]);
 
-        if let Some(start_ts) = request.start_ts {
-            req = req.query(&[("startTs", start_ts)]);
+        match request.time_range {
+            TimeRange::Interval { interval } => {
+                req = req.query(&[("interval", interval.to_string())]);
+            }
+            TimeRange::Range { start_ts, end_ts } => {
+                req = req.query(&[("startTs", start_ts), ("endTs", end_ts)]);
+            }
         }
-        if let Some(end_ts) = request.end_ts {
-            req = req.query(&[("endTs", end_ts)]);
-        }
-        if let Some(interval) = &request.interval {
-            req = req.query(&[("interval", interval.to_string())]);
-        }
+
         if let Some(fidelity) = request.fidelity {
             req = req.query(&[("fidelity", fidelity)]);
         }

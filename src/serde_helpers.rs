@@ -1,10 +1,107 @@
-//! Deserialization with unknown field warnings.
+//! Serde helpers for flexible deserialization.
 //!
-//! When the `tracing` feature is enabled, this module logs warnings for any
+//! When the `tracing` feature is enabled, this module also logs warnings for any
 //! unknown fields encountered during deserialization, helping detect API changes.
 
 use serde::de::DeserializeOwned;
 use serde_json::Value;
+
+/// A `serde_as` type that deserializes strings or integers as `String`.
+///
+/// Use with `#[serde_as(as = "StringFromAny")]` for `String` fields
+/// or `#[serde_as(as = "Option<StringFromAny>")]` for `Option<String>`.
+pub struct StringFromAny;
+
+impl<'de> serde_with::DeserializeAs<'de, String> for StringFromAny {
+    fn deserialize_as<D>(deserializer: D) -> std::result::Result<String, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use std::fmt;
+
+        use serde::de::{self, Visitor};
+
+        struct StringOrNumberVisitor;
+
+        impl Visitor<'_> for StringOrNumberVisitor {
+            type Value = String;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("string or integer")
+            }
+
+            fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(v.to_owned())
+            }
+
+            fn visit_string<E>(self, v: String) -> std::result::Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(v)
+            }
+
+            fn visit_i64<E>(self, v: i64) -> std::result::Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(v.to_string())
+            }
+
+            fn visit_u64<E>(self, v: u64) -> std::result::Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(v.to_string())
+            }
+        }
+
+        deserializer.deserialize_any(StringOrNumberVisitor)
+    }
+}
+
+impl serde_with::SerializeAs<String> for StringFromAny {
+    fn serialize_as<S>(source: &String, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(source)
+    }
+}
+
+/// A `serde_as` type that deserializes a JSON array encoded as a string into `Vec<String>`.
+#[cfg(feature = "gamma")]
+pub struct VecFromJsonString;
+
+#[cfg(feature = "gamma")]
+impl<'de> serde_with::DeserializeAs<'de, Vec<String>> for VecFromJsonString {
+    fn deserialize_as<D>(deserializer: D) -> std::result::Result<Vec<String>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::Deserialize as _;
+        use serde::de::Error as _;
+
+        let s = String::deserialize(deserializer)?;
+        serde_json::from_str(&s).map_err(D::Error::custom)
+    }
+}
+
+#[cfg(feature = "gamma")]
+impl serde_with::SerializeAs<Vec<String>> for VecFromJsonString {
+    fn serialize_as<S>(source: &Vec<String>, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::Error as _;
+
+        let json = serde_json::to_string(source).map_err(S::Error::custom)?;
+        serializer.serialize_str(&json)
+    }
+}
 
 /// Deserialize JSON with unknown field warnings.
 ///
@@ -42,6 +139,13 @@ pub fn deserialize_with_warnings<T: DeserializeOwned>(value: Value) -> crate::Re
 
     let result: T = serde_ignored::deserialize(value, |path| {
         unknown_paths.push(path.to_string());
+    })
+    .inspect_err(|e| {
+        tracing::error!(
+            type_name = %type_name::<T>(),
+            error = %e,
+            "deserialization failed"
+        );
     })?;
 
     // Log warnings for unknown fields with their values
@@ -195,6 +299,148 @@ mod tests {
         assert_eq!(result.inner.value, 42);
     }
 
+    // ========== StringFromAny tests ==========
+
+    #[derive(Debug, Deserialize, PartialEq, serde::Serialize)]
+    struct StringFromAnyStruct {
+        #[serde(with = "serde_with::As::<StringFromAny>")]
+        id: String,
+    }
+
+    #[derive(Debug, Deserialize, PartialEq, serde::Serialize)]
+    struct OptionalStringFromAny {
+        #[serde(with = "serde_with::As::<Option<StringFromAny>>")]
+        id: Option<String>,
+    }
+
+    #[test]
+    fn string_from_any_deserialize_string() {
+        let json = serde_json::json!({ "id": "hello" });
+        let result: StringFromAnyStruct =
+            serde_json::from_value(json).expect("deserialization failed");
+        assert_eq!(result.id, "hello");
+    }
+
+    #[test]
+    fn string_from_any_deserialize_positive_integer() {
+        let json = serde_json::json!({ "id": 12345 });
+        let result: StringFromAnyStruct =
+            serde_json::from_value(json).expect("deserialization failed");
+        assert_eq!(result.id, "12345");
+    }
+
+    #[test]
+    fn string_from_any_deserialize_negative_integer() {
+        let json = serde_json::json!({ "id": -42 });
+        let result: StringFromAnyStruct =
+            serde_json::from_value(json).expect("deserialization failed");
+        assert_eq!(result.id, "-42");
+    }
+
+    #[test]
+    fn string_from_any_deserialize_zero() {
+        let json = serde_json::json!({ "id": 0 });
+        let result: StringFromAnyStruct =
+            serde_json::from_value(json).expect("deserialization failed");
+        assert_eq!(result.id, "0");
+    }
+
+    #[test]
+    fn string_from_any_deserialize_large_u64() {
+        // Test u64 max value
+        let json = serde_json::json!({ "id": u64::MAX });
+        let result: StringFromAnyStruct =
+            serde_json::from_value(json).expect("deserialization failed");
+        assert_eq!(result.id, u64::MAX.to_string());
+    }
+
+    #[test]
+    fn string_from_any_deserialize_large_negative_i64() {
+        // Test i64 min value
+        let json = serde_json::json!({ "id": i64::MIN });
+        let result: StringFromAnyStruct =
+            serde_json::from_value(json).expect("deserialization failed");
+        assert_eq!(result.id, i64::MIN.to_string());
+    }
+
+    #[test]
+    fn string_from_any_serialize_back_to_string() {
+        let obj = StringFromAnyStruct {
+            id: "12345".to_owned(),
+        };
+        let json = serde_json::to_value(&obj).expect("serialization failed");
+        assert_eq!(json, serde_json::json!({ "id": "12345" }));
+    }
+
+    #[test]
+    fn string_from_any_roundtrip_from_string() {
+        let json = serde_json::json!({ "id": "hello" });
+        let obj: StringFromAnyStruct =
+            serde_json::from_value(json).expect("deserialization failed");
+        let back = serde_json::to_value(&obj).expect("serialization failed");
+        assert_eq!(back, serde_json::json!({ "id": "hello" }));
+    }
+
+    #[test]
+    fn string_from_any_roundtrip_from_integer() {
+        let json = serde_json::json!({ "id": 42 });
+        let obj: StringFromAnyStruct =
+            serde_json::from_value(json).expect("deserialization failed");
+        // After roundtrip, integer becomes string
+        let back = serde_json::to_value(&obj).expect("serialization failed");
+        assert_eq!(back, serde_json::json!({ "id": "42" }));
+    }
+
+    #[test]
+    fn string_from_any_option_some_string() {
+        let json = serde_json::json!({ "id": "hello" });
+        let result: OptionalStringFromAny =
+            serde_json::from_value(json).expect("deserialization failed");
+        assert_eq!(result.id, Some("hello".to_owned()));
+    }
+
+    #[test]
+    fn string_from_any_option_some_integer() {
+        let json = serde_json::json!({ "id": 123 });
+        let result: OptionalStringFromAny =
+            serde_json::from_value(json).expect("deserialization failed");
+        assert_eq!(result.id, Some("123".to_owned()));
+    }
+
+    #[test]
+    fn string_from_any_option_none() {
+        let json = serde_json::json!({ "id": null });
+        let result: OptionalStringFromAny =
+            serde_json::from_value(json).expect("deserialization failed");
+        assert_eq!(result.id, None);
+    }
+
+    #[test]
+    fn string_from_any_option_serialize_some() {
+        let obj = OptionalStringFromAny {
+            id: Some("test".to_owned()),
+        };
+        let json = serde_json::to_value(&obj).expect("serialization failed");
+        assert_eq!(json, serde_json::json!({ "id": "test" }));
+    }
+
+    #[test]
+    fn string_from_any_option_serialize_none() {
+        let obj = OptionalStringFromAny { id: None };
+        let json = serde_json::to_value(&obj).expect("serialization failed");
+        assert_eq!(json, serde_json::json!({ "id": null }));
+    }
+
+    #[test]
+    fn string_from_any_empty_string() {
+        let json = serde_json::json!({ "id": "" });
+        let result: StringFromAnyStruct =
+            serde_json::from_value(json).expect("deserialization failed");
+        assert_eq!(result.id, "");
+    }
+
+    // ========== lookup_value tests ==========
+
     #[cfg(feature = "tracing")]
     #[test]
     fn lookup_simple_path() {
@@ -310,6 +556,23 @@ mod tests {
         // JSON object serialization order may vary, check both keys present
         assert!(formatted.contains("\"a\":1"));
         assert!(formatted.contains("\"b\":2"));
+    }
+
+    #[cfg(feature = "tracing")]
+    #[test]
+    fn format_none_shows_placeholder() {
+        let formatted = format_value(None);
+        assert_eq!(formatted, "<unable to retrieve>");
+    }
+
+    #[cfg(feature = "tracing")]
+    #[test]
+    fn lookup_option_marker_skipped() {
+        // serde_ignored uses '?' for Option wrappers
+        let json = serde_json::json!({"outer": {"inner": "value"}});
+        // Path "?.outer.?.inner" should skip ? markers
+        let result = lookup_value(&json, "?.outer.?.inner");
+        assert_eq!(result, Some(&Value::String("value".to_owned())));
     }
 
     /// Test that verifies warnings are actually emitted for unknown fields.

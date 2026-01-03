@@ -5,7 +5,9 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
+use crate::serde_helpers::{StringFromAny, VecFromJsonString};
 use crate::types::Decimal;
 
 /// Image optimization metadata.
@@ -99,13 +101,17 @@ pub struct Tag {
 }
 
 /// A relationship between tags.
+#[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct RelatedTag {
+    #[serde_as(as = "StringFromAny")]
     pub id: String,
+    #[serde_as(as = "Option<StringFromAny>")]
     #[serde(rename = "tagID")]
     pub tag_id: Option<String>,
+    #[serde_as(as = "Option<StringFromAny>")]
     #[serde(rename = "relatedTagID")]
     pub related_tag_id: Option<String>,
     pub rank: Option<i32>,
@@ -310,9 +316,15 @@ pub struct Event {
     pub requires_translation: Option<bool>,
     pub neg_risk_augmented: Option<bool>,
     pub game_id: Option<i64>,
+    pub election_type: Option<String>,
+    pub country_name: Option<String>,
+    pub color: Option<String>,
+    pub turn_provider_id: Option<String>,
+    pub sportsradar_match_id: Option<String>,
 }
 
 /// A prediction market.
+#[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
@@ -386,7 +398,8 @@ pub struct Market {
     pub volume_1yr: Option<Decimal>,
     pub game_start_time: Option<String>,
     pub seconds_delay: Option<i32>,
-    pub clob_token_ids: Option<String>,
+    #[serde_as(as = "Option<VecFromJsonString>")]
+    pub clob_token_ids: Option<Vec<String>>,
     pub disqus_thread: Option<String>,
     pub short_outcomes: Option<String>,
     #[serde(rename = "teamAID")]
