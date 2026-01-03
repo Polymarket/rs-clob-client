@@ -217,6 +217,7 @@ pub struct Collection {
 }
 
 /// A prediction market event.
+#[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
@@ -262,6 +263,11 @@ pub struct Event {
     pub featured_image: Option<String>,
     pub disqus_thread: Option<String>,
     pub parent_event: Option<String>,
+    #[serde_as(as = "Option<StringFromAny>")]
+    pub parent_event_id: Option<String>,
+    pub sportsradar_match_id: Option<String>,
+    #[serde_as(as = "Option<StringFromAny>")]
+    pub turn_provider_id: Option<String>,
     pub enable_order_book: Option<bool>,
     pub liquidity_amm: Option<Decimal>,
     pub liquidity_clob: Option<Decimal>,
