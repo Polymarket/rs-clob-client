@@ -41,7 +41,7 @@ mod unauthenticated {
         PriceResponse, PricesResponse, Rewards, SimplifiedMarketResponse, SpreadResponse,
         SpreadsResponse, TickSizeResponse, Token,
     };
-    use polymarket_client_sdk::clob::types::{Interval, Side, TickSize};
+    use polymarket_client_sdk::clob::types::{Interval, Side, TickSize, TimeRange};
     use polymarket_client_sdk::error::Status;
     use reqwest::Method;
 
@@ -237,7 +237,7 @@ mod unauthenticated {
     }
 
     #[tokio::test]
-    async fn price_history_should_succeed() -> anyhow::Result<()> {
+    async fn price_history_with_interval_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
@@ -245,8 +245,6 @@ mod unauthenticated {
             when.method(httpmock::Method::GET)
                 .path("/prices-history")
                 .query_param("market", "0x123")
-                .query_param("startTs", "1000")
-                .query_param("endTs", "2000")
                 .query_param("interval", "1h")
                 .query_param("fidelity", "10");
             then.status(StatusCode::OK).json_body(json!({
@@ -260,9 +258,7 @@ mod unauthenticated {
 
         let request = PriceHistoryRequest::builder()
             .market("0x123")
-            .start_ts(1000)
-            .end_ts(2000)
-            .interval(Interval::OneHour)
+            .time_range(Interval::OneHour)
             .fidelity(10_u32)
             .build();
         let response = client.price_history(&request).await?;
@@ -271,6 +267,44 @@ mod unauthenticated {
             .history(vec![
                 PricePoint::builder().t(1000).p(dec!(0.5)).build(),
                 PricePoint::builder().t(1500).p(dec!(0.55)).build(),
+                PricePoint::builder().t(2000).p(dec!(0.6)).build(),
+            ])
+            .build();
+
+        assert_eq!(response, expected);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn price_history_with_range_should_succeed() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = Client::new(&server.base_url(), Config::default())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(httpmock::Method::GET)
+                .path("/prices-history")
+                .query_param("market", "0x123")
+                .query_param("startTs", "1000")
+                .query_param("endTs", "2000");
+            then.status(StatusCode::OK).json_body(json!({
+                "history": [
+                    { "t": 1000, "p": "0.5" },
+                    { "t": 2000, "p": "0.6" }
+                ]
+            }));
+        });
+
+        let request = PriceHistoryRequest::builder()
+            .market("0x123")
+            .time_range(TimeRange::from_range(1000, 2000))
+            .build();
+        let response = client.price_history(&request).await?;
+
+        let expected = PriceHistoryResponse::builder()
+            .history(vec![
+                PricePoint::builder().t(1000).p(dec!(0.5)).build(),
                 PricePoint::builder().t(2000).p(dec!(0.6)).build(),
             ])
             .build();

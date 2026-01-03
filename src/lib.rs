@@ -6,12 +6,12 @@ pub mod bridge;
 pub mod clob;
 #[cfg(feature = "data")]
 pub mod data;
-pub(crate) mod deser_warn;
 pub mod error;
 #[cfg(feature = "gamma")]
 pub mod gamma;
 #[cfg(feature = "rtds")]
 pub mod rtds;
+pub(crate) mod serde_helpers;
 pub mod types;
 
 use std::fmt::Write as _;
@@ -178,7 +178,7 @@ async fn request<Response: DeserializeOwned>(
     }
 
     let json_value = response.json::<serde_json::Value>().await?;
-    let response_data: Option<Response> = deser_warn::deserialize_with_warnings(json_value)?;
+    let response_data: Option<Response> = serde_helpers::deserialize_with_warnings(json_value)?;
 
     if let Some(response) = response_data {
         Ok(response)

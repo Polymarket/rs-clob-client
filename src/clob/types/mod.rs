@@ -106,6 +106,48 @@ pub enum Interval {
     Max,
 }
 
+/// Time range specification for price history queries.
+///
+/// The CLOB API requires either an interval or explicit start/end timestamps.
+/// This enum enforces that requirement at compile time.
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(untagged)]
+pub enum TimeRange {
+    /// Use a predefined interval (e.g., last day, last week).
+    Interval {
+        /// The time interval.
+        interval: Interval,
+    },
+    /// Use explicit start and end timestamps.
+    Range {
+        /// Start timestamp (Unix seconds).
+        start_ts: i64,
+        /// End timestamp (Unix seconds).
+        end_ts: i64,
+    },
+}
+
+impl TimeRange {
+    /// Create a time range from a predefined interval.
+    #[must_use]
+    pub const fn from_interval(interval: Interval) -> Self {
+        Self::Interval { interval }
+    }
+
+    /// Create a time range from explicit timestamps.
+    #[must_use]
+    pub const fn from_range(start_ts: i64, end_ts: i64) -> Self {
+        Self::Range { start_ts, end_ts }
+    }
+}
+
+impl From<Interval> for TimeRange {
+    fn from(interval: Interval) -> Self {
+        Self::from_interval(interval)
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum AmountInner {
     Usdc(Decimal),
