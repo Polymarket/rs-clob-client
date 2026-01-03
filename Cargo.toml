@@ -84,6 +84,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 [[example]]
 name = "async"
 path = "examples/clob/async.rs"
+required-features = ["gamma"]
 
 [[example]]
 name = "authenticated"
@@ -92,10 +93,12 @@ path = "examples/clob/authenticated.rs"
 [[example]]
 name = "aws_authenticated"
 path = "examples/clob/aws_authenticated.rs"
+required-features = ["gamma"]
 
 [[example]]
 name = "builder_authenticated"
 path = "examples/clob/builder_authenticated.rs"
+required-features = ["gamma"]
 
 [[example]]
 name = "streaming"
@@ -128,12 +131,12 @@ required-features = ["bridge"]
 [[example]]
 name = "websocket_orderbook"
 path = "examples/clob/ws/orderbook.rs"
-required-features = ["ws"]
+required-features = ["ws", "gamma"]
 
 [[example]]
 name = "websocket_user"
 path = "examples/clob/ws/user.rs"
-required-features = ["ws"]
+required-features = ["ws", "gamma"]
 
 [[example]]
 name = "rtds_crypto_prices"
@@ -143,7 +146,7 @@ required-features = ["rtds"]
 [[example]]
 name = "websocket_unsubscribe"
 path = "examples/clob/ws/unsubscribe.rs"
-required-features = ["ws"]
+required-features = ["ws", "gamma"]
 
 # https://rust-lang.github.io/rust-clippy/master/index.html?versions=lte%3A88
 [lints.clippy]
