@@ -4,18 +4,17 @@
 )]
 
 use std::collections::HashMap;
-use std::fmt;
 
 use bon::Builder;
 use chrono::{DateTime, NaiveDate, Utc};
-use serde::de::Visitor;
-use serde::{Deserialize, Deserializer, Serialize, de};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{DefaultOnNull, TimestampMilliSeconds, TimestampSeconds, TryFromInto, serde_as};
 use sha2::{Digest as _, Sha256};
 
 use crate::Result;
 use crate::auth::ApiKey;
 use crate::clob::types::{OrderStatusType, OrderType, Side, TickSize, TraderSide};
+use crate::serde_helpers::StringFromAny;
 use crate::types::{Address, Decimal};
 
 #[non_exhaustive]
@@ -551,11 +550,11 @@ pub struct RewardsConfig {
 }
 
 #[non_exhaustive]
+#[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct MarketRewardsConfig {
-    // We sometimes get numbers or strings back
-    #[serde(deserialize_with = "string_from_number_or_string")]
+    #[serde_as(as = "StringFromAny")]
     pub id: String,
     pub asset_address: Address,
     pub start_date: NaiveDate,
@@ -667,49 +666,4 @@ pub struct Page<T> {
     pub limit: u64,
     /// The length of `data`
     pub count: u64,
-}
-
-fn string_from_number_or_string<'de, D>(deserializer: D) -> std::result::Result<String, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    struct StringOrNumberVisitor;
-
-    impl Visitor<'_> for StringOrNumberVisitor {
-        type Value = String;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("string or integer")
-        }
-
-        fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            Ok(v.to_owned())
-        }
-
-        fn visit_string<E>(self, v: String) -> std::result::Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            Ok(v)
-        }
-
-        fn visit_i64<E>(self, v: i64) -> std::result::Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            Ok(v.to_string())
-        }
-
-        fn visit_u64<E>(self, v: u64) -> std::result::Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            Ok(v.to_string())
-        }
-    }
-
-    deserializer.deserialize_any(StringOrNumberVisitor)
 }

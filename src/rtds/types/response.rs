@@ -150,12 +150,23 @@ pub enum CommentType {
 /// Deserialize messages from the byte slice.
 ///
 /// Handles both single objects and arrays of messages.
+/// Returns an empty vector for empty or whitespace-only input.
 pub fn parse_messages(bytes: &[u8]) -> crate::Result<Vec<RtdsMessage>> {
+    // Handle empty or whitespace-only input (server keepalive messages)
+    let trimmed = bytes
+        .iter()
+        .position(|b| !b.is_ascii_whitespace())
+        .map_or(&[][..], |start| &bytes[start..]);
+
+    if trimmed.is_empty() {
+        return Ok(Vec::new());
+    }
+
     // Try parsing as array first, fall back to single object
-    if bytes.first() == Some(&b'[') {
-        Ok(serde_json::from_slice(bytes)?)
+    if trimmed.first() == Some(&b'[') {
+        Ok(serde_json::from_slice(trimmed)?)
     } else {
-        let msg: RtdsMessage = serde_json::from_slice(bytes)?;
+        let msg: RtdsMessage = serde_json::from_slice(trimmed)?;
         Ok(vec![msg])
     }
 }
@@ -271,5 +282,17 @@ mod tests {
         let msgs = parse_messages(json.as_bytes()).unwrap();
         assert_eq!(msgs.len(), 1);
         assert_eq!(msgs[0].topic, "crypto_prices");
+    }
+
+    #[test]
+    fn parse_empty_input() {
+        let msgs = parse_messages(b"").unwrap();
+        assert!(msgs.is_empty());
+    }
+
+    #[test]
+    fn parse_whitespace_only_input() {
+        let msgs = parse_messages(b"   \n\t  ").unwrap();
+        assert!(msgs.is_empty());
     }
 }
