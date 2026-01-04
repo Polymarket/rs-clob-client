@@ -24,6 +24,7 @@ default = []
 data = []
 gamma = []
 bridge = []
+ctf = ["alloy/contract", "alloy/providers"]
 tracing = ["dep:tracing", "dep:serde_ignored"]
 ws = ["dep:backoff", "dep:bitflags", "dep:tokio", "dep:tokio-tungstenite"]
 rtds = ["dep:backoff", "dep:tokio", "dep:tokio-tungstenite"]
@@ -108,6 +109,11 @@ path = "examples/clob/unauthenticated.rs"
 [[example]]
 name = "approvals"
 path = "examples/approvals.rs"
+
+[[example]]
+name = "ctf"
+path = "examples/ctf.rs"
+required-features = ["ctf"]
 
 [[example]]
 name = "data"
