@@ -12,13 +12,14 @@ use dashmap::DashMap;
 use futures::Stream;
 use tokio::sync::broadcast::error::RecvError;
 
-use super::connection::{ConnectionManager, ConnectionState};
 use super::error::WsError;
 use super::interest::{InterestTracker, MessageInterest};
 use super::types::request::SubscriptionRequest;
 use super::types::response::WsMessage;
 use crate::Result;
 use crate::auth::Credentials;
+use crate::ws::ConnectionManager;
+use crate::ws::connection::ConnectionState;
 
 /// What a subscription is targeting.
 #[non_exhaustive]
@@ -70,7 +71,7 @@ pub enum ChannelType {
 
 /// Manages active subscriptions and routes messages to subscribers.
 pub struct SubscriptionManager {
-    connection: ConnectionManager,
+    connection: ConnectionManager<WsMessage, Arc<InterestTracker>>,
     active_subs: DashMap<String, SubscriptionInfo>,
     interest: Arc<InterestTracker>,
     /// Subscribed assets with reference counts (for multiplexing)
@@ -83,7 +84,10 @@ pub struct SubscriptionManager {
 impl SubscriptionManager {
     /// Create a new subscription manager.
     #[must_use]
-    pub fn new(connection: ConnectionManager, interest: Arc<InterestTracker>) -> Self {
+    pub fn new(
+        connection: ConnectionManager<WsMessage, Arc<InterestTracker>>,
+        interest: Arc<InterestTracker>,
+    ) -> Self {
         Self {
             connection,
             active_subs: DashMap::new(),

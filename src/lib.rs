@@ -13,6 +13,8 @@ pub mod gamma;
 pub mod rtds;
 pub(crate) mod serde_helpers;
 pub mod types;
+#[cfg(any(feature = "ws", feature = "rtds"))]
+pub mod ws;
 
 use std::fmt::Write as _;
 

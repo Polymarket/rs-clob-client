@@ -6,8 +6,6 @@ use futures::Stream;
 use futures::StreamExt as _;
 use once_cell::sync::OnceCell;
 
-use super::config::Config;
-use super::connection::{ConnectionManager, ConnectionState};
 use super::interest::InterestTracker;
 use super::subscription::{ChannelType, SubscriptionManager};
 use super::types::response::{
@@ -19,6 +17,9 @@ use crate::auth::state::{Authenticated, State, Unauthenticated};
 use crate::auth::{Credentials, Kind as AuthKind, Normal};
 use crate::error::Error;
 use crate::types::{Address, Decimal};
+use crate::ws::ConnectionManager;
+use crate::ws::config::Config;
+use crate::ws::connection::ConnectionState;
 
 /// WebSocket client for real-time market data and user updates.
 ///
@@ -462,7 +463,7 @@ impl<S: State> ClientInner<S> {
 
 /// Lazily-initialized resources for a WebSocket channel.
 struct LazyChannelResources {
-    connection: ConnectionManager,
+    connection: ConnectionManager<WsMessage, Arc<InterestTracker>>,
     subscriptions: Arc<SubscriptionManager>,
 }
 
@@ -488,8 +489,11 @@ impl ChannelHandles {
     fn get_or_connect(&self) -> Result<&LazyChannelResources> {
         self.resources.get_or_try_init(|| {
             let interest = Arc::new(InterestTracker::new());
-            let connection =
-                ConnectionManager::new(self.endpoint.clone(), self.config.clone(), &interest)?;
+            let connection = ConnectionManager::<WsMessage, Arc<InterestTracker>>::new(
+                self.endpoint.clone(),
+                self.config.clone(),
+                Arc::clone(&interest),
+            )?;
             let subscriptions = Arc::new(SubscriptionManager::new(connection.clone(), interest));
 
             subscriptions.start_reconnection_handler();

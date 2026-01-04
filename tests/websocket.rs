@@ -11,8 +11,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::{SinkExt as _, StreamExt as _};
-use polymarket_client_sdk::clob::ws::{Client, Config, WsMessage};
+use polymarket_client_sdk::clob::ws::{Client, WsMessage};
 use polymarket_client_sdk::types::Address;
+use polymarket_client_sdk::ws::config::Config;
 use serde_json::json;
 use tokio::net::TcpListener;
 use tokio::sync::{broadcast, mpsc};

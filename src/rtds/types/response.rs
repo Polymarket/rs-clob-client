@@ -20,6 +20,8 @@ pub struct RtdsMessage {
     pub payload: Value,
 }
 
+impl crate::ws::traits::WsMessage for RtdsMessage {}
+
 impl RtdsMessage {
     /// Try to extract the payload as a crypto price update.
     #[must_use]
