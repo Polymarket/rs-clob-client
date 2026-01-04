@@ -4,6 +4,7 @@ use std::sync::Arc;
 use async_stream::try_stream;
 use futures::Stream;
 use futures::StreamExt as _;
+use once_cell::sync::OnceCell;
 
 use super::config::Config;
 use super::connection::{ConnectionManager, ConnectionState};
@@ -77,10 +78,15 @@ impl Client<Unauthenticated> {
     ///
     /// The `endpoint` should be the base WebSocket URL (e.g. `wss://...polymarket.com`);
     /// channel paths (`/ws/market` or `/ws/user`) are appended automatically.
+    ///
+    /// Connection to the WebSocket server is deferred until the first subscription
+    /// is made. This prevents unnecessary connections when no subscriptions are needed.
     pub fn new(endpoint: &str, config: Config) -> Result<Self> {
         let normalized = normalize_base_endpoint(endpoint);
-        let market_handles =
-            ChannelHandles::connect(channel_endpoint(&normalized, ChannelType::Market), &config)?;
+        let market_handles = ChannelHandles::new_lazy(
+            channel_endpoint(&normalized, ChannelType::Market),
+            config.clone(),
+        );
         let mut channels = HashMap::new();
         channels.insert(ChannelType::Market, market_handles);
 
@@ -98,6 +104,9 @@ impl Client<Unauthenticated> {
     ///
     /// Returns an error if there are other references to this client (e.g., from clones).
     /// Ensure all clones are dropped before calling this method.
+    ///
+    /// Connection to the user WebSocket channel is deferred until the first
+    /// subscription is made.
     pub fn authenticate(
         self,
         credentials: Credentials,
@@ -115,10 +124,10 @@ impl Client<Unauthenticated> {
         } = inner;
 
         if let Entry::Vacant(slot) = channels.entry(ChannelType::User) {
-            let handles = ChannelHandles::connect(
+            let handles = ChannelHandles::new_lazy(
                 channel_endpoint(&base_endpoint, ChannelType::User),
-                &config,
-            )?;
+                config.clone(),
+            );
             slot.insert(handles);
         }
 
@@ -144,10 +153,8 @@ impl<S: State> Client<S> {
         &self,
         asset_ids: Vec<String>,
     ) -> Result<impl Stream<Item = Result<BookUpdate>>> {
-        let stream = self
-            .market_handles()?
-            .subscriptions
-            .subscribe_market(asset_ids)?;
+        let resources = self.market_resources()?;
+        let stream = resources.subscriptions.subscribe_market(asset_ids)?;
 
         Ok(stream.filter_map(|msg_result| async move {
             match msg_result {
@@ -163,10 +170,8 @@ impl<S: State> Client<S> {
         &self,
         asset_ids: Vec<String>,
     ) -> Result<impl Stream<Item = Result<PriceChange>>> {
-        let stream = self
-            .market_handles()?
-            .subscriptions
-            .subscribe_market(asset_ids)?;
+        let resources = self.market_resources()?;
+        let stream = resources.subscriptions.subscribe_market(asset_ids)?;
 
         Ok(stream.filter_map(|msg_result| async move {
             match msg_result {
@@ -210,7 +215,7 @@ impl<S: State> Client<S> {
         asset_ids: Vec<String>,
     ) -> Result<impl Stream<Item = Result<BestBidAsk>>> {
         let stream = self
-            .market_handles()?
+            .market_resources()?
             .subscriptions
             .subscribe_market_with_options(asset_ids, true)?;
 
@@ -231,7 +236,7 @@ impl<S: State> Client<S> {
         asset_ids: Vec<String>,
     ) -> Result<impl Stream<Item = Result<NewMarket>>> {
         let stream = self
-            .market_handles()?
+            .market_resources()?
             .subscriptions
             .subscribe_market_with_options(asset_ids, true)?;
 
@@ -252,7 +257,7 @@ impl<S: State> Client<S> {
         asset_ids: Vec<String>,
     ) -> Result<impl Stream<Item = Result<MarketResolved>>> {
         let stream = self
-            .market_handles()?
+            .market_resources()?
             .subscriptions
             .subscribe_market_with_options(asset_ids, true)?;
 
@@ -266,13 +271,25 @@ impl<S: State> Client<S> {
     }
 
     /// Get the current connection state.
+    ///
+    /// Returns [`ConnectionState::Disconnected`] if the connection has not been
+    /// initialized yet (no subscriptions have been made).
     #[must_use]
     pub fn connection_state(&self) -> ConnectionState {
-        if let Some(handles) = self.inner.channel(ChannelType::Market) {
-            handles.connection.state()
-        } else {
-            ConnectionState::Disconnected
-        }
+        self.inner.channel(ChannelType::Market).map_or(
+            ConnectionState::Disconnected,
+            ChannelHandles::connection_state,
+        )
+    }
+
+    /// Check if the WebSocket connection has been initialized.
+    ///
+    /// Returns `false` if no subscriptions have been made yet.
+    #[must_use]
+    pub fn is_connected(&self) -> bool {
+        self.inner
+            .channel(ChannelType::Market)
+            .is_some_and(ChannelHandles::is_connected)
     }
 
     /// Get the number of active subscriptions.
@@ -281,7 +298,8 @@ impl<S: State> Client<S> {
         self.inner
             .channels
             .values()
-            .map(|handles| handles.subscriptions.subscription_count())
+            .filter_map(|handles| handles.resources.get())
+            .map(|resources| resources.subscriptions.subscription_count())
             .sum()
     }
 
@@ -290,7 +308,7 @@ impl<S: State> Client<S> {
     /// This decrements the reference count for each asset. The server unsubscribe
     /// is only sent when no other subscriptions are using those assets.
     pub fn unsubscribe_orderbook(&self, asset_ids: &[String]) -> Result<()> {
-        self.market_handles()?
+        self.market_resources()?
             .subscriptions
             .unsubscribe_market(asset_ids)
     }
@@ -300,7 +318,7 @@ impl<S: State> Client<S> {
     /// This decrements the reference count for each asset. The server unsubscribe
     /// is only sent when no other subscriptions are using those assets.
     pub fn unsubscribe_prices(&self, asset_ids: &[String]) -> Result<()> {
-        self.market_handles()?
+        self.market_resources()?
             .subscriptions
             .unsubscribe_market(asset_ids)
     }
@@ -310,7 +328,7 @@ impl<S: State> Client<S> {
     /// This decrements the reference count for each asset. The server unsubscribe
     /// is only sent when no other subscriptions are using those assets.
     pub fn unsubscribe_midpoints(&self, asset_ids: &[String]) -> Result<()> {
-        self.market_handles()?
+        self.market_resources()?
             .subscriptions
             .unsubscribe_market(asset_ids)
     }
@@ -319,6 +337,10 @@ impl<S: State> Client<S> {
         self.inner
             .channel(ChannelType::Market)
             .ok_or_else(|| Error::validation("Market channel unavailable; recreate client"))
+    }
+
+    fn market_resources(&self) -> Result<&LazyChannelResources> {
+        self.market_handles()?.get_or_connect()
     }
 }
 
@@ -329,12 +351,9 @@ impl<K: AuthKind> Client<Authenticated<K>> {
         &self,
         markets: Vec<String>,
     ) -> Result<impl Stream<Item = Result<WsMessage>>> {
-        let handles = self
-            .inner
-            .channel(ChannelType::User)
-            .ok_or_else(|| Error::validation("User channel unavailable; authenticate first"))?;
+        let resources = self.user_resources()?;
 
-        handles
+        resources
             .subscriptions
             .subscribe_user(markets, self.inner.state.credentials.clone())
     }
@@ -376,12 +395,19 @@ impl<K: AuthKind> Client<Authenticated<K>> {
     /// This decrements the reference count for each market. The server unsubscribe
     /// is only sent when no other subscriptions are using those markets.
     pub fn unsubscribe_user_events(&self, markets: &[String]) -> Result<()> {
-        let handles = self
-            .inner
-            .channel(ChannelType::User)
-            .ok_or_else(|| Error::validation("User channel unavailable; authenticate first"))?;
+        self.user_resources()?
+            .subscriptions
+            .unsubscribe_user(markets)
+    }
 
-        handles.subscriptions.unsubscribe_user(markets)
+    fn user_handles(&self) -> Result<&ChannelHandles> {
+        self.inner
+            .channel(ChannelType::User)
+            .ok_or_else(|| Error::validation("User channel unavailable; authenticate first"))
+    }
+
+    fn user_resources(&self) -> Result<&LazyChannelResources> {
+        self.user_handles()?.get_or_connect()
     }
 
     /// Unsubscribe from user's order updates for specific markets.
@@ -434,29 +460,55 @@ impl<S: State> ClientInner<S> {
     }
 }
 
-/// Handles for a specific WebSocket channel.
-#[derive(Clone)]
-struct ChannelHandles {
-    /// Manages the WebSocket connection.
+/// Lazily-initialized resources for a WebSocket channel.
+struct LazyChannelResources {
     connection: ConnectionManager,
-    /// Manages active subscriptions on this channel.
     subscriptions: Arc<SubscriptionManager>,
 }
 
+/// Handles for a specific WebSocket channel.
+///
+/// Uses lazy initialization to avoid connecting to the server until
+/// the first subscription is made.
+struct ChannelHandles {
+    endpoint: String,
+    config: Config,
+    resources: OnceCell<LazyChannelResources>,
+}
+
 impl ChannelHandles {
-    fn connect(endpoint: String, config: &Config) -> Result<Self> {
-        // Create shared interest tracker for lazy deserialization
-        let interest = Arc::new(InterestTracker::new());
-        let connection = ConnectionManager::new(endpoint, config.clone(), &interest)?;
-        let subscriptions = Arc::new(SubscriptionManager::new(connection.clone(), interest));
+    fn new_lazy(endpoint: String, config: Config) -> Self {
+        Self {
+            endpoint,
+            config,
+            resources: OnceCell::new(),
+        }
+    }
 
-        // Start reconnection handler to re-subscribe on connection recovery
-        subscriptions.start_reconnection_handler();
+    fn get_or_connect(&self) -> Result<&LazyChannelResources> {
+        self.resources.get_or_try_init(|| {
+            let interest = Arc::new(InterestTracker::new());
+            let connection =
+                ConnectionManager::new(self.endpoint.clone(), self.config.clone(), &interest)?;
+            let subscriptions = Arc::new(SubscriptionManager::new(connection.clone(), interest));
 
-        Ok(Self {
-            connection,
-            subscriptions,
+            subscriptions.start_reconnection_handler();
+
+            Ok(LazyChannelResources {
+                connection,
+                subscriptions,
+            })
         })
+    }
+
+    fn is_connected(&self) -> bool {
+        self.resources.get().is_some()
+    }
+
+    fn connection_state(&self) -> ConnectionState {
+        self.resources
+            .get()
+            .map_or(ConnectionState::Disconnected, |r| r.connection.state())
     }
 }
 

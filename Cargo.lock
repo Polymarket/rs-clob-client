@@ -3339,6 +3339,7 @@ dependencies = [
  "futures-util",
  "hmac",
  "httpmock",
+ "once_cell",
  "phf",
  "rand 0.9.2",
  "reqwest",
