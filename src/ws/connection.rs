@@ -18,8 +18,10 @@ use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungsten
 
 use super::config::Config;
 use super::traits::MessageParser;
+use crate::auth::Credentials;
 use crate::clob::ws::WsError;
 use crate::error::Kind;
+use crate::ws::WithCredentials;
 use crate::{Result, error::Error};
 
 type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
@@ -371,6 +373,19 @@ where
     /// Send a subscription request to the WebSocket server.
     pub fn send<R: Serialize>(&self, request: &R) -> Result<()> {
         let json = serde_json::to_string(request)?;
+        self.sender_tx
+            .send(json)
+            .map_err(|_e| WsError::ConnectionClosed)?;
+        Ok(())
+    }
+
+    /// Send a subscription request to the WebSocket server.
+    pub fn send_authenticated<R: WithCredentials>(
+        &self,
+        request: &R,
+        credentials: &Credentials,
+    ) -> Result<()> {
+        let json = request.as_authenticated(credentials)?;
         self.sender_tx
             .send(json)
             .map_err(|_e| WsError::ConnectionClosed)?;

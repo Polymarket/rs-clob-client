@@ -177,8 +177,8 @@ impl SubscriptionManager {
                 markets_count = markets.len(),
                 "Re-subscribing to user channel"
             );
-            let request = SubscriptionRequest::user(markets, auth);
-            if let Err(e) = self.connection.send(&request) {
+            let request = SubscriptionRequest::user(markets);
+            if let Err(e) = self.connection.send_authenticated(&request, &auth) {
                 #[cfg(feature = "tracing")]
                 tracing::warn!(%e, "Failed to re-subscribe to user channel");
                 #[cfg(not(feature = "tracing"))]
@@ -314,7 +314,7 @@ impl SubscriptionManager {
     pub fn subscribe_user(
         &self,
         markets: Vec<String>,
-        auth: Credentials,
+        auth: &Credentials,
     ) -> Result<impl Stream<Item = Result<WsMessage>>> {
         self.interest.add(MessageInterest::USER);
 
@@ -353,8 +353,8 @@ impl SubscriptionManager {
                 ?new_markets,
                 "Subscribing to user channel"
             );
-            let request = SubscriptionRequest::user(new_markets, auth);
-            self.connection.send(&request)?;
+            let request = SubscriptionRequest::user(new_markets);
+            self.connection.send_authenticated(&request, auth)?;
         }
 
         // Register subscription
@@ -516,8 +516,8 @@ impl SubscriptionManager {
                 .clone()
                 .ok_or(WsError::AuthenticationFailed)?;
 
-            let request = SubscriptionRequest::user_unsubscribe(to_unsubscribe, auth);
-            self.connection.send(&request)?;
+            let request = SubscriptionRequest::user_unsubscribe(to_unsubscribe);
+            self.connection.send_authenticated(&request, &auth)?;
         }
 
         // Remove active_subs entries where all markets are now unsubscribed

@@ -356,7 +356,7 @@ impl<K: AuthKind> Client<Authenticated<K>> {
 
         resources
             .subscriptions
-            .subscribe_user(markets, self.inner.state.credentials.clone())
+            .subscribe_user(markets, &self.inner.state.credentials)
     }
 
     /// Subscribe to user's order updates.
