@@ -19,6 +19,7 @@ use super::types::request::SubscriptionRequest;
 use super::types::response::WsMessage;
 use crate::Result;
 use crate::auth::Credentials;
+use crate::macros::{log_debug, log_suppress, log_warn};
 
 /// What a subscription is targeting.
 #[non_exhaustive]
@@ -120,8 +121,7 @@ impl SubscriptionManager {
                 ConnectionState::Connected { .. } => {
                     if was_connected {
                         // Reconnect to subscriptions
-                        #[cfg(feature = "tracing")]
-                        tracing::debug!("WebSocket reconnected, re-establishing subscriptions");
+                        log_debug!("WebSocket reconnected, re-establishing subscriptions");
                         self.resubscribe_all();
                     }
                     was_connected = true;
@@ -147,14 +147,11 @@ impl SubscriptionManager {
             .collect();
 
         if !assets.is_empty() {
-            #[cfg(feature = "tracing")]
-            tracing::debug!(count = assets.len(), "Re-subscribing to market assets");
+            log_debug!(count = assets.len(), "Re-subscribing to market assets");
             let request = SubscriptionRequest::market(assets);
             if let Err(e) = self.connection.send(&request) {
-                #[cfg(feature = "tracing")]
-                tracing::warn!(%e, "Failed to re-subscribe to market channel");
-                #[cfg(not(feature = "tracing"))]
-                let _ = &e;
+                log_warn!(%e, "Failed to re-subscribe to market channel");
+                log_suppress!(e);
             }
         }
 
@@ -172,17 +169,14 @@ impl SubscriptionManager {
                 .map(|r| r.key().clone())
                 .collect();
 
-            #[cfg(feature = "tracing")]
-            tracing::debug!(
+            log_debug!(
                 markets_count = markets.len(),
                 "Re-subscribing to user channel"
             );
             let request = SubscriptionRequest::user(markets, auth);
             if let Err(e) = self.connection.send(&request) {
-                #[cfg(feature = "tracing")]
-                tracing::warn!(%e, "Failed to re-subscribe to user channel");
-                #[cfg(not(feature = "tracing"))]
-                let _ = &e;
+                log_warn!(%e, "Failed to re-subscribe to user channel");
+                log_suppress!(e);
             }
         }
     }
@@ -237,11 +231,9 @@ impl SubscriptionManager {
 
         // Only send subscription request for new assets
         if new_assets.is_empty() {
-            #[cfg(feature = "tracing")]
-            tracing::debug!("All requested assets already subscribed, multiplexing");
+            log_debug!("All requested assets already subscribed, multiplexing");
         } else {
-            #[cfg(feature = "tracing")]
-            tracing::debug!(
+            log_debug!(
                 count = new_assets.len(),
                 ?new_assets,
                 custom_features,
@@ -298,8 +290,7 @@ impl SubscriptionManager {
                         }
                     }
                     Err(RecvError::Lagged(n)) => {
-                        #[cfg(feature = "tracing")]
-                        tracing::warn!("Subscription lagged, missed {n} messages");
+                        log_warn!("Subscription lagged, missed {n} messages");
                         Err(WsError::Lagged { count: n })?;
                     }
                     Err(RecvError::Closed) => {
@@ -344,11 +335,9 @@ impl SubscriptionManager {
 
         // Only send subscription request for new markets (or if subscribing to all)
         if !markets.is_empty() && new_markets.is_empty() {
-            #[cfg(feature = "tracing")]
-            tracing::debug!("All requested markets already subscribed, multiplexing");
+            log_debug!("All requested markets already subscribed, multiplexing");
         } else {
-            #[cfg(feature = "tracing")]
-            tracing::debug!(
+            log_debug!(
                 count = new_markets.len(),
                 ?new_markets,
                 "Subscribing to user channel"
@@ -379,8 +368,7 @@ impl SubscriptionManager {
                         }
                     }
                     Err(RecvError::Lagged(n)) => {
-                        #[cfg(feature = "tracing")]
-                        tracing::warn!("Subscription lagged, missed {n} messages");
+                        log_warn!("Subscription lagged, missed {n} messages");
                         Err(WsError::Lagged { count: n })?;
                     }
                     Err(RecvError::Closed) => {

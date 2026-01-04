@@ -40,6 +40,7 @@ use crate::clob::types::response::{
 };
 use crate::clob::types::{SignableOrder, SignatureType, SignedOrder, TickSize};
 use crate::error::{Error, Synchronization};
+use crate::macros::log_trace;
 use crate::types::Address;
 use crate::{AMOY, POLYGON, Result, Timestamp, ToQueryParams as _, auth, contract_config};
 
@@ -485,15 +486,13 @@ impl<S: State> Client<S> {
 
     pub async fn tick_size(&self, token_id: &str) -> Result<TickSizeResponse> {
         if let Some(tick_size) = self.inner.tick_sizes.get(token_id) {
-            #[cfg(feature = "tracing")]
-            tracing::trace!(token_id = %token_id, tick_size = ?tick_size.value(), "cache hit: tick_size");
+            log_trace!(token_id = %token_id, tick_size = ?tick_size.value(), "cache hit: tick_size");
             return Ok(TickSizeResponse {
                 minimum_tick_size: *tick_size,
             });
         }
 
-        #[cfg(feature = "tracing")]
-        tracing::trace!(token_id = %token_id, "cache miss: tick_size");
+        log_trace!(token_id = %token_id, "cache miss: tick_size");
 
         let request = self
             .client()
@@ -508,23 +507,20 @@ impl<S: State> Client<S> {
             .tick_sizes
             .insert(token_id.to_owned(), response.minimum_tick_size);
 
-        #[cfg(feature = "tracing")]
-        tracing::trace!(token_id = %token_id, "cached tick_size");
+        log_trace!(token_id = %token_id, "cached tick_size");
 
         Ok(response)
     }
 
     pub async fn neg_risk(&self, token_id: &str) -> Result<NegRiskResponse> {
         if let Some(neg_risk) = self.inner.neg_risk.get(token_id) {
-            #[cfg(feature = "tracing")]
-            tracing::trace!(token_id = %token_id, neg_risk = *neg_risk, "cache hit: neg_risk");
+            log_trace!(token_id = %token_id, neg_risk = *neg_risk, "cache hit: neg_risk");
             return Ok(NegRiskResponse {
                 neg_risk: *neg_risk,
             });
         }
 
-        #[cfg(feature = "tracing")]
-        tracing::trace!(token_id = %token_id, "cache miss: neg_risk");
+        log_trace!(token_id = %token_id, "cache miss: neg_risk");
 
         let request = self
             .client()
@@ -538,23 +534,20 @@ impl<S: State> Client<S> {
             .neg_risk
             .insert(token_id.to_owned(), response.neg_risk);
 
-        #[cfg(feature = "tracing")]
-        tracing::trace!(token_id = %token_id, "cached neg_risk");
+        log_trace!(token_id = %token_id, "cached neg_risk");
 
         Ok(response)
     }
 
     pub async fn fee_rate_bps(&self, token_id: &str) -> Result<FeeRateResponse> {
         if let Some(base_fee) = self.inner.fee_rate_bps.get(token_id) {
-            #[cfg(feature = "tracing")]
-            tracing::trace!(token_id = %token_id, base_fee = *base_fee, "cache hit: fee_rate_bps");
+            log_trace!(token_id = %token_id, base_fee = *base_fee, "cache hit: fee_rate_bps");
             return Ok(FeeRateResponse {
                 base_fee: *base_fee,
             });
         }
 
-        #[cfg(feature = "tracing")]
-        tracing::trace!(token_id = %token_id, "cache miss: fee_rate_bps");
+        log_trace!(token_id = %token_id, "cache miss: fee_rate_bps");
 
         let request = self
             .client()
@@ -568,8 +561,7 @@ impl<S: State> Client<S> {
             .fee_rate_bps
             .insert(token_id.to_owned(), response.base_fee);
 
-        #[cfg(feature = "tracing")]
-        tracing::trace!(token_id = %token_id, "cached fee_rate_bps");
+        log_trace!(token_id = %token_id, "cached fee_rate_bps");
 
         Ok(response)
     }

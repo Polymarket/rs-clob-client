@@ -1,5 +1,7 @@
 #![cfg_attr(doc, doc = include_str!("../README.md"))]
 
+mod macros;
+
 pub mod auth;
 #[cfg(feature = "bridge")]
 pub mod bridge;
@@ -24,6 +26,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::error::Error;
+use crate::macros::{log_error, log_warn};
 use crate::types::{Address, address};
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -103,13 +106,15 @@ pub trait ToQueryParams: Serialize {
     /// Also uses an optional cursor as a parameter, if provided.
     fn query_params(&self, next_cursor: Option<&str>) -> String {
         let mut params = serde_urlencoded::to_string(self)
-            .inspect_err(|e| {
-                #[cfg(not(feature = "tracing"))]
-                let _: &serde_urlencoded::ser::Error = e;
-
-                #[cfg(feature = "tracing")]
-                tracing::error!("Unable to convert to URL-encoded string {e:?}");
-            })
+            .inspect_err(
+                #[cfg_attr(
+                    not(feature = "tracing"),
+                    expect(unused_variables, reason = "used only when tracing feature is enabled")
+                )]
+                |e| {
+                    log_error!("Unable to convert to URL-encoded string {e:?}");
+                },
+            )
             .unwrap_or_default();
 
         if let Some(cursor) = next_cursor {
@@ -165,8 +170,7 @@ async fn request<Response: DeserializeOwned>(
     if !status_code.is_success() {
         let message = response.text().await.unwrap_or_default();
 
-        #[cfg(feature = "tracing")]
-        tracing::warn!(
+        log_warn!(
             status = %status_code,
             method = %method,
             path = %path,
@@ -183,8 +187,7 @@ async fn request<Response: DeserializeOwned>(
     if let Some(response) = response_data {
         Ok(response)
     } else {
-        #[cfg(feature = "tracing")]
-        tracing::warn!(method = %method, path = %path, "API resource not found");
+        log_warn!(method = %method, path = %path, "API resource not found");
         Err(Error::status(
             StatusCode::NOT_FOUND,
             method,
