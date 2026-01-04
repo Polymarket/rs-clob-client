@@ -47,8 +47,6 @@ pub enum WsMessage {
     Order(OrderMessage),
 }
 
-impl crate::ws::traits::WsMessage for WsMessage {}
-
 impl WsMessage {
     /// Check if the message is a user-specific message.
     #[must_use]

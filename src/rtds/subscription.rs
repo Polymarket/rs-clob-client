@@ -84,44 +84,40 @@ impl SubscriptionManager {
     /// Start the reconnection handler that re-subscribes on connection recovery.
     pub fn start_reconnection_handler(self: &Arc<Self>) {
         let this = Arc::clone(self);
+
         tokio::spawn(async move {
-            this.reconnection_loop().await;
-        });
-    }
+            let mut state_rx = this.connection.state_receiver();
+            let mut was_connected = state_rx.borrow().is_connected();
 
-    /// Monitor connection state and re-subscribe when reconnection occurs.
-    async fn reconnection_loop(&self) {
-        let mut state_rx = self.connection.state_receiver();
-        let mut was_connected = state_rx.borrow().is_connected();
-
-        loop {
-            // Wait for next state change
-            if state_rx.changed().await.is_err() {
-                // Channel closed, connection manager is gone
-                break;
-            }
-
-            let state = *state_rx.borrow_and_update();
-
-            match state {
-                ConnectionState::Connected { .. } => {
-                    if was_connected {
-                        // Reconnect to subscriptions
-                        #[cfg(feature = "tracing")]
-                        tracing::debug!("RTDS reconnected, re-establishing subscriptions");
-                        self.resubscribe_all();
-                    }
-                    was_connected = true;
-                }
-                ConnectionState::Disconnected => {
-                    // Connection permanently closed
+            loop {
+                // Wait for next state change
+                if state_rx.changed().await.is_err() {
+                    // Channel closed, connection manager is gone
                     break;
                 }
-                _ => {
-                    // Other states are no-op
+
+                let state = *state_rx.borrow_and_update();
+
+                match state {
+                    ConnectionState::Connected { .. } => {
+                        if was_connected {
+                            // Reconnect to subscriptions
+                            #[cfg(feature = "tracing")]
+                            tracing::debug!("RTDS reconnected, re-establishing subscriptions");
+                            this.resubscribe_all();
+                        }
+                        was_connected = true;
+                    }
+                    ConnectionState::Disconnected => {
+                        // Connection permanently closed
+                        break;
+                    }
+                    _ => {
+                        // Other states are no-op
+                    }
                 }
             }
-        }
+        });
     }
 
     /// Re-send subscription requests for all tracked topics.

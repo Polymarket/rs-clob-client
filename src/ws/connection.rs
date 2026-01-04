@@ -3,19 +3,21 @@
     reason = "Connection types expose their domain in the name for clarity"
 )]
 
+use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::time::Instant;
 
 use backoff::backoff::Backoff as _;
 use futures::{SinkExt as _, StreamExt as _};
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use tokio::net::TcpStream;
 use tokio::sync::{broadcast, mpsc, watch};
 use tokio::time::{interval, sleep, timeout};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message};
 
 use super::config::Config;
-use super::traits::{MessageParser, WsMessage};
+use super::traits::MessageParser;
 use crate::clob::ws::WsError;
 use crate::error::Kind;
 use crate::{Result, error::Error};
@@ -85,7 +87,7 @@ impl ConnectionState {
 #[derive(Clone)]
 pub struct ConnectionManager<M, P>
 where
-    M: WsMessage,
+    M: DeserializeOwned + Debug + Clone + Send + 'static,
     P: MessageParser<M>,
 {
     /// Watch channel sender for state changes (enables reconnection detection)
@@ -102,7 +104,7 @@ where
 
 impl<M, P> ConnectionManager<M, P>
 where
-    M: WsMessage,
+    M: DeserializeOwned + Debug + Clone + Send + 'static,
     P: MessageParser<M>,
 {
     /// Create a new connection manager and start the connection loop.
