@@ -1,7 +1,4 @@
-use reqwest::{
-    Client as ReqwestClient, Method,
-    header::{HeaderMap, HeaderValue},
-};
+use reqwest::{Client as ReqwestClient, Method};
 use url::Url;
 
 use super::types::{DepositRequest, DepositResponse, SupportedAssetsResponse};
@@ -52,13 +49,21 @@ impl Client {
     ///
     /// Returns an error if the host URL is invalid or the HTTP client fails to build.
     pub fn new(host: &str) -> Result<Client> {
-        let mut headers = HeaderMap::new();
+        Self::new_with_proxy(host, None)
+    }
 
-        headers.insert("User-Agent", HeaderValue::from_static("rs_clob_client"));
-        headers.insert("Accept", HeaderValue::from_static("*/*"));
-        headers.insert("Connection", HeaderValue::from_static("keep-alive"));
-        headers.insert("Content-Type", HeaderValue::from_static("application/json"));
-        let client = ReqwestClient::builder().default_headers(headers).build()?;
+    /// Creates a new Bridge API client with a custom host URL and optional proxy.
+    ///
+    /// # Arguments
+    ///
+    /// * `host` - The base URL for the Bridge API (e.g., `"https://bridge.polymarket.com"`).
+    /// * `proxy` - Optional proxy URL (e.g., `"http://user:pass@proxy:8080"` or `"socks5://127.0.0.1:1080"`).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the URL is invalid, the proxy URL is invalid, or the HTTP client cannot be created.
+    pub fn new_with_proxy(host: &str, proxy: Option<&str>) -> Result<Client> {
+        let client = crate::http::client_builder(proxy)?.build()?;
 
         Ok(Self {
             host: Url::parse(host)?,

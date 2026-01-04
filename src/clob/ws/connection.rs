@@ -13,7 +13,10 @@ use serde_json::{Value, json};
 use tokio::net::TcpStream;
 use tokio::sync::{broadcast, mpsc, watch};
 use tokio::time::{interval, sleep, timeout};
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message};
+use tokio_tungstenite::{
+    MaybeTlsStream, WebSocketStream, client_async_tls, connect_async, tungstenite::Message,
+};
+use url::Url;
 
 use super::config::Config;
 use super::error::WsError;
@@ -125,9 +128,32 @@ impl ConnectionManager {
 
             _ = state_tx.send(ConnectionState::Connecting);
 
-            // Attempt connection
-            match connect_async(&endpoint).await {
-                Ok((ws_stream, _)) => {
+            // Get proxy URL: explicit config takes precedence, then env vars
+            let proxy_url = config.proxy.clone().or_else(|| {
+                let host = Url::parse(&endpoint)
+                    .ok()
+                    .and_then(|u| u.host_str().map(String::from))?;
+                crate::proxy::from_env(&host)
+            });
+
+            // Attempt connection (with or without proxy)
+            let connect_result = if let Some(proxy_url) = &proxy_url {
+                match crate::proxy::connect(&endpoint, proxy_url).await {
+                    Ok(stream) => client_async_tls(&endpoint, stream)
+                        .await
+                        .map(|(ws, _)| ws)
+                        .map_err(|e| Error::with_source(Kind::WebSocket, WsError::Connection(e))),
+                    Err(e) => Err(e),
+                }
+            } else {
+                connect_async(&endpoint)
+                    .await
+                    .map(|(ws, _)| ws)
+                    .map_err(|e| Error::with_source(Kind::WebSocket, WsError::Connection(e)))
+            };
+
+            match connect_result {
+                Ok(ws_stream) => {
                     attempt = 0;
                     backoff.reset();
                     _ = state_tx.send(ConnectionState::Connected {
@@ -152,11 +178,10 @@ impl ConnectionManager {
                     }
                 }
                 Err(e) => {
-                    let error = Error::with_source(Kind::WebSocket, WsError::Connection(e));
                     #[cfg(feature = "tracing")]
-                    tracing::warn!("Unable to connect: {error:?}");
+                    tracing::warn!("Unable to connect: {e:?}");
                     #[cfg(not(feature = "tracing"))]
-                    let _ = &error;
+                    let _ = &e;
                     attempt = attempt.saturating_add(1);
                 }
             }
