@@ -7,8 +7,15 @@
 //!
 //! Run with tracing enabled:
 //! ```sh
-//! RUST_LOG=info cargo run --example gamma --features gamma,tracing
+//! RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example gamma --features gamma,tracing
 //! ```
+//!
+//! Optionally log to a file:
+//! ```sh
+//! LOG_FILE=gamma.log RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example gamma --features gamma,tracing
+//! ```
+
+use std::fs::File;
 
 use polymarket_client_sdk::gamma::Client;
 use polymarket_client_sdk::gamma::types::ParentEntityType;
@@ -20,10 +27,25 @@ use polymarket_client_sdk::gamma::types::request::{
     TagBySlugRequest, TagsRequest, TeamsRequest,
 };
 use tracing::{debug, info};
+use tracing_subscriber::EnvFilter;
+use tracing_subscriber::layer::SubscriberExt as _;
+use tracing_subscriber::util::SubscriberInitExt as _;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt::init();
+    if let Ok(path) = std::env::var("LOG_FILE") {
+        let file = File::create(path)?;
+        tracing_subscriber::registry()
+            .with(EnvFilter::from_default_env())
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .with_writer(file)
+                    .with_ansi(false),
+            )
+            .init();
+    } else {
+        tracing_subscriber::fmt::init();
+    }
 
     let client = Client::default();
 
