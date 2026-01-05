@@ -5,7 +5,11 @@ use std::fmt;
 use alloy::primitives::ChainId;
 use alloy::primitives::ruint::ParseError;
 use hmac::digest::InvalidLength;
-use reqwest::{Method, StatusCode, header};
+/// HTTP method type, re-exported for use with error inspection.
+pub use reqwest::Method;
+/// HTTP status code type, re-exported for use with error inspection.
+pub use reqwest::StatusCode;
+use reqwest::header;
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
