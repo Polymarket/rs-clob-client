@@ -1,22 +1,19 @@
-//! Core WebSocket infrastructure shared between CLOB/WS and RTDS clients.
+//! Core WebSocket infrastructure.
 //!
-//! This module provides generic connection and subscription management that can be
+//! This module provides generic connection management that can be
 //! specialized for different WebSocket services using traits and the strategy pattern.
 //!
 //! # Architecture
 //!
 //! - [`ConnectionManager`]: Generic WebSocket connection handler with heartbeat and reconnection
-//! - [`SubscriptionManager`]: Generic subscription multiplexer with configurable strategies
 //! - [`MessageParser`]: Trait for parsing incoming WebSocket messages
 //!
 //! # Example
 //!
 //! ```ignore
 //! // Define your message type
-//! #[derive(Clone)]
+//! #[derive(Clone, Debug, Deserialize)]
 //! enum MyMessage { /* ... */ }
-//!
-//! impl WsMessage for MyMessage {}
 //!
 //! let connection = ConnectionManager::new(endpoint, config, SimpleParser)?;
 //! let subscriptions = SubscriptionManager::new(connection);

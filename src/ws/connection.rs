@@ -67,7 +67,7 @@ impl ConnectionState {
 ///
 /// # Type Parameters
 ///
-/// - `M`: Message type that implements [`WsMessage`]
+/// - `M`: Message type that implements [`DeserializeOwned`] among other "helper" types
 /// - `P`: Parser type that implements [`MessageParser<M>`]
 ///
 /// # Example
