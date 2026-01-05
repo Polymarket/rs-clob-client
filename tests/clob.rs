@@ -3001,3 +3001,610 @@ mod builder_authenticated {
         Ok(())
     }
 }
+
+mod external_signing {
+    use alloy::dyn_abi::TypedData;
+    use alloy::hex;
+    use alloy::signers::Signer as _;
+    use alloy::signers::local::LocalSigner;
+    use httpmock::Method::{GET, POST};
+    use polymarket_client_sdk::POLYGON;
+    use polymarket_client_sdk::clob::types::response::PostOrderResponse;
+    use polymarket_client_sdk::clob::types::{OrderStatusType, Side, TickSize};
+    use polymarket_client_sdk::clob::{Client, Config};
+
+    use super::*;
+    use crate::common::{
+        API_KEY, PASSPHRASE, POLY_ADDRESS, POLY_API_KEY, POLY_PASSPHRASE, PRIVATE_KEY, SECRET,
+        TIMESTAMP, TOKEN_1, create_authenticated, ensure_requirements,
+    };
+
+    #[tokio::test]
+    async fn prepare_for_external_signing_should_return_valid_typed_data() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = create_authenticated(&server).await?;
+
+        ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+
+        let signable_order = client
+            .limit_order()
+            .token_id(TOKEN_1)
+            .price(dec!(0.50))
+            .size(Decimal::ONE_HUNDRED)
+            .side(Side::Buy)
+            .build()
+            .await?;
+
+        let signing_data = client
+            .prepare_for_external_signing(&signable_order, POLYGON)
+            .await?;
+
+        // Verify typed_data is valid JSON with EIP-712 structure
+        let typed_data: serde_json::Value = serde_json::from_str(&signing_data.typed_data)?;
+
+        // Verify primaryType is "Order"
+        assert_eq!(typed_data["primaryType"], "Order");
+
+        // Verify types contains EIP712Domain with required fields
+        let types = &typed_data["types"];
+        assert!(
+            types.get("EIP712Domain").is_some(),
+            "should have EIP712Domain type"
+        );
+        let eip712_domain_fields: Vec<&str> = types["EIP712Domain"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|f| f["name"].as_str().unwrap())
+            .collect();
+        assert!(eip712_domain_fields.contains(&"name"));
+        assert!(eip712_domain_fields.contains(&"version"));
+        assert!(eip712_domain_fields.contains(&"chainId"));
+        assert!(eip712_domain_fields.contains(&"verifyingContract"));
+
+        // Verify types contains Order with required fields
+        assert!(types.get("Order").is_some(), "should have Order type");
+        let order_fields: Vec<&str> = types["Order"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|f| f["name"].as_str().unwrap())
+            .collect();
+        assert!(order_fields.contains(&"salt"));
+        assert!(order_fields.contains(&"maker"));
+        assert!(order_fields.contains(&"signer"));
+        assert!(order_fields.contains(&"tokenId"));
+        assert!(order_fields.contains(&"makerAmount"));
+        assert!(order_fields.contains(&"takerAmount"));
+        assert!(order_fields.contains(&"side"));
+
+        // Verify domain and message exist
+        assert!(typed_data.get("domain").is_some(), "should have domain");
+        assert!(typed_data.get("message").is_some(), "should have message");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn prepare_for_external_signing_should_use_correct_domain() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = create_authenticated(&server).await?;
+
+        ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+
+        let signable_order = client
+            .limit_order()
+            .token_id(TOKEN_1)
+            .price(dec!(0.50))
+            .size(Decimal::ONE_HUNDRED)
+            .side(Side::Buy)
+            .build()
+            .await?;
+
+        let signing_data = client
+            .prepare_for_external_signing(&signable_order, POLYGON)
+            .await?;
+
+        let typed_data: serde_json::Value = serde_json::from_str(&signing_data.typed_data)?;
+        let domain = &typed_data["domain"];
+
+        assert_eq!(domain["name"], "Polymarket CTF Exchange");
+        assert_eq!(domain["version"], "1");
+        // chainId is serialized as hex string
+        assert_eq!(domain["chainId"], format!("0x{POLYGON:x}"));
+        // Verify the actual exchange contract address for POLYGON (non-neg-risk)
+        assert_eq!(
+            domain["verifyingContract"].as_str().unwrap().to_lowercase(),
+            "0x4bfb41d5b3570defd03c39a9a4d8de6bd8b8982e"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn prepare_for_external_signing_should_return_extractable_order() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = create_authenticated(&server).await?;
+
+        ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+
+        let signable_order = client
+            .limit_order()
+            .token_id(TOKEN_1)
+            .price(dec!(0.50))
+            .size(Decimal::ONE_HUNDRED)
+            .side(Side::Buy)
+            .build()
+            .await?;
+
+        let signing_data = client
+            .prepare_for_external_signing(&signable_order, POLYGON)
+            .await?;
+
+        // Verify order can be extracted from typed_data.message
+        let typed_data: serde_json::Value = serde_json::from_str(&signing_data.typed_data)?;
+        let order = &typed_data["message"];
+
+        // Verify field existence and key values
+        assert!(order.get("salt").is_some());
+        assert!(order.get("maker").is_some());
+        assert!(order.get("signer").is_some());
+
+        // Verify tokenId matches input
+        assert_eq!(order["tokenId"], TOKEN_1);
+
+        // Verify side is 0 (BUY)
+        assert_eq!(order["side"], 0);
+
+        // Verify amounts are present and non-zero (price=0.50, size=100)
+        assert!(order.get("makerAmount").is_some());
+        assert!(order.get("takerAmount").is_some());
+
+        // Verify signatureType is present
+        assert!(order.get("signatureType").is_some());
+
+        // Verify order_data contains orderType and order matches typed_data.message
+        let order_data: serde_json::Value = serde_json::from_str(&signing_data.order_data)?;
+        assert_eq!(order_data["orderType"], "GTC");
+        assert_eq!(order_data["order"]["tokenId"], TOKEN_1);
+        assert_eq!(order_data["order"]["side"], 0);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn prepare_for_external_signing_hash_matches_sign() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
+
+        let mock = server.mock(|when, then| {
+            when.method(GET)
+                .path("/auth/derive-api-key")
+                .header(POLY_ADDRESS, signer.address().to_string().to_lowercase());
+            then.status(StatusCode::OK).json_body(json!({
+                "apiKey": API_KEY.to_string(),
+                "passphrase": PASSPHRASE,
+                "secret": SECRET
+            }));
+        });
+        let _mock_time = server.mock(|when, then| {
+            when.method(GET).path("/time");
+            then.status(StatusCode::OK)
+                .json_body(TIMESTAMP.parse::<i64>().unwrap());
+        });
+
+        let config = Config::builder().use_server_time(true).build();
+        let client = Client::new(&server.base_url(), config)?
+            .authentication_builder(&signer)
+            .salt_generator(|| 12345) // Fixed salt for determinism
+            .authenticate()
+            .await?;
+
+        ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+
+        let signable_order = client
+            .limit_order()
+            .token_id(TOKEN_1)
+            .price(dec!(0.50))
+            .size(Decimal::ONE_HUNDRED)
+            .side(Side::Buy)
+            .nonce(1)
+            .build()
+            .await?;
+
+        // Get the signing data
+        let signing_data = client
+            .prepare_for_external_signing(&signable_order, POLYGON)
+            .await?;
+
+        // Parse the typed data and compute its hash
+        let typed_data: TypedData = serde_json::from_str(&signing_data.typed_data)?;
+        let external_hash = typed_data.eip712_signing_hash()?;
+
+        // Sign the order using the internal sign method - this uses eip712_signing_hash internally
+        let signed_order = client.sign(&signer, signable_order).await?;
+
+        // Verify the signature by recovering the address
+        let recovered = signed_order
+            .signature
+            .recover_address_from_prehash(&external_hash)?;
+        assert_eq!(
+            recovered,
+            signer.address(),
+            "recovered address should match signer"
+        );
+
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_externally_signed_order_should_succeed() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = create_authenticated(&server).await?;
+
+        ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+
+        // Build an order to get signing_data
+        let signable_order = client
+            .limit_order()
+            .token_id(TOKEN_1)
+            .price(dec!(0.50))
+            .size(Decimal::ONE_HUNDRED)
+            .side(Side::Buy)
+            .build()
+            .await?;
+
+        let signing_data = client
+            .prepare_for_external_signing(&signable_order, POLYGON)
+            .await?;
+
+        // Mock the /orders endpoint
+        let mock = server.mock(|when, then| {
+            when.method(POST)
+                .path("/orders")
+                .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
+                .header(POLY_API_KEY, API_KEY)
+                .header(POLY_PASSPHRASE, PASSPHRASE);
+            then.status(StatusCode::OK).json_body(json!([{
+                "error_msg": "",
+                "makingAmount": "",
+                "orderID": "0xabc123",
+                "status": "live",
+                "success": true,
+                "takingAmount": ""
+            }]));
+        });
+
+        let fake_signature = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1b";
+
+        let order_json: serde_json::Value = serde_json::from_str(&signing_data.order_data)?;
+        let response = client
+            .post_externally_signed_order(order_json, fake_signature)
+            .await?;
+
+        assert!(response.success);
+        assert_eq!(response.order_id, "0xabc123");
+        assert_eq!(response.status, OrderStatusType::Live);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_externally_signed_order_should_convert_numeric_side() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = create_authenticated(&server).await?;
+
+        ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+
+        // Build order for BUY side (0)
+        let signable_order = client
+            .limit_order()
+            .token_id(TOKEN_1)
+            .price(dec!(0.50))
+            .size(Decimal::ONE_HUNDRED)
+            .side(Side::Buy)
+            .build()
+            .await?;
+
+        let signing_data = client
+            .prepare_for_external_signing(&signable_order, POLYGON)
+            .await?;
+
+        // Verify the order_data.order has numeric side (0 for BUY)
+        let order_data: serde_json::Value = serde_json::from_str(&signing_data.order_data)?;
+        assert_eq!(
+            order_data["order"]["side"], 0,
+            "order_data should have numeric side"
+        );
+
+        // Mock verifies the request body contains string "BUY" (not numeric 0)
+        let mock = server.mock(|when, then| {
+            when.method(POST)
+                .path("/orders")
+                .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
+                .header(POLY_API_KEY, API_KEY)
+                .header(POLY_PASSPHRASE, PASSPHRASE)
+                .is_true(|req| {
+                    let body = req.body_string();
+                    // Must contain string "BUY", not numeric 0
+                    body.contains(r#""side":"BUY""#)
+                });
+            then.status(StatusCode::OK).json_body(json!([{
+                "error_msg": "",
+                "makingAmount": "",
+                "orderID": "0xabc123",
+                "status": "live",
+                "success": true,
+                "takingAmount": ""
+            }]));
+        });
+
+        let fake_signature = "0x1234";
+
+        let response = client
+            .post_externally_signed_order(order_data, fake_signature)
+            .await?;
+
+        assert!(response.success);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_externally_signed_order_should_convert_sell_side() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = create_authenticated(&server).await?;
+
+        ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+
+        // Build order for SELL side (1)
+        let signable_order = client
+            .limit_order()
+            .token_id(TOKEN_1)
+            .price(dec!(0.50))
+            .size(Decimal::ONE_HUNDRED)
+            .side(Side::Sell)
+            .build()
+            .await?;
+
+        let signing_data = client
+            .prepare_for_external_signing(&signable_order, POLYGON)
+            .await?;
+
+        // Verify the order_data.order has numeric side (1 for SELL)
+        let order_data: serde_json::Value = serde_json::from_str(&signing_data.order_data)?;
+        assert_eq!(
+            order_data["order"]["side"], 1,
+            "order_data should have numeric side 1 for SELL"
+        );
+
+        // Mock verifies the request body contains string "SELL" (not numeric 1)
+        let mock = server.mock(|when, then| {
+            when.method(POST)
+                .path("/orders")
+                .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
+                .header(POLY_API_KEY, API_KEY)
+                .header(POLY_PASSPHRASE, PASSPHRASE)
+                .is_true(|req| {
+                    let body = req.body_string();
+                    // Must contain string "SELL", not numeric 1
+                    body.contains(r#""side":"SELL""#)
+                });
+            then.status(StatusCode::OK).json_body(json!([{
+                "error_msg": "",
+                "makingAmount": "",
+                "orderID": "0xsell123",
+                "status": "live",
+                "success": true,
+                "takingAmount": ""
+            }]));
+        });
+
+        let fake_signature = "0x1234";
+
+        let response = client
+            .post_externally_signed_order(order_data, fake_signature)
+            .await?;
+
+        assert!(response.success);
+        assert_eq!(response.order_id, "0xsell123");
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_externally_signed_order_should_inject_owner() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = create_authenticated(&server).await?;
+
+        ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+
+        let signable_order = client
+            .limit_order()
+            .token_id(TOKEN_1)
+            .price(dec!(0.50))
+            .size(Decimal::ONE_HUNDRED)
+            .side(Side::Buy)
+            .build()
+            .await?;
+
+        let signing_data = client
+            .prepare_for_external_signing(&signable_order, POLYGON)
+            .await?;
+
+        // Verify order_data doesn't have owner initially
+        let order_data: serde_json::Value = serde_json::from_str(&signing_data.order_data)?;
+        assert!(
+            order_data.get("owner").is_none(),
+            "order_data should not have owner initially"
+        );
+
+        // Mock verifies the request body contains the injected owner from credentials
+        let expected_owner = format!(r#""owner":"{API_KEY}""#);
+        let mock = server.mock(|when, then| {
+            when.method(POST)
+                .path("/orders")
+                .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
+                .header(POLY_API_KEY, API_KEY)
+                .header(POLY_PASSPHRASE, PASSPHRASE)
+                .is_true(move |req| {
+                    let body = req.body_string();
+                    body.contains(&expected_owner)
+                });
+            then.status(StatusCode::OK).json_body(json!([{
+                "error_msg": "",
+                "makingAmount": "",
+                "orderID": "0xabc123",
+                "status": "live",
+                "success": true,
+                "takingAmount": ""
+            }]));
+        });
+
+        let fake_signature = "0x1234";
+
+        let _response: PostOrderResponse = client
+            .post_externally_signed_order(order_data, fake_signature)
+            .await?;
+
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_externally_signed_order_should_fail_without_order_field() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = create_authenticated(&server).await?;
+
+        let invalid_order_data = json!({
+            "orderType": "GTC"
+            // missing "order" field
+        });
+
+        let result = client
+            .post_externally_signed_order(invalid_order_data, "0x1234")
+            .await;
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            matches!(err.kind(), polymarket_client_sdk::error::Kind::Validation),
+            "should be validation error"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_externally_signed_order_should_fail_with_invalid_side() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = create_authenticated(&server).await?;
+
+        let invalid_order_data = json!({
+            "order": {
+                "side": 99  // invalid side value
+            },
+            "orderType": "GTC"
+        });
+
+        let result = client
+            .post_externally_signed_order(invalid_order_data, "0x1234")
+            .await;
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            matches!(err.kind(), polymarket_client_sdk::error::Kind::Validation),
+            "should be validation error"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn external_signing_roundtrip_should_succeed() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
+
+        let _mock_auth = server.mock(|when, then| {
+            when.method(GET)
+                .path("/auth/derive-api-key")
+                .header(POLY_ADDRESS, signer.address().to_string().to_lowercase());
+            then.status(StatusCode::OK).json_body(json!({
+                "apiKey": API_KEY.to_string(),
+                "passphrase": PASSPHRASE,
+                "secret": SECRET
+            }));
+        });
+        let _mock_time = server.mock(|when, then| {
+            when.method(GET).path("/time");
+            then.status(StatusCode::OK)
+                .json_body(TIMESTAMP.parse::<i64>().unwrap());
+        });
+
+        let config = Config::builder().use_server_time(true).build();
+        let client = Client::new(&server.base_url(), config)?
+            .authentication_builder(&signer)
+            .salt_generator(|| 12345)
+            .authenticate()
+            .await?;
+
+        ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+
+        // Step 1: Build order
+        let signable_order = client
+            .limit_order()
+            .token_id(TOKEN_1)
+            .price(dec!(0.50))
+            .size(Decimal::ONE_HUNDRED)
+            .side(Side::Buy)
+            .build()
+            .await?;
+
+        // Step 2: Prepare for external signing
+        let signing_data = client
+            .prepare_for_external_signing(&signable_order, POLYGON)
+            .await?;
+
+        // Step 3: "External" signing - parse typed data and sign the hash
+        let typed_data: TypedData = serde_json::from_str(&signing_data.typed_data)?;
+        let hash = typed_data.eip712_signing_hash()?;
+        let signature = signer.sign_hash(&hash).await?;
+        let signature_hex = format!("0x{}", hex::encode(signature.as_bytes()));
+
+        // Step 4: Post the externally signed order
+        let mock_post = server.mock(|when, then| {
+            when.method(POST)
+                .path("/orders")
+                .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
+                .header(POLY_API_KEY, API_KEY)
+                .header(POLY_PASSPHRASE, PASSPHRASE);
+            then.status(StatusCode::OK).json_body(json!([{
+                "error_msg": "",
+                "makingAmount": "100",
+                "orderID": "0xroundtrip123",
+                "status": "live",
+                "success": true,
+                "takingAmount": "50"
+            }]));
+        });
+
+        let order_json: serde_json::Value = serde_json::from_str(&signing_data.order_data)?;
+        let response = client
+            .post_externally_signed_order(order_json, &signature_hex)
+            .await?;
+
+        assert!(response.success);
+        assert_eq!(response.order_id, "0xroundtrip123");
+        assert_eq!(response.status, OrderStatusType::Live);
+        mock_post.assert();
+
+        Ok(())
+    }
+}

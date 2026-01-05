@@ -278,6 +278,20 @@ pub struct PostOrderResponse {
     pub trade_ids: Vec<String>,
 }
 
+/// Data required for external wallet signing of an order.
+///
+/// This is returned by [`Client::prepare_for_external_signing`] and contains everything
+/// needed for a browser wallet to sign an order via `eth_signTypedData_v4`.
+#[non_exhaustive]
+#[derive(Debug, Clone, Serialize)]
+pub struct ExternalSigningData {
+    /// EIP-712 typed data JSON string, ready to be passed to `eth_signTypedData_v4`.
+    pub typed_data: String,
+    /// Opaque order data to pass back to [`Client::post_externally_signed_order`].
+    /// Contains the order parameters and metadata needed to submit the signed order.
+    pub order_data: String,
+}
+
 pub fn empty_string_as_zero<'de, D>(deserializer: D) -> std::result::Result<Decimal, D::Error>
 where
     D: Deserializer<'de>,
