@@ -222,16 +222,13 @@ impl SubscriptionManager {
         let new_assets: Vec<String> = asset_ids
             .iter()
             .filter_map(|id| {
-                let mut is_new = false;
-                self.subscribed_assets
-                    .entry(id.clone())
-                    .and_modify(|count| *count += 1)
-                    .or_insert_with(|| {
-                        is_new = true;
-                        1
-                    });
-
-                is_new.then(|| id.clone())
+                if let Some(mut topic) = self.subscribed_assets.get_mut(id) {
+                    *topic.value_mut() += 1;
+                    None
+                } else {
+                    self.subscribed_assets.insert((*id).clone(), 1);
+                    Some(id.to_owned())
+                }
             })
             .collect();
 
@@ -328,17 +325,14 @@ impl SubscriptionManager {
         // Increment refcounts and determine which markets are truly new
         let new_markets: Vec<String> = markets
             .iter()
-            .filter_map(|m| {
-                let mut is_new = false;
-                self.subscribed_markets
-                    .entry(m.clone())
-                    .and_modify(|count| *count += 1)
-                    .or_insert_with(|| {
-                        is_new = true;
-                        1
-                    });
-
-                is_new.then(|| m.clone())
+            .filter_map(|id| {
+                if let Some(mut topic) = self.subscribed_markets.get_mut(id) {
+                    *topic.value_mut() += 1;
+                    None
+                } else {
+                    self.subscribed_markets.insert((*id).clone(), 1);
+                    Some(id.to_owned())
+                }
             })
             .collect();
 

@@ -276,8 +276,8 @@ impl<S: State> Client<S> {
     /// Returns [`ConnectionState::Disconnected`] if the connection has not been
     /// initialized yet (no subscriptions have been made).
     #[must_use]
-    pub fn connection_state(&self) -> ConnectionState {
-        self.inner.channel(ChannelType::Market).map_or(
+    pub fn connection_state(&self, channel_type: ChannelType) -> ConnectionState {
+        self.inner.channel(channel_type).map_or(
             ConnectionState::Disconnected,
             ChannelHandles::connection_state,
         )
@@ -287,9 +287,9 @@ impl<S: State> Client<S> {
     ///
     /// Returns `false` if no subscriptions have been made yet.
     #[must_use]
-    pub fn is_connected(&self) -> bool {
+    pub fn is_connected(&self, channel_type: ChannelType) -> bool {
         self.inner
-            .channel(ChannelType::Market)
+            .channel(channel_type)
             .is_some_and(ChannelHandles::is_connected)
     }
 
@@ -334,14 +334,11 @@ impl<S: State> Client<S> {
             .unsubscribe_market(asset_ids)
     }
 
-    fn market_handles(&self) -> Result<&ChannelHandles> {
+    fn market_resources(&self) -> Result<&LazyChannelResources> {
         self.inner
             .channel(ChannelType::Market)
-            .ok_or_else(|| Error::validation("Market channel unavailable; recreate client"))
-    }
-
-    fn market_resources(&self) -> Result<&LazyChannelResources> {
-        self.market_handles()?.get_or_connect()
+            .ok_or_else(|| Error::validation("Market channel unavailable; recreate client"))?
+            .get_or_connect()
     }
 }
 
