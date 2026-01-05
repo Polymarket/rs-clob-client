@@ -489,7 +489,7 @@ impl ChannelHandles {
     fn get_or_connect(&self) -> Result<&LazyChannelResources> {
         self.resources.get_or_try_init(|| {
             let interest = Arc::new(InterestTracker::new());
-            let connection = ConnectionManager::<WsMessage, Arc<InterestTracker>>::new(
+            let connection = ConnectionManager::new(
                 self.endpoint.clone(),
                 self.config.clone(),
                 Arc::clone(&interest),

@@ -70,11 +70,7 @@ struct ClientInner<S: State> {
 impl Client<Unauthenticated> {
     /// Create a new unauthenticated RTDS client with the specified endpoint and configuration.
     pub fn new(endpoint: &str, config: Config) -> Result<Self> {
-        let connection = ConnectionManager::<RtdsMessage, SimpleParser>::new(
-            endpoint.to_owned(),
-            config.clone(),
-            SimpleParser,
-        )?;
+        let connection = ConnectionManager::new(endpoint.to_owned(), config.clone(), SimpleParser)?;
         let subscriptions = Arc::new(SubscriptionManager::new(connection.clone()));
 
         // Start reconnection handler to re-subscribe on connection recovery
