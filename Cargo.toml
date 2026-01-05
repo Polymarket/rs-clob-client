@@ -109,6 +109,12 @@ path = "examples/clob/unauthenticated.rs"
 [[example]]
 name = "approvals"
 path = "examples/approvals.rs"
+required-features = ["tracing"]
+
+[[example]]
+name = "check_approvals"
+path = "examples/check_approvals.rs"
+required-features = ["tracing"]
 
 [[example]]
 name = "data"
