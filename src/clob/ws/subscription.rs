@@ -8,7 +8,7 @@ use std::sync::{Arc, PoisonError, RwLock};
 use std::time::Instant;
 
 use async_stream::try_stream;
-use dashmap::DashMap;
+use dashmap::{DashMap, Entry};
 use futures::Stream;
 use tokio::sync::broadcast::error::RecvError;
 
@@ -221,12 +221,13 @@ impl SubscriptionManager {
         // Increment refcounts and determine which assets are truly new
         let new_assets: Vec<String> = asset_ids
             .iter()
-            .filter_map(|id| {
-                if let Some(mut topic) = self.subscribed_assets.get_mut(id) {
-                    *topic.value_mut() += 1;
+            .filter_map(|id| match self.subscribed_assets.entry(id.to_owned()) {
+                Entry::Occupied(mut o) => {
+                    *o.get_mut() += 1;
                     None
-                } else {
-                    self.subscribed_assets.insert((*id).clone(), 1);
+                }
+                Entry::Vacant(v) => {
+                    v.insert(1);
                     Some(id.to_owned())
                 }
             })
@@ -325,12 +326,13 @@ impl SubscriptionManager {
         // Increment refcounts and determine which markets are truly new
         let new_markets: Vec<String> = markets
             .iter()
-            .filter_map(|id| {
-                if let Some(mut topic) = self.subscribed_markets.get_mut(id) {
-                    *topic.value_mut() += 1;
+            .filter_map(|id| match self.subscribed_markets.entry(id.to_owned()) {
+                Entry::Occupied(mut o) => {
+                    *o.get_mut() += 1;
                     None
-                } else {
-                    self.subscribed_markets.insert((*id).clone(), 1);
+                }
+                Entry::Vacant(v) => {
+                    v.insert(1);
                     Some(id.to_owned())
                 }
             })
