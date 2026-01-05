@@ -136,7 +136,11 @@ impl<T: Serialize> ToQueryParams for T {}
     tracing::instrument(
         level = "debug",
         skip(client, request, headers),
-        fields(method, path, status_code)
+        fields(
+            method = %request.method(),
+            path = request.url().path(),
+            status_code
+        )
     )
 )]
 async fn request<Response: DeserializeOwned>(
@@ -146,13 +150,6 @@ async fn request<Response: DeserializeOwned>(
 ) -> Result<Response> {
     let method = request.method().clone();
     let path = request.url().path().to_owned();
-
-    #[cfg(feature = "tracing")]
-    {
-        let span = tracing::Span::current();
-        span.record("method", method.as_str());
-        span.record("path", path.as_str());
-    }
 
     if let Some(h) = headers {
         *request.headers_mut() = h;
