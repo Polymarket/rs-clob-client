@@ -84,7 +84,13 @@ macro_rules! suppress {
     ($($var:expr),* $(,)?) => {
         #[cfg(not(feature = "tracing"))]
         {
-            $(let _ = &$var;)*
+            #[expect(
+                clippy::let_underscore_untyped,
+                reason = "intentionally discarding values to suppress unused variable warnings"
+            )]
+            {
+                $(let _ = &$var;)*
+            }
         }
     };
 }

@@ -427,8 +427,7 @@ impl SubscriptionManager {
 
         // Send unsubscribe only for zero-refcount assets
         if !to_unsubscribe.is_empty() {
-            #[cfg(feature = "tracing")]
-            tracing::debug!(
+            debug!(
                 count = to_unsubscribe.len(),
                 ?to_unsubscribe,
                 "Unsubscribing from market assets"
@@ -485,8 +484,7 @@ impl SubscriptionManager {
 
         // Send unsubscribe only for zero-refcount markets
         if !to_unsubscribe.is_empty() {
-            #[cfg(feature = "tracing")]
-            tracing::debug!(
+            debug!(
                 count = to_unsubscribe.len(),
                 ?to_unsubscribe,
                 "Unsubscribing from user markets"

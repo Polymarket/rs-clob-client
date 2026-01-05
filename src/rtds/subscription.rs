@@ -18,6 +18,7 @@ use crate::Result;
 use crate::auth::Credentials;
 use crate::ws::ConnectionManager;
 use crate::ws::connection::ConnectionState;
+use crate::{debug, suppress, warn};
 
 #[non_exhaustive]
 #[derive(Clone)]
@@ -102,8 +103,7 @@ impl SubscriptionManager {
                     ConnectionState::Connected { .. } => {
                         if was_connected {
                             // Reconnect to subscriptions
-                            #[cfg(feature = "tracing")]
-                            tracing::debug!("RTDS reconnected, re-establishing subscriptions");
+                            debug!("RTDS reconnected, re-establishing subscriptions");
                             this.resubscribe_all();
                         }
                         was_connected = true;
@@ -155,15 +155,12 @@ impl SubscriptionManager {
             return;
         }
 
-        #[cfg(feature = "tracing")]
-        tracing::debug!(count = subscriptions.len(), "Re-subscribing to RTDS topics");
+        debug!(count = subscriptions.len(), "Re-subscribing to RTDS topics");
 
         let request = SubscriptionRequest::subscribe(subscriptions);
         if let Err(e) = self.connection.send(&request) {
-            #[cfg(feature = "tracing")]
-            tracing::warn!(%e, "Failed to re-subscribe to RTDS topics");
-            #[cfg(not(feature = "tracing"))]
-            let _: &crate::error::Error = &e;
+            warn!(%e, "Failed to re-subscribe to RTDS topics");
+            suppress!(e);
         }
     }
 
@@ -192,8 +189,7 @@ impl SubscriptionManager {
         if is_new {
             self.subscribed_topics.insert(topic_type.clone());
 
-            #[cfg(feature = "tracing")]
-            tracing::debug!(
+            debug!(
                 topic = %subscription.topic,
                 msg_type = %subscription.msg_type,
                 "Subscribing to RTDS topic"
@@ -202,8 +198,7 @@ impl SubscriptionManager {
             let request = SubscriptionRequest::subscribe(vec![subscription.clone()]);
             self.connection.send(&request)?;
         } else {
-            #[cfg(feature = "tracing")]
-            tracing::debug!(
+            debug!(
                 topic = %subscription.topic,
                 msg_type = %subscription.msg_type,
                 "RTDS topic already subscribed, multiplexing"
@@ -240,8 +235,7 @@ impl SubscriptionManager {
                         }
                     }
                     Err(RecvError::Lagged(n)) => {
-                        #[cfg(feature = "tracing")]
-                        tracing::warn!("RTDS subscription lagged, missed {n} messages");
+                        warn!("RTDS subscription lagged, missed {n} messages");
                         Err(RtdsError::Lagged { count: n })?;
                     }
                     Err(RecvError::Closed) => {
