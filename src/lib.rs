@@ -29,7 +29,6 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::error::Error;
-use crate::macros::{log_error, log_warn};
 use crate::types::{Address, address};
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -203,7 +202,7 @@ pub trait ToQueryParams: Serialize {
                     expect(unused_variables, reason = "used only when tracing feature is enabled")
                 )]
                 |e| {
-                    log_error!("Unable to convert to URL-encoded string {e:?}");
+                    error!("Unable to convert to URL-encoded string {e:?}");
                 },
             )
             .unwrap_or_default();
@@ -258,7 +257,7 @@ async fn request<Response: DeserializeOwned>(
     if !status_code.is_success() {
         let message = response.text().await.unwrap_or_default();
 
-        log_warn!(
+        warn!(
             status = %status_code,
             method = %method,
             path = %path,
@@ -275,7 +274,7 @@ async fn request<Response: DeserializeOwned>(
     if let Some(response) = response_data {
         Ok(response)
     } else {
-        log_warn!(method = %method, path = %path, "API resource not found");
+        warn!(method = %method, path = %path, "API resource not found");
         Err(Error::status(
             StatusCode::NOT_FOUND,
             method,

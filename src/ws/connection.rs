@@ -21,9 +21,8 @@ use super::traits::MessageParser;
 use crate::auth::Credentials;
 use crate::clob::ws::WsError;
 use crate::error::Kind;
-use crate::macros::{log_debug, log_error, log_suppress, log_trace, log_warn};
 use crate::ws::WithCredentials;
-use crate::{Result, error::Error};
+use crate::{Result, debug, error, error::Error, suppress, trace, warn};
 
 type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
@@ -184,14 +183,14 @@ where
                     )
                     .await
                     {
-                        log_error!("Error handling connection: {e:?}");
-                        log_suppress!(e);
+                        error!("Error handling connection: {e:?}");
+                        suppress!(e);
                     }
                 }
                 Err(e) => {
                     let error = Error::with_source(Kind::WebSocket, WsError::Connection(e));
-                    log_warn!("Unable to connect: {error:?}");
-                    log_suppress!(error);
+                    warn!("Unable to connect: {error:?}");
+                    suppress!(error);
                     attempt = attempt.saturating_add(1);
                 }
             }
@@ -241,19 +240,19 @@ where
                             _ = pong_tx.send(Instant::now());
                         }
                         Ok(Message::Text(text)) => {
-                            log_trace!(%text, "Received WebSocket text message");
+                            trace!(%text, "Received WebSocket text message");
 
                             // Parse messages using the provided parser
                             match parser.parse(text.as_bytes()) {
                                 Ok(messages) => {
                                     for message in messages {
-                                        log_trace!(?message, "Parsed WebSocket message");
+                                        trace!(?message, "Parsed WebSocket message");
                                         _ = broadcast_tx.send(message);
                                     }
                                 }
                                 Err(e) => {
-                                    log_warn!(%text, error = %e, "Failed to parse WebSocket message");
-                                    log_suppress!(text, e);
+                                    warn!(%text, error = %e, "Failed to parse WebSocket message");
+                                    suppress!(text, e);
                                 }
                             }
                         }
@@ -339,9 +338,7 @@ where
                 Ok(Ok(())) => {
                     let last_pong = *pong_rx.borrow_and_update();
                     if last_pong < ping_sent {
-                        log_debug!(
-                            "PONG received but older than last PING, connection may be stale"
-                        );
+                        debug!("PONG received but older than last PING, connection may be stale");
                         break;
                     }
                 }
@@ -351,7 +348,7 @@ where
                 }
                 Err(_) => {
                     // Timeout waiting for PONG
-                    log_warn!(
+                    warn!(
                         "Heartbeat timeout: no PONG received within {:?}",
                         config.heartbeat_timeout
                     );

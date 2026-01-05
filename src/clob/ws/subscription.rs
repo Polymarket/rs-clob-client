@@ -18,9 +18,9 @@ use super::types::request::SubscriptionRequest;
 use super::types::response::WsMessage;
 use crate::Result;
 use crate::auth::Credentials;
-use crate::macros::{log_debug, log_suppress, log_warn};
 use crate::ws::ConnectionManager;
 use crate::ws::connection::ConnectionState;
+use crate::{debug, suppress, warn};
 
 /// What a subscription is targeting.
 #[non_exhaustive]
@@ -120,7 +120,7 @@ impl SubscriptionManager {
                     ConnectionState::Connected { .. } => {
                         if was_connected {
                             // Reconnect to subscriptions
-                            log_debug!("WebSocket reconnected, re-establishing subscriptions");
+                            debug!("WebSocket reconnected, re-establishing subscriptions");
                             this.resubscribe_all();
                         }
                         was_connected = true;
@@ -147,11 +147,11 @@ impl SubscriptionManager {
             .collect();
 
         if !assets.is_empty() {
-            log_debug!(count = assets.len(), "Re-subscribing to market assets");
+            debug!(count = assets.len(), "Re-subscribing to market assets");
             let request = SubscriptionRequest::market(assets);
             if let Err(e) = self.connection.send(&request) {
-                log_warn!(%e, "Failed to re-subscribe to market channel");
-                log_suppress!(e);
+                warn!(%e, "Failed to re-subscribe to market channel");
+                suppress!(e);
             }
         }
 
@@ -169,14 +169,14 @@ impl SubscriptionManager {
                 .map(|r| r.key().clone())
                 .collect();
 
-            log_debug!(
+            debug!(
                 markets_count = markets.len(),
                 "Re-subscribing to user channel"
             );
             let request = SubscriptionRequest::user(markets);
             if let Err(e) = self.connection.send_authenticated(&request, &auth) {
-                log_warn!(%e, "Failed to re-subscribe to user channel");
-                log_suppress!(e);
+                warn!(%e, "Failed to re-subscribe to user channel");
+                suppress!(e);
             }
         }
     }
@@ -229,9 +229,9 @@ impl SubscriptionManager {
 
         // Only send subscription request for new assets
         if new_assets.is_empty() {
-            log_debug!("All requested assets already subscribed, multiplexing");
+            debug!("All requested assets already subscribed, multiplexing");
         } else {
-            log_debug!(
+            debug!(
                 count = new_assets.len(),
                 ?new_assets,
                 custom_features,
@@ -288,7 +288,7 @@ impl SubscriptionManager {
                         }
                     }
                     Err(RecvError::Lagged(n)) => {
-                        log_warn!("Subscription lagged, missed {n} messages");
+                        warn!("Subscription lagged, missed {n} messages");
                         Err(WsError::Lagged { count: n })?;
                     }
                     Err(RecvError::Closed) => {
@@ -331,9 +331,9 @@ impl SubscriptionManager {
 
         // Only send subscription request for new markets (or if subscribing to all)
         if !markets.is_empty() && new_markets.is_empty() {
-            log_debug!("All requested markets already subscribed, multiplexing");
+            debug!("All requested markets already subscribed, multiplexing");
         } else {
-            log_debug!(
+            debug!(
                 count = new_markets.len(),
                 ?new_markets,
                 "Subscribing to user channel"
@@ -364,7 +364,7 @@ impl SubscriptionManager {
                         }
                     }
                     Err(RecvError::Lagged(n)) => {
-                        log_warn!("Subscription lagged, missed {n} messages");
+                        warn!("Subscription lagged, missed {n} messages");
                         Err(WsError::Lagged { count: n })?;
                     }
                     Err(RecvError::Closed) => {
