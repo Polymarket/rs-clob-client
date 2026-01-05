@@ -3,27 +3,26 @@
     reason = "Connection types expose their domain in the name for clarity"
 )]
 
-use std::sync::Arc;
+use std::fmt::Debug;
+use std::marker::PhantomData;
 use std::time::Instant;
 
 use backoff::backoff::Backoff as _;
 use futures::{SinkExt as _, StreamExt as _};
-use secrecy::ExposeSecret as _;
-use serde_json::{Value, json};
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 use tokio::net::TcpStream;
 use tokio::sync::{broadcast, mpsc, watch};
 use tokio::time::{interval, sleep, timeout};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message};
 
 use super::config::Config;
-use super::error::WsError;
-use super::interest::InterestTracker;
-use super::types::request::SubscriptionRequest;
-use super::types::response::{WsMessage, parse_if_interested};
-use crate::{
-    Result,
-    error::{Error, Kind},
-};
+use super::traits::MessageParser;
+use crate::auth::Credentials;
+use crate::clob::ws::WsError;
+use crate::error::Kind;
+use crate::ws::WithCredentials;
+use crate::{Result, error::Error};
 
 type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
@@ -59,8 +58,40 @@ impl ConnectionState {
 }
 
 /// Manages WebSocket connection lifecycle, reconnection, and heartbeat.
+///
+/// This generic connection manager handles all WebSocket connection concerns:
+/// - Establishing and maintaining connections
+/// - Automatic reconnection with exponential backoff
+/// - Heartbeat monitoring via PING/PONG
+/// - Broadcasting messages to multiple subscribers
+///
+/// # Type Parameters
+///
+/// - `M`: Message type that implements [`DeserializeOwned`] among other "helper" types
+/// - `P`: Parser type that implements [`MessageParser<M>`]
+///
+/// # Example
+///
+/// ```ignore
+/// let parser = SimpleParser;
+/// let connection = ConnectionManager::new(
+///     "wss://example.com".to_owned(),
+///     config,
+///     parser,
+/// )?;
+///
+/// // Subscribe to messages
+/// let mut rx = connection.subscribe();
+/// while let Ok(msg) = rx.recv().await {
+///     println!("Received: {:?}", msg);
+/// }
+/// ```
 #[derive(Clone)]
-pub struct ConnectionManager {
+pub struct ConnectionManager<M, P>
+where
+    M: DeserializeOwned + Debug + Clone + Send + 'static,
+    P: MessageParser<M>,
+{
     /// Watch channel sender for state changes (enables reconnection detection)
     state_tx: watch::Sender<ConnectionState>,
     /// Watch channel receiver for state changes (for use in checking the current state)
@@ -68,15 +99,22 @@ pub struct ConnectionManager {
     /// Sender channel for outgoing messages
     sender_tx: mpsc::UnboundedSender<String>,
     /// Broadcast sender for incoming messages
-    broadcast_tx: broadcast::Sender<WsMessage>,
+    broadcast_tx: broadcast::Sender<M>,
+    /// Phantom data for unused type parameters
+    _phantom: PhantomData<P>,
 }
 
-impl ConnectionManager {
+impl<M, P> ConnectionManager<M, P>
+where
+    M: DeserializeOwned + Debug + Clone + Send + 'static,
+    P: MessageParser<M>,
+{
     /// Create a new connection manager and start the connection loop.
     ///
-    /// The `interest` tracker is used to determine which message types to deserialize.
-    /// Only messages that have active consumers will be fully parsed.
-    pub fn new(endpoint: String, config: Config, interest: &Arc<InterestTracker>) -> Result<Self> {
+    /// The `parser` is used to deserialize incoming WebSocket messages.
+    /// The connection loop runs in a background task and automatically
+    /// handles reconnection according to the config's `ReconnectConfig`.
+    pub fn new(endpoint: String, config: Config, parser: P) -> Result<Self> {
         let (sender_tx, sender_rx) = mpsc::unbounded_channel();
         let (broadcast_tx, _) = broadcast::channel(BROADCAST_CAPACITY);
         let (state_tx, state_rx) = watch::channel(ConnectionState::Disconnected);
@@ -85,7 +123,6 @@ impl ConnectionManager {
         let connection_config = config;
         let connection_endpoint = endpoint;
         let broadcast_tx_clone = broadcast_tx.clone();
-        let connection_interest = Arc::clone(interest);
         let state_tx_clone = state_tx.clone();
 
         tokio::spawn(async move {
@@ -94,7 +131,7 @@ impl ConnectionManager {
                 connection_config,
                 sender_rx,
                 broadcast_tx_clone,
-                connection_interest,
+                parser,
                 state_tx_clone,
             )
             .await;
@@ -105,6 +142,7 @@ impl ConnectionManager {
             state_rx,
             sender_tx,
             broadcast_tx,
+            _phantom: PhantomData,
         })
     }
 
@@ -113,8 +151,8 @@ impl ConnectionManager {
         endpoint: String,
         config: Config,
         mut sender_rx: mpsc::UnboundedReceiver<String>,
-        broadcast_tx: broadcast::Sender<WsMessage>,
-        interest: Arc<InterestTracker>,
+        broadcast_tx: broadcast::Sender<M>,
+        parser: P,
         state_tx: watch::Sender<ConnectionState>,
     ) {
         let mut attempt = 0_u32;
@@ -141,7 +179,7 @@ impl ConnectionManager {
                         &broadcast_tx,
                         state_rx,
                         config.clone(),
-                        &interest,
+                        &parser,
                     )
                     .await
                     {
@@ -182,16 +220,15 @@ impl ConnectionManager {
     async fn handle_connection(
         ws_stream: WsStream,
         sender_rx: &mut mpsc::UnboundedReceiver<String>,
-        broadcast_tx: &broadcast::Sender<WsMessage>,
+        broadcast_tx: &broadcast::Sender<M>,
         state_rx: watch::Receiver<ConnectionState>,
         config: Config,
-        interest: &Arc<InterestTracker>,
+        parser: &P,
     ) -> Result<()> {
         let (mut write, mut read) = ws_stream.split();
 
         // Channel to notify heartbeat loop when PONG is received
         let (pong_tx, pong_rx) = watch::channel(Instant::now());
-
         let (ping_tx, mut ping_rx) = mpsc::unbounded_channel();
 
         let heartbeat_handle = tokio::spawn(async move {
@@ -210,15 +247,14 @@ impl ConnectionManager {
                             #[cfg(feature = "tracing")]
                             tracing::trace!(%text, "Received WebSocket text message");
 
-                            // Only deserialize message types that have active consumers
-                            match parse_if_interested(text.as_bytes(), &interest.get()) {
+                            // Parse messages using the provided parser
+                            match parser.parse(text.as_bytes()) {
                                 Ok(messages) => {
                                     for message in messages {
                                         #[cfg(feature = "tracing")]
                                         tracing::trace!(?message, "Parsed WebSocket message");
                                         _ = broadcast_tx.send(message);
                                     }
-
                                 }
                                 Err(e) => {
                                     #[cfg(feature = "tracing")]
@@ -335,24 +371,21 @@ impl ConnectionManager {
     }
 
     /// Send a subscription request to the WebSocket server.
-    pub fn send(&self, message: &SubscriptionRequest) -> Result<()> {
-        let mut v = serde_json::to_value(message)?;
+    pub fn send<R: Serialize>(&self, request: &R) -> Result<()> {
+        let json = serde_json::to_string(request)?;
+        self.sender_tx
+            .send(json)
+            .map_err(|_e| WsError::ConnectionClosed)?;
+        Ok(())
+    }
 
-        // Only expose credentials when serializing on the wire, otherwise do not include
-        // credentials in other serialization contexts
-        if let Some(creds) = message.auth.as_ref() {
-            let auth = json!({
-                "apiKey": creds.key.to_string(),
-                "secret": creds.secret.expose_secret(),
-                "passphrase": creds.passphrase.expose_secret(),
-            });
-
-            if let Value::Object(ref mut obj) = v {
-                obj.insert("auth".to_owned(), auth);
-            }
-        }
-
-        let json = serde_json::to_string(&v)?;
+    /// Send a subscription request to the WebSocket server.
+    pub fn send_authenticated<R: WithCredentials>(
+        &self,
+        request: &R,
+        credentials: &Credentials,
+    ) -> Result<()> {
+        let json = request.as_authenticated(credentials)?;
         self.sender_tx
             .send(json)
             .map_err(|_e| WsError::ConnectionClosed)?;
@@ -370,7 +403,7 @@ impl ConnectionManager {
     /// Each call returns a new independent receiver. Multiple subscribers can
     /// receive messages concurrently without blocking each other.
     #[must_use]
-    pub fn subscribe(&self) -> broadcast::Receiver<WsMessage> {
+    pub fn subscribe(&self) -> broadcast::Receiver<M> {
         self.broadcast_tx.subscribe()
     }
 

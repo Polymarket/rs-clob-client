@@ -8,17 +8,18 @@ use std::sync::{Arc, PoisonError, RwLock};
 use std::time::Instant;
 
 use async_stream::try_stream;
-use dashmap::DashMap;
+use dashmap::{DashMap, Entry};
 use futures::Stream;
 use tokio::sync::broadcast::error::RecvError;
 
-use super::connection::{ConnectionManager, ConnectionState};
 use super::error::WsError;
 use super::interest::{InterestTracker, MessageInterest};
 use super::types::request::SubscriptionRequest;
 use super::types::response::WsMessage;
 use crate::Result;
 use crate::auth::Credentials;
+use crate::ws::ConnectionManager;
+use crate::ws::connection::ConnectionState;
 
 /// What a subscription is targeting.
 #[non_exhaustive]
@@ -70,7 +71,7 @@ pub enum ChannelType {
 
 /// Manages active subscriptions and routes messages to subscribers.
 pub struct SubscriptionManager {
-    connection: ConnectionManager,
+    connection: ConnectionManager<WsMessage, Arc<InterestTracker>>,
     active_subs: DashMap<String, SubscriptionInfo>,
     interest: Arc<InterestTracker>,
     /// Subscribed assets with reference counts (for multiplexing)
@@ -83,7 +84,10 @@ pub struct SubscriptionManager {
 impl SubscriptionManager {
     /// Create a new subscription manager.
     #[must_use]
-    pub fn new(connection: ConnectionManager, interest: Arc<InterestTracker>) -> Self {
+    pub fn new(
+        connection: ConnectionManager<WsMessage, Arc<InterestTracker>>,
+        interest: Arc<InterestTracker>,
+    ) -> Self {
         Self {
             connection,
             active_subs: DashMap::new(),
@@ -97,44 +101,40 @@ impl SubscriptionManager {
     /// Start the reconnection handler that re-subscribes on connection recovery.
     pub fn start_reconnection_handler(self: &Arc<Self>) {
         let this = Arc::clone(self);
+
         tokio::spawn(async move {
-            this.reconnection_loop().await;
-        });
-    }
+            let mut state_rx = this.connection.state_receiver();
+            let mut was_connected = state_rx.borrow().is_connected();
 
-    /// Monitor connection state and re-subscribe when reconnection occurs.
-    async fn reconnection_loop(&self) {
-        let mut state_rx = self.connection.state_receiver();
-        let mut was_connected = state_rx.borrow().is_connected();
-
-        loop {
-            // Wait for next state change
-            if state_rx.changed().await.is_err() {
-                // Channel closed, connection manager is gone
-                break;
-            }
-
-            let state = *state_rx.borrow_and_update();
-
-            match state {
-                ConnectionState::Connected { .. } => {
-                    if was_connected {
-                        // Reconnect to subscriptions
-                        #[cfg(feature = "tracing")]
-                        tracing::debug!("WebSocket reconnected, re-establishing subscriptions");
-                        self.resubscribe_all();
-                    }
-                    was_connected = true;
-                }
-                ConnectionState::Disconnected => {
-                    // Connection permanently closed
+            loop {
+                // Wait for next state change
+                if state_rx.changed().await.is_err() {
+                    // Channel closed, connection manager is gone
                     break;
                 }
-                _ => {
-                    // Other states are no-op
+
+                let state = *state_rx.borrow_and_update();
+
+                match state {
+                    ConnectionState::Connected { .. } => {
+                        if was_connected {
+                            // Reconnect to subscriptions
+                            #[cfg(feature = "tracing")]
+                            tracing::debug!("WebSocket reconnected, re-establishing subscriptions");
+                            this.resubscribe_all();
+                        }
+                        was_connected = true;
+                    }
+                    ConnectionState::Disconnected => {
+                        // Connection permanently closed
+                        break;
+                    }
+                    _ => {
+                        // Other states are no-op
+                    }
                 }
             }
-        }
+        });
     }
 
     /// Re-send subscription requests for all tracked assets and markets.
@@ -177,8 +177,8 @@ impl SubscriptionManager {
                 markets_count = markets.len(),
                 "Re-subscribing to user channel"
             );
-            let request = SubscriptionRequest::user(markets, auth);
-            if let Err(e) = self.connection.send(&request) {
+            let request = SubscriptionRequest::user(markets);
+            if let Err(e) = self.connection.send_authenticated(&request, &auth) {
                 #[cfg(feature = "tracing")]
                 tracing::warn!(%e, "Failed to re-subscribe to user channel");
                 #[cfg(not(feature = "tracing"))]
@@ -221,17 +221,15 @@ impl SubscriptionManager {
         // Increment refcounts and determine which assets are truly new
         let new_assets: Vec<String> = asset_ids
             .iter()
-            .filter_map(|id| {
-                let mut is_new = false;
-                self.subscribed_assets
-                    .entry(id.clone())
-                    .and_modify(|count| *count += 1)
-                    .or_insert_with(|| {
-                        is_new = true;
-                        1
-                    });
-
-                is_new.then(|| id.clone())
+            .filter_map(|id| match self.subscribed_assets.entry(id.to_owned()) {
+                Entry::Occupied(mut o) => {
+                    *o.get_mut() += 1;
+                    None
+                }
+                Entry::Vacant(v) => {
+                    v.insert(1);
+                    Some(id.to_owned())
+                }
             })
             .collect();
 
@@ -314,7 +312,7 @@ impl SubscriptionManager {
     pub fn subscribe_user(
         &self,
         markets: Vec<String>,
-        auth: Credentials,
+        auth: &Credentials,
     ) -> Result<impl Stream<Item = Result<WsMessage>>> {
         self.interest.add(MessageInterest::USER);
 
@@ -328,17 +326,15 @@ impl SubscriptionManager {
         // Increment refcounts and determine which markets are truly new
         let new_markets: Vec<String> = markets
             .iter()
-            .filter_map(|m| {
-                let mut is_new = false;
-                self.subscribed_markets
-                    .entry(m.clone())
-                    .and_modify(|count| *count += 1)
-                    .or_insert_with(|| {
-                        is_new = true;
-                        1
-                    });
-
-                is_new.then(|| m.clone())
+            .filter_map(|id| match self.subscribed_markets.entry(id.to_owned()) {
+                Entry::Occupied(mut o) => {
+                    *o.get_mut() += 1;
+                    None
+                }
+                Entry::Vacant(v) => {
+                    v.insert(1);
+                    Some(id.to_owned())
+                }
             })
             .collect();
 
@@ -353,8 +349,8 @@ impl SubscriptionManager {
                 ?new_markets,
                 "Subscribing to user channel"
             );
-            let request = SubscriptionRequest::user(new_markets, auth);
-            self.connection.send(&request)?;
+            let request = SubscriptionRequest::user(new_markets);
+            self.connection.send_authenticated(&request, auth)?;
         }
 
         // Register subscription
@@ -516,8 +512,8 @@ impl SubscriptionManager {
                 .clone()
                 .ok_or(WsError::AuthenticationFailed)?;
 
-            let request = SubscriptionRequest::user_unsubscribe(to_unsubscribe, auth);
-            self.connection.send(&request)?;
+            let request = SubscriptionRequest::user_unsubscribe(to_unsubscribe);
+            self.connection.send_authenticated(&request, &auth)?;
         }
 
         // Remove active_subs entries where all markets are now unsubscribed
