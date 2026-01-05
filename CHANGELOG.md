@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2](https://github.com/Polymarket/rs-clob-client/compare/v0.3.1...v0.3.2) - 2026-01-04
+
+### Added
+
+- add unknown field warnings for API responses ([#47](https://github.com/Polymarket/rs-clob-client/pull/47))
+- *(ws)* add custom feature message types and subscription support ([#79](https://github.com/Polymarket/rs-clob-client/pull/79))
+
+### Fixed
+
+- *(ws)* defer WebSocket connection until first subscription ([#90](https://github.com/Polymarket/rs-clob-client/pull/90))
+- *(types)* improve type handling and API compatibility ([#92](https://github.com/Polymarket/rs-clob-client/pull/92))
+- add serde aliases for API response field variants ([#88](https://github.com/Polymarket/rs-clob-client/pull/88))
+- *(data)* add missing fields to Position and Holder types ([#85](https://github.com/Polymarket/rs-clob-client/pull/85))
+- *(gamma)* add missing fields to response types ([#87](https://github.com/Polymarket/rs-clob-client/pull/87))
+- *(deser_warn)* show full JSON values in unknown field warnings ([#86](https://github.com/Polymarket/rs-clob-client/pull/86))
+- handle order_type field in OpenOrderResponse ([#81](https://github.com/Polymarket/rs-clob-client/pull/81))
+
+### Other
+
+- update README with new features and examples ([#80](https://github.com/Polymarket/rs-clob-client/pull/80))
+
 ## [0.3.1](https://github.com/Polymarket/rs-clob-client/compare/v0.3.0...v0.3.1) - 2025-12-31
 
 ### Added

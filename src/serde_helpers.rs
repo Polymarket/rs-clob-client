@@ -100,6 +100,12 @@ impl serde_with::SerializeAs<String> for StringFromAny {
 pub fn deserialize_with_warnings<T: DeserializeOwned>(value: Value) -> crate::Result<T> {
     use std::any::type_name;
 
+    tracing::trace!(
+        type_name = %type_name::<T>(),
+        json = %value,
+        "deserializing JSON"
+    );
+
     // Clone the value so we can look up unknown field values later
     let original = value.clone();
 
