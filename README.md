@@ -138,12 +138,22 @@ async fn main() -> anyhow::Result<()> {
 ```
 
 ##### Proxy/Safe wallets
-For proxy/Safe wallets, create your client as such:
+For proxy/Safe wallets, the funder address is **automatically derived** from your signer's address:
 
 ```rust,ignore
 let client = Client::new("https://clob.polymarket.com", Config::default())?
     .authentication_builder(&signer)
-    .funder(address!("<your-address>"))
+    .signature_type(SignatureType::Proxy)  // Funder auto-derived from signer.address()
+    .authenticate()
+    .await?;
+```
+
+If your funder address differs from your signer's address, you can explicitly override it:
+
+```rust,ignore
+let client = Client::new("https://clob.polymarket.com", Config::default())?
+    .authentication_builder(&signer)
+    .funder(address!("<different-funder-address>"))
     .signature_type(SignatureType::Proxy)
     .authenticate()
     .await?;
@@ -151,8 +161,9 @@ let client = Client::new("https://clob.polymarket.com", Config::default())?
 
 ##### Funder Address
 The **funder address** is the actual address that holds your funds on Polymarket. When using proxy wallets (email wallets
-like Magic or browser extension wallets), the signing key differs from the address holding the funds. The funder address
-ensures orders are properly attributed to your funded account.
+like Magic or browser extension wallets), the signing key may differ from the address holding the funds. By default,
+when using `SignatureType::Proxy` or `SignatureType::GnosisSafe`, the funder is automatically set to `signer.address()`.
+You can override this with `.funder(address)` if needed.
 
 ##### Signature Types
 The **signature_type** parameter tells the system how to verify your signatures:
@@ -248,7 +259,6 @@ use alloy::signers::Signer as _;
 use alloy::signers::local::LocalSigner;
 use polymarket_client_sdk::auth::builder::Config as BuilderConfig;
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
-use polymarket_client_sdk::types::address;
 use polymarket_client_sdk::clob::{Client, Config};
 use polymarket_client_sdk::clob::types::SignatureType;
 use polymarket_client_sdk::clob::types::request::TradesRequest;
@@ -258,12 +268,10 @@ async fn main() -> anyhow::Result<()> {
     let private_key = std::env::var(PRIVATE_KEY_VAR).expect("Need a private key");
     let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(POLYGON));
     let builder_config = BuilderConfig::remote("http://localhost:3000/sign", None)?; // Or your signing server
-    let funder = address!("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"); // Use your funder address
 
     let client = Client::new("https://clob.polymarket.com", Config::default())?
         .authentication_builder(&signer)
-        .funder(funder)
-        .signature_type(SignatureType::Proxy)
+        .signature_type(SignatureType::Proxy)  // Funder auto-derived from signer.address()
         .authenticate()
         .await?;
 

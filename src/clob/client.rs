@@ -123,7 +123,16 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
             }
         }
 
-        match (self.funder, self.signature_type) {
+        // Auto-derive funder from signer when using proxy signature types without explicit funder.
+        // This allows users to omit .funder(address) when the signer's address should be used.
+        let funder = match (self.funder, self.signature_type) {
+            (None, Some(SignatureType::Proxy | SignatureType::GnosisSafe)) => {
+                Some(self.signer.address())
+            }
+            (funder, _) => funder,
+        };
+
+        match (funder, self.signature_type) {
             (Some(_), Some(sig @ SignatureType::Eoa)) => {
                 return Err(Error::validation(format!(
                     "Cannot have a funder address with a {sig} signature type"
@@ -137,11 +146,7 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
                     "Cannot have a zero funder address with a {sig} signature type"
                 )));
             }
-            (None, Some(sig @ (SignatureType::Proxy | SignatureType::GnosisSafe))) => {
-                return Err(Error::validation(format!(
-                    "Must have a funder address with a {sig} signature type"
-                )));
-            }
+            // Note: (None, Some(Proxy/GnosisSafe)) is unreachable due to auto-derivation above
             _ => {}
         }
 
@@ -175,7 +180,7 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
                 tick_sizes: inner.tick_sizes,
                 neg_risk: inner.neg_risk,
                 fee_rate_bps: inner.fee_rate_bps,
-                funder: self.funder,
+                funder,
                 signature_type: self.signature_type.unwrap_or(SignatureType::Eoa),
                 salt_generator: self.salt_generator.unwrap_or(generate_seed),
             }),
