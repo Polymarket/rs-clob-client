@@ -138,31 +138,46 @@ async fn main() -> anyhow::Result<()> {
 ```
 
 ##### Proxy/Safe wallets
-For proxy/Safe wallets, the funder address is **automatically derived** from your signer's address:
+For proxy/Safe wallets, the funder address is **automatically derived** using CREATE2 from your signer's EOA address:
 
 ```rust,ignore
 let client = Client::new("https://clob.polymarket.com", Config::default())?
     .authentication_builder(&signer)
-    .signature_type(SignatureType::Proxy)  // Funder auto-derived from signer.address()
+    .signature_type(SignatureType::GnosisSafe)  // Funder auto-derived via CREATE2
     .authenticate()
     .await?;
 ```
 
-If your funder address differs from your signer's address, you can explicitly override it:
+The SDK computes the deterministic wallet address that Polymarket deploys for your EOA. This is the same address
+shown on polymarket.com when you log in with a browser wallet.
+
+If you need to override the derived address (e.g., for advanced use cases), you can explicitly provide it:
 
 ```rust,ignore
 let client = Client::new("https://clob.polymarket.com", Config::default())?
     .authentication_builder(&signer)
-    .funder(address!("<different-funder-address>"))
-    .signature_type(SignatureType::Proxy)
+    .funder(address!("<your-polymarket-wallet-address>"))
+    .signature_type(SignatureType::GnosisSafe)
     .authenticate()
     .await?;
+```
+
+You can also derive these addresses manually:
+
+```rust,ignore
+use polymarket_client_sdk::{derive_safe_wallet, derive_proxy_wallet, POLYGON};
+
+// For browser wallet users (GnosisSafe)
+let safe_address = derive_safe_wallet(signer.address(), POLYGON);
+
+// For Magic/email wallet users (Proxy)
+let proxy_address = derive_proxy_wallet(signer.address(), POLYGON);
 ```
 
 ##### Funder Address
 The **funder address** is the actual address that holds your funds on Polymarket. When using proxy wallets (email wallets
-like Magic or browser extension wallets), the signing key may differ from the address holding the funds. By default,
-when using `SignatureType::Proxy` or `SignatureType::GnosisSafe`, the funder is automatically set to `signer.address()`.
+like Magic or browser extension wallets), the signing key differs from the address holding the funds. The SDK automatically
+derives the correct funder address using CREATE2 when you specify `SignatureType::Proxy` or `SignatureType::GnosisSafe`.
 You can override this with `.funder(address)` if needed.
 
 ##### Signature Types
@@ -271,7 +286,7 @@ async fn main() -> anyhow::Result<()> {
 
     let client = Client::new("https://clob.polymarket.com", Config::default())?
         .authentication_builder(&signer)
-        .signature_type(SignatureType::Proxy)  // Funder auto-derived from signer.address()
+        .signature_type(SignatureType::Proxy)  // Funder auto-derived via CREATE2
         .authenticate()
         .await?;
 

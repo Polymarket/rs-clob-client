@@ -41,7 +41,10 @@ use crate::clob::types::response::{
 use crate::clob::types::{SignableOrder, SignatureType, SignedOrder, TickSize};
 use crate::error::{Error, Synchronization};
 use crate::types::Address;
-use crate::{AMOY, POLYGON, Result, Timestamp, ToQueryParams as _, auth, contract_config};
+use crate::{
+    AMOY, POLYGON, Result, Timestamp, ToQueryParams as _, auth, contract_config,
+    derive_proxy_wallet, derive_safe_wallet,
+};
 
 const ORDER_NAME: Option<Cow<'static, str>> = Some(Cow::Borrowed("Polymarket CTF Exchange"));
 const VERSION: Option<Cow<'static, str>> = Some(Cow::Borrowed("1"));
@@ -106,6 +109,10 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
 
     /// Attempt to elevate the inner `client` to [`Client<Authenticated<K>>`] using the optional
     /// fields supplied in the builder.
+    #[expect(
+        clippy::missing_panics_doc,
+        reason = "chain_id panic is guarded by prior validation"
+    )]
     pub async fn authenticate(self) -> Result<Client<Authenticated<K>>> {
         let inner = Arc::into_inner(self.client.inner).ok_or(Synchronization)?;
 
@@ -123,11 +130,32 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
             }
         }
 
-        // Auto-derive funder from signer when using proxy signature types without explicit funder.
-        // This allows users to omit .funder(address) when the signer's address should be used.
+        // SAFETY: chain_id is validated above to be either POLYGON or AMOY
+        let chain_id = self.signer.chain_id().expect("validated above");
+
+        // Auto-derive funder from signer using CREATE2 when using proxy signature types
+        // without explicit funder. This computes the deterministic wallet address that
+        // Polymarket deploys for the user.
         let funder = match (self.funder, self.signature_type) {
-            (None, Some(SignatureType::Proxy | SignatureType::GnosisSafe)) => {
-                Some(self.signer.address())
+            (None, Some(SignatureType::Proxy)) => {
+                let derived =
+                    derive_proxy_wallet(self.signer.address(), chain_id).ok_or_else(|| {
+                        Error::validation(
+                            "Proxy wallet derivation not supported on this chain. \
+                             Please provide an explicit funder address.",
+                        )
+                    })?;
+                Some(derived)
+            }
+            (None, Some(SignatureType::GnosisSafe)) => {
+                let derived =
+                    derive_safe_wallet(self.signer.address(), chain_id).ok_or_else(|| {
+                        Error::validation(
+                            "Safe wallet derivation not supported on this chain. \
+                             Please provide an explicit funder address.",
+                        )
+                    })?;
+                Some(derived)
             }
             (funder, _) => funder,
         };

@@ -375,12 +375,21 @@ mod lifecycle {
         Ok(())
     }
 
-    /// Tests that the funder address is automatically derived from `signer.address()`
-    /// when using Proxy or `GnosisSafe` signature types without explicit funder.
+    /// Tests that the funder address is automatically derived using CREATE2 from
+    /// the signer's EOA when using Proxy or `GnosisSafe` signature types without
+    /// explicit funder.
     #[tokio::test]
     async fn funder_auto_derived_from_signer_for_proxy_types() -> anyhow::Result<()> {
+        use polymarket_client_sdk::{POLYGON, derive_proxy_wallet, derive_safe_wallet};
+
         let server = MockServer::start();
         let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
+
+        // Expected CREATE2-derived addresses for this signer
+        let expected_safe_addr =
+            derive_safe_wallet(signer.address(), POLYGON).expect("Safe derivation failed");
+        let expected_proxy_addr =
+            derive_proxy_wallet(signer.address(), POLYGON).expect("Proxy derivation failed");
 
         server.mock(|when, then| {
             when.method(httpmock::Method::GET)
@@ -393,7 +402,7 @@ mod lifecycle {
             }));
         });
 
-        // GnosisSafe without explicit funder - should auto-derive from signer
+        // GnosisSafe without explicit funder - should auto-derive using CREATE2
         let client = Client::new(&server.base_url(), Config::default())?
             .authentication_builder(&signer)
             .signature_type(SignatureType::GnosisSafe)
@@ -411,15 +420,18 @@ mod lifecycle {
             .build()
             .await?;
 
-        // Verify maker (funder) is auto-derived from signer's address
-        assert_eq!(signable_order.order.maker, signer.address());
+        // Verify maker (funder) is the CREATE2-derived Safe address
+        assert_eq!(signable_order.order.maker, expected_safe_addr);
+        // Signer remains the EOA
         assert_eq!(signable_order.order.signer, signer.address());
+        // Maker and signer should be different for proxy types
+        assert_ne!(signable_order.order.maker, signable_order.order.signer);
         assert_eq!(
             signable_order.order.signatureType,
             SignatureType::GnosisSafe as u8
         );
 
-        // Now test with SignatureType::Proxy (same behavior expected)
+        // Now test with SignatureType::Proxy
         server.mock(|when, then| {
             when.method(httpmock::Method::GET)
                 .path("/auth/derive-api-key")
@@ -448,9 +460,12 @@ mod lifecycle {
             .build()
             .await?;
 
-        // Verify auto-derivation works for Proxy signature type too
-        assert_eq!(signable_order.order.maker, signer.address());
+        // Verify maker (funder) is the CREATE2-derived Proxy address
+        assert_eq!(signable_order.order.maker, expected_proxy_addr);
+        // Signer remains the EOA
         assert_eq!(signable_order.order.signer, signer.address());
+        // Maker and signer should be different for proxy types
+        assert_ne!(signable_order.order.maker, signable_order.order.signer);
         assert_eq!(
             signable_order.order.signatureType,
             SignatureType::Proxy as u8
