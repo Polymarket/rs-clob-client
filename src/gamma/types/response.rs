@@ -325,6 +325,7 @@ pub struct Event {
     pub election_type: Option<String>,
     pub country_name: Option<String>,
     pub color: Option<String>,
+    pub cumulative_markets: Option<bool>,
 }
 
 /// A prediction market.

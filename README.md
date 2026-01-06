@@ -125,7 +125,7 @@ See `examples/` for the complete set. Below are hand-picked examples for common 
 ### CLOB Client
 
 #### Unauthenticated client (read-only)
-```rust
+```rust,no_run
 use polymarket_client_sdk::clob::Client;
 
 #[tokio::main]
