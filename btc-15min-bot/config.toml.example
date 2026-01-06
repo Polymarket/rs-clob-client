@@ -1,0 +1,82 @@
+# Bitcoin 15min Trading Bot Configuration
+# Copy this file to config.toml and fill in your settings
+
+[blockchain]
+# Private key for your trading wallet (without 0x prefix)
+# SECURITY: Store this in environment variable PRIVATE_KEY instead
+# private_key = "your_private_key_here"
+private_key = ""
+
+# Polymarket CLOB API endpoint
+clob_endpoint = "https://clob.polymarket.com"
+
+# Chain ID (137 = Polygon Mainnet, 80002 = Polygon Amoy Testnet)
+chain_id = 137
+
+# Optional: Polygon RPC endpoint for token approvals
+# rpc_endpoint = "https://polygon-rpc.com"
+
+[strategy]
+# Market search query
+market_query = "Bitcoin 15min"
+
+# Seconds before market start to analyze and place order
+# Default: 60 (1 minute before)
+entry_timing_seconds = 60
+
+# Trade size in USDC per position
+# Default: $5
+trade_size_usdc = "5.00"
+
+# Minimum volume differential to trade (0.10 = 10%)
+# Only trade if UP vs DOWN volume difference exceeds this threshold
+# Default: 0.10 (10%)
+min_volume_differential = "0.10"
+
+# Lookback period for volume analysis in seconds
+# Default: 3600 (1 hour)
+volume_lookback_seconds = 3600
+
+[risk]
+# Trailing stop percentage (0.05 = 5%)
+# Exit when price retraces by this percentage from best price
+# Default: 0.05 (5%)
+trailing_stop_percentage = "0.05"
+
+# Maximum position hold time in seconds
+# Safety exit if position is held too long
+# Default: 900 (15 minutes = market duration)
+max_position_hold_seconds = 900
+
+# Maximum slippage tolerance (0.02 = 2%)
+# Default: 0.02 (2%)
+max_slippage = "0.02"
+
+# Minimum profit target before enabling trailing stop (0.02 = 2%)
+# Trailing stop only activates after this profit is reached
+# Default: 0.02 (2%)
+min_profit_target = "0.02"
+
+[operational]
+# Price polling interval in seconds
+# How often to check price and update trailing stop
+# Default: 3 (3 seconds)
+price_poll_interval_seconds = 3
+
+# Market discovery refresh interval in seconds
+# How often to search for new markets
+# Default: 300 (5 minutes)
+market_refresh_interval_seconds = 300
+
+# API retry attempts
+# Default: 3
+retry_attempts = 3
+
+# Delay between retries in milliseconds
+# Default: 1000 (1 second)
+retry_delay_ms = 1000
+
+# Enable dry run mode (no real trades)
+# Set to true for testing
+# Default: false
+dry_run = false
