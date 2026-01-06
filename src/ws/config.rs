@@ -7,22 +7,17 @@ use std::time::Duration;
 
 use backoff::{ExponentialBackoff, ExponentialBackoffBuilder};
 
-/// Default heartbeat interval value (5 seconds for RTDS).
 const DEFAULT_HEARTBEAT_INTERVAL_DURATION: Duration = Duration::from_secs(5);
-/// Default heartbeat timeout value.
 const DEFAULT_HEARTBEAT_TIMEOUT_DURATION: Duration = Duration::from_secs(15);
-/// Default initial backoff duration for reconnections.
 const DEFAULT_INITIAL_BACKOFF_DURATION: Duration = Duration::from_secs(1);
-/// Default maximum backoff duration for reconnections.
 const DEFAULT_MAX_BACKOFF_DURATION: Duration = Duration::from_secs(60);
-/// Default backoff multiplier for reconnections.
 const DEFAULT_BACKOFF_MULTIPLIER: f64 = 2.0;
 
-/// Configuration for RTDS WebSocket client behavior.
+/// Configuration for WebSocket client behavior.
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct Config {
-    /// Interval for sending PING messages to keep connection alive (5 seconds recommended for RTDS)
+    /// Interval for sending PING messages to keep connection alive
     pub heartbeat_interval: Duration,
     /// Maximum time to wait for PONG response before considering connection dead
     pub heartbeat_timeout: Duration,
