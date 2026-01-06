@@ -6,8 +6,6 @@ use futures::Stream;
 use futures::StreamExt as _;
 use once_cell::sync::OnceCell;
 
-use super::config::Config;
-use super::connection::{ConnectionManager, ConnectionState};
 use super::interest::InterestTracker;
 use super::subscription::{ChannelType, SubscriptionManager};
 use super::types::response::{
@@ -19,6 +17,9 @@ use crate::auth::state::{Authenticated, State, Unauthenticated};
 use crate::auth::{Credentials, Kind as AuthKind, Normal};
 use crate::error::Error;
 use crate::types::{Address, Decimal};
+use crate::ws::ConnectionManager;
+use crate::ws::config::Config;
+use crate::ws::connection::ConnectionState;
 
 /// WebSocket client for real-time market data and user updates.
 ///
@@ -275,8 +276,8 @@ impl<S: State> Client<S> {
     /// Returns [`ConnectionState::Disconnected`] if the connection has not been
     /// initialized yet (no subscriptions have been made).
     #[must_use]
-    pub fn connection_state(&self) -> ConnectionState {
-        self.inner.channel(ChannelType::Market).map_or(
+    pub fn connection_state(&self, channel_type: ChannelType) -> ConnectionState {
+        self.inner.channel(channel_type).map_or(
             ConnectionState::Disconnected,
             ChannelHandles::connection_state,
         )
@@ -286,9 +287,9 @@ impl<S: State> Client<S> {
     ///
     /// Returns `false` if no subscriptions have been made yet.
     #[must_use]
-    pub fn is_connected(&self) -> bool {
+    pub fn is_connected(&self, channel_type: ChannelType) -> bool {
         self.inner
-            .channel(ChannelType::Market)
+            .channel(channel_type)
             .is_some_and(ChannelHandles::is_connected)
     }
 
@@ -333,14 +334,11 @@ impl<S: State> Client<S> {
             .unsubscribe_market(asset_ids)
     }
 
-    fn market_handles(&self) -> Result<&ChannelHandles> {
+    fn market_resources(&self) -> Result<&LazyChannelResources> {
         self.inner
             .channel(ChannelType::Market)
-            .ok_or_else(|| Error::validation("Market channel unavailable; recreate client"))
-    }
-
-    fn market_resources(&self) -> Result<&LazyChannelResources> {
-        self.market_handles()?.get_or_connect()
+            .ok_or_else(|| Error::validation("Market channel unavailable; recreate client"))?
+            .get_or_connect()
     }
 }
 
@@ -355,7 +353,7 @@ impl<K: AuthKind> Client<Authenticated<K>> {
 
         resources
             .subscriptions
-            .subscribe_user(markets, self.inner.state.credentials.clone())
+            .subscribe_user(markets, &self.inner.state.credentials)
     }
 
     /// Subscribe to user's order updates.
@@ -462,7 +460,7 @@ impl<S: State> ClientInner<S> {
 
 /// Lazily-initialized resources for a WebSocket channel.
 struct LazyChannelResources {
-    connection: ConnectionManager,
+    connection: ConnectionManager<WsMessage, Arc<InterestTracker>>,
     subscriptions: Arc<SubscriptionManager>,
 }
 
@@ -488,8 +486,11 @@ impl ChannelHandles {
     fn get_or_connect(&self) -> Result<&LazyChannelResources> {
         self.resources.get_or_try_init(|| {
             let interest = Arc::new(InterestTracker::new());
-            let connection =
-                ConnectionManager::new(self.endpoint.clone(), self.config.clone(), &interest)?;
+            let connection = ConnectionManager::new(
+                self.endpoint.clone(),
+                self.config.clone(),
+                Arc::clone(&interest),
+            )?;
             let subscriptions = Arc::new(SubscriptionManager::new(connection.clone(), interest));
 
             subscriptions.start_reconnection_handler();

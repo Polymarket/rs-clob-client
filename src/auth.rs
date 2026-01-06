@@ -1,16 +1,26 @@
+// Re-exported types for public API convenience
+/// The [`Signer`] trait from alloy for signing operations.
+/// Implement this trait or use provided signers like [`LocalSigner`] or AWS KMS signers.
+pub use alloy::signers::Signer;
+/// Local wallet signer for signing with a private key.
+/// This is the most common signer implementation.
+pub use alloy::signers::local::LocalSigner;
 use async_trait::async_trait;
 use base64::Engine as _;
 use base64::engine::general_purpose::URL_SAFE;
 use hmac::{Hmac, Mac as _};
 use reqwest::header::HeaderMap;
 use reqwest::{Body, Request};
+/// Secret string types that redact values in debug output for security.
 pub use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 use sha2::Sha256;
-use uuid::Uuid;
+/// UUID type used for API keys and identifiers.
+pub use uuid::Uuid;
 
 use crate::{Result, Timestamp};
 
+/// Type alias for API keys, which are UUIDs.
 pub type ApiKey = Uuid;
 
 /// Generic set of credentials used to authenticate to the Polymarket API. These credentials are
@@ -255,7 +265,8 @@ pub mod builder {
     use secrecy::ExposeSecret as _;
     use serde::{Deserialize, Serialize};
     use serde_json::json;
-    use url::Url;
+    /// URL type for remote builder host configuration.
+    pub use url::Url;
 
     use crate::auth::{Credentials, body_to_string, hmac, to_message};
     use crate::{Result, Timestamp};

@@ -11,8 +11,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::{SinkExt as _, StreamExt as _};
-use polymarket_client_sdk::clob::ws::{Client, Config, WsMessage};
+use polymarket_client_sdk::clob::ws::{Client, WsMessage};
 use polymarket_client_sdk::types::Address;
+use polymarket_client_sdk::ws::config::Config;
 use serde_json::json;
 use tokio::net::TcpListener;
 use tokio::sync::{broadcast, mpsc};
@@ -1100,6 +1101,8 @@ mod unsubscribe {
 }
 
 mod client_state {
+    use polymarket_client_sdk::clob::ws::ChannelType;
+
     use super::*;
 
     #[tokio::test]
@@ -1110,7 +1113,8 @@ mod client_state {
         let client = Client::new(&endpoint, Config::default()).unwrap();
 
         // Before any subscription, connection should not be established
-        assert!(!client.is_connected());
+        assert!(!client.is_connected(ChannelType::Market));
+        assert!(!client.is_connected(ChannelType::User));
     }
 
     #[tokio::test]
@@ -1127,7 +1131,8 @@ mod client_state {
         let _: Option<String> = server.recv_subscription().await;
 
         // Now should be connected
-        assert!(client.is_connected());
+        assert!(client.is_connected(ChannelType::Market));
+        assert!(!client.is_connected(ChannelType::User));
     }
 
     #[tokio::test]
@@ -1147,7 +1152,8 @@ mod client_state {
         tokio::time::sleep(Duration::from_millis(50)).await;
 
         // Now should be connected
-        assert!(client.connection_state().is_connected());
+        assert!(client.connection_state(ChannelType::Market).is_connected());
+        assert!(!client.connection_state(ChannelType::User).is_connected());
     }
 
     #[tokio::test]

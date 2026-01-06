@@ -4,8 +4,6 @@
 )]
 
 pub mod client;
-pub mod config;
-pub mod connection;
 pub mod error;
 pub mod interest;
 pub mod subscription;
@@ -13,7 +11,6 @@ pub mod types;
 
 // Re-export commonly used types
 pub use client::Client;
-pub use config::{Config, ReconnectConfig};
 pub use error::WsError;
 pub use subscription::{ChannelType, SubscriptionInfo, SubscriptionTarget};
 pub use types::request::SubscriptionRequest;

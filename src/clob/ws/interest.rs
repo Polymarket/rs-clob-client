@@ -1,6 +1,10 @@
+use std::sync::Arc;
 use std::sync::atomic::{AtomicU16, Ordering};
 
 use bitflags::bitflags;
+
+use crate::clob::ws::types::response::WsMessage;
+use crate::clob::ws::types::response::parse_if_interested;
 
 bitflags! {
     #[repr(transparent)]
@@ -122,6 +126,12 @@ impl InterestTracker {
     pub fn is_interested_in_event(&self, event_type: &str) -> bool {
         let interest = MessageInterest::from_event_type(event_type);
         !interest.is_empty() && self.is_interested(interest)
+    }
+}
+
+impl crate::ws::traits::MessageParser<WsMessage> for Arc<InterestTracker> {
+    fn parse(&self, bytes: &[u8]) -> crate::Result<Vec<WsMessage>> {
+        parse_if_interested(bytes, &self.get())
     }
 }
 
