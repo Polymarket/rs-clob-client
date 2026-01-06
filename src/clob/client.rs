@@ -1,7 +1,8 @@
 use std::borrow::Cow;
 use std::marker::PhantomData;
 use std::mem;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+#[cfg(feature = "heartbeats")]
 use std::time::Duration;
 
 use alloy::dyn_abi::Eip712Domain;
@@ -16,11 +17,12 @@ use futures::Stream;
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::{Client as ReqwestClient, Method, Request};
 use serde_json::json;
-use tokio::sync::oneshot;
-use tokio::time;
+#[cfg(feature = "tracing")]
 use tracing::{debug, error};
 use url::Url;
 use uuid::Uuid;
+#[cfg(feature = "heartbeats")]
+use {tokio::time, tokio_util::sync::CancellationToken};
 
 use crate::auth::builder::{Builder, Config as BuilderConfig};
 use crate::auth::state::{Authenticated, State, Unauthenticated};
@@ -49,7 +51,10 @@ use crate::clob::types::{
     CancelRfqQuoteRequest, CreateRfqQuoteRequest, CreateRfqQuoteResponse, RfqQuote,
     RfqQuotesRequest, RfqRequest, RfqRequestsRequest,
 };
-use crate::clob::types::{SignableOrder, SignatureType, SignedOrder, TickSize};
+use crate::clob::types::{
+    CancelRfqRequestRequest, CreateRfqRequestRequest, CreateRfqRequestResponse, SignableOrder,
+    SignatureType, SignedOrder, TickSize,
+};
 use crate::error::{Error, Synchronization};
 use crate::types::Address;
 use crate::{
@@ -209,9 +214,8 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
             kind: self.kind,
         };
 
-        let send_heartbeats = inner.config.send_heartbeats;
-
-        let client = Client {
+        #[cfg_attr(not(feature = "heartbeats"), expect(unused_mut))]
+        let mut client = Client {
             inner: Arc::new(ClientInner {
                 state,
                 config: inner.config,
@@ -224,13 +228,17 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
                 funder,
                 signature_type: self.signature_type.unwrap_or(SignatureType::Eoa),
                 salt_generator: self.salt_generator.unwrap_or(generate_seed),
-                heartbeat_cancellation: Mutex::new(None),
             }),
+            #[cfg(feature = "heartbeats")]
+            heartbeat_cancel_token: None,
         };
 
-        // Set up heartbeat task if configured
-        if let Some(duration) = send_heartbeats {
-            let (cancellation_tx, mut cancellation_rx) = oneshot::channel();
+        #[cfg(feature = "heartbeats")]
+        {
+            let token = CancellationToken::new();
+            let duration = client.inner.config.heartbeat_interval;
+
+            let token_clone = token.clone();
             let client_clone = client.clone();
 
             tokio::task::spawn(async move {
@@ -241,7 +249,7 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
 
                 loop {
                     tokio::select! {
-                        _ = &mut cancellation_rx => {
+                        () = token_clone.cancelled() => {
                             #[cfg(feature = "tracing")]
                             debug!("Heartbeat cancellation requested, terminating...");
                             break
@@ -263,10 +271,7 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
                 }
             });
 
-            let lock = client.inner.heartbeat_cancellation.lock();
-            if let Ok(mut guard) = lock {
-                *guard = Some(cancellation_tx);
-            }
+            client.heartbeat_cancel_token = Some(token);
         }
 
         Ok(client)
@@ -331,6 +336,10 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
 #[derive(Clone, Debug)]
 pub struct Client<S: State = Unauthenticated> {
     inner: Arc<ClientInner<S>>,
+    #[cfg(feature = "heartbeats")]
+    /// When the `heartbeats` feature is enabled, the authenticated [`Client`] will automatically
+    /// send heartbeats at the default cadence. See [`Config`] for more details.
+    heartbeat_cancel_token: Option<CancellationToken>,
 }
 
 impl Default for Client<Unauthenticated> {
@@ -351,8 +360,10 @@ pub struct Config {
     /// This is primarily useful for testing.
     #[builder(into)]
     geoblock_host: Option<String>,
-    /// Whether the [`Client`] will automatically submit heartbeats at the provided [`Duration`]
-    send_heartbeats: Option<Duration>,
+    #[cfg(feature = "heartbeats")]
+    #[builder(default = Duration::from_secs(5))]
+    /// How often the [`Client`] will automatically submit heartbeats. The default is five (5) seconds.
+    heartbeat_interval: Duration,
 }
 
 /// The default geoblock API host (separate from CLOB host)
@@ -383,7 +394,6 @@ struct ClientInner<S: State> {
     signature_type: SignatureType,
     /// The salt/seed generator for use in creating [`SignableOrder`]s
     salt_generator: fn() -> u64,
-    heartbeat_cancellation: Mutex<Option<oneshot::Sender<()>>>,
 }
 
 impl<S: State> ClientInner<S> {
@@ -912,8 +922,9 @@ impl Client<Unauthenticated> {
                 funder: None,
                 signature_type: SignatureType::Eoa,
                 salt_generator: generate_seed,
-                heartbeat_cancellation: Mutex::new(None),
             }),
+            #[cfg(feature = "heartbeats")]
+            heartbeat_cancel_token: None,
         })
     }
 
@@ -970,14 +981,9 @@ impl<K: Kind> Client<Authenticated<K>> {
     pub fn deauthenticate(self) -> Result<Client<Unauthenticated>> {
         let inner = Arc::into_inner(self.inner).ok_or(Synchronization)?;
 
-        let lock = inner.heartbeat_cancellation.lock();
-        if let Ok(mut guard) = lock
-            && let Some(cancellation) = guard.take()
-        {
-            _ = cancellation.send(()).inspect_err(|()| {
-                #[cfg(feature = "tracing")]
-                error!("Unable to shutdown heartbeat task");
-            });
+        #[cfg(feature = "heartbeats")]
+        if let Some(token) = self.heartbeat_cancel_token {
+            token.cancel();
         }
 
         Ok(Client::<Unauthenticated> {
@@ -994,8 +1000,9 @@ impl<K: Kind> Client<Authenticated<K>> {
                 funder: None,
                 signature_type: SignatureType::Eoa,
                 salt_generator: generate_seed,
-                heartbeat_cancellation: Mutex::new(None),
             }),
+            #[cfg(feature = "heartbeats")]
+            heartbeat_cancel_token: None,
         })
     }
 
@@ -1442,7 +1449,7 @@ impl<K: Kind> Client<Authenticated<K>> {
         let request = self
             .client()
             .request(Method::POST, format!("{}v1/heartbeats", self.host()))
-            .json(&heartbeat_id)
+            .json(&json!({ "heartbeat_id": heartbeat_id }))
             .build()?;
         let headers = self.create_headers(&request).await?;
 
@@ -1476,6 +1483,8 @@ impl<K: Kind> Client<Authenticated<K>> {
             order_type: None,
             client: Client {
                 inner: Arc::clone(&self.inner),
+                #[cfg(feature = "heartbeats")]
+                heartbeat_cancel_token: self.heartbeat_cancel_token.clone(),
             },
             _kind: PhantomData,
         }
@@ -1510,11 +1519,12 @@ impl Client<Authenticated<Normal>> {
             funder: inner.funder,
             signature_type: inner.signature_type,
             salt_generator: inner.salt_generator,
-            heartbeat_cancellation: inner.heartbeat_cancellation,
         };
 
         Ok(Client {
             inner: Arc::new(new_inner),
+            #[cfg(feature = "heartbeats")]
+            heartbeat_cancel_token: self.heartbeat_cancel_token,
         })
     }
 }
@@ -1580,8 +1590,8 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// Returns an error if the HTTP request fails or the response cannot be parsed.
     pub async fn create_request(
         &self,
-        request: &crate::clob::types::CreateRfqRequestRequest,
-    ) -> Result<crate::clob::types::CreateRfqRequestResponse> {
+        request: &CreateRfqRequestRequest,
+    ) -> Result<CreateRfqRequestResponse> {
         let http_request = self
             .client()
             .request(Method::POST, format!("{}rfq/request", self.host()))
@@ -1599,10 +1609,7 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// # Errors
     ///
     /// Returns an error if the HTTP request fails or the request cannot be canceled.
-    pub async fn cancel_request(
-        &self,
-        request: &crate::clob::types::CancelRfqRequestRequest,
-    ) -> Result<()> {
+    pub async fn cancel_request(&self, request: &CancelRfqRequestRequest) -> Result<()> {
         let http_request = self
             .client()
             .request(Method::DELETE, format!("{}rfq/request", self.host()))
