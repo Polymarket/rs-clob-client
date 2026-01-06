@@ -41,7 +41,7 @@ mod unauthenticated {
         PriceResponse, PricesResponse, Rewards, SimplifiedMarketResponse, SpreadResponse,
         SpreadsResponse, TickSizeResponse, Token,
     };
-    use polymarket_client_sdk::clob::types::{Interval, Side, TickSize};
+    use polymarket_client_sdk::clob::types::{Interval, Side, TickSize, TimeRange};
     use polymarket_client_sdk::error::Status;
     use reqwest::Method;
 
@@ -237,7 +237,7 @@ mod unauthenticated {
     }
 
     #[tokio::test]
-    async fn price_history_should_succeed() -> anyhow::Result<()> {
+    async fn price_history_with_interval_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
@@ -245,8 +245,6 @@ mod unauthenticated {
             when.method(httpmock::Method::GET)
                 .path("/prices-history")
                 .query_param("market", "0x123")
-                .query_param("startTs", "1000")
-                .query_param("endTs", "2000")
                 .query_param("interval", "1h")
                 .query_param("fidelity", "10");
             then.status(StatusCode::OK).json_body(json!({
@@ -260,9 +258,7 @@ mod unauthenticated {
 
         let request = PriceHistoryRequest::builder()
             .market("0x123")
-            .start_ts(1000)
-            .end_ts(2000)
-            .interval(Interval::OneHour)
+            .time_range(Interval::OneHour)
             .fidelity(10_u32)
             .build();
         let response = client.price_history(&request).await?;
@@ -271,6 +267,44 @@ mod unauthenticated {
             .history(vec![
                 PricePoint::builder().t(1000).p(dec!(0.5)).build(),
                 PricePoint::builder().t(1500).p(dec!(0.55)).build(),
+                PricePoint::builder().t(2000).p(dec!(0.6)).build(),
+            ])
+            .build();
+
+        assert_eq!(response, expected);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn price_history_with_range_should_succeed() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = Client::new(&server.base_url(), Config::default())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(httpmock::Method::GET)
+                .path("/prices-history")
+                .query_param("market", "0x123")
+                .query_param("startTs", "1000")
+                .query_param("endTs", "2000");
+            then.status(StatusCode::OK).json_body(json!({
+                "history": [
+                    { "t": 1000, "p": "0.5" },
+                    { "t": 2000, "p": "0.6" }
+                ]
+            }));
+        });
+
+        let request = PriceHistoryRequest::builder()
+            .market("0x123")
+            .time_range(TimeRange::from_range(1000, 2000))
+            .build();
+        let response = client.price_history(&request).await?;
+
+        let expected = PriceHistoryResponse::builder()
+            .history(vec![
+                PricePoint::builder().t(1000).p(dec!(0.5)).build(),
                 PricePoint::builder().t(2000).p(dec!(0.6)).build(),
             ])
             .build();
@@ -1481,6 +1515,51 @@ mod authenticated {
     }
 
     #[tokio::test]
+    async fn post_order_should_accept_transactions_hashes_alias() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = create_authenticated(&server).await?;
+
+        ensure_requirements(&server, "1", TickSize::Hundredth);
+
+        let mock = server.mock(|when, then| {
+            when.method(POST)
+                .path("/order")
+                .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
+                .header(POLY_API_KEY, API_KEY)
+                .header(POLY_PASSPHRASE, PASSPHRASE);
+            then.status(StatusCode::OK).json_body(json!({
+                "error_msg": "",
+                "makingAmount": "100",
+                "orderID": "0x23b457271bce9fa09b4f79125c9ec09e968235a462de82e318ef4eb6fe0ffeb0",
+                "status": "matched",
+                "success": true,
+                "takingAmount": "50",
+                "transactionsHashes": ["0x2369f69af45a559ad6e769d3d209d2379af9d412315e27b9283594a6392557b6"]
+            }));
+        });
+
+        let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
+        let signed_order = client.sign(&signer, SignableOrder::default()).await?;
+        let response = client.post_order(signed_order).await?;
+
+        let expected = PostOrderResponse::builder()
+            .making_amount(Decimal::from(100))
+            .taking_amount(Decimal::from(50))
+            .order_id("0x23b457271bce9fa09b4f79125c9ec09e968235a462de82e318ef4eb6fe0ffeb0")
+            .status(OrderStatusType::Matched)
+            .success(true)
+            .transaction_hashes(vec![
+                "0x2369f69af45a559ad6e769d3d209d2379af9d412315e27b9283594a6392557b6".to_owned(),
+            ])
+            .build();
+
+        assert_eq!(response, expected);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn order_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
@@ -1632,6 +1711,42 @@ mod authenticated {
             then.status(StatusCode::OK).json_body(json!({
                     "canceled": [],
                     "notCanceled": {
+                        "1": "the order is already canceled"
+                    }
+                }
+            ));
+        });
+
+        let response = client.cancel_order("1").await?;
+
+        let expected = CancelOrdersResponse::builder()
+            .not_canceled(HashMap::from_iter([(
+                "1".to_owned(),
+                "the order is already canceled".to_owned(),
+            )]))
+            .build();
+
+        assert_eq!(response, expected);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn cancel_order_should_accept_snake_case_not_canceled() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = create_authenticated(&server).await?;
+
+        let mock = server.mock(|when, then| {
+            when.method(DELETE)
+                .path("/order")
+                .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
+                .header(POLY_API_KEY, API_KEY)
+                .header(POLY_PASSPHRASE, PASSPHRASE)
+                .json_body(json!({ "orderId": "1" }));
+            then.status(StatusCode::OK).json_body(json!({
+                    "canceled": [],
+                    "not_canceled": {
                         "1": "the order is already canceled"
                     }
                 }

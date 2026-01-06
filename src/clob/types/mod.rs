@@ -21,6 +21,18 @@ use crate::types::Decimal;
 pub mod request;
 pub mod response;
 
+// Re-export RFQ types for convenient access
+#[cfg(feature = "rfq")]
+pub use request::{
+    AcceptRfqQuoteRequest, ApproveRfqOrderRequest, CancelRfqQuoteRequest, CancelRfqRequestRequest,
+    CreateRfqQuoteRequest, CreateRfqRequestRequest, RfqQuotesRequest, RfqRequestsRequest,
+};
+#[cfg(feature = "rfq")]
+pub use response::{
+    AcceptRfqQuoteResponse, ApproveRfqOrderResponse, CreateRfqQuoteResponse,
+    CreateRfqRequestResponse, RfqQuote, RfqRequest,
+};
+
 #[non_exhaustive]
 #[derive(
     Clone, Copy, Debug, Display, Default, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
@@ -106,6 +118,48 @@ pub enum Interval {
     Max,
 }
 
+/// Time range specification for price history queries.
+///
+/// The CLOB API requires either an interval or explicit start/end timestamps.
+/// This enum enforces that requirement at compile time.
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(untagged)]
+pub enum TimeRange {
+    /// Use a predefined interval (e.g., last day, last week).
+    Interval {
+        /// The time interval.
+        interval: Interval,
+    },
+    /// Use explicit start and end timestamps.
+    Range {
+        /// Start timestamp (Unix seconds).
+        start_ts: i64,
+        /// End timestamp (Unix seconds).
+        end_ts: i64,
+    },
+}
+
+impl TimeRange {
+    /// Create a time range from a predefined interval.
+    #[must_use]
+    pub const fn from_interval(interval: Interval) -> Self {
+        Self::Interval { interval }
+    }
+
+    /// Create a time range from explicit timestamps.
+    #[must_use]
+    pub const fn from_range(start_ts: i64, end_ts: i64) -> Self {
+        Self::Range { start_ts, end_ts }
+    }
+}
+
+impl From<Interval> for TimeRange {
+    fn from(interval: Interval) -> Self {
+        Self::from_interval(interval)
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum AmountInner {
     Usdc(Decimal),
@@ -184,6 +238,49 @@ pub enum SignatureType {
     Eoa = 0,
     Proxy = 1,
     GnosisSafe = 2,
+}
+
+/// RFQ state filter for queries.
+#[cfg(feature = "rfq")]
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum RfqState {
+    /// Active requests/quotes
+    #[default]
+    Active,
+    /// Inactive requests/quotes
+    Inactive,
+}
+
+/// Sort field for RFQ queries.
+#[cfg(feature = "rfq")]
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum RfqSortBy {
+    /// Sort by price
+    Price,
+    /// Sort by expiry
+    Expiry,
+    /// Sort by size
+    Size,
+    /// Sort by creation time (default)
+    #[default]
+    Created,
+}
+
+/// Sort direction for RFQ queries.
+#[cfg(feature = "rfq")]
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum RfqSortDir {
+    /// Ascending order (default)
+    #[default]
+    Asc,
+    /// Descending order
+    Desc,
 }
 
 #[non_exhaustive]

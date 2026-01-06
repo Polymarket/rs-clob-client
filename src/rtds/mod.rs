@@ -37,16 +37,12 @@
 //! ```
 
 pub mod client;
-pub mod config;
-pub mod connection;
 pub mod error;
 pub mod subscription;
 pub mod types;
 
 // Re-export commonly used types
 pub use client::Client;
-pub use config::{Config, ReconnectConfig};
-pub use connection::ConnectionState;
 pub use error::RtdsError;
 pub use subscription::{SubscriptionInfo, TopicType};
 pub use types::request::{Subscription, SubscriptionAction, SubscriptionRequest};

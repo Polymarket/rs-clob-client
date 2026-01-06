@@ -3,9 +3,7 @@ use std::sync::Arc;
 use futures::Stream;
 use futures::StreamExt as _;
 
-use super::config::Config;
-use super::connection::{ConnectionManager, ConnectionState};
-use super::subscription::SubscriptionManager;
+use super::subscription::{SimpleParser, SubscriptionManager};
 use super::types::request::Subscription;
 use super::types::response::{ChainlinkPrice, Comment, CommentType, CryptoPrice, RtdsMessage};
 use crate::Result;
@@ -13,6 +11,9 @@ use crate::auth::state::{Authenticated, State, Unauthenticated};
 use crate::auth::{Credentials, Normal};
 use crate::error::Error;
 use crate::types::Address;
+use crate::ws::ConnectionManager;
+use crate::ws::config::Config;
+use crate::ws::connection::ConnectionState;
 
 /// RTDS (Real-Time Data Socket) client for streaming Polymarket data.
 ///
@@ -61,7 +62,7 @@ struct ClientInner<S: State> {
     /// Base endpoint for the WebSocket
     endpoint: String,
     /// Connection manager for the WebSocket
-    connection: ConnectionManager,
+    connection: ConnectionManager<RtdsMessage, SimpleParser>,
     /// Subscription manager for handling subscriptions
     subscriptions: Arc<SubscriptionManager>,
 }
@@ -69,7 +70,7 @@ struct ClientInner<S: State> {
 impl Client<Unauthenticated> {
     /// Create a new unauthenticated RTDS client with the specified endpoint and configuration.
     pub fn new(endpoint: &str, config: Config) -> Result<Self> {
-        let connection = ConnectionManager::new(endpoint.to_owned(), config.clone())?;
+        let connection = ConnectionManager::new(endpoint.to_owned(), config.clone(), SimpleParser)?;
         let subscriptions = Arc::new(SubscriptionManager::new(connection.clone()));
 
         // Start reconnection handler to re-subscribe on connection recovery

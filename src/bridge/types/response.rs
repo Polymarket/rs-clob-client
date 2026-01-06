@@ -33,6 +33,8 @@ pub struct DepositAddresses {
 pub struct SupportedAssetsResponse {
     /// List of supported assets with minimum deposit amounts.
     pub supported_assets: Vec<SupportedAsset>,
+    /// Additional information about supported chains and assets.
+    pub note: Option<String>,
 }
 
 /// A supported asset with chain and token information.

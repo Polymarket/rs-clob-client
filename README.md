@@ -14,6 +14,7 @@ This crate provides strongly typed request builders, authenticated endpoints, `a
 - [Overview](#overview)
 - [Getting Started](#getting-started)
 - [Feature Flags](#feature-flags)
+- [Re-exported Types](#re-exported-types)
 - [Examples](#examples)
   - [CLOB Client](#clob-client)
   - [WebSocket Streaming](#websocket-streaming)
@@ -82,6 +83,41 @@ Enable features in your `Cargo.toml`:
 polymarket-client-sdk = { version = "0.3", features = ["ws", "data"] }
 ```
 
+## Re-exported Types
+
+This SDK re-exports commonly used types from external crates so you don't need to add them to your `Cargo.toml`:
+
+### From `types` module
+
+```rust
+use polymarket_client_sdk::types::{
+    Address, ChainId, Signature, address,  // from alloy::primitives
+    DateTime, NaiveDate, Utc,              // from chrono
+    Decimal, dec,                          // from rust_decimal + rust_decimal_macros
+};
+```
+
+### From `auth` module
+
+```rust
+use polymarket_client_sdk::auth::{
+    LocalSigner, Signer,          // from alloy::signers (LocalSigner + trait)
+    Uuid, ApiKey,                 // from uuid (ApiKey = Uuid)
+    SecretString, ExposeSecret,   // from secrecy
+    builder::Url,                 // from url (for remote builder config)
+};
+```
+
+### From `error` module
+
+```rust
+use polymarket_client_sdk::error::{
+    StatusCode, Method,           // from reqwest (for error inspection)
+};
+```
+
+This allows you to work with the SDK without managing version compatibility for these common dependencies.
+
 ## Examples
 
 See `examples/` for the complete set. Below are hand-picked examples for common use cases.
@@ -89,7 +125,7 @@ See `examples/` for the complete set. Below are hand-picked examples for common 
 ### CLOB Client
 
 #### Unauthenticated client (read-only)
-```rust
+```rust,no_run
 use polymarket_client_sdk::clob::Client;
 
 #[tokio::main]

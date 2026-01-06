@@ -763,7 +763,10 @@ mod comments {
             ]));
         });
 
-        let request = CommentsRequest::builder().build();
+        let request = CommentsRequest::builder()
+            .parent_entity_type(ParentEntityType::Event)
+            .parent_entity_id("123")
+            .build();
         let response = client.comments(&request).await?;
 
         assert_eq!(response.len(), 1);
@@ -1432,20 +1435,24 @@ mod query_string {
     fn comments_request_series_entity_type() {
         let request = CommentsRequest::builder()
             .parent_entity_type(ParentEntityType::Series)
+            .parent_entity_id("series-123")
             .build();
 
         let qs = query_string(&request);
         assert!(qs.contains("parent_entity_type=Series"));
+        assert!(qs.contains("parent_entity_id=series-123"));
     }
 
     #[test]
     fn comments_request_market_entity_type() {
         let request = CommentsRequest::builder()
             .parent_entity_type(ParentEntityType::Market)
+            .parent_entity_id("market-456")
             .build();
 
         let qs = query_string(&request);
         assert!(qs.contains("parent_entity_type=market"));
+        assert!(qs.contains("parent_entity_id=market-456"));
     }
 
     #[test]
