@@ -5,7 +5,7 @@ use std::str::FromStr as _;
 
 use alloy::signers::Signer as _;
 use alloy::signers::local::LocalSigner;
-use polymarket_client_sdk::clob::types::{GetRfqQuotesRequest, RfqSortBy, RfqSortDir, RfqState};
+use polymarket_client_sdk::clob::types::{RfqQuotesRequest, RfqSortBy, RfqSortDir, RfqState};
 use polymarket_client_sdk::clob::{Client, Config};
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 
@@ -19,7 +19,7 @@ async fn main() -> anyhow::Result<()> {
         .authenticate()
         .await?;
 
-    let request = GetRfqQuotesRequest::builder()
+    let request = RfqQuotesRequest::builder()
         .state(RfqState::Active)
         .limit(10)
         .offset("MA==")
@@ -27,7 +27,7 @@ async fn main() -> anyhow::Result<()> {
         .sort_dir(RfqSortDir::Asc)
         .build();
 
-    let quotes = client.get_quotes(&request).await?;
+    let quotes = client.quotes(&request, None).await?;
     println!(
         "count: {}, next_cursor: {}",
         quotes.count, quotes.next_cursor

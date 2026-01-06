@@ -25,7 +25,7 @@ pub mod response;
 #[cfg(feature = "rfq")]
 pub use request::{
     AcceptRfqQuoteRequest, ApproveRfqOrderRequest, CancelRfqQuoteRequest, CancelRfqRequestRequest,
-    CreateRfqQuoteRequest, CreateRfqRequestRequest, GetRfqQuotesRequest, GetRfqRequestsRequest,
+    CreateRfqQuoteRequest, CreateRfqRequestRequest, RfqQuotesRequest, RfqRequestsRequest,
 };
 #[cfg(feature = "rfq")]
 pub use response::{

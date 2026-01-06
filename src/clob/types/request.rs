@@ -179,7 +179,7 @@ pub struct CancelRfqRequestRequest {
 #[derive(Debug, Clone, Default, Serialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[builder(on(String, into))]
-pub struct GetRfqRequestsRequest {
+pub struct RfqRequestsRequest {
     /// Cursor offset for pagination (base64 encoded).
     pub offset: Option<String>,
     /// Max requests to return. Defaults to 50, max 1000.
@@ -251,7 +251,7 @@ pub struct CancelRfqQuoteRequest {
 #[derive(Debug, Clone, Default, Serialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[builder(on(String, into))]
-pub struct GetRfqQuotesRequest {
+pub struct RfqQuotesRequest {
     /// Cursor offset for pagination (base64 encoded).
     pub offset: Option<String>,
     /// Max quotes to return. Defaults to 50, max 1000.

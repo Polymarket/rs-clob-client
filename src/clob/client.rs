@@ -1503,31 +1503,12 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// # Errors
     ///
     /// Returns an error if the HTTP request fails or the response cannot be parsed.
-    pub async fn get_requests(
+    pub async fn requests(
         &self,
-        request: &crate::clob::types::GetRfqRequestsRequest,
+        request: &crate::clob::types::RfqRequestsRequest,
+        next_cursor: Option<&str>,
     ) -> Result<crate::clob::types::response::Page<crate::clob::types::RfqRequest>> {
-        let params = request.query_params(None);
-        let http_request = self
-            .client()
-            .request(Method::GET, format!("{}rfq/request{params}", self.host()))
-            .build()?;
-        let headers = self.create_headers(&http_request).await?;
-
-        crate::request(&self.inner.client, http_request, Some(headers)).await
-    }
-
-    /// Gets the next page of RFQ requests using a cursor.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the HTTP request fails or the response cannot be parsed.
-    pub async fn get_requests_with_cursor(
-        &self,
-        request: &crate::clob::types::GetRfqRequestsRequest,
-        next_cursor: &str,
-    ) -> Result<crate::clob::types::response::Page<crate::clob::types::RfqRequest>> {
-        let params = request.query_params(Some(next_cursor));
+        let params = request.query_params(next_cursor);
         let http_request = self
             .client()
             .request(Method::GET, format!("{}rfq/request{params}", self.host()))
@@ -1583,31 +1564,12 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// # Errors
     ///
     /// Returns an error if the HTTP request fails or the response cannot be parsed.
-    pub async fn get_quotes(
+    pub async fn quotes(
         &self,
-        request: &crate::clob::types::GetRfqQuotesRequest,
+        request: &crate::clob::types::RfqQuotesRequest,
+        next_cursor: Option<&str>,
     ) -> Result<crate::clob::types::response::Page<crate::clob::types::RfqQuote>> {
-        let params = request.query_params(None);
-        let http_request = self
-            .client()
-            .request(Method::GET, format!("{}rfq/quote{params}", self.host()))
-            .build()?;
-        let headers = self.create_headers(&http_request).await?;
-
-        crate::request(&self.inner.client, http_request, Some(headers)).await
-    }
-
-    /// Gets the next page of RFQ quotes using a cursor.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the HTTP request fails or the response cannot be parsed.
-    pub async fn get_quotes_with_cursor(
-        &self,
-        request: &crate::clob::types::GetRfqQuotesRequest,
-        next_cursor: &str,
-    ) -> Result<crate::clob::types::response::Page<crate::clob::types::RfqQuote>> {
-        let params = request.query_params(Some(next_cursor));
+        let params = request.query_params(next_cursor);
         let http_request = self
             .client()
             .request(Method::GET, format!("{}rfq/quote{params}", self.host()))

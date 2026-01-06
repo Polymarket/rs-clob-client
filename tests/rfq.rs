@@ -10,8 +10,8 @@ use alloy::primitives::Address;
 use httpmock::MockServer;
 use polymarket_client_sdk::clob::types::{
     AcceptRfqQuoteRequest, ApproveRfqOrderRequest, CancelRfqQuoteRequest, CancelRfqRequestRequest,
-    CreateRfqQuoteRequest, CreateRfqRequestRequest, GetRfqQuotesRequest, GetRfqRequestsRequest,
-    Side, SignatureType,
+    CreateRfqQuoteRequest, CreateRfqRequestRequest, RfqQuotesRequest, RfqRequestsRequest, Side,
+    SignatureType,
 };
 use reqwest::StatusCode;
 use rust_decimal_macros::dec;
@@ -88,7 +88,7 @@ mod request {
     }
 
     #[tokio::test]
-    async fn rfq_get_requests_should_succeed() -> anyhow::Result<()> {
+    async fn rfq_requests_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -116,8 +116,8 @@ mod request {
             }));
         });
 
-        let request = GetRfqRequestsRequest::default();
-        let response = client.get_requests(&request).await?;
+        let request = RfqRequestsRequest::default();
+        let response = client.requests(&request, None).await?;
 
         assert_eq!(response.count, 1);
         assert_eq!(response.data.len(), 1);
@@ -131,7 +131,7 @@ mod request {
     }
 
     #[tokio::test]
-    async fn rfq_get_requests_with_cursor_should_succeed() -> anyhow::Result<()> {
+    async fn rfq_requests_with_cursor_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -148,8 +148,8 @@ mod request {
             }));
         });
 
-        let request = GetRfqRequestsRequest::default();
-        let response = client.get_requests_with_cursor(&request, "abc123").await?;
+        let request = RfqRequestsRequest::default();
+        let response = client.requests(&request, Some("abc123")).await?;
 
         assert_eq!(response.count, 0);
         mock.assert();
@@ -226,7 +226,7 @@ mod quote {
     }
 
     #[tokio::test]
-    async fn rfq_get_quotes_should_succeed() -> anyhow::Result<()> {
+    async fn rfq_quotes_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
@@ -254,8 +254,8 @@ mod quote {
             }));
         });
 
-        let request = GetRfqQuotesRequest::default();
-        let response = client.get_quotes(&request).await?;
+        let request = RfqQuotesRequest::default();
+        let response = client.quotes(&request, None).await?;
 
         assert_eq!(response.count, 1);
         assert_eq!(response.data.len(), 1);

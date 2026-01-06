@@ -144,13 +144,13 @@ path = "examples/clob/ws/user.rs"
 required-features = ["ws"]
 
 [[example]]
-name = "rfq_get_quotes"
-path = "examples/clob/rfq/get_quotes.rs"
+name = "rfq_quotes"
+path = "examples/clob/rfq/quotes.rs"
 required-features = ["rfq"]
 
 [[example]]
-name = "rfq_get_requests"
-path = "examples/clob/rfq/get_requests.rs"
+name = "rfq_requests"
+path = "examples/clob/rfq/requests.rs"
 required-features = ["rfq"]
 
 [[example]]
