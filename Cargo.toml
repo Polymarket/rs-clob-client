@@ -137,6 +137,16 @@ path = "examples/clob/ws/user.rs"
 required-features = ["ws"]
 
 [[example]]
+name = "rfq_get_quotes"
+path = "examples/clob/rfq/get_quotes.rs"
+required-features = ["rfq"]
+
+[[example]]
+name = "rfq_get_requests"
+path = "examples/clob/rfq/get_requests.rs"
+required-features = ["rfq"]
+
+[[example]]
 name = "rtds_crypto_prices"
 path = "examples/rtds_crypto_prices.rs"
 required-features = ["rtds"]
