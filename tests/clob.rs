@@ -438,6 +438,95 @@ mod unauthenticated {
     }
 
     #[tokio::test]
+    async fn tick_size_cache_hit() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = Client::new(&server.base_url(), Config::default())?;
+
+        // Mock expects exactly 1 call - second call should hit cache
+        let mock = server.mock(|when, then| {
+            when.method(httpmock::Method::GET)
+                .path("/tick-size")
+                .query_param("token_id", "1");
+            then.status(StatusCode::OK)
+                .json_body(json!({ "minimum_tick_size": "0.1" }));
+        });
+
+        // First call - cache miss, hits the server
+        let response1 = client.tick_size("1").await?;
+        // Second call - cache hit, should NOT hit the server
+        let response2 = client.tick_size("1").await?;
+
+        assert_eq!(response1, response2);
+        mock.assert_calls(1); // Only called once
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn neg_risk_cache_hit() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = Client::new(&server.base_url(), Config::default())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(httpmock::Method::GET)
+                .path("/neg-risk")
+                .query_param("token_id", "1");
+            then.status(StatusCode::OK)
+                .json_body(json!({ "neg_risk": true }));
+        });
+
+        let response1 = client.neg_risk("1").await?;
+        let response2 = client.neg_risk("1").await?;
+
+        assert_eq!(response1, response2);
+        mock.assert_calls(1);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn fee_rate_cache_hit() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = Client::new(&server.base_url(), Config::default())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(httpmock::Method::GET)
+                .path("/fee-rate")
+                .query_param("token_id", "1");
+            then.status(StatusCode::OK)
+                .json_body(json!({ "base_fee": 100 }));
+        });
+
+        let response1 = client.fee_rate_bps("1").await?;
+        let response2 = client.fee_rate_bps("1").await?;
+
+        assert_eq!(response1, response2);
+        mock.assert_calls(1);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn api_error_returns_status_error() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = Client::new(&server.base_url(), Config::default())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(httpmock::Method::GET).path("/tick-size");
+            then.status(StatusCode::BAD_REQUEST)
+                .body("Invalid token_id");
+        });
+
+        let err = client.tick_size("invalid").await.unwrap_err();
+        let status_err = err.downcast_ref::<Status>().unwrap();
+
+        assert_eq!(status_err.status_code, StatusCode::BAD_REQUEST);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn order_book_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
