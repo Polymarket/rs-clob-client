@@ -228,7 +228,7 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
                 salt_generator: self.salt_generator.unwrap_or(generate_seed),
             }),
             #[cfg(feature = "heartbeats")]
-            heartbeat_cancel_token: None,
+            heartbeat_cancel_token: DroppingCancellationToken(None),
         };
 
         #[cfg(feature = "heartbeats")]
@@ -299,7 +299,27 @@ pub struct Client<S: State = Unauthenticated> {
     #[cfg(feature = "heartbeats")]
     /// When the `heartbeats` feature is enabled, the authenticated [`Client`] will automatically
     /// send heartbeats at the default cadence. See [`Config`] for more details.
-    heartbeat_cancel_token: Option<CancellationToken>,
+    heartbeat_cancel_token: DroppingCancellationToken,
+}
+
+#[cfg(feature = "heartbeats")]
+/// A specific wrapper type to invoke the inner [`CancellationToken`] (if it's present) to:
+///  1. Avoid manually implementing [`Drop`] for [`Client`] which causes issues with moving values
+///     out of such a type <https://doc.rust-lang.org/error_codes/E0509.html>
+///  2. Replace the (currently non-existent) ability of specialized implementations of [`Drop`]
+///     <https://github.com/rust-lang/rust/issues/46893>
+///
+/// This way, the inner token is expressly cancelled when [`DroppingCancellationToken`] is dropped
+#[derive(Clone, Debug)]
+struct DroppingCancellationToken(Option<CancellationToken>);
+
+impl Drop for DroppingCancellationToken {
+    fn drop(&mut self) {
+        #[cfg(feature = "heartbeats")]
+        if let Some(token) = self.0.take() {
+            token.cancel();
+        }
+    }
 }
 
 impl Default for Client<Unauthenticated> {
@@ -884,7 +904,7 @@ impl Client<Unauthenticated> {
                 salt_generator: generate_seed,
             }),
             #[cfg(feature = "heartbeats")]
-            heartbeat_cancel_token: None,
+            heartbeat_cancel_token: DroppingCancellationToken(None),
         })
     }
 
@@ -942,7 +962,7 @@ impl<K: Kind> Client<Authenticated<K>> {
         let inner = Arc::into_inner(self.inner).ok_or(Synchronization)?;
 
         #[cfg(feature = "heartbeats")]
-        if let Some(token) = self.heartbeat_cancel_token {
+        if let Some(token) = &self.heartbeat_cancel_token.0 {
             token.cancel();
         }
 
@@ -962,7 +982,7 @@ impl<K: Kind> Client<Authenticated<K>> {
                 salt_generator: generate_seed,
             }),
             #[cfg(feature = "heartbeats")]
-            heartbeat_cancel_token: None,
+            heartbeat_cancel_token: DroppingCancellationToken(None),
         })
     }
 
@@ -1418,7 +1438,7 @@ impl<K: Kind> Client<Authenticated<K>> {
 
     #[cfg(feature = "heartbeats")]
     pub fn start_heartbeats(client: &mut Client<Authenticated<K>>) -> Result<()> {
-        if client.heartbeat_cancel_token.is_some() {
+        if client.heartbeat_cancel_token.0.is_some() {
             return Err(Error::validation("Unable to create another heartbeat task"));
         }
 
@@ -1458,14 +1478,14 @@ impl<K: Kind> Client<Authenticated<K>> {
             }
         });
 
-        client.heartbeat_cancel_token = Some(token);
+        client.heartbeat_cancel_token = DroppingCancellationToken(Some(token));
 
         Ok(())
     }
 
     #[cfg(feature = "heartbeats")]
     pub fn stop_heartbeats(&mut self) {
-        if let Some(token) = &self.heartbeat_cancel_token.take() {
+        if let Some(token) = &self.heartbeat_cancel_token.0.take() {
             token.cancel();
         }
     }
@@ -1538,7 +1558,7 @@ impl Client<Authenticated<Normal>> {
         Ok(Client {
             inner: Arc::new(new_inner),
             #[cfg(feature = "heartbeats")]
-            heartbeat_cancel_token: self.heartbeat_cancel_token,
+            heartbeat_cancel_token: self.heartbeat_cancel_token.clone(),
         })
     }
 }

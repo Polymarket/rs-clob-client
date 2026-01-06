@@ -1,3 +1,10 @@
+//! Shows how heartbeats are sent automatically when the corresponding feature flag is enabled.
+//!
+//! Run with:
+//! ```sh
+//! RUST_LOG=debug,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example heartbeats --features heartbeats,tracing
+//! ```
+//!
 use std::str::FromStr as _;
 use std::time::Duration;
 
@@ -21,7 +28,6 @@ async fn main() -> anyhow::Result<()> {
         .authenticate()
         .await?;
 
-    // TODO: way to manually start/stop/reset/drop
     tokio::time::sleep(Duration::from_secs(5)).await;
 
     drop(client);
