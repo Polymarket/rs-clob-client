@@ -757,11 +757,11 @@ pub struct RfqRequest {
     /// Unique request identifier.
     pub request_id: String,
     /// User's address.
-    pub user: Address,
+    pub user_address: Address,
     /// Proxy address (may be same as user).
-    pub proxy: Address,
+    pub proxy_address: Address,
     /// Market condition ID.
-    pub market: B256,
+    pub condition: B256,
     /// Token ID for the outcome token.
     pub token: String,
     /// Complement token ID.
@@ -790,11 +790,11 @@ pub struct RfqQuote {
     /// Request ID this quote is for.
     pub request_id: String,
     /// Quoter's address.
-    pub user: Address,
+    pub user_address: Address,
     /// Proxy address (may be same as user).
-    pub proxy: Address,
+    pub proxy_address: Address,
     /// Market condition ID.
-    pub market: B256,
+    pub condition: B256,
     /// Token ID for the outcome token.
     pub token: String,
     /// Complement token ID.
