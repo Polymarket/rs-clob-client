@@ -48,13 +48,11 @@ use crate::clob::types::response::{
 #[cfg(feature = "rfq")]
 use crate::clob::types::{
     AcceptRfqQuoteRequest, AcceptRfqQuoteResponse, ApproveRfqOrderRequest, ApproveRfqOrderResponse,
-    CancelRfqQuoteRequest, CreateRfqQuoteRequest, CreateRfqQuoteResponse, RfqQuote,
-    RfqQuotesRequest, RfqRequest, RfqRequestsRequest,
+    CancelRfqQuoteRequest, CancelRfqRequestRequest, CreateRfqQuoteRequest, CreateRfqQuoteResponse,
+    CreateRfqRequestRequest, CreateRfqRequestResponse, RfqQuote, RfqQuotesRequest, RfqRequest,
+    RfqRequestsRequest,
 };
-use crate::clob::types::{
-    CancelRfqRequestRequest, CreateRfqRequestRequest, CreateRfqRequestResponse, SignableOrder,
-    SignatureType, SignedOrder, TickSize,
-};
+use crate::clob::types::{SignableOrder, SignatureType, SignedOrder, TickSize};
 use crate::error::{Error, Synchronization};
 use crate::types::Address;
 use crate::{
@@ -234,45 +232,7 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
         };
 
         #[cfg(feature = "heartbeats")]
-        {
-            let token = CancellationToken::new();
-            let duration = client.inner.config.heartbeat_interval;
-
-            let token_clone = token.clone();
-            let client_clone = client.clone();
-
-            tokio::task::spawn(async move {
-                let mut heartbeat_id: Option<Uuid> = None;
-
-                let mut ticker = time::interval(duration);
-                ticker.tick().await;
-
-                loop {
-                    tokio::select! {
-                        () = token_clone.cancelled() => {
-                            #[cfg(feature = "tracing")]
-                            debug!("Heartbeat cancellation requested, terminating...");
-                            break
-                        },
-                        _ = ticker.tick() => {
-                            match client_clone.post_heartbeat(heartbeat_id).await {
-                                Ok(response) => {
-                                    #[cfg(feature = "tracing")]
-                                    debug!("Heartbeat successfully sent: {response:?}");
-                                    heartbeat_id = Some(response.heartbeat_id);
-                                },
-                                Err(e) => {
-                                    #[cfg(feature = "tracing")]
-                                    error!("Unable to post heartbeat: {e:?}");
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-
-            client.heartbeat_cancel_token = Some(token);
-        }
+        Client::<Authenticated<K>>::start_heartbeats(&mut client)?;
 
         Ok(client)
     }
@@ -1454,6 +1414,60 @@ impl<K: Kind> Client<Authenticated<K>> {
         let headers = self.create_headers(&request).await?;
 
         crate::request(&self.inner.client, request, Some(headers)).await
+    }
+
+    #[cfg(feature = "heartbeats")]
+    pub fn start_heartbeats(client: &mut Client<Authenticated<K>>) -> Result<()> {
+        if client.heartbeat_cancel_token.is_some() {
+            return Err(Error::validation("Unable to create another heartbeat task"));
+        }
+
+        let token = CancellationToken::new();
+        let duration = client.inner.config.heartbeat_interval;
+
+        let token_clone = token.clone();
+        let client_clone = client.clone();
+
+        tokio::task::spawn(async move {
+            let mut heartbeat_id: Option<Uuid> = None;
+
+            let mut ticker = time::interval(duration);
+            ticker.tick().await;
+
+            loop {
+                tokio::select! {
+                    () = token_clone.cancelled() => {
+                        #[cfg(feature = "tracing")]
+                        debug!("Heartbeat cancellation requested, terminating...");
+                        break
+                    },
+                    _ = ticker.tick() => {
+                        match client_clone.post_heartbeat(heartbeat_id).await {
+                            Ok(response) => {
+                                #[cfg(feature = "tracing")]
+                                debug!("Heartbeat successfully sent: {response:?}");
+                                heartbeat_id = Some(response.heartbeat_id);
+                            },
+                            Err(e) => {
+                                #[cfg(feature = "tracing")]
+                                error!("Unable to post heartbeat: {e:?}");
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        client.heartbeat_cancel_token = Some(token);
+
+        Ok(())
+    }
+
+    #[cfg(feature = "heartbeats")]
+    pub fn stop_heartbeats(&mut self) {
+        if let Some(token) = &self.heartbeat_cancel_token.take() {
+            token.cancel();
+        }
     }
 
     async fn create_headers(&self, request: &Request) -> Result<HeaderMap> {
