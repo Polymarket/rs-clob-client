@@ -28,10 +28,11 @@ async fn main() -> anyhow::Result<()> {
         .build();
 
     let quotes = client.get_quotes(&request).await?;
-    println!("count: {}, next_cursor: {}", quotes.count, quotes.next_cursor);
+    println!(
+        "count: {}, next_cursor: {}",
+        quotes.count, quotes.next_cursor
+    );
     println!("{:#?}", quotes.data);
 
     Ok(())
 }
-
-
