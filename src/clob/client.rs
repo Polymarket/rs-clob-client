@@ -1,7 +1,8 @@
 use std::borrow::Cow;
 use std::marker::PhantomData;
 use std::mem;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use alloy::dyn_abi::Eip712Domain;
 use alloy::primitives::U256;
@@ -15,7 +16,11 @@ use futures::Stream;
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::{Client as ReqwestClient, Method, Request};
 use serde_json::json;
+use tokio::sync::oneshot;
+use tokio::time;
+use tracing::{debug, error};
 use url::Url;
+use uuid::Uuid;
 
 use crate::auth::builder::{Builder, Config as BuilderConfig};
 use crate::auth::state::{Authenticated, State, Unauthenticated};
@@ -30,13 +35,19 @@ use crate::clob::types::request::{
 use crate::clob::types::response::{
     ApiKeysResponse, BalanceAllowanceResponse, BanStatusResponse, BuilderApiKeyResponse,
     BuilderTradeResponse, CancelOrdersResponse, CurrentRewardResponse, FeeRateResponse,
-    GeoblockResponse, LastTradePriceResponse, LastTradesPricesResponse, MarketResponse,
-    MarketRewardResponse, MidpointResponse, MidpointsResponse, NegRiskResponse,
+    GeoblockResponse, HeartbeatResponse, LastTradePriceResponse, LastTradesPricesResponse,
+    MarketResponse, MarketRewardResponse, MidpointResponse, MidpointsResponse, NegRiskResponse,
     NotificationResponse, OpenOrderResponse, OrderBookSummaryResponse, OrderScoringResponse,
     OrdersScoringResponse, Page, PostOrderResponse, PriceHistoryResponse, PriceResponse,
     PricesResponse, RewardsPercentagesResponse, SimplifiedMarketResponse, SpreadResponse,
     SpreadsResponse, TickSizeResponse, TotalUserEarningResponse, TradeResponse,
     UserEarningResponse, UserRewardsEarningResponse,
+};
+#[cfg(feature = "rfq")]
+use crate::clob::types::{
+    AcceptRfqQuoteRequest, AcceptRfqQuoteResponse, ApproveRfqOrderRequest, ApproveRfqOrderResponse,
+    CancelRfqQuoteRequest, CreateRfqQuoteRequest, CreateRfqQuoteResponse, RfqQuote,
+    RfqQuotesRequest, RfqRequest, RfqRequestsRequest,
 };
 use crate::clob::types::{SignableOrder, SignatureType, SignedOrder, TickSize};
 use crate::error::{Error, Synchronization};
@@ -198,7 +209,9 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
             kind: self.kind,
         };
 
-        Ok(Client {
+        let send_heartbeats = inner.config.send_heartbeats;
+
+        let client = Client {
             inner: Arc::new(ClientInner {
                 state,
                 config: inner.config,
@@ -211,8 +224,52 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
                 funder,
                 signature_type: self.signature_type.unwrap_or(SignatureType::Eoa),
                 salt_generator: self.salt_generator.unwrap_or(generate_seed),
+                heartbeat_cancellation: Mutex::new(None),
             }),
-        })
+        };
+
+        // Set up heartbeat task if configured
+        if let Some(duration) = send_heartbeats {
+            let (cancellation_tx, mut cancellation_rx) = oneshot::channel();
+            let client_clone = client.clone();
+
+            tokio::task::spawn(async move {
+                let mut heartbeat_id: Option<Uuid> = None;
+
+                let mut ticker = time::interval(duration);
+                ticker.tick().await;
+
+                loop {
+                    tokio::select! {
+                        _ = &mut cancellation_rx => {
+                            #[cfg(feature = "tracing")]
+                            debug!("Heartbeat cancellation requested, terminating...");
+                            break
+                        },
+                        _ = ticker.tick() => {
+                            match client_clone.post_heartbeat(heartbeat_id).await {
+                                Ok(response) => {
+                                    #[cfg(feature = "tracing")]
+                                    debug!("Heartbeat successfully sent: {response:?}");
+                                    heartbeat_id = Some(response.heartbeat_id);
+                                },
+                                Err(e) => {
+                                    #[cfg(feature = "tracing")]
+                                    error!("Unable to post heartbeat: {e:?}");
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            let lock = client.inner.heartbeat_cancellation.lock();
+            if let Ok(mut guard) = lock {
+                *guard = Some(cancellation_tx);
+            }
+        }
+
+        Ok(client)
     }
 }
 
@@ -294,6 +351,8 @@ pub struct Config {
     /// This is primarily useful for testing.
     #[builder(into)]
     geoblock_host: Option<String>,
+    /// Whether the [`Client`] will automatically submit heartbeats at the provided [`Duration`]
+    send_heartbeats: Option<Duration>,
 }
 
 /// The default geoblock API host (separate from CLOB host)
@@ -324,6 +383,7 @@ struct ClientInner<S: State> {
     signature_type: SignatureType,
     /// The salt/seed generator for use in creating [`SignableOrder`]s
     salt_generator: fn() -> u64,
+    heartbeat_cancellation: Mutex<Option<oneshot::Sender<()>>>,
 }
 
 impl<S: State> ClientInner<S> {
@@ -852,6 +912,7 @@ impl Client<Unauthenticated> {
                 funder: None,
                 signature_type: SignatureType::Eoa,
                 salt_generator: generate_seed,
+                heartbeat_cancellation: Mutex::new(None),
             }),
         })
     }
@@ -908,6 +969,17 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// Demotes this authenticated [`Client<Authenticated<K>>`] to an unauthenticated one
     pub fn deauthenticate(self) -> Result<Client<Unauthenticated>> {
         let inner = Arc::into_inner(self.inner).ok_or(Synchronization)?;
+
+        let lock = inner.heartbeat_cancellation.lock();
+        if let Ok(mut guard) = lock
+            && let Some(cancellation) = guard.take()
+        {
+            _ = cancellation.send(()).inspect_err(|()| {
+                #[cfg(feature = "tracing")]
+                error!("Unable to shutdown heartbeat task");
+            });
+        }
+
         Ok(Client::<Unauthenticated> {
             inner: Arc::new(ClientInner {
                 state: Unauthenticated,
@@ -922,6 +994,7 @@ impl<K: Kind> Client<Authenticated<K>> {
                 funder: None,
                 signature_type: SignatureType::Eoa,
                 salt_generator: generate_seed,
+                heartbeat_cancellation: Mutex::new(None),
             }),
         })
     }
@@ -1365,6 +1438,17 @@ impl<K: Kind> Client<Authenticated<K>> {
         crate::request(&self.inner.client, request, Some(headers)).await
     }
 
+    pub async fn post_heartbeat(&self, heartbeat_id: Option<Uuid>) -> Result<HeartbeatResponse> {
+        let request = self
+            .client()
+            .request(Method::POST, format!("{}v1/heartbeats", self.host()))
+            .json(&heartbeat_id)
+            .build()?;
+        let headers = self.create_headers(&request).await?;
+
+        crate::request(&self.inner.client, request, Some(headers)).await
+    }
+
     async fn create_headers(&self, request: &Request) -> Result<HeaderMap> {
         let timestamp = if self.inner.config.use_server_time {
             self.server_time().await?
@@ -1426,6 +1510,7 @@ impl Client<Authenticated<Normal>> {
             funder: inner.funder,
             signature_type: inner.signature_type,
             salt_generator: inner.salt_generator,
+            heartbeat_cancellation: inner.heartbeat_cancellation,
         };
 
         Ok(Client {
@@ -1538,9 +1623,9 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// Returns an error if the HTTP request fails or the response cannot be parsed.
     pub async fn requests(
         &self,
-        request: &crate::clob::types::RfqRequestsRequest,
+        request: &RfqRequestsRequest,
         next_cursor: Option<&str>,
-    ) -> Result<crate::clob::types::response::Page<crate::clob::types::RfqRequest>> {
+    ) -> Result<Page<RfqRequest>> {
         let params = request.query_params(next_cursor);
         let http_request = self
             .client()
@@ -1558,8 +1643,8 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// Returns an error if the HTTP request fails or the response cannot be parsed.
     pub async fn create_quote(
         &self,
-        request: &crate::clob::types::CreateRfqQuoteRequest,
-    ) -> Result<crate::clob::types::CreateRfqQuoteResponse> {
+        request: &CreateRfqQuoteRequest,
+    ) -> Result<CreateRfqQuoteResponse> {
         let http_request = self
             .client()
             .request(Method::POST, format!("{}rfq/quote", self.host()))
@@ -1575,10 +1660,7 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// # Errors
     ///
     /// Returns an error if the HTTP request fails or the quote cannot be canceled.
-    pub async fn cancel_quote(
-        &self,
-        request: &crate::clob::types::CancelRfqQuoteRequest,
-    ) -> Result<()> {
+    pub async fn cancel_quote(&self, request: &CancelRfqQuoteRequest) -> Result<()> {
         let http_request = self
             .client()
             .request(Method::DELETE, format!("{}rfq/quote", self.host()))
@@ -1599,9 +1681,9 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// Returns an error if the HTTP request fails or the response cannot be parsed.
     pub async fn quotes(
         &self,
-        request: &crate::clob::types::RfqQuotesRequest,
+        request: &RfqQuotesRequest,
         next_cursor: Option<&str>,
-    ) -> Result<crate::clob::types::response::Page<crate::clob::types::RfqQuote>> {
+    ) -> Result<Page<RfqQuote>> {
         let params = request.query_params(next_cursor);
         let http_request = self
             .client()
@@ -1622,8 +1704,8 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// Returns an error if the HTTP request fails or the quote cannot be accepted.
     pub async fn accept_quote(
         &self,
-        request: &crate::clob::types::AcceptRfqQuoteRequest,
-    ) -> Result<crate::clob::types::AcceptRfqQuoteResponse> {
+        request: &AcceptRfqQuoteRequest,
+    ) -> Result<AcceptRfqQuoteResponse> {
         let http_request = self
             .client()
             .request(Method::POST, format!("{}rfq/request/accept", self.host()))
@@ -1632,7 +1714,7 @@ impl<K: Kind> Client<Authenticated<K>> {
         let headers = self.create_headers(&http_request).await?;
 
         self.rfq_request_text(http_request, headers).await?;
-        Ok(crate::clob::types::AcceptRfqQuoteResponse)
+        Ok(AcceptRfqQuoteResponse)
     }
 
     /// Quoter approves an RFQ order during the last look window.
@@ -1644,8 +1726,8 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// Returns an error if the HTTP request fails or the order cannot be approved.
     pub async fn approve_order(
         &self,
-        request: &crate::clob::types::ApproveRfqOrderRequest,
-    ) -> Result<crate::clob::types::ApproveRfqOrderResponse> {
+        request: &ApproveRfqOrderRequest,
+    ) -> Result<ApproveRfqOrderResponse> {
         let http_request = self
             .client()
             .request(Method::POST, format!("{}rfq/quote/approve", self.host()))
@@ -1662,11 +1744,7 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// and accept quote which return "OK" as plain text rather than a JSON response.
     /// The standard `crate::request` helper expects JSON responses and would fail
     /// to deserialize plain text.
-    async fn rfq_request_text(
-        &self,
-        mut request: reqwest::Request,
-        headers: reqwest::header::HeaderMap,
-    ) -> Result<()> {
+    async fn rfq_request_text(&self, mut request: Request, headers: HeaderMap) -> Result<()> {
         let method = request.method().clone();
         let path = request.url().path().to_owned();
 
