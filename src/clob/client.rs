@@ -1529,9 +1529,7 @@ impl<K: Kind> Client<Authenticated<K>> {
 
     #[cfg(feature = "heartbeats")]
     pub async fn stop_heartbeats(&mut self) -> Result<()> {
-        mem::take(&mut self.heartbeat_cancel_token)
-            .cancel_and_wait()
-            .await
+        self.heartbeat_cancel_token.cancel_and_wait().await
     }
 
     async fn create_headers(&self, request: &Request) -> Result<HeaderMap> {
