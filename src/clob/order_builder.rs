@@ -13,7 +13,7 @@ use crate::auth::state::Authenticated;
 use crate::clob::Client;
 use crate::clob::types::request::OrderBookSummaryRequest;
 use crate::clob::types::{
-    Amount, AmountInner, Order, OrderType, Side, SignableOrder, SignatureType, validate_post_only,
+    Amount, AmountInner, Order, OrderType, Side, SignableOrder, SignatureType,
 };
 use crate::error::Error;
 use crate::types::{Address, Decimal};
@@ -203,7 +203,11 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
             ));
         }
 
-        validate_post_only(order_type, post_only)?;
+        if post_only == Some(true) && !matches!(order_type, OrderType::GTC | OrderType::GTD) {
+            return Err(Error::validation(
+                "postOnly is only supported for GTC and GTD orders",
+            ));
+        }
 
         // When buying `YES` tokens, the user will "make" `size` * `price` USDC and "take"
         // `size` `YES` tokens, and vice versa for sells. We have to truncate the notional values
@@ -365,7 +369,11 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
 
         let order_type = self.order_type.unwrap_or(OrderType::FAK);
         let post_only = Some(self.post_only.unwrap_or(false));
-        validate_post_only(order_type, post_only)?;
+        if post_only == Some(true) && !matches!(order_type, OrderType::GTC | OrderType::GTD) {
+            return Err(Error::validation(
+                "postOnly is only supported for GTC and GTD orders",
+            ));
+        }
         let price = match self.price {
             Some(price) => price,
             None => self.calculate_price(order_type).await?,

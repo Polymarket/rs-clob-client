@@ -38,7 +38,7 @@ use crate::clob::types::response::{
     SpreadsResponse, TickSizeResponse, TotalUserEarningResponse, TradeResponse,
     UserEarningResponse, UserRewardsEarningResponse,
 };
-use crate::clob::types::{SignableOrder, SignatureType, SignedOrder, TickSize, validate_post_only};
+use crate::clob::types::{SignableOrder, SignatureType, SignedOrder, TickSize};
 use crate::error::{Error, Synchronization};
 use crate::types::Address;
 use crate::{
@@ -998,7 +998,6 @@ impl<K: Kind> Client<Authenticated<K>> {
             post_only,
         }: SignableOrder,
     ) -> Result<SignedOrder> {
-        validate_post_only(order_type, post_only)?;
         let token_id = order.tokenId.to_string();
         let neg_risk = self.neg_risk(&token_id).await?.neg_risk;
         let chain_id = signer
