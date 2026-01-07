@@ -602,4 +602,30 @@ mod tests {
         assert_eq!(Side::Buy.to_string(), "BUY");
         assert_eq!(Side::Sell.to_string(), "SELL");
     }
+
+    #[test]
+    fn validate_post_only_allows_gtc_gtd() -> Result<()> {
+        validate_post_only(OrderType::GTC, Some(true))?;
+        validate_post_only(OrderType::GTD, Some(true))?;
+        Ok(())
+    }
+
+    #[test]
+    fn validate_post_only_rejects_other_order_types() {
+        for order_type in [OrderType::FOK, OrderType::FAK, OrderType::Unknown] {
+            let err = validate_post_only(order_type, Some(true)).unwrap_err();
+            let message = err.downcast_ref::<Validation>().unwrap();
+            assert_eq!(
+                message.reason,
+                "postOnly is only supported for GTC and GTD orders"
+            );
+        }
+    }
+
+    #[test]
+    fn validate_post_only_ignores_false_or_none() -> Result<()> {
+        validate_post_only(OrderType::FOK, None)?;
+        validate_post_only(OrderType::FAK, Some(false))?;
+        Ok(())
+    }
 }
