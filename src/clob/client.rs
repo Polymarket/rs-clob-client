@@ -22,7 +22,7 @@ use tracing::{debug, error};
 use url::Url;
 use uuid::Uuid;
 #[cfg(feature = "heartbeats")]
-use {tokio::time, tokio_util::sync::CancellationToken};
+use {tokio::sync::oneshot::Receiver, tokio::time, tokio_util::sync::CancellationToken};
 
 use crate::auth::builder::{Builder, Config as BuilderConfig};
 use crate::auth::state::{Authenticated, State, Unauthenticated};
@@ -212,7 +212,13 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
             kind: self.kind,
         };
 
-        #[cfg_attr(not(feature = "heartbeats"), expect(unused_mut))]
+        #[cfg_attr(
+            not(feature = "heartbeats"),
+            expect(
+                unused_mut,
+                reason = "Modifier only needed when heartbeats feature is enabled"
+            )
+        )]
         let mut client = Client {
             inner: Arc::new(ClientInner {
                 state,
@@ -309,14 +315,38 @@ pub struct Client<S: State = Unauthenticated> {
 ///  2. Replace the (currently non-existent) ability of specialized implementations of [`Drop`]
 ///     <https://github.com/rust-lang/rust/issues/46893>
 ///
-/// This way, the inner token is expressly cancelled when [`DroppingCancellationToken`] is dropped
-#[derive(Clone, Debug)]
-struct DroppingCancellationToken(Option<CancellationToken>);
+/// This way, the inner token is expressly cancelled when [`DroppingCancellationToken`] is dropped.
+/// We also have a [`Receiver<()>`] to notify when the inner [`Client`] has been dropped so that
+/// we can avoid a race condition when calling [`Arc::into_inner`] on promotion and demotion methods.
+#[derive(Clone, Debug, Default)]
+struct DroppingCancellationToken(Option<(CancellationToken, Arc<Receiver<()>>)>);
 
+#[cfg(feature = "heartbeats")]
+impl DroppingCancellationToken {
+    /// Cancel the inner [`CancellationToken`] and wait to be notified of the relevant cleanup via
+    /// [`Receiver`]. This is primarily used by the authentication methods when promoting [`Client`]s
+    /// to ensure that we do not error when transferring ownership of [`ClientInner`].
+    pub(crate) async fn cancel_and_wait(mut self) -> Result<()> {
+        if let Some((token, rx)) = self.0.take() {
+            token.cancel();
+            return if let Some(inner) = Arc::into_inner(rx) {
+                _ = inner.await;
+                Ok(())
+            } else {
+                Err(Error::validation(
+                    "Multiple threads are attempting to await heartbeats",
+                ))
+            };
+        }
+
+        Ok(())
+    }
+}
+
+#[cfg(feature = "heartbeats")]
 impl Drop for DroppingCancellationToken {
     fn drop(&mut self) {
-        #[cfg(feature = "heartbeats")]
-        if let Some(token) = self.0.take() {
+        if let Some((token, _)) = self.0.take() {
             token.cancel();
         }
     }
@@ -958,13 +988,18 @@ impl Client<Unauthenticated> {
 
 impl<K: Kind> Client<Authenticated<K>> {
     /// Demotes this authenticated [`Client<Authenticated<K>>`] to an unauthenticated one
-    pub fn deauthenticate(self) -> Result<Client<Unauthenticated>> {
-        let inner = Arc::into_inner(self.inner).ok_or(Synchronization)?;
-
+    #[cfg_attr(
+        not(feature = "heartbeats"),
+        expect(
+            clippy::unused_async,
+            reason = "Nothing to await when heartbeats are disabled"
+        )
+    )]
+    pub async fn deauthenticate(self) -> Result<Client<Unauthenticated>> {
         #[cfg(feature = "heartbeats")]
-        if let Some(token) = &self.heartbeat_cancel_token.0 {
-            token.cancel();
-        }
+        self.heartbeat_cancel_token.cancel_and_wait().await?;
+
+        let inner = Arc::into_inner(self.inner).ok_or(Synchronization)?;
 
         Ok(Client::<Unauthenticated> {
             inner: Arc::new(ClientInner {
@@ -1444,6 +1479,7 @@ impl<K: Kind> Client<Authenticated<K>> {
 
         let token = CancellationToken::new();
         let duration = client.inner.config.heartbeat_interval;
+        let (tx, rx) = tokio::sync::oneshot::channel::<()>();
 
         let token_clone = token.clone();
         let client_clone = client.clone();
@@ -1476,18 +1512,20 @@ impl<K: Kind> Client<Authenticated<K>> {
                     }
                 }
             }
+
+            tx.send(())
         });
 
-        client.heartbeat_cancel_token = DroppingCancellationToken(Some(token));
+        client.heartbeat_cancel_token = DroppingCancellationToken(Some((token, Arc::new(rx))));
 
         Ok(())
     }
 
     #[cfg(feature = "heartbeats")]
-    pub fn stop_heartbeats(&mut self) {
-        if let Some(token) = &self.heartbeat_cancel_token.0.take() {
-            token.cancel();
-        }
+    pub async fn stop_heartbeats(&mut self) -> Result<()> {
+        mem::take(&mut self.heartbeat_cancel_token)
+            .cancel_and_wait()
+            .await
     }
 
     async fn create_headers(&self, request: &Request) -> Result<HeaderMap> {
@@ -1526,10 +1564,26 @@ impl<K: Kind> Client<Authenticated<K>> {
 }
 
 impl Client<Authenticated<Normal>> {
-    pub fn promote_to_builder(
+    /// Convert this [`Client<Authenticated<Normal>>`] to [`Client<Authenticated<Builder>>`] using
+    /// the provided `config`.
+    ///
+    /// Note: If `heartbeats` feature flag is enabled, then this method _will_ cancel all
+    /// outstanding orders since it will disable the background heartbeats task and then
+    /// re-enable it.
+    #[cfg_attr(
+        not(feature = "heartbeats"),
+        expect(
+            clippy::unused_async,
+            reason = "Nothing to await when heartbeats are disabled"
+        )
+    )]
+    pub async fn promote_to_builder(
         self,
         config: BuilderConfig,
     ) -> Result<Client<Authenticated<Builder>>> {
+        #[cfg(feature = "heartbeats")]
+        self.heartbeat_cancel_token.cancel_and_wait().await?;
+
         let inner = Arc::into_inner(self.inner).ok_or(Synchronization)?;
 
         let state = Authenticated {
@@ -1555,11 +1609,23 @@ impl Client<Authenticated<Normal>> {
             salt_generator: inner.salt_generator,
         };
 
-        Ok(Client {
+        #[cfg_attr(
+            not(feature = "heartbeats"),
+            expect(
+                unused_mut,
+                reason = "Modifier only needed when heartbeats feature is enabled"
+            )
+        )]
+        let mut client = Client {
             inner: Arc::new(new_inner),
             #[cfg(feature = "heartbeats")]
-            heartbeat_cancel_token: self.heartbeat_cancel_token.clone(),
-        })
+            heartbeat_cancel_token: DroppingCancellationToken(None),
+        };
+
+        #[cfg(feature = "heartbeats")]
+        Client::<Authenticated<Builder>>::start_heartbeats(&mut client)?;
+
+        Ok(client)
     }
 }
 
