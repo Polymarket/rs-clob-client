@@ -234,7 +234,7 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
                 salt_generator: self.salt_generator.unwrap_or(generate_seed),
             }),
             #[cfg(feature = "heartbeats")]
-            heartbeat_cancel_token: DroppingCancellationToken(None),
+            heartbeat_token: DroppingCancellationToken(None),
         };
 
         #[cfg(feature = "heartbeats")]
@@ -305,7 +305,7 @@ pub struct Client<S: State = Unauthenticated> {
     #[cfg(feature = "heartbeats")]
     /// When the `heartbeats` feature is enabled, the authenticated [`Client`] will automatically
     /// send heartbeats at the default cadence. See [`Config`] for more details.
-    heartbeat_cancel_token: DroppingCancellationToken,
+    heartbeat_token: DroppingCancellationToken,
 }
 
 #[cfg(feature = "heartbeats")]
@@ -939,7 +939,7 @@ impl Client<Unauthenticated> {
                 salt_generator: generate_seed,
             }),
             #[cfg(feature = "heartbeats")]
-            heartbeat_cancel_token: DroppingCancellationToken(None),
+            heartbeat_token: DroppingCancellationToken(None),
         })
     }
 
@@ -1003,7 +1003,7 @@ impl<K: Kind> Client<Authenticated<K>> {
     )]
     pub async fn deauthenticate(mut self) -> Result<Client<Unauthenticated>> {
         #[cfg(feature = "heartbeats")]
-        self.heartbeat_cancel_token.cancel_and_wait().await?;
+        self.heartbeat_token.cancel_and_wait().await?;
 
         let inner = Arc::into_inner(self.inner).ok_or(Synchronization)?;
 
@@ -1023,7 +1023,7 @@ impl<K: Kind> Client<Authenticated<K>> {
                 salt_generator: generate_seed,
             }),
             #[cfg(feature = "heartbeats")]
-            heartbeat_cancel_token: DroppingCancellationToken(None),
+            heartbeat_token: DroppingCancellationToken(None),
         })
     }
 
@@ -1478,8 +1478,14 @@ impl<K: Kind> Client<Authenticated<K>> {
     }
 
     #[cfg(feature = "heartbeats")]
+    #[must_use]
+    pub fn heartbeats_active(&self) -> bool {
+        self.heartbeat_token.0.is_some()
+    }
+
+    #[cfg(feature = "heartbeats")]
     pub fn start_heartbeats(client: &mut Client<Authenticated<K>>) -> Result<()> {
-        if client.heartbeat_cancel_token.0.is_some() {
+        if client.heartbeat_token.0.is_some() {
             return Err(Error::validation("Unable to create another heartbeat task"));
         }
 
@@ -1522,14 +1528,14 @@ impl<K: Kind> Client<Authenticated<K>> {
             tx.send(())
         });
 
-        client.heartbeat_cancel_token = DroppingCancellationToken(Some((token, Arc::new(rx))));
+        client.heartbeat_token = DroppingCancellationToken(Some((token, Arc::new(rx))));
 
         Ok(())
     }
 
     #[cfg(feature = "heartbeats")]
     pub async fn stop_heartbeats(&mut self) -> Result<()> {
-        self.heartbeat_cancel_token.cancel_and_wait().await
+        self.heartbeat_token.cancel_and_wait().await
     }
 
     async fn create_headers(&self, request: &Request) -> Result<HeaderMap> {
@@ -1560,7 +1566,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             client: Client {
                 inner: Arc::clone(&self.inner),
                 #[cfg(feature = "heartbeats")]
-                heartbeat_cancel_token: self.heartbeat_cancel_token.clone(),
+                heartbeat_token: self.heartbeat_token.clone(),
             },
             _kind: PhantomData,
         }
@@ -1587,7 +1593,7 @@ impl Client<Authenticated<Normal>> {
         config: BuilderConfig,
     ) -> Result<Client<Authenticated<Builder>>> {
         #[cfg(feature = "heartbeats")]
-        self.heartbeat_cancel_token.cancel_and_wait().await?;
+        self.heartbeat_token.cancel_and_wait().await?;
 
         let inner = Arc::into_inner(self.inner).ok_or(Synchronization)?;
 
@@ -1624,7 +1630,7 @@ impl Client<Authenticated<Normal>> {
         let mut client = Client {
             inner: Arc::new(new_inner),
             #[cfg(feature = "heartbeats")]
-            heartbeat_cancel_token: DroppingCancellationToken(None),
+            heartbeat_token: DroppingCancellationToken(None),
         };
 
         #[cfg(feature = "heartbeats")]
