@@ -490,6 +490,24 @@ impl Serialize for SignedOrder {
     }
 }
 
+#[non_exhaustive]
+#[derive(Serialize)]
+pub struct OrderWithPostOnly<'a> {
+    #[serde(flatten)]
+    pub order: &'a SignedOrder,
+    #[serde(rename = "postOnly")]
+    pub post_only: bool,
+}
+
+pub(crate) fn validate_post_only(order_type: OrderType, post_only: Option<bool>) -> Result<()> {
+    if post_only == Some(true) && !matches!(order_type, OrderType::GTC | OrderType::GTD) {
+        return Err(Error::validation(
+            "postOnly is only supported for GTC and GTD orders",
+        ));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

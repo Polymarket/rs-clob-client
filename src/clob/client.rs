@@ -38,7 +38,9 @@ use crate::clob::types::response::{
     SpreadsResponse, TickSizeResponse, TotalUserEarningResponse, TradeResponse,
     UserEarningResponse, UserRewardsEarningResponse,
 };
-use crate::clob::types::{SignableOrder, SignatureType, SignedOrder, TickSize};
+use crate::clob::types::{
+    OrderWithPostOnly, SignableOrder, SignatureType, SignedOrder, TickSize, validate_post_only,
+};
 use crate::error::{Error, Synchronization};
 use crate::types::Address;
 use crate::{
@@ -1035,11 +1037,50 @@ impl<K: Kind> Client<Authenticated<K>> {
         crate::request(&self.inner.client, request, Some(headers)).await
     }
 
+    pub async fn post_order_with_post_only(&self, order: SignedOrder) -> Result<PostOrderResponse> {
+        validate_post_only(order.order_type, Some(true))?;
+        let payload = OrderWithPostOnly {
+            order: &order,
+            post_only: true,
+        };
+        let request = self
+            .client()
+            .request(Method::POST, format!("{}order", self.host()))
+            .json(&payload)
+            .build()?;
+        let headers = self.create_headers(&request).await?;
+
+        crate::request(&self.inner.client, request, Some(headers)).await
+    }
+
     pub async fn post_orders(&self, orders: Vec<SignedOrder>) -> Result<Vec<PostOrderResponse>> {
         let request = self
             .client()
             .request(Method::POST, format!("{}orders", self.host()))
             .json(&orders)
+            .build()?;
+        let headers = self.create_headers(&request).await?;
+
+        crate::request(&self.inner.client, request, Some(headers)).await
+    }
+
+    pub async fn post_orders_with_post_only(
+        &self,
+        orders: Vec<SignedOrder>,
+    ) -> Result<Vec<PostOrderResponse>> {
+        let mut payload = Vec::with_capacity(orders.len());
+        for order in &orders {
+            validate_post_only(order.order_type, Some(true))?;
+            payload.push(OrderWithPostOnly {
+                order,
+                post_only: true,
+            });
+        }
+
+        let request = self
+            .client()
+            .request(Method::POST, format!("{}orders", self.host()))
+            .json(&payload)
             .build()?;
         let headers = self.create_headers(&request).await?;
 
