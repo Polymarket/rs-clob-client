@@ -263,6 +263,7 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
     /// For market orders:
     /// - `MidpointAwayFromZero`: Rounds up at midpoint (0.345 -> 0.35), more favorable for sellers
     /// - `MidpointTowardZero`: Rounds down at midpoint (0.345 -> 0.34), more favorable for buyers
+    #[must_use]
     pub fn rounding_strategy(mut self, rounding_strategy: RoundingStrategy) -> Self {
         self.rounding_strategy = Some(rounding_strategy);
         self
