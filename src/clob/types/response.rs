@@ -10,6 +10,7 @@ use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{DefaultOnNull, TimestampMilliSeconds, TimestampSeconds, TryFromInto, serde_as};
 use sha2::{Digest as _, Sha256};
+use uuid::Uuid;
 
 use crate::Result;
 use crate::auth::ApiKey;
@@ -651,6 +652,14 @@ pub struct BuilderTradeResponse {
     pub err_msg: Option<String>,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
+#[builder(on(String, into))]
+pub struct HeartbeatResponse {
+    pub heartbeat_id: Uuid,
+    pub error: Option<String>,
 }
 
 /// Generic wrapper structure that holds inner `data` with metadata designating how to query for the

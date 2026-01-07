@@ -66,15 +66,17 @@ cargo run --example unauthenticated
 
 The crate is modular with optional features for different Polymarket APIs:
 
-| Feature | Description |
-|---------|-------------|
-| *(default)* | Core CLOB client for order placement, market data, and authentication |
+| Feature | Description                                                                                            |
+|---------|--------------------------------------------------------------------------------------------------------|
+| *(default)* | Core CLOB client for order placement, market data, and authentication                                  |
 | `tracing` | Structured logging via [`tracing`](https://docs.rs/tracing) for HTTP requests, auth flows, and caching |
-| `ws` | WebSocket client for real-time orderbook, price, and user event streaming |
-| `rtds` | Real-time data streams for crypto prices (Binance, Chainlink) and comments |
-| `data` | Data API client for positions, trades, leaderboards, and analytics |
-| `gamma` | Gamma API client for market/event discovery, search, and metadata |
-| `bridge` | Bridge API client for cross-chain deposits (EVM, Solana, Bitcoin) |
+| `ws` | WebSocket client for real-time orderbook, price, and user event streaming                              |
+| `rtds` | Real-time data streams for crypto prices (Binance, Chainlink) and comments                             |
+| `data` | Data API client for positions, trades, leaderboards, and analytics                                     |
+| `gamma` | Gamma API client for market/event discovery, search, and metadata                                      |
+| `bridge` | Bridge API client for cross-chain deposits (EVM, Solana, Bitcoin)                                      |
+| `rfq` | RFQ API (within CLOB) for submitting and querying quotes |
+| `heartbeats` | Clob feature that automatically sends heartbeat messages to the Polymarket server                      |
 
 Enable features in your `Cargo.toml`:
 
@@ -326,7 +328,7 @@ async fn main() -> anyhow::Result<()> {
         .authenticate()
         .await?;
 
-    let client = client.promote_to_builder(builder_config)?;
+    let client = client.promote_to_builder(builder_config).await?;
 
     let ok = client.ok().await?;
     println!("Ok: {ok}");

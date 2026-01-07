@@ -28,6 +28,7 @@ rfq = []
 tracing = ["dep:tracing", "dep:serde_ignored"]
 ws = ["dep:backoff", "dep:bitflags", "dep:tokio", "dep:tokio-tungstenite"]
 rtds = ["dep:backoff", "dep:tokio", "dep:tokio-tungstenite"]
+heartbeats = ["dep:tokio", "dep:tokio-util"]
 
 [dependencies]
 alloy = { version = "1.2.1", default-features = false, features = [
@@ -64,6 +65,7 @@ sha2 = "0.10.9"
 strum_macros = "0.27.2"
 tokio = { version = "1.49.0", features = ["rt-multi-thread", "macros"], optional = true }
 tokio-tungstenite = { version = "0.28.0", features = ["native-tls"], optional = true }
+tokio-util = { version = "0.7.18", optional = true }
 tracing = { version = "0.1", optional = true }
 url = "2.5.7"
 uuid = { version = "1.19.0", features = ["serde", "v4", "v7"] }
@@ -99,6 +101,11 @@ path = "examples/clob/aws_authenticated.rs"
 [[example]]
 name = "builder_authenticated"
 path = "examples/clob/builder_authenticated.rs"
+
+[[example]]
+name = "heartbeats"
+path = "examples/clob/heartbeats.rs"
+required-features = ["heartbeats", "tracing"]
 
 [[example]]
 name = "streaming"

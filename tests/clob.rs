@@ -1266,6 +1266,8 @@ mod unauthenticated {
 }
 
 mod authenticated {
+    use std::time::Duration;
+
     use alloy::primitives::Signature;
     use alloy::signers::Signer as _;
     use alloy::signers::local::LocalSigner;
@@ -1277,15 +1279,16 @@ mod authenticated {
     };
     use polymarket_client_sdk::clob::types::response::{
         ApiKeysResponse, BalanceAllowanceResponse, BanStatusResponse, CancelOrdersResponse,
-        CurrentRewardResponse, Earning, MakerOrder, MarketRewardResponse, MarketRewardsConfig,
-        NotificationPayload, NotificationResponse, OpenOrderResponse, OrderScoringResponse, Page,
-        PostOrderResponse, RewardsConfig, Token, TotalUserEarningResponse, TradeResponse,
-        UserEarningResponse, UserRewardsEarningResponse,
+        CurrentRewardResponse, Earning, HeartbeatResponse, MakerOrder, MarketRewardResponse,
+        MarketRewardsConfig, NotificationPayload, NotificationResponse, OpenOrderResponse,
+        OrderScoringResponse, Page, PostOrderResponse, RewardsConfig, Token,
+        TotalUserEarningResponse, TradeResponse, UserEarningResponse, UserRewardsEarningResponse,
     };
     use polymarket_client_sdk::clob::types::{
         AssetType, OrderStatusType, OrderType, Side, SignableOrder, SignedOrder, TickSize,
         TraderSide,
     };
+    use polymarket_client_sdk::error::Synchronization;
     use polymarket_client_sdk::types::{Address, address};
 
     use super::*;
@@ -2687,6 +2690,91 @@ mod authenticated {
 
         Ok(())
     }
+
+    #[tokio::test]
+    async fn post_heartbeats_should_succeed() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = create_authenticated(&server).await?;
+
+        let id = Uuid::new_v4();
+
+        let mock = server.mock(|when, then| {
+            when.method(POST)
+                .path("/v1/heartbeats")
+                .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
+                .header(POLY_API_KEY, API_KEY)
+                .header(POLY_PASSPHRASE, PASSPHRASE)
+                .json_body(json!({
+                    "heartbeat_id": null
+                }));
+            then.status(StatusCode::OK).json_body(json!({
+                "heartbeat_id": id,
+                "error": null
+            }));
+        });
+
+        let response = client.post_heartbeat(None).await?;
+
+        let expected = HeartbeatResponse::builder().heartbeat_id(id).build();
+
+        assert_eq!(response, expected);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[cfg(feature = "heartbeats")]
+    #[tokio::test]
+    async fn stop_heartbeats_from_two_clones_should_fail_and_then_succeed_on_drop()
+    -> anyhow::Result<()> {
+        let server = MockServer::start();
+
+        let id = Uuid::new_v4();
+
+        // Before `create_authenticated` to have a heartbeat mock immediately available
+        server.mock(|when, then| {
+            when.method(POST)
+                .path("/v1/heartbeats")
+                .header(POLY_API_KEY, API_KEY)
+                .header(POLY_PASSPHRASE, PASSPHRASE)
+                .json_body(json!({
+                    "heartbeat_id": null
+                }));
+            then.status(StatusCode::OK).json_body(json!({
+                "heartbeat_id": id,
+                "error": null
+            }));
+        });
+
+        let mut client = create_authenticated(&server).await?;
+        assert!(client.heartbeats_active());
+
+        // Give the first client time to get set up
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        let client_clone = client.clone();
+        assert!(client_clone.heartbeats_active());
+
+        tokio::time::sleep(Duration::from_secs(3)).await;
+
+        let err = client.stop_heartbeats().await.unwrap_err();
+        err.downcast_ref::<Synchronization>().unwrap();
+
+        // Retain the heartbeat cancel token and channel on initial error
+        assert!(client.heartbeats_active());
+        assert!(client_clone.heartbeats_active());
+
+        drop(client_clone);
+
+        assert!(client.heartbeats_active());
+
+        // After dropping the offending client, we should be able to stop heartbeats successfully
+        client.stop_heartbeats().await?;
+
+        assert!(!client.heartbeats_active());
+
+        Ok(())
+    }
 }
 
 mod builder_authenticated {
@@ -2739,7 +2827,7 @@ mod builder_authenticated {
             .authenticate()
             .await?;
 
-        let client = client.promote_to_builder(builder_config)?;
+        let client = client.promote_to_builder(builder_config).await?;
 
         let mock3 = server.mock(|when, then| {
             when.method(httpmock::Method::POST)
@@ -2826,7 +2914,7 @@ mod builder_authenticated {
             .authenticate()
             .await?;
 
-        let client = client.promote_to_builder(builder_config)?;
+        let client = client.promote_to_builder(builder_config).await?;
 
         let mock3 = server.mock(|when, then| {
             when.method(httpmock::Method::POST)
@@ -2896,7 +2984,7 @@ mod builder_authenticated {
             .authenticate()
             .await?;
 
-        let client = client.promote_to_builder(builder_config)?;
+        let client = client.promote_to_builder(builder_config).await?;
 
         let mock3 = server.mock(|when, then| {
             when.method(httpmock::Method::POST)

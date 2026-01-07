@@ -161,7 +161,8 @@ mod lifecycle {
         );
 
         let client = client
-            .deauthenticate()?
+            .deauthenticate()
+            .await?
             .authentication_builder(&signer)
             .salt_generator(|| 123)
             .authenticate()
@@ -308,7 +309,7 @@ mod lifecycle {
 
         ensure_requirements(&server, "2", TickSize::Tenth);
 
-        client.deauthenticate()?;
+        client.deauthenticate().await?;
         let client = Client::new(&server.base_url(), Config::default())?
             .authentication_builder(&signer)
             .authenticate()
