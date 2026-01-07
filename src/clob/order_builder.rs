@@ -367,7 +367,7 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         let nonce = self.nonce.unwrap_or(0);
         let taker = self.taker.unwrap_or(Address::ZERO);
 
-        let order_type = self.order_type.unwrap_or(OrderType::FAK);
+        let order_type = self.order_type.clone().unwrap_or(OrderType::FAK);
         let post_only = self.post_only;
         if post_only == Some(true) {
             return Err(Error::validation(
@@ -376,7 +376,7 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         }
         let price = match self.price {
             Some(price) => price,
-            None => self.calculate_price(order_type).await?,
+            None => self.calculate_price(order_type.clone()).await?,
         };
 
         let minimum_tick_size = self

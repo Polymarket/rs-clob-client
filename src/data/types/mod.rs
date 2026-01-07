@@ -32,7 +32,7 @@ pub enum Side {
 /// The type of on-chain activity for a user.
 ///
 /// Activities represent various operations that users can perform on the Polymarket protocol.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
 #[serde(rename_all = "UPPERCASE")]
 #[strum(serialize_all = "UPPERCASE")]
 #[non_exhaustive]
@@ -51,6 +51,9 @@ pub enum ActivityType {
     Conversion,
     /// Yield
     Yield,
+    /// Unknown activity type from the API (captures the raw value for debugging).
+    #[serde(untagged)]
+    Unknown(String),
 }
 
 /// Sort criteria for position queries.

@@ -33,7 +33,7 @@ use serde::{Deserialize, Serialize};
 pub mod request;
 pub mod response;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
 #[non_exhaustive]
@@ -41,9 +41,12 @@ pub enum RelatedTagsStatus {
     Active,
     Closed,
     All,
+    /// Unknown status from the API (captures the raw value for debugging).
+    #[serde(untagged)]
+    Unknown(String),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
 #[non_exhaustive]
 pub enum ParentEntityType {
     Event,
@@ -51,4 +54,7 @@ pub enum ParentEntityType {
     #[serde(rename = "market")]
     #[strum(serialize = "market")]
     Market,
+    /// Unknown entity type from the API (captures the raw value for debugging).
+    #[serde(untagged)]
+    Unknown(String),
 }
