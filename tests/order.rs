@@ -161,7 +161,8 @@ mod lifecycle {
         );
 
         let client = client
-            .deauthenticate()?
+            .deauthenticate()
+            .await?
             .authentication_builder(&signer)
             .salt_generator(|| 123)
             .authenticate()
@@ -308,7 +309,7 @@ mod lifecycle {
 
         ensure_requirements(&server, "2", TickSize::Tenth);
 
-        client.deauthenticate()?;
+        client.deauthenticate().await?;
         let client = Client::new(&server.base_url(), Config::default())?
             .authentication_builder(&signer)
             .authenticate()
@@ -355,18 +356,8 @@ mod lifecycle {
             "Cannot have a funder address with a Eoa signature type"
         );
 
-        let err = Client::new(&server.base_url(), Config::default())?
-            .authentication_builder(&signer)
-            .signature_type(SignatureType::GnosisSafe)
-            .authenticate()
-            .await
-            .unwrap_err();
-        let msg = &err.downcast_ref::<Validation>().unwrap().reason;
-
-        assert_eq!(
-            msg,
-            "Must have a funder address with a GnosisSafe signature type"
-        );
+        // Note: Using GnosisSafe without explicit funder now auto-derives from signer.address()
+        // So this case now succeeds - tested in funder_auto_derived_from_signer_for_proxy_types
 
         let err = Client::new(&server.base_url(), Config::default())?
             .authentication_builder(&signer)
@@ -380,6 +371,154 @@ mod lifecycle {
         assert_eq!(
             msg,
             "Cannot have a zero funder address with a GnosisSafe signature type"
+        );
+
+        Ok(())
+    }
+
+    /// Tests that the funder address is automatically derived using CREATE2 from
+    /// the signer's EOA when using Proxy or `GnosisSafe` signature types without
+    /// explicit funder.
+    #[tokio::test]
+    async fn funder_auto_derived_from_signer_for_proxy_types() -> anyhow::Result<()> {
+        use polymarket_client_sdk::{POLYGON, derive_proxy_wallet, derive_safe_wallet};
+
+        let server = MockServer::start();
+        let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
+
+        // Expected CREATE2-derived addresses for this signer
+        let expected_safe_addr =
+            derive_safe_wallet(signer.address(), POLYGON).expect("Safe derivation failed");
+        let expected_proxy_addr =
+            derive_proxy_wallet(signer.address(), POLYGON).expect("Proxy derivation failed");
+
+        server.mock(|when, then| {
+            when.method(httpmock::Method::GET)
+                .path("/auth/derive-api-key")
+                .header(POLY_ADDRESS, signer.address().to_string().to_lowercase());
+            then.status(StatusCode::OK).json_body(json!({
+                "apiKey": API_KEY.to_string(),
+                "passphrase": PASSPHRASE,
+                "secret": SECRET
+            }));
+        });
+
+        // GnosisSafe without explicit funder - should auto-derive using CREATE2
+        let client = Client::new(&server.base_url(), Config::default())?
+            .authentication_builder(&signer)
+            .signature_type(SignatureType::GnosisSafe)
+            .authenticate()
+            .await?;
+
+        ensure_requirements(&server, TOKEN_1, TickSize::Tenth);
+
+        let signable_order = client
+            .limit_order()
+            .token_id(TOKEN_1)
+            .size(Decimal::ONE_HUNDRED)
+            .price(dec!(0.5))
+            .side(Side::Buy)
+            .build()
+            .await?;
+
+        // Verify maker (funder) is the CREATE2-derived Safe address
+        assert_eq!(signable_order.order.maker, expected_safe_addr);
+        // Signer remains the EOA
+        assert_eq!(signable_order.order.signer, signer.address());
+        // Maker and signer should be different for proxy types
+        assert_ne!(signable_order.order.maker, signable_order.order.signer);
+        assert_eq!(
+            signable_order.order.signatureType,
+            SignatureType::GnosisSafe as u8
+        );
+
+        // Now test with SignatureType::Proxy
+        server.mock(|when, then| {
+            when.method(httpmock::Method::GET)
+                .path("/auth/derive-api-key")
+                .header(POLY_ADDRESS, signer.address().to_string().to_lowercase());
+            then.status(StatusCode::OK).json_body(json!({
+                "apiKey": API_KEY.to_string(),
+                "passphrase": PASSPHRASE,
+                "secret": SECRET
+            }));
+        });
+
+        let client = Client::new(&server.base_url(), Config::default())?
+            .authentication_builder(&signer)
+            .signature_type(SignatureType::Proxy)
+            .authenticate()
+            .await?;
+
+        ensure_requirements(&server, TOKEN_1, TickSize::Tenth);
+
+        let signable_order = client
+            .limit_order()
+            .token_id(TOKEN_1)
+            .size(Decimal::ONE_HUNDRED)
+            .price(dec!(0.5))
+            .side(Side::Buy)
+            .build()
+            .await?;
+
+        // Verify maker (funder) is the CREATE2-derived Proxy address
+        assert_eq!(signable_order.order.maker, expected_proxy_addr);
+        // Signer remains the EOA
+        assert_eq!(signable_order.order.signer, signer.address());
+        // Maker and signer should be different for proxy types
+        assert_ne!(signable_order.order.maker, signable_order.order.signer);
+        assert_eq!(
+            signable_order.order.signatureType,
+            SignatureType::Proxy as u8
+        );
+
+        Ok(())
+    }
+
+    /// Tests that explicit funder address overrides the auto-derivation.
+    #[tokio::test]
+    async fn explicit_funder_overrides_auto_derivation() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
+        let explicit_funder = address!("0xaDEFf2158d668f64308C62ef227C5CcaCAAf976D");
+
+        server.mock(|when, then| {
+            when.method(httpmock::Method::GET)
+                .path("/auth/derive-api-key")
+                .header(POLY_ADDRESS, signer.address().to_string().to_lowercase());
+            then.status(StatusCode::OK).json_body(json!({
+                "apiKey": API_KEY.to_string(),
+                "passphrase": PASSPHRASE,
+                "secret": SECRET
+            }));
+        });
+
+        // GnosisSafe with explicit funder - should use the explicit one
+        let client = Client::new(&server.base_url(), Config::default())?
+            .authentication_builder(&signer)
+            .funder(explicit_funder)
+            .signature_type(SignatureType::GnosisSafe)
+            .authenticate()
+            .await?;
+
+        ensure_requirements(&server, TOKEN_1, TickSize::Tenth);
+
+        let signable_order = client
+            .limit_order()
+            .token_id(TOKEN_1)
+            .size(Decimal::ONE_HUNDRED)
+            .price(dec!(0.5))
+            .side(Side::Buy)
+            .build()
+            .await?;
+
+        // Verify maker (funder) is the explicitly provided one, not auto-derived
+        assert_eq!(signable_order.order.maker, explicit_funder);
+        assert_eq!(signable_order.order.signer, signer.address());
+        assert_ne!(signable_order.order.maker, signable_order.order.signer);
+        assert_eq!(
+            signable_order.order.signatureType,
+            SignatureType::GnosisSafe as u8
         );
 
         Ok(())
@@ -451,6 +590,31 @@ mod limit {
         let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
         assert_eq!(msg, "Only GTD orders may have a non-zero expiration");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn should_fail_on_post_only_for_non_gtc_gtd() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = create_authenticated(&server).await?;
+
+        ensure_requirements(&server, TOKEN_1, TickSize::Tenth);
+
+        let err = client
+            .limit_order()
+            .token_id(TOKEN_1)
+            .price(dec!(0.5))
+            .size(dec!(21.04))
+            .side(Side::Buy)
+            .order_type(OrderType::FOK)
+            .post_only(true)
+            .build()
+            .await
+            .unwrap_err();
+        let msg = &err.downcast_ref::<Validation>().unwrap().reason;
+
+        assert_eq!(msg, "postOnly is only supported for GTC and GTD orders");
 
         Ok(())
     }

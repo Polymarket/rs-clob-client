@@ -446,6 +446,8 @@ fn ser_salt<S: Serializer>(value: &U256, serializer: S) -> std::result::Result<S
 pub struct SignableOrder {
     pub order: Order,
     pub order_type: OrderType,
+    #[serde(rename = "postOnly", skip_serializing_if = "Option::is_none")]
+    pub post_only: Option<bool>,
 }
 
 #[non_exhaustive]
@@ -455,12 +457,14 @@ pub struct SignedOrder {
     pub signature: Signature,
     pub order_type: OrderType,
     pub owner: ApiKey,
+    pub post_only: Option<bool>,
 }
 
 // CLOB expects a struct that has the `signature` "folded" into the `order` key
 impl Serialize for SignedOrder {
     fn serialize<S: Serializer>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> {
-        let mut st = serializer.serialize_struct("SignedOrder", 3)?;
+        let len = if self.post_only.is_some() { 4 } else { 3 };
+        let mut st = serializer.serialize_struct("SignedOrder", len)?;
 
         let mut order = serde_json::to_value(&self.order).map_err(serde::ser::Error::custom)?;
 
@@ -485,6 +489,9 @@ impl Serialize for SignedOrder {
         st.serialize_field("order", &order)?;
         st.serialize_field("orderType", &self.order_type)?;
         st.serialize_field("owner", &self.owner)?;
+        if let Some(post_only) = self.post_only {
+            st.serialize_field("postOnly", &post_only)?;
+        }
 
         st.end()
     }
@@ -492,6 +499,8 @@ impl Serialize for SignedOrder {
 
 #[cfg(test)]
 mod tests {
+    use serde_json::to_value;
+
     use super::*;
     use crate::error::Validation;
 
@@ -583,5 +592,23 @@ mod tests {
     fn side_to_string_should_succeed() {
         assert_eq!(Side::Buy.to_string(), "BUY");
         assert_eq!(Side::Sell.to_string(), "SELL");
+    }
+
+    #[test]
+    fn signed_order_serialization_omits_post_only_when_none() {
+        let signed_order = SignedOrder {
+            order: Order::default(),
+            signature: Signature::new(U256::ZERO, U256::ZERO, false),
+            order_type: OrderType::GTC,
+            owner: ApiKey::nil(),
+            post_only: None,
+        };
+
+        let value = to_value(&signed_order).expect("serialize SignedOrder");
+        let object = value
+            .as_object()
+            .expect("SignedOrder should serialize to an object");
+
+        assert!(!object.contains_key("postOnly"));
     }
 }

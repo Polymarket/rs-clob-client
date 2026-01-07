@@ -2,6 +2,8 @@ use std::borrow::Cow;
 use std::marker::PhantomData;
 use std::mem;
 use std::sync::Arc;
+#[cfg(feature = "heartbeats")]
+use std::time::Duration;
 
 use alloy::dyn_abi::Eip712Domain;
 use alloy::primitives::U256;
@@ -15,7 +17,12 @@ use futures::Stream;
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::{Client as ReqwestClient, Method, Request};
 use serde_json::json;
+#[cfg(feature = "tracing")]
+use tracing::{debug, error};
 use url::Url;
+use uuid::Uuid;
+#[cfg(feature = "heartbeats")]
+use {tokio::sync::oneshot::Receiver, tokio::time, tokio_util::sync::CancellationToken};
 
 use crate::auth::builder::{Builder, Config as BuilderConfig};
 use crate::auth::state::{Authenticated, State, Unauthenticated};
@@ -30,18 +37,28 @@ use crate::clob::types::request::{
 use crate::clob::types::response::{
     ApiKeysResponse, BalanceAllowanceResponse, BanStatusResponse, BuilderApiKeyResponse,
     BuilderTradeResponse, CancelOrdersResponse, CurrentRewardResponse, FeeRateResponse,
-    GeoblockResponse, LastTradePriceResponse, LastTradesPricesResponse, MarketResponse,
-    MarketRewardResponse, MidpointResponse, MidpointsResponse, NegRiskResponse,
+    GeoblockResponse, HeartbeatResponse, LastTradePriceResponse, LastTradesPricesResponse,
+    MarketResponse, MarketRewardResponse, MidpointResponse, MidpointsResponse, NegRiskResponse,
     NotificationResponse, OpenOrderResponse, OrderBookSummaryResponse, OrderScoringResponse,
     OrdersScoringResponse, Page, PostOrderResponse, PriceHistoryResponse, PriceResponse,
     PricesResponse, RewardsPercentagesResponse, SimplifiedMarketResponse, SpreadResponse,
     SpreadsResponse, TickSizeResponse, TotalUserEarningResponse, TradeResponse,
     UserEarningResponse, UserRewardsEarningResponse,
 };
+#[cfg(feature = "rfq")]
+use crate::clob::types::{
+    AcceptRfqQuoteRequest, AcceptRfqQuoteResponse, ApproveRfqOrderRequest, ApproveRfqOrderResponse,
+    CancelRfqQuoteRequest, CancelRfqRequestRequest, CreateRfqQuoteRequest, CreateRfqQuoteResponse,
+    CreateRfqRequestRequest, CreateRfqRequestResponse, RfqQuote, RfqQuotesRequest, RfqRequest,
+    RfqRequestsRequest,
+};
 use crate::clob::types::{SignableOrder, SignatureType, SignedOrder, TickSize};
 use crate::error::{Error, Synchronization};
 use crate::types::Address;
-use crate::{AMOY, POLYGON, Result, Timestamp, ToQueryParams as _, auth, contract_config};
+use crate::{
+    AMOY, POLYGON, Result, Timestamp, ToQueryParams as _, auth, contract_config,
+    derive_proxy_wallet, derive_safe_wallet,
+};
 
 const ORDER_NAME: Option<Cow<'static, str>> = Some(Cow::Borrowed("Polymarket CTF Exchange"));
 const VERSION: Option<Cow<'static, str>> = Some(Cow::Borrowed("1"));
@@ -106,6 +123,10 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
 
     /// Attempt to elevate the inner `client` to [`Client<Authenticated<K>>`] using the optional
     /// fields supplied in the builder.
+    #[expect(
+        clippy::missing_panics_doc,
+        reason = "chain_id panic is guarded by prior validation"
+    )]
     pub async fn authenticate(self) -> Result<Client<Authenticated<K>>> {
         let inner = Arc::into_inner(self.client.inner).ok_or(Synchronization)?;
 
@@ -123,7 +144,37 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
             }
         }
 
-        match (self.funder, self.signature_type) {
+        // SAFETY: chain_id is validated above to be either POLYGON or AMOY
+        let chain_id = self.signer.chain_id().expect("validated above");
+
+        // Auto-derive funder from signer using CREATE2 when using proxy signature types
+        // without explicit funder. This computes the deterministic wallet address that
+        // Polymarket deploys for the user.
+        let funder = match (self.funder, self.signature_type) {
+            (None, Some(SignatureType::Proxy)) => {
+                let derived =
+                    derive_proxy_wallet(self.signer.address(), chain_id).ok_or_else(|| {
+                        Error::validation(
+                            "Proxy wallet derivation not supported on this chain. \
+                             Please provide an explicit funder address.",
+                        )
+                    })?;
+                Some(derived)
+            }
+            (None, Some(SignatureType::GnosisSafe)) => {
+                let derived =
+                    derive_safe_wallet(self.signer.address(), chain_id).ok_or_else(|| {
+                        Error::validation(
+                            "Safe wallet derivation not supported on this chain. \
+                             Please provide an explicit funder address.",
+                        )
+                    })?;
+                Some(derived)
+            }
+            (funder, _) => funder,
+        };
+
+        match (funder, self.signature_type) {
             (Some(_), Some(sig @ SignatureType::Eoa)) => {
                 return Err(Error::validation(format!(
                     "Cannot have a funder address with a {sig} signature type"
@@ -137,11 +188,7 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
                     "Cannot have a zero funder address with a {sig} signature type"
                 )));
             }
-            (None, Some(sig @ (SignatureType::Proxy | SignatureType::GnosisSafe))) => {
-                return Err(Error::validation(format!(
-                    "Must have a funder address with a {sig} signature type"
-                )));
-            }
+            // Note: (None, Some(Proxy/GnosisSafe)) is unreachable due to auto-derivation above
             _ => {}
         }
 
@@ -165,7 +212,14 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
             kind: self.kind,
         };
 
-        Ok(Client {
+        #[cfg_attr(
+            not(feature = "heartbeats"),
+            expect(
+                unused_mut,
+                reason = "Modifier only needed when heartbeats feature is enabled"
+            )
+        )]
+        let mut client = Client {
             inner: Arc::new(ClientInner {
                 state,
                 config: inner.config,
@@ -175,11 +229,18 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
                 tick_sizes: inner.tick_sizes,
                 neg_risk: inner.neg_risk,
                 fee_rate_bps: inner.fee_rate_bps,
-                funder: self.funder,
+                funder,
                 signature_type: self.signature_type.unwrap_or(SignatureType::Eoa),
                 salt_generator: self.salt_generator.unwrap_or(generate_seed),
             }),
-        })
+            #[cfg(feature = "heartbeats")]
+            heartbeat_token: DroppingCancellationToken(None),
+        };
+
+        #[cfg(feature = "heartbeats")]
+        Client::<Authenticated<K>>::start_heartbeats(&mut client)?;
+
+        Ok(client)
     }
 }
 
@@ -241,6 +302,59 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
 #[derive(Clone, Debug)]
 pub struct Client<S: State = Unauthenticated> {
     inner: Arc<ClientInner<S>>,
+    #[cfg(feature = "heartbeats")]
+    /// When the `heartbeats` feature is enabled, the authenticated [`Client`] will automatically
+    /// send heartbeats at the default cadence. See [`Config`] for more details.
+    heartbeat_token: DroppingCancellationToken,
+}
+
+#[cfg(feature = "heartbeats")]
+/// A specific wrapper type to invoke the inner [`CancellationToken`] (if it's present) to:
+///  1. Avoid manually implementing [`Drop`] for [`Client`] which causes issues with moving values
+///     out of such a type <https://doc.rust-lang.org/error_codes/E0509.html>
+///  2. Replace the (currently non-existent) ability of specialized implementations of [`Drop`]
+///     <https://github.com/rust-lang/rust/issues/46893>
+///
+/// This way, the inner token is expressly cancelled when [`DroppingCancellationToken`] is dropped.
+/// We also have a [`Receiver<()>`] to notify when the inner [`Client`] has been dropped so that
+/// we can avoid a race condition when calling [`Arc::into_inner`] on promotion and demotion methods.
+#[derive(Clone, Debug, Default)]
+struct DroppingCancellationToken(Option<(CancellationToken, Arc<Receiver<()>>)>);
+
+#[cfg(feature = "heartbeats")]
+impl DroppingCancellationToken {
+    /// Cancel the inner [`CancellationToken`] and wait to be notified of the relevant cleanup via
+    /// [`Receiver`]. This is primarily used by the authentication methods when promoting [`Client`]s
+    /// to ensure that we do not error when transferring ownership of [`ClientInner`].
+    pub(crate) async fn cancel_and_wait(&mut self) -> Result<()> {
+        if let Some((token, rx)) = self.0.take() {
+            return match Arc::try_unwrap(rx) {
+                // If this is the only reference, cancel the token and wait for the resources to be
+                // cleaned up.
+                Ok(inner) => {
+                    token.cancel();
+                    _ = inner.await;
+                    Ok(())
+                }
+                // If not, _save_ the original token and receiver to re-use later if desired
+                Err(original) => {
+                    *self = DroppingCancellationToken(Some((token, original)));
+                    Err(Synchronization.into())
+                }
+            };
+        }
+
+        Ok(())
+    }
+}
+
+#[cfg(feature = "heartbeats")]
+impl Drop for DroppingCancellationToken {
+    fn drop(&mut self) {
+        if let Some((token, _)) = self.0.take() {
+            token.cancel();
+        }
+    }
 }
 
 impl Default for Client<Unauthenticated> {
@@ -261,6 +375,10 @@ pub struct Config {
     /// This is primarily useful for testing.
     #[builder(into)]
     geoblock_host: Option<String>,
+    #[cfg(feature = "heartbeats")]
+    #[builder(default = Duration::from_secs(5))]
+    /// How often the [`Client`] will automatically submit heartbeats. The default is five (5) seconds.
+    heartbeat_interval: Duration,
 }
 
 /// The default geoblock API host (separate from CLOB host)
@@ -820,6 +938,8 @@ impl Client<Unauthenticated> {
                 signature_type: SignatureType::Eoa,
                 salt_generator: generate_seed,
             }),
+            #[cfg(feature = "heartbeats")]
+            heartbeat_token: DroppingCancellationToken(None),
         })
     }
 
@@ -873,8 +993,20 @@ impl Client<Unauthenticated> {
 
 impl<K: Kind> Client<Authenticated<K>> {
     /// Demotes this authenticated [`Client<Authenticated<K>>`] to an unauthenticated one
-    pub fn deauthenticate(self) -> Result<Client<Unauthenticated>> {
+    #[cfg_attr(
+        not(feature = "heartbeats"),
+        expect(
+            clippy::unused_async,
+            unused_mut,
+            reason = "Nothing to await or modify when heartbeats are disabled"
+        )
+    )]
+    pub async fn deauthenticate(mut self) -> Result<Client<Unauthenticated>> {
+        #[cfg(feature = "heartbeats")]
+        self.heartbeat_token.cancel_and_wait().await?;
+
         let inner = Arc::into_inner(self.inner).ok_or(Synchronization)?;
+
         Ok(Client::<Unauthenticated> {
             inner: Arc::new(ClientInner {
                 state: Unauthenticated,
@@ -890,6 +1022,8 @@ impl<K: Kind> Client<Authenticated<K>> {
                 signature_type: SignatureType::Eoa,
                 salt_generator: generate_seed,
             }),
+            #[cfg(feature = "heartbeats")]
+            heartbeat_token: DroppingCancellationToken(None),
         })
     }
 
@@ -959,7 +1093,11 @@ impl<K: Kind> Client<Authenticated<K>> {
     pub async fn sign<S: Signer>(
         &self,
         signer: &S,
-        SignableOrder { order, order_type }: SignableOrder,
+        SignableOrder {
+            order,
+            order_type,
+            post_only,
+        }: SignableOrder,
     ) -> Result<SignedOrder> {
         let token_id = order.tokenId.to_string();
         let neg_risk = self.neg_risk(&token_id).await?.neg_risk;
@@ -988,6 +1126,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             signature,
             order_type,
             owner: self.state().credentials.key,
+            post_only,
         })
     }
 
@@ -1332,6 +1471,78 @@ impl<K: Kind> Client<Authenticated<K>> {
         crate::request(&self.inner.client, request, Some(headers)).await
     }
 
+    pub async fn post_heartbeat(&self, heartbeat_id: Option<Uuid>) -> Result<HeartbeatResponse> {
+        let request = self
+            .client()
+            .request(Method::POST, format!("{}v1/heartbeats", self.host()))
+            .json(&json!({ "heartbeat_id": heartbeat_id }))
+            .build()?;
+        let headers = self.create_headers(&request).await?;
+
+        crate::request(&self.inner.client, request, Some(headers)).await
+    }
+
+    #[cfg(feature = "heartbeats")]
+    #[must_use]
+    pub fn heartbeats_active(&self) -> bool {
+        self.heartbeat_token.0.is_some()
+    }
+
+    #[cfg(feature = "heartbeats")]
+    pub fn start_heartbeats(client: &mut Client<Authenticated<K>>) -> Result<()> {
+        if client.heartbeat_token.0.is_some() {
+            return Err(Error::validation("Unable to create another heartbeat task"));
+        }
+
+        let token = CancellationToken::new();
+        let duration = client.inner.config.heartbeat_interval;
+        let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+
+        let token_clone = token.clone();
+        let client_clone = client.clone();
+
+        tokio::task::spawn(async move {
+            let mut heartbeat_id: Option<Uuid> = None;
+
+            let mut ticker = time::interval(duration);
+            ticker.tick().await;
+
+            loop {
+                tokio::select! {
+                    () = token_clone.cancelled() => {
+                        #[cfg(feature = "tracing")]
+                        debug!("Heartbeat cancellation requested, terminating...");
+                        break
+                    },
+                    _ = ticker.tick() => {
+                        match client_clone.post_heartbeat(heartbeat_id).await {
+                            Ok(response) => {
+                                #[cfg(feature = "tracing")]
+                                debug!("Heartbeat successfully sent: {response:?}");
+                                heartbeat_id = Some(response.heartbeat_id);
+                            },
+                            Err(e) => {
+                                #[cfg(feature = "tracing")]
+                                error!("Unable to post heartbeat: {e:?}");
+                            }
+                        }
+                    }
+                }
+            }
+
+            tx.send(())
+        });
+
+        client.heartbeat_token = DroppingCancellationToken(Some((token, Arc::new(rx))));
+
+        Ok(())
+    }
+
+    #[cfg(feature = "heartbeats")]
+    pub async fn stop_heartbeats(&mut self) -> Result<()> {
+        self.heartbeat_token.cancel_and_wait().await
+    }
+
     async fn create_headers(&self, request: &Request) -> Result<HeaderMap> {
         let timestamp = if self.inner.config.use_server_time {
             self.server_time().await?
@@ -1357,8 +1568,11 @@ impl<K: Kind> Client<Authenticated<K>> {
             expiration: None,
             taker: None,
             order_type: None,
+            post_only: Some(false),
             client: Client {
                 inner: Arc::clone(&self.inner),
+                #[cfg(feature = "heartbeats")]
+                heartbeat_token: self.heartbeat_token.clone(),
             },
             _kind: PhantomData,
         }
@@ -1366,10 +1580,27 @@ impl<K: Kind> Client<Authenticated<K>> {
 }
 
 impl Client<Authenticated<Normal>> {
-    pub fn promote_to_builder(
-        self,
+    /// Convert this [`Client<Authenticated<Normal>>`] to [`Client<Authenticated<Builder>>`] using
+    /// the provided `config`.
+    ///
+    /// Note: If `heartbeats` feature flag is enabled, then this method _will_ cancel all
+    /// outstanding orders since it will disable the background heartbeats task and then
+    /// re-enable it.
+    #[cfg_attr(
+        not(feature = "heartbeats"),
+        expect(
+            clippy::unused_async,
+            unused_mut,
+            reason = "Nothing to await or modify when heartbeats are disabled"
+        )
+    )]
+    pub async fn promote_to_builder(
+        mut self,
         config: BuilderConfig,
     ) -> Result<Client<Authenticated<Builder>>> {
+        #[cfg(feature = "heartbeats")]
+        self.heartbeat_token.cancel_and_wait().await?;
+
         let inner = Arc::into_inner(self.inner).ok_or(Synchronization)?;
 
         let state = Authenticated {
@@ -1395,9 +1626,23 @@ impl Client<Authenticated<Normal>> {
             salt_generator: inner.salt_generator,
         };
 
-        Ok(Client {
+        #[cfg_attr(
+            not(feature = "heartbeats"),
+            expect(
+                unused_mut,
+                reason = "Modifier only needed when heartbeats feature is enabled"
+            )
+        )]
+        let mut client = Client {
             inner: Arc::new(new_inner),
-        })
+            #[cfg(feature = "heartbeats")]
+            heartbeat_token: DroppingCancellationToken(None),
+        };
+
+        #[cfg(feature = "heartbeats")]
+        Client::<Authenticated<Builder>>::start_heartbeats(&mut client)?;
+
+        Ok(client)
     }
 }
 
@@ -1462,8 +1707,8 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// Returns an error if the HTTP request fails or the response cannot be parsed.
     pub async fn create_request(
         &self,
-        request: &crate::clob::types::CreateRfqRequestRequest,
-    ) -> Result<crate::clob::types::CreateRfqRequestResponse> {
+        request: &CreateRfqRequestRequest,
+    ) -> Result<CreateRfqRequestResponse> {
         let http_request = self
             .client()
             .request(Method::POST, format!("{}rfq/request", self.host()))
@@ -1481,10 +1726,7 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// # Errors
     ///
     /// Returns an error if the HTTP request fails or the request cannot be canceled.
-    pub async fn cancel_request(
-        &self,
-        request: &crate::clob::types::CancelRfqRequestRequest,
-    ) -> Result<()> {
+    pub async fn cancel_request(&self, request: &CancelRfqRequestRequest) -> Result<()> {
         let http_request = self
             .client()
             .request(Method::DELETE, format!("{}rfq/request", self.host()))
@@ -1505,9 +1747,9 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// Returns an error if the HTTP request fails or the response cannot be parsed.
     pub async fn requests(
         &self,
-        request: &crate::clob::types::RfqRequestsRequest,
+        request: &RfqRequestsRequest,
         next_cursor: Option<&str>,
-    ) -> Result<crate::clob::types::response::Page<crate::clob::types::RfqRequest>> {
+    ) -> Result<Page<RfqRequest>> {
         let params = request.query_params(next_cursor);
         let http_request = self
             .client()
@@ -1525,8 +1767,8 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// Returns an error if the HTTP request fails or the response cannot be parsed.
     pub async fn create_quote(
         &self,
-        request: &crate::clob::types::CreateRfqQuoteRequest,
-    ) -> Result<crate::clob::types::CreateRfqQuoteResponse> {
+        request: &CreateRfqQuoteRequest,
+    ) -> Result<CreateRfqQuoteResponse> {
         let http_request = self
             .client()
             .request(Method::POST, format!("{}rfq/quote", self.host()))
@@ -1542,10 +1784,7 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// # Errors
     ///
     /// Returns an error if the HTTP request fails or the quote cannot be canceled.
-    pub async fn cancel_quote(
-        &self,
-        request: &crate::clob::types::CancelRfqQuoteRequest,
-    ) -> Result<()> {
+    pub async fn cancel_quote(&self, request: &CancelRfqQuoteRequest) -> Result<()> {
         let http_request = self
             .client()
             .request(Method::DELETE, format!("{}rfq/quote", self.host()))
@@ -1566,9 +1805,9 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// Returns an error if the HTTP request fails or the response cannot be parsed.
     pub async fn quotes(
         &self,
-        request: &crate::clob::types::RfqQuotesRequest,
+        request: &RfqQuotesRequest,
         next_cursor: Option<&str>,
-    ) -> Result<crate::clob::types::response::Page<crate::clob::types::RfqQuote>> {
+    ) -> Result<Page<RfqQuote>> {
         let params = request.query_params(next_cursor);
         let http_request = self
             .client()
@@ -1589,8 +1828,8 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// Returns an error if the HTTP request fails or the quote cannot be accepted.
     pub async fn accept_quote(
         &self,
-        request: &crate::clob::types::AcceptRfqQuoteRequest,
-    ) -> Result<crate::clob::types::AcceptRfqQuoteResponse> {
+        request: &AcceptRfqQuoteRequest,
+    ) -> Result<AcceptRfqQuoteResponse> {
         let http_request = self
             .client()
             .request(Method::POST, format!("{}rfq/request/accept", self.host()))
@@ -1599,7 +1838,7 @@ impl<K: Kind> Client<Authenticated<K>> {
         let headers = self.create_headers(&http_request).await?;
 
         self.rfq_request_text(http_request, headers).await?;
-        Ok(crate::clob::types::AcceptRfqQuoteResponse)
+        Ok(AcceptRfqQuoteResponse)
     }
 
     /// Quoter approves an RFQ order during the last look window.
@@ -1611,8 +1850,8 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// Returns an error if the HTTP request fails or the order cannot be approved.
     pub async fn approve_order(
         &self,
-        request: &crate::clob::types::ApproveRfqOrderRequest,
-    ) -> Result<crate::clob::types::ApproveRfqOrderResponse> {
+        request: &ApproveRfqOrderRequest,
+    ) -> Result<ApproveRfqOrderResponse> {
         let http_request = self
             .client()
             .request(Method::POST, format!("{}rfq/quote/approve", self.host()))
@@ -1629,11 +1868,7 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// and accept quote which return "OK" as plain text rather than a JSON response.
     /// The standard `crate::request` helper expects JSON responses and would fail
     /// to deserialize plain text.
-    async fn rfq_request_text(
-        &self,
-        mut request: reqwest::Request,
-        headers: reqwest::header::HeaderMap,
-    ) -> Result<()> {
+    async fn rfq_request_text(&self, mut request: Request, headers: HeaderMap) -> Result<()> {
         let method = request.method().clone();
         let path = request.url().path().to_owned();
 

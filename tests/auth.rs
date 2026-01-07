@@ -87,7 +87,7 @@ async fn authenticated_to_unauthenticated_should_succeed() -> anyhow::Result<()>
     let client = create_authenticated(&server).await?;
 
     assert_eq!(client.host().as_str(), format!("{}/", server.base_url()));
-    client.deauthenticate()?;
+    client.deauthenticate().await?;
 
     Ok(())
 }
@@ -129,7 +129,7 @@ async fn deauthenticated_with_multiple_strong_references_should_fail() -> anyhow
 
     let _client_clone = client.clone();
 
-    let err = client.deauthenticate().unwrap_err();
+    let err = client.deauthenticate().await.unwrap_err();
     let sync_error = err.downcast_ref::<Synchronization>().unwrap();
     assert_eq!(
         sync_error.to_string(),

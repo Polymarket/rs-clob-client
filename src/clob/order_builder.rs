@@ -49,6 +49,7 @@ pub struct OrderBuilder<OrderKind, K: AuthKind> {
     pub(crate) expiration: Option<DateTime<Utc>>,
     pub(crate) taker: Option<Address>,
     pub(crate) order_type: Option<OrderType>,
+    pub(crate) post_only: Option<bool>,
     pub(crate) funder: Option<Address>,
     pub(crate) _kind: PhantomData<OrderKind>,
 }
@@ -90,6 +91,13 @@ impl<OrderKind, K: AuthKind> OrderBuilder<OrderKind, K> {
     #[must_use]
     pub fn order_type(mut self, order_type: OrderType) -> Self {
         self.order_type = Some(order_type);
+        self
+    }
+
+    /// Sets the `postOnly` flag for this builder.
+    #[must_use]
+    pub fn post_only(mut self, post_only: bool) -> Self {
+        self.post_only = Some(post_only);
         self
     }
 }
@@ -187,10 +195,17 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
         let expiration = self.expiration.unwrap_or(DateTime::<Utc>::UNIX_EPOCH);
         let taker = self.taker.unwrap_or(Address::ZERO);
         let order_type = self.order_type.unwrap_or(OrderType::GTC);
+        let post_only = Some(self.post_only.unwrap_or(false));
 
         if !matches!(order_type, OrderType::GTD) && expiration > DateTime::<Utc>::UNIX_EPOCH {
             return Err(Error::validation(
                 "Only GTD orders may have a non-zero expiration",
+            ));
+        }
+
+        if post_only == Some(true) && !matches!(order_type, OrderType::GTC | OrderType::GTD) {
+            return Err(Error::validation(
+                "postOnly is only supported for GTC and GTD orders",
             ));
         }
 
@@ -237,7 +252,11 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
         #[cfg(feature = "tracing")]
         tracing::debug!(token_id = %token_id, side = ?side, price = %price, size = %size, "limit order built");
 
-        Ok(SignableOrder { order, order_type })
+        Ok(SignableOrder {
+            order,
+            order_type,
+            post_only,
+        })
     }
 }
 
@@ -349,6 +368,12 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         let taker = self.taker.unwrap_or(Address::ZERO);
 
         let order_type = self.order_type.unwrap_or(OrderType::FAK);
+        let post_only = self.post_only;
+        if post_only == Some(true) {
+            return Err(Error::validation(
+                "postOnly is only supported for limit orders",
+            ));
+        }
         let price = match self.price {
             Some(price) => price,
             None => self.calculate_price(order_type).await?,
@@ -438,7 +463,11 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         #[cfg(feature = "tracing")]
         tracing::debug!(token_id = %token_id, side = ?side, price = %price, amount = %amount.as_inner(), "market order built");
 
-        Ok(SignableOrder { order, order_type })
+        Ok(SignableOrder {
+            order,
+            order_type,
+            post_only: None,
+        })
     }
 }
 
