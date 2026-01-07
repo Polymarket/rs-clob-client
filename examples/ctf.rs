@@ -39,25 +39,28 @@ use polymarket_client_sdk::ctf::types::{
 };
 use polymarket_client_sdk::types::address;
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
+use tracing::{error, info};
 
 const RPC_URL: &str = "https://polygon-rpc.com";
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    tracing_subscriber::fmt::init();
+
     let args: Vec<String> = env::args().collect();
     let write_mode = args.iter().any(|arg| arg == "--write");
 
-    println!("=== CTF (Conditional Token Framework) Example ===\n");
+    info!("=== CTF (Conditional Token Framework) Example ===");
 
     // For read-only operations, we don't need a wallet
     let provider = ProviderBuilder::new().connect(RPC_URL).await?;
     let client = Client::new(provider, POLYGON)?;
 
-    println!("Connected to Polygon mainnet");
-    println!("CTF contract: 0x4D97DCd97eC945f40cF65F87097ACe5EA0476045\n");
+    info!("Connected to Polygon mainnet");
+    info!("CTF contract: 0x4D97DCd97eC945f40cF65F87097ACe5EA0476045");
 
     // Example: Calculate a condition ID
-    println!("--- Calculating Condition ID ---");
+    info!("--- Calculating Condition ID ---");
     let oracle = address!("0x0000000000000000000000000000000000000001");
     let question_id = B256::ZERO;
     let outcome_slot_count = U256::from(2);
@@ -69,13 +72,13 @@ async fn main() -> Result<()> {
         .build();
 
     let condition_resp = client.condition_id(&condition_req).await?;
-    println!("Oracle: {oracle}");
-    println!("Question ID: {question_id}");
-    println!("Outcome Slots: {outcome_slot_count}");
-    println!("→ Condition ID: {}\n", condition_resp.condition_id);
+    info!("Oracle: {oracle}");
+    info!("Question ID: {question_id}");
+    info!("Outcome Slots: {outcome_slot_count}");
+    info!("→ Condition ID: {}", condition_resp.condition_id);
 
     // Example: Calculate collection IDs for YES and NO tokens
-    println!("--- Calculating Collection IDs ---");
+    info!("--- Calculating Collection IDs ---");
     let parent_collection_id = B256::ZERO;
 
     // Collection ID for YES token (index set = 0b01 = 1)
@@ -86,8 +89,8 @@ async fn main() -> Result<()> {
         .build();
 
     let yes_collection_resp = client.collection_id(&yes_collection_req).await?;
-    println!("YES token (index set = 1):");
-    println!("→ Collection ID: {}\n", yes_collection_resp.collection_id);
+    info!("YES token (index set = 1):");
+    info!("→ Collection ID: {}", yes_collection_resp.collection_id);
 
     // Collection ID for NO token (index set = 0b10 = 2)
     let no_collection_req = CollectionIdRequest::builder()
@@ -97,11 +100,11 @@ async fn main() -> Result<()> {
         .build();
 
     let no_collection_resp = client.collection_id(&no_collection_req).await?;
-    println!("NO token (index set = 2):");
-    println!("→ Collection ID: {}\n", no_collection_resp.collection_id);
+    info!("NO token (index set = 2):");
+    info!("→ Collection ID: {}", no_collection_resp.collection_id);
 
     // Example: Calculate position IDs (ERC1155 token IDs)
-    println!("--- Calculating Position IDs ---");
+    info!("--- Calculating Position IDs ---");
     let usdc = address!("0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174");
 
     let yes_position_req = PositionIdRequest::builder()
@@ -110,7 +113,7 @@ async fn main() -> Result<()> {
         .build();
 
     let yes_position_resp = client.position_id(&yes_position_req).await?;
-    println!(
+    info!(
         "YES position (ERC1155 token ID): {}",
         yes_position_resp.position_id
     );
@@ -121,14 +124,14 @@ async fn main() -> Result<()> {
         .build();
 
     let no_position_resp = client.position_id(&no_position_req).await?;
-    println!(
-        "NO position (ERC1155 token ID): {}\n",
+    info!(
+        "NO position (ERC1155 token ID): {}",
         no_position_resp.position_id
     );
 
     // Write operations require a wallet
     if write_mode {
-        println!("--- Write Operations (requires wallet) ---\n");
+        info!("--- Write Operations (requires wallet) ---");
 
         let private_key =
             env::var(PRIVATE_KEY_VAR).expect("Need a private key for write operations");
@@ -142,12 +145,12 @@ async fn main() -> Result<()> {
         let client = Client::new(provider, POLYGON)?;
         let wallet_address = signer.address();
 
-        println!("Using wallet: {wallet_address:?}\n");
+        info!("Using wallet: {wallet_address:?}");
 
         // Example: Split 1 USDC into YES and NO tokens (using convenience method)
-        println!("--- Splitting Position (Binary Market) ---");
-        println!("This will split 1 USDC into 1 YES and 1 NO token");
-        println!("Note: You must approve the CTF contract to spend your USDC first!\n");
+        info!("--- Splitting Position (Binary Market) ---");
+        info!("This will split 1 USDC into 1 YES and 1 NO token");
+        info!("Note: You must approve the CTF contract to spend your USDC first!");
 
         // Using the convenience method for binary markets
         let split_req = SplitPositionRequest::for_binary_market(
@@ -158,21 +161,19 @@ async fn main() -> Result<()> {
 
         match client.split_position(&split_req).await {
             Ok(split_resp) => {
-                println!("✓ Split transaction successful!");
-                println!("  Transaction hash: {}", split_resp.transaction_hash);
-                println!("  Block number: {}\n", split_resp.block_number);
+                info!("✓ Split transaction successful!");
+                info!("  Transaction hash: {}", split_resp.transaction_hash);
+                info!("  Block number: {}", split_resp.block_number);
             }
             Err(e) => {
-                println!("✗ Split failed: {e}");
-                println!(
-                    "  Make sure you have approved the CTF contract and have sufficient USDC\n"
-                );
+                error!("✗ Split failed: {e}");
+                error!("  Make sure you have approved the CTF contract and have sufficient USDC");
             }
         }
 
         // Example: Merge YES and NO tokens back into USDC (using convenience method)
-        println!("--- Merging Positions (Binary Market) ---");
-        println!("This will merge 1 YES and 1 NO token back into 1 USDC\n");
+        info!("--- Merging Positions (Binary Market) ---");
+        info!("This will merge 1 YES and 1 NO token back into 1 USDC");
 
         // Using the convenience method for binary markets
         let merge_req = MergePositionsRequest::for_binary_market(
@@ -183,19 +184,19 @@ async fn main() -> Result<()> {
 
         match client.merge_positions(&merge_req).await {
             Ok(merge_resp) => {
-                println!("✓ Merge transaction successful!");
-                println!("  Transaction hash: {}", merge_resp.transaction_hash);
-                println!("  Block number: {}\n", merge_resp.block_number);
+                info!("✓ Merge transaction successful!");
+                info!("  Transaction hash: {}", merge_resp.transaction_hash);
+                info!("  Block number: {}", merge_resp.block_number);
             }
             Err(e) => {
-                println!("✗ Merge failed: {e}");
-                println!("  Make sure you have sufficient YES and NO tokens\n");
+                error!("✗ Merge failed: {e}");
+                error!("  Make sure you have sufficient YES and NO tokens");
             }
         }
 
         // Example: Redeem winning tokens
-        println!("--- Redeeming Positions ---");
-        println!("This redeems winning tokens after market resolution\n");
+        info!("--- Redeeming Positions ---");
+        info!("This redeems winning tokens after market resolution");
 
         // Using the convenience method for binary markets (redeems both YES and NO tokens)
         let redeem_req =
@@ -203,23 +204,23 @@ async fn main() -> Result<()> {
 
         match client.redeem_positions(&redeem_req).await {
             Ok(redeem_resp) => {
-                println!("✓ Redeem transaction successful!");
-                println!("  Transaction hash: {}", redeem_resp.transaction_hash);
-                println!("  Block number: {}\n", redeem_resp.block_number);
+                info!("✓ Redeem transaction successful!");
+                info!("  Transaction hash: {}", redeem_resp.transaction_hash);
+                info!("  Block number: {}", redeem_resp.block_number);
             }
             Err(e) => {
-                println!("✗ Redeem failed: {e}");
-                println!("  Make sure the condition is resolved and you have winning tokens\n");
+                error!("✗ Redeem failed: {e}");
+                error!("  Make sure the condition is resolved and you have winning tokens");
             }
         }
     } else {
-        println!("--- Write Operations ---");
-        println!("To test write operations (split, merge, redeem), run with --write flag:");
-        println!("  export POLYMARKET_PRIVATE_KEY=\"your_private_key\"");
-        println!("  cargo run --example ctf --features ctf -- --write\n");
+        info!("--- Write Operations ---");
+        info!("To test write operations (split, merge, redeem), run with --write flag:");
+        info!("  export POLYMARKET_PRIVATE_KEY=\"your_private_key\"");
+        info!("  cargo run --example ctf --features ctf -- --write");
     }
 
-    println!("=== Example Complete ===");
+    info!("=== Example Complete ===");
 
     Ok(())
 }
