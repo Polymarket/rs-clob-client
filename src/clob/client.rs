@@ -326,16 +326,21 @@ impl DroppingCancellationToken {
     /// Cancel the inner [`CancellationToken`] and wait to be notified of the relevant cleanup via
     /// [`Receiver`]. This is primarily used by the authentication methods when promoting [`Client`]s
     /// to ensure that we do not error when transferring ownership of [`ClientInner`].
-    pub(crate) async fn cancel_and_wait(mut self) -> Result<()> {
+    pub(crate) async fn cancel_and_wait(&mut self) -> Result<()> {
         if let Some((token, rx)) = self.0.take() {
-            token.cancel();
-            return if let Some(inner) = Arc::into_inner(rx) {
-                _ = inner.await;
-                Ok(())
-            } else {
-                Err(Error::validation(
-                    "Multiple threads are attempting to await heartbeats",
-                ))
+            return match Arc::try_unwrap(rx) {
+                // If this is the only reference, cancel the token and wait for the resources to be
+                // cleaned up.
+                Ok(inner) => {
+                    token.cancel();
+                    _ = inner.await;
+                    Ok(())
+                }
+                // If not, _save_ the original token and receiver to re-use later if desired
+                Err(original) => {
+                    *self = DroppingCancellationToken(Some((token, original)));
+                    Err(Synchronization.into())
+                }
             };
         }
 
@@ -992,10 +997,11 @@ impl<K: Kind> Client<Authenticated<K>> {
         not(feature = "heartbeats"),
         expect(
             clippy::unused_async,
-            reason = "Nothing to await when heartbeats are disabled"
+            unused_mut,
+            reason = "Nothing to await or modify when heartbeats are disabled"
         )
     )]
-    pub async fn deauthenticate(self) -> Result<Client<Unauthenticated>> {
+    pub async fn deauthenticate(mut self) -> Result<Client<Unauthenticated>> {
         #[cfg(feature = "heartbeats")]
         self.heartbeat_cancel_token.cancel_and_wait().await?;
 
@@ -1574,11 +1580,12 @@ impl Client<Authenticated<Normal>> {
         not(feature = "heartbeats"),
         expect(
             clippy::unused_async,
-            reason = "Nothing to await when heartbeats are disabled"
+            unused_mut,
+            reason = "Nothing to await or modify when heartbeats are disabled"
         )
     )]
     pub async fn promote_to_builder(
-        self,
+        mut self,
         config: BuilderConfig,
     ) -> Result<Client<Authenticated<Builder>>> {
         #[cfg(feature = "heartbeats")]
