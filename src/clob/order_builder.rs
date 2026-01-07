@@ -285,6 +285,15 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
             .as_ref()
             .expect("Amount was already validated in `build`");
 
+        // Get tick size to determine the correct precision for rounding
+        let minimum_tick_size = self
+            .client
+            .tick_size(token_id)
+            .await?
+            .minimum_tick_size
+            .as_decimal();
+        let decimals = minimum_tick_size.scale();
+
         let book = self
             .client
             .order_book(&OrderBookSummaryRequest {
@@ -331,12 +340,12 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
             .unwrap_or(RoundingStrategy::MidpointAwayFromZero);
 
         match cutoff_price {
-            Some(price) => Ok(price.round_dp_with_strategy(2, rounding_strategy)),
+            Some(price) => Ok(price.round_dp_with_strategy(decimals, rounding_strategy)),
             None if matches!(order_type, OrderType::FOK) => Err(Error::validation(format!(
                 "Insufficient liquidity to fill order for {token_id} at {}",
                 amount.as_inner()
             ))),
-            None => Ok(first.price.round_dp_with_strategy(2, rounding_strategy)),
+            None => Ok(first.price.round_dp_with_strategy(decimals, rounding_strategy)),
         }
     }
 
