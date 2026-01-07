@@ -368,10 +368,10 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         let taker = self.taker.unwrap_or(Address::ZERO);
 
         let order_type = self.order_type.unwrap_or(OrderType::FAK);
-        let post_only = Some(self.post_only.unwrap_or(false));
-        if post_only == Some(true) && !matches!(order_type, OrderType::GTC | OrderType::GTD) {
+        let post_only = self.post_only;
+        if post_only == Some(true) {
             return Err(Error::validation(
-                "postOnly is only supported for GTC and GTD orders",
+                "postOnly is only supported for limit orders",
             ));
         }
         let price = match self.price {
@@ -466,7 +466,7 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         Ok(SignableOrder {
             order,
             order_type,
-            post_only,
+            post_only: None,
         })
     }
 }
