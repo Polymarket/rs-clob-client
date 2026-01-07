@@ -1038,6 +1038,8 @@ impl<K: Kind> Client<Authenticated<K>> {
     }
 
     pub async fn post_order_with_post_only(&self, order: SignedOrder) -> Result<PostOrderResponse> {
+        // Post-only ensures the order only ever rests as a Maker, never matching
+        // immediately as a Taker against existing orders.
         validate_post_only(order.order_type, Some(true))?;
         let payload = OrderWithPostOnly {
             order: &order,
@@ -1070,6 +1072,8 @@ impl<K: Kind> Client<Authenticated<K>> {
     ) -> Result<Vec<PostOrderResponse>> {
         let mut payload = Vec::with_capacity(orders.len());
         for order in &orders {
+            // Post-only ensures the order only ever rests as a Maker, never matching
+            // immediately as a Taker against existing orders.
             validate_post_only(order.order_type, Some(true))?;
             payload.push(OrderWithPostOnly {
                 order,
