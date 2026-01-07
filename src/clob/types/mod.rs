@@ -492,9 +492,9 @@ impl Serialize for SignedOrder {
 
 #[non_exhaustive]
 #[derive(Serialize)]
-pub struct OrderWithPostOnly<'a> {
+pub struct OrderWithPostOnly<'order> {
     #[serde(flatten)]
-    pub order: &'a SignedOrder,
+    pub order: &'order SignedOrder,
     #[serde(rename = "postOnly")]
     pub post_only: bool,
 }
