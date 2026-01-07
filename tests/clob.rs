@@ -1425,6 +1425,7 @@ mod authenticated {
             .owner(API_KEY)
             .order(signable_order.order)
             .order_type(OrderType::GTC)
+            .post_only(false)
             .signature(Signature::new(
                 U256::from_str(
                     "83481775348298569941382281649378839838022156673358335472613408323829135581822",
