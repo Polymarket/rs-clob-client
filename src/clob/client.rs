@@ -1390,7 +1390,6 @@ impl<K: Kind> Client<Authenticated<K>> {
             expiration: None,
             taker: None,
             order_type: None,
-            rounding_strategy: None,
             client: Client {
                 inner: Arc::clone(&self.inner),
             },
