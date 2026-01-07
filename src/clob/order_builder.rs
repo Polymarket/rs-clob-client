@@ -345,7 +345,9 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
                 "Insufficient liquidity to fill order for {token_id} at {}",
                 amount.as_inner()
             ))),
-            None => Ok(first.price.round_dp_with_strategy(decimals, rounding_strategy)),
+            None => Ok(first
+                .price
+                .round_dp_with_strategy(decimals, rounding_strategy)),
         }
     }
 
