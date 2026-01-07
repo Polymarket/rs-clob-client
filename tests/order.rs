@@ -594,6 +594,31 @@ mod limit {
     }
 
     #[tokio::test]
+    async fn should_fail_on_post_only_for_non_gtc_gtd() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = create_authenticated(&server).await?;
+
+        ensure_requirements(&server, TOKEN_1, TickSize::Tenth);
+
+        let err = client
+            .limit_order()
+            .token_id(TOKEN_1)
+            .price(dec!(0.5))
+            .size(dec!(21.04))
+            .side(Side::Buy)
+            .order_type(OrderType::FOK)
+            .post_only(true)
+            .build()
+            .await
+            .unwrap_err();
+        let msg = &err.downcast_ref::<Validation>().unwrap().reason;
+
+        assert_eq!(msg, "postOnly is only supported for GTC and GTD orders");
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn should_fail_on_missing_fields() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;

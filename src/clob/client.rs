@@ -38,9 +38,7 @@ use crate::clob::types::response::{
     SpreadsResponse, TickSizeResponse, TotalUserEarningResponse, TradeResponse,
     UserEarningResponse, UserRewardsEarningResponse,
 };
-use crate::clob::types::{
-    OrderWithPostOnly, SignableOrder, SignatureType, SignedOrder, TickSize, validate_post_only,
-};
+use crate::clob::types::{SignableOrder, SignatureType, SignedOrder, TickSize, validate_post_only};
 use crate::error::{Error, Synchronization};
 use crate::types::Address;
 use crate::{
@@ -994,8 +992,13 @@ impl<K: Kind> Client<Authenticated<K>> {
     pub async fn sign<S: Signer>(
         &self,
         signer: &S,
-        SignableOrder { order, order_type }: SignableOrder,
+        SignableOrder {
+            order,
+            order_type,
+            post_only,
+        }: SignableOrder,
     ) -> Result<SignedOrder> {
+        validate_post_only(order_type, post_only)?;
         let token_id = order.tokenId.to_string();
         let neg_risk = self.neg_risk(&token_id).await?.neg_risk;
         let chain_id = signer
@@ -1023,6 +1026,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             signature,
             order_type,
             owner: self.state().credentials.key,
+            post_only,
         })
     }
 
@@ -1037,54 +1041,11 @@ impl<K: Kind> Client<Authenticated<K>> {
         crate::request(&self.inner.client, request, Some(headers)).await
     }
 
-    pub async fn post_order_with_post_only(&self, order: SignedOrder) -> Result<PostOrderResponse> {
-        // Post-only ensures the order only ever rests as a Maker, never matching
-        // immediately as a Taker against existing orders.
-        validate_post_only(order.order_type, Some(true))?;
-        let payload = OrderWithPostOnly {
-            order: &order,
-            post_only: true,
-        };
-        let request = self
-            .client()
-            .request(Method::POST, format!("{}order", self.host()))
-            .json(&payload)
-            .build()?;
-        let headers = self.create_headers(&request).await?;
-
-        crate::request(&self.inner.client, request, Some(headers)).await
-    }
-
     pub async fn post_orders(&self, orders: Vec<SignedOrder>) -> Result<Vec<PostOrderResponse>> {
         let request = self
             .client()
             .request(Method::POST, format!("{}orders", self.host()))
             .json(&orders)
-            .build()?;
-        let headers = self.create_headers(&request).await?;
-
-        crate::request(&self.inner.client, request, Some(headers)).await
-    }
-
-    pub async fn post_orders_with_post_only(
-        &self,
-        orders: Vec<SignedOrder>,
-    ) -> Result<Vec<PostOrderResponse>> {
-        let mut payload = Vec::with_capacity(orders.len());
-        for order in &orders {
-            // Post-only ensures the order only ever rests as a Maker, never matching
-            // immediately as a Taker against existing orders.
-            validate_post_only(order.order_type, Some(true))?;
-            payload.push(OrderWithPostOnly {
-                order,
-                post_only: true,
-            });
-        }
-
-        let request = self
-            .client()
-            .request(Method::POST, format!("{}orders", self.host()))
-            .json(&payload)
             .build()?;
         let headers = self.create_headers(&request).await?;
 
@@ -1435,6 +1396,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             expiration: None,
             taker: None,
             order_type: None,
+            post_only: Some(false),
             client: Client {
                 inner: Arc::clone(&self.inner),
             },
