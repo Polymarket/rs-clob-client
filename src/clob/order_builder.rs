@@ -5,6 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use alloy::primitives::U256;
 use chrono::{DateTime, Utc};
 use rand::Rng as _;
+use rust_decimal::RoundingStrategy;
 use rust_decimal::prelude::ToPrimitive as _;
 
 use crate::Result;
@@ -50,6 +51,7 @@ pub struct OrderBuilder<OrderKind, K: AuthKind> {
     pub(crate) taker: Option<Address>,
     pub(crate) order_type: Option<OrderType>,
     pub(crate) funder: Option<Address>,
+    pub(crate) rounding_strategy: Option<RoundingStrategy>,
     pub(crate) _kind: PhantomData<OrderKind>,
 }
 
@@ -256,6 +258,16 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         self
     }
 
+    /// Sets the rounding strategy for this market order. Defaults to `MidpointAwayFromZero` if not specified.
+    ///
+    /// For market orders:
+    /// - `MidpointAwayFromZero`: Rounds up at midpoint (0.345 -> 0.35), more favorable for sellers
+    /// - `MidpointTowardZero`: Rounds down at midpoint (0.345 -> 0.34), more favorable for buyers
+    pub fn rounding_strategy(mut self, rounding_strategy: RoundingStrategy) -> Self {
+        self.rounding_strategy = Some(rounding_strategy);
+        self
+    }
+
     // Attempts to calculate the market price from the top of the book for the particular token.
     // - Uses an orderbook depth search to find the cutoff price:
     //   - BUY + USDC: walk asks until notional >= USDC
@@ -313,13 +325,17 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
             (sum >= amount.as_inner()).then_some(level.price)
         });
 
+        let rounding_strategy = self
+            .rounding_strategy
+            .unwrap_or(RoundingStrategy::MidpointAwayFromZero);
+
         match cutoff_price {
-            Some(price) => Ok(price),
+            Some(price) => Ok(price.round_dp_with_strategy(2, rounding_strategy)),
             None if matches!(order_type, OrderType::FOK) => Err(Error::validation(format!(
                 "Insufficient liquidity to fill order for {token_id} at {}",
                 amount.as_inner()
             ))),
-            None => Ok(first.price),
+            None => Ok(first.price.round_dp_with_strategy(2, rounding_strategy)),
         }
     }
 
@@ -507,5 +523,33 @@ mod tests {
         let masked_salt = to_ieee_754_int(raw_salt);
 
         assert!(masked_salt < (1 << 53));
+    }
+
+    #[test]
+    fn market_order_price_rounding_fixes_fractional_size_precision() {
+        // Polymarket backend API requires: maker amount max 2 decimals, taker amount max 4 decimals for market buy orders
+
+        // Test case 1: Price that rounds down with MidpointAwayFromZero (default strategy)
+        // 0.344999 -> 0.34
+        let unrounded_price_1 = dec!(0.344999);
+        let rounded_price_1 =
+            unrounded_price_1.round_dp_with_strategy(2, RoundingStrategy::MidpointAwayFromZero);
+        assert_eq!(rounded_price_1, dec!(0.34));
+        assert_eq!(rounded_price_1.scale(), 2);
+
+        // Test case 2: Price at midpoint - MidpointAwayFromZero rounds up
+        // 0.345000 -> 0.35
+        let unrounded_price_2 = dec!(0.345000);
+        let rounded_price_2 =
+            unrounded_price_2.round_dp_with_strategy(2, RoundingStrategy::MidpointAwayFromZero);
+        assert_eq!(rounded_price_2, dec!(0.35));
+        assert_eq!(rounded_price_2.scale(), 2);
+
+        // Test case 3: Price above midpoint - MidpointAwayFromZero rounds up
+        // 0.345001 -> 0.35
+        let unrounded_price_3 = dec!(0.345001);
+        let rounded_price_3 =
+            unrounded_price_3.round_dp_with_strategy(2, RoundingStrategy::MidpointAwayFromZero);
+        assert_eq!(rounded_price_3, dec!(0.35));
     }
 }
