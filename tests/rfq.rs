@@ -1,4 +1,4 @@
-#![cfg(feature = "rfq")]
+#![cfg(all(feature = "clob", feature = "rfq"))]
 #![allow(
     clippy::unwrap_used,
     reason = "Do not need additional syntax for setting up tests"

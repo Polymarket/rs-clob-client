@@ -1,3 +1,5 @@
+#![cfg(feature = "clob")]
+
 mod common;
 
 use std::str::FromStr as _;

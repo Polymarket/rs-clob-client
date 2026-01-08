@@ -1,3 +1,4 @@
+#![cfg(feature = "gamma")]
 #![allow(
     clippy::unwrap_used,
     reason = "Do not need additional syntax for setting up tests, and https://github.com/rust-lang/rust-clippy/issues/13981"
@@ -26,8 +27,6 @@
 //! - `profiles`: Public profile lookup
 //! - `search`: Search across events, markets, and profiles
 //! - `health`: API health check
-
-#![cfg(feature = "gamma")]
 
 mod sports {
     use httpmock::{Method::GET, MockServer};

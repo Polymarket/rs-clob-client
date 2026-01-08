@@ -82,6 +82,10 @@ pub mod state {
     /// See `examples/authenticated.rs` for more context.
     #[non_exhaustive]
     #[derive(Clone, Debug)]
+    #[cfg_attr(
+        not(feature = "clob"),
+        expect(dead_code, reason = "Fields used by clob module when feature enabled")
+    )]
     pub struct Authenticated<K: Kind> {
         /// The signer's address that created the credentials
         pub(crate) address: Address,
@@ -144,6 +148,7 @@ mod sealed {
     pub trait Sealed {}
 }
 
+#[cfg(feature = "clob")]
 pub(crate) mod l1 {
     use std::borrow::Cow;
 
@@ -211,6 +216,7 @@ pub(crate) mod l1 {
     }
 }
 
+#[cfg(feature = "clob")]
 pub(crate) mod l2 {
     use alloy::hex::ToHexExt as _;
     use reqwest::Request;
@@ -418,7 +424,7 @@ fn hmac(secret: &SecretString, message: &str) -> Result<String> {
 mod tests {
     use std::str::FromStr as _;
 
-    use alloy::signers::Signer as _;
+    #[cfg(feature = "clob")]
     use alloy::signers::local::LocalSigner;
     use reqwest::{Client, Method, RequestBuilder};
     use serde_json::json;
@@ -427,13 +433,18 @@ mod tests {
 
     use super::*;
     use crate::auth::builder::Config;
+    #[cfg(feature = "clob")]
     use crate::auth::state::Authenticated;
+    #[cfg(feature = "clob")]
     use crate::types::address;
+    #[cfg(feature = "clob")]
     use crate::{AMOY, Result};
 
     // publicly known private key
+    #[cfg(feature = "clob")]
     const PRIVATE_KEY: &str = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 
+    #[cfg(feature = "clob")]
     #[tokio::test]
     async fn l1_headers_should_succeed() -> anyhow::Result<()> {
         let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(AMOY));
@@ -458,6 +469,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(feature = "clob")]
     #[tokio::test]
     async fn l2_headers_should_succeed() -> anyhow::Result<()> {
         let signer = LocalSigner::from_str(PRIVATE_KEY)?;

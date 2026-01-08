@@ -1,4 +1,4 @@
-#![cfg(feature = "ws")]
+#![cfg(all(feature = "clob", feature = "ws"))]
 #![allow(
     clippy::unwrap_used,
     reason = "Do not need additional syntax for setting up tests"

@@ -3,6 +3,7 @@
 pub mod auth;
 #[cfg(feature = "bridge")]
 pub mod bridge;
+#[cfg(feature = "clob")]
 pub mod clob;
 #[cfg(feature = "ctf")]
 pub mod ctf;
@@ -23,9 +24,20 @@ use std::fmt::Write as _;
 use alloy::primitives::ChainId;
 use alloy::primitives::{B256, b256, keccak256};
 use phf::phf_map;
-use reqwest::header::HeaderMap;
-use reqwest::{Request, StatusCode};
+#[cfg(any(
+    feature = "bridge",
+    feature = "clob",
+    feature = "data",
+    feature = "gamma"
+))]
+use reqwest::{Request, StatusCode, header::HeaderMap};
 use serde::Serialize;
+#[cfg(any(
+    feature = "bridge",
+    feature = "clob",
+    feature = "data",
+    feature = "gamma"
+))]
 use serde::de::DeserializeOwned;
 
 use crate::error::Error;
@@ -221,6 +233,12 @@ pub trait ToQueryParams: Serialize {
 
 impl<T: Serialize> ToQueryParams for T {}
 
+#[cfg(any(
+    feature = "bridge",
+    feature = "clob",
+    feature = "data",
+    feature = "gamma"
+))]
 #[cfg_attr(
     feature = "tracing",
     tracing::instrument(
