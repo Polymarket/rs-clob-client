@@ -13,11 +13,10 @@ use serde::Serialize;
 use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as, skip_serializing_none};
 
 use super::{
-    ActivitySortBy, ActivityType, BoundedIntError, ClosedPositionSortBy, Hash64,
-    LeaderboardCategory, LeaderboardOrderBy, MarketFilter, PositionSortBy, Side, SortDirection,
-    TimePeriod, Title, TradeFilter,
+    ActivitySortBy, ActivityType, BoundedIntError, ClosedPositionSortBy, LeaderboardCategory,
+    LeaderboardOrderBy, MarketFilter, PositionSortBy, Side, SortDirection, TimePeriod, TradeFilter,
 };
-use crate::types::{Address, Decimal};
+use crate::types::{Address, B256, Decimal};
 
 /// Validates that an i32 value is within the specified bounds.
 fn validate_bound(
@@ -98,14 +97,15 @@ pub struct PositionsRequest {
     pub sort_direction: Option<SortDirection>,
     /// Filter by market title substring (max 100 chars).
     #[builder(into)]
-    pub title: Option<Title>,
+    pub title: Option<String>,
 }
 
 #[expect(clippy::ref_option, reason = "Need an explicit reference for serde")]
 fn filter_is_none_or_empty(f: &Option<MarketFilter>) -> bool {
     match f {
         None => true,
-        Some(MarketFilter::Markets(v) | MarketFilter::EventIds(v)) => v.is_empty(),
+        Some(MarketFilter::Markets(v)) => v.is_empty(),
+        Some(MarketFilter::EventIds(v)) => v.is_empty(),
     }
 }
 
@@ -249,9 +249,10 @@ pub struct ActivityRequest {
 ///
 /// ```
 /// use polymarket_client_sdk::data::types::request::HoldersRequest;
+/// use polymarket_client_sdk::types::b256;
 ///
 /// let request = HoldersRequest::builder()
-///     .markets(vec!["0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917".to_string()])
+///     .markets(vec![b256!("dd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917")])
 ///     .build();
 /// ```
 #[serde_as]
@@ -260,9 +261,9 @@ pub struct ActivityRequest {
 #[non_exhaustive]
 pub struct HoldersRequest {
     /// Condition IDs of markets to query (required).
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, B256>")]
     #[serde(rename = "market", skip_serializing_if = "Vec::is_empty")]
-    pub markets: Vec<Hash64>,
+    pub markets: Vec<B256>,
     /// Maximum holders to return per token (0-20, default: 20).
     #[builder(with = |v: i32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 20, "limit") })]
     pub limit: Option<i32>,
@@ -307,10 +308,10 @@ pub struct ValueRequest {
     #[builder(into)]
     pub user: Address,
     /// Optional list of condition IDs to filter by.
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, B256>")]
     #[builder(default)]
     #[serde(rename = "market", skip_serializing_if = "Vec::is_empty")]
-    pub markets: Vec<Hash64>,
+    pub markets: Vec<B256>,
 }
 
 /// Request parameters for the `/oi` (open interest) endpoint.
@@ -328,10 +329,10 @@ pub struct ValueRequest {
 #[non_exhaustive]
 pub struct OpenInterestRequest {
     /// Optional list of condition IDs to filter by.
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, B256>")]
     #[builder(default)]
     #[serde(rename = "market", skip_serializing_if = "Vec::is_empty")]
-    pub markets: Vec<Hash64>,
+    pub markets: Vec<B256>,
 }
 
 /// Request parameters for the `/live-volume` endpoint.
@@ -390,7 +391,7 @@ pub struct ClosedPositionsRequest {
     pub filter: Option<MarketFilter>,
     /// Filter by market title substring (max 100 chars).
     #[builder(into)]
-    pub title: Option<Title>,
+    pub title: Option<String>,
     /// Maximum number of positions to return (0-50, default: 10).
     #[builder(with = |v: i32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 50, "limit") })]
     pub limit: Option<i32>,

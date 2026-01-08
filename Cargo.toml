@@ -141,7 +141,7 @@ required-features = ["data"]
 [[example]]
 name = "gamma"
 path = "examples/gamma.rs"
-required-features = ["gamma"]
+required-features = ["gamma", "tracing"]
 
 [[example]]
 name = "bridge"

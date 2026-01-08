@@ -295,9 +295,9 @@ async fn main() -> anyhow::Result<()> {
         match &comments_result {
             Ok(comments) => {
                 info!(endpoint = "comments", event_id = %event_id, expected = comment_count, count = comments.len());
-                comments.first().map_or((None, None), |c| {
-                    (Some(c.id.clone()), c.user_address.clone())
-                })
+                comments
+                    .first()
+                    .map_or((None, None), |c| (Some(c.id.clone()), c.user_address))
             }
             Err(e) => {
                 debug!(endpoint = "comments", event_id = %event_id, error = %e);
@@ -322,7 +322,7 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
-    if let Some(addr) = &user_address {
+    if let Some(addr) = user_address {
         match client
             .comments_by_user_address(
                 &CommentsByUserAddressRequest::builder()
@@ -337,21 +337,22 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
-    let profile_address =
-        user_address.unwrap_or_else(|| "0xB90c7C778f71BddB6F597D7ce89Ea93bBf80EcD7".to_owned());
-    match client
-        .public_profile(
-            &PublicProfileRequest::builder()
-                .address(&profile_address)
-                .build(),
-        )
-        .await
-    {
-        Ok(p) => {
-            let name = p.pseudonym.as_deref().unwrap_or("anonymous");
-            info!(endpoint = "public_profile", address = %profile_address, name = %name);
+    // Use the user_address from comments if available
+    if let Some(profile_address) = user_address {
+        match client
+            .public_profile(
+                &PublicProfileRequest::builder()
+                    .address(profile_address)
+                    .build(),
+            )
+            .await
+        {
+            Ok(p) => {
+                let name = p.pseudonym.as_deref().unwrap_or("anonymous");
+                info!(endpoint = "public_profile", address = %profile_address, name = %name);
+            }
+            Err(e) => debug!(endpoint = "public_profile", address = %profile_address, error = %e),
         }
-        Err(e) => debug!(endpoint = "public_profile", address = %profile_address, error = %e),
     }
 
     let query = "trump";

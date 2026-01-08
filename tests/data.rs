@@ -1,22 +1,17 @@
 #![cfg(feature = "data")]
 
-use polymarket_client_sdk::types::{Address, address};
+use polymarket_client_sdk::types::{Address, B256, address, b256};
 
 const TEST_USER: Address = address!("1234567890abcdef1234567890abcdef12345678");
-const TEST_CONDITION_ID_STR: &str =
-    "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
-const TEST_ASSET_STR: &str = "0x1111111111111111111111111111111111111111111111111111111111111111";
+const TEST_CONDITION_ID: B256 =
+    b256!("abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890");
 
 fn test_user() -> Address {
     TEST_USER
 }
 
-fn test_condition_id() -> String {
-    TEST_CONDITION_ID_STR.to_owned()
-}
-
-fn test_asset() -> String {
-    TEST_ASSET_STR.to_owned()
+fn test_condition_id() -> B256 {
+    TEST_CONDITION_ID
 }
 
 mod health {
@@ -102,7 +97,7 @@ mod positions {
         assert_eq!(response.len(), 1);
         let pos = &response[0];
         assert_eq!(pos.proxy_wallet, test_user());
-        assert_eq!(pos.condition_id.as_str(), test_condition_id().as_str());
+        assert_eq!(pos.condition_id, test_condition_id());
         assert_eq!(pos.size, dec!(100.5));
         assert_eq!(pos.title, "Will BTC hit $100k?");
         assert!(!pos.redeemable);
@@ -188,7 +183,7 @@ mod trades {
         assert_eq!(response.len(), 1);
         let trade = &response[0];
         assert_eq!(trade.proxy_wallet, test_user());
-        assert_eq!(trade.condition_id.as_str(), test_condition_id().as_str());
+        assert_eq!(trade.condition_id, test_condition_id());
         assert_eq!(trade.side, Side::Buy);
         assert_eq!(trade.size, dec!(50.0));
         assert_eq!(trade.price, dec!(0.55));
@@ -255,10 +250,7 @@ mod activity {
 
         assert_eq!(response.len(), 2);
         assert_eq!(response[0].proxy_wallet, test_user());
-        assert_eq!(
-            response[0].condition_id.as_str(),
-            test_condition_id().as_str()
-        );
+        assert_eq!(response[0].condition_id, test_condition_id());
         assert_eq!(response[0].activity_type, ActivityType::Trade);
         assert_eq!(response[0].side, Some(Side::Buy));
         assert_eq!(response[1].activity_type, ActivityType::Redeem);
@@ -275,7 +267,7 @@ mod holders {
     use rust_decimal_macros::dec;
     use serde_json::json;
 
-    use super::{address, test_asset, test_condition_id, test_user};
+    use super::{address, test_condition_id, test_user};
 
     #[tokio::test]
     async fn holders_should_succeed() -> anyhow::Result<()> {
@@ -324,7 +316,10 @@ mod holders {
         let response = client.holders(&request).await?;
 
         assert_eq!(response.len(), 1);
-        assert_eq!(response[0].token, test_asset().as_str());
+        assert_eq!(
+            response[0].token,
+            "0x1111111111111111111111111111111111111111111111111111111111111111"
+        );
         let holders = &response[0].holders;
         assert_eq!(holders.len(), 2);
         assert_eq!(holders[0].proxy_wallet, test_user());
@@ -423,10 +418,7 @@ mod closed_positions {
 
         assert_eq!(response.len(), 1);
         assert_eq!(response[0].proxy_wallet, test_user());
-        assert_eq!(
-            response[0].condition_id.as_str(),
-            test_condition_id().as_str()
-        );
+        assert_eq!(response[0].condition_id, test_condition_id());
         assert_eq!(response[0].realized_pnl, dec!(55.0));
         assert_eq!(response[0].cur_price, dec!(1.0));
         assert_eq!(response[0].timestamp, 1_703_980_800);
@@ -576,9 +568,6 @@ mod open_interest {
         let server = MockServer::start();
         let client = Client::new(&server.base_url())?;
 
-        let market2 =
-            "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc".to_owned();
-
         let mock = server.mock(|when, then| {
             when.method(GET).path("/oi");
             then.status(StatusCode::OK).json_body(json!([
@@ -598,9 +587,15 @@ mod open_interest {
             .await?;
 
         assert_eq!(response.len(), 2);
-        assert_eq!(response[0].market.as_str(), test_condition_id().as_str());
+        assert_eq!(
+            response[0].market,
+            "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+        );
         assert_eq!(response[0].value, dec!(1_500_000.0));
-        assert_eq!(response[1].market.as_str(), market2.as_str());
+        assert_eq!(
+            response[1].market,
+            "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        );
         mock.assert();
 
         Ok(())
@@ -631,7 +626,10 @@ mod open_interest {
         let response = client.open_interest(&request).await?;
 
         assert_eq!(response.len(), 1);
-        assert_eq!(response[0].market.as_str(), test_condition_id().as_str());
+        assert_eq!(
+            response[0].market,
+            "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+        );
         mock.assert();
 
         Ok(())
@@ -645,15 +643,10 @@ mod live_volume {
     use rust_decimal_macros::dec;
     use serde_json::json;
 
-    use super::test_condition_id;
-
     #[tokio::test]
     async fn live_volume_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url())?;
-
-        let market2 =
-            "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd".to_owned();
 
         let mock = server.mock(|when, then| {
             when.method(GET)
@@ -684,9 +677,15 @@ mod live_volume {
         assert_eq!(response[0].total, dec!(250_000.0));
         let markets = &response[0].markets;
         assert_eq!(markets.len(), 2);
-        assert_eq!(markets[0].market.as_str(), test_condition_id().as_str());
+        assert_eq!(
+            markets[0].market,
+            "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+        );
         assert_eq!(markets[0].value, dec!(150_000.0));
-        assert_eq!(markets[1].market.as_str(), market2.as_str());
+        assert_eq!(
+            markets[1].market,
+            "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        );
         mock.assert();
 
         Ok(())
@@ -964,7 +963,7 @@ mod types {
     };
     use rust_decimal_macros::dec;
 
-    use super::address;
+    use super::{address, b256};
 
     #[test]
     fn bounded_limits() {
@@ -1061,8 +1060,8 @@ mod types {
 
     #[test]
     fn market_filter_query_string() {
-        let hash1 = "0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917".to_owned();
-        let hash2 = "0xaa22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917".to_owned();
+        let hash1 = b256!("dd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917");
+        let hash2 = b256!("aa22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917");
 
         let req = PositionsRequest::builder()
             .user(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
@@ -1252,14 +1251,14 @@ mod request_query_string_extended {
     };
     use rust_decimal_macros::dec;
 
-    use super::{Address, address};
+    use super::{Address, B256, address, b256};
 
     fn test_addr() -> Address {
         address!("56687bf447db6ffa42ffe2204a05edaa20f55839")
     }
 
-    fn test_hash() -> String {
-        "0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917".to_owned()
+    fn test_hash() -> B256 {
+        b256!("dd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917")
     }
 
     #[test]
@@ -1400,7 +1399,7 @@ mod request_query_string_extended {
     fn empty_market_filter_not_added() {
         let req = PositionsRequest::builder()
             .user(test_addr())
-            .filter(MarketFilter::markets([]))
+            .filter(MarketFilter::markets([] as [B256; 0]))
             .build();
 
         let qs = req.query_params(None);
@@ -1431,7 +1430,9 @@ mod request_query_string_extended {
 
     #[test]
     fn empty_holders_markets_not_added() {
-        let req = HoldersRequest::builder().markets(vec![]).build();
+        let req = HoldersRequest::builder()
+            .markets(Vec::<B256>::new())
+            .build();
 
         let qs = req.query_params(None);
         assert!(!qs.contains("market="));
@@ -1441,7 +1442,7 @@ mod request_query_string_extended {
     fn empty_value_markets_not_added() {
         let req = ValueRequest::builder()
             .user(test_addr())
-            .markets(vec![])
+            .markets(Vec::<B256>::new())
             .build();
 
         let qs = req.query_params(None);
@@ -1497,7 +1498,9 @@ mod request_query_string_extended {
 
     #[test]
     fn open_interest_request_empty_markets() {
-        let req = OpenInterestRequest::builder().markets(vec![]).build();
+        let req = OpenInterestRequest::builder()
+            .markets(Vec::<B256>::new())
+            .build();
 
         let qs = req.query_params(None);
         assert!(!qs.contains("market="));

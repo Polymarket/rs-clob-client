@@ -6,7 +6,8 @@
 /// Ethereum address type and the [`address!`] macro for compile-time address literals.
 /// [`ChainId`] is a type alias for `u64` representing EVM chain IDs.
 /// [`Signature`] represents cryptographic signatures for signed orders.
-pub use alloy::primitives::{Address, ChainId, Signature, address};
+/// [`B256`] is a 256-bit fixed-size byte array type used for condition IDs and hashes.
+pub use alloy::primitives::{Address, B256, ChainId, Signature, address, b256};
 /// Date and time types for timestamps in API responses and order expiration.
 pub use chrono::{DateTime, NaiveDate, Utc};
 /// Arbitrary precision decimal type for prices, sizes, and amounts.

@@ -4,14 +4,12 @@
 )]
 
 pub mod client;
-pub mod error;
 pub mod interest;
 pub mod subscription;
 pub mod types;
 
 // Re-export commonly used types
 pub use client::Client;
-pub use error::WsError;
 pub use subscription::{ChannelType, SubscriptionInfo, SubscriptionTarget};
 pub use types::request::SubscriptionRequest;
 pub use types::response::{
@@ -19,3 +17,5 @@ pub use types::response::{
     MidpointUpdate, NewMarket, OrderMessage, OrderStatus, PriceChange, PriceChangeBatchEntry,
     TickSizeChange, TradeMessage, WsMessage,
 };
+
+pub use crate::ws::WsError;

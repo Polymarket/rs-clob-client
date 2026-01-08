@@ -17,9 +17,9 @@ use tokio::time::{interval, sleep, timeout};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message};
 
 use super::config::Config;
+use super::error::WsError;
 use super::traits::MessageParser;
 use crate::auth::Credentials;
-use crate::clob::ws::WsError;
 use crate::error::Kind;
 use crate::ws::WithCredentials;
 use crate::{Result, error::Error};
