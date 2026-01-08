@@ -5,8 +5,8 @@
 use serde::{Deserialize, Deserializer};
 use serde_with::{DefaultOnNull, serde_as};
 
-use super::{ActivityType, Hash64, Side};
-use crate::types::{Address, Decimal};
+use super::{ActivityType, Side};
+use crate::types::{Address, B256, Decimal};
 
 /// Deserializes an optional Side, treating empty strings as None.
 fn deserialize_optional_side<'de, D>(deserializer: D) -> Result<Option<Side>, D::Error>
@@ -56,9 +56,9 @@ pub struct Position {
     /// The user's proxy wallet address.
     pub proxy_wallet: Address,
     /// The outcome token asset identifier.
-    pub asset: String,
+    pub asset: B256,
     /// The market condition ID (unique market identifier).
-    pub condition_id: Hash64,
+    pub condition_id: B256,
     /// Number of outcome tokens held.
     pub size: Decimal,
     /// Average entry price for the position.
@@ -100,7 +100,7 @@ pub struct Position {
     /// Name of the opposite outcome.
     pub opposite_outcome: String,
     /// Asset identifier of the opposite outcome.
-    pub opposite_asset: String,
+    pub opposite_asset: B256,
     /// Market end/resolution date.
     pub end_date: String,
     /// Whether this is a negative risk market.
@@ -118,9 +118,9 @@ pub struct ClosedPosition {
     /// The user's proxy wallet address.
     pub proxy_wallet: Address,
     /// The outcome token asset identifier.
-    pub asset: String,
+    pub asset: B256,
     /// The market condition ID (unique market identifier).
-    pub condition_id: Hash64,
+    pub condition_id: B256,
     /// Average entry price for the position.
     pub avg_price: Decimal,
     /// Total amount bought (cumulative).
@@ -146,7 +146,7 @@ pub struct ClosedPosition {
     /// Name of the opposite outcome.
     pub opposite_outcome: String,
     /// Asset identifier of the opposite outcome.
-    pub opposite_asset: String,
+    pub opposite_asset: B256,
     /// Market end/resolution date.
     pub end_date: String,
 }
@@ -164,9 +164,9 @@ pub struct Trade {
     /// Trade side (BUY or SELL).
     pub side: Side,
     /// The outcome token asset identifier.
-    pub asset: String,
+    pub asset: B256,
     /// The market condition ID (unique market identifier).
-    pub condition_id: Hash64,
+    pub condition_id: B256,
     /// Number of tokens traded.
     pub size: Decimal,
     /// Execution price per token.
@@ -196,7 +196,7 @@ pub struct Trade {
     /// Trader's optimized profile image URL.
     pub profile_image_optimized: Option<String>,
     /// On-chain transaction hash.
-    pub transaction_hash: String,
+    pub transaction_hash: B256,
 }
 
 /// An on-chain activity record for a user.
@@ -212,7 +212,7 @@ pub struct Activity {
     /// Unix timestamp when the activity occurred.
     pub timestamp: i64,
     /// The market condition ID (unique market identifier).
-    pub condition_id: Hash64,
+    pub condition_id: B256,
     /// Type of activity (TRADE, SPLIT, MERGE, REDEEM, REWARD, CONVERSION).
     #[serde(rename = "type")]
     pub activity_type: ActivityType,
@@ -221,11 +221,11 @@ pub struct Activity {
     /// USDC value of the activity.
     pub usdc_size: Decimal,
     /// On-chain transaction hash.
-    pub transaction_hash: String,
+    pub transaction_hash: B256,
     /// Price per token (for trades).
     pub price: Option<Decimal>,
     /// Outcome token asset identifier (for trades).
-    pub asset: Option<String>,
+    pub asset: Option<B256>,
     /// Trade side (for trades only).
     #[serde(default, deserialize_with = "deserialize_optional_side")]
     pub side: Option<Side>,
@@ -265,7 +265,7 @@ pub struct Holder {
     /// Holder's bio (if public).
     pub bio: Option<String>,
     /// The outcome token asset identifier.
-    pub asset: String,
+    pub asset: B256,
     /// Holder's pseudonym (if set).
     pub pseudonym: Option<String>,
     /// Amount of tokens held.
@@ -291,7 +291,7 @@ pub struct Holder {
 #[non_exhaustive]
 pub struct MetaHolder {
     /// The outcome token identifier.
-    pub token: String,
+    pub token: B256,
     /// List of holders for this token.
     pub holders: Vec<Holder>,
 }
@@ -328,7 +328,7 @@ pub struct Value {
 #[non_exhaustive]
 pub struct OpenInterest {
     /// The market condition ID.
-    pub market: Hash64,
+    pub market: B256,
     /// Open interest value in USDC.
     pub value: Decimal,
 }
@@ -340,7 +340,7 @@ pub struct OpenInterest {
 #[non_exhaustive]
 pub struct MarketVolume {
     /// The market condition ID.
-    pub market: Hash64,
+    pub market: B256,
     /// Trading volume in USDC.
     pub value: Decimal,
 }

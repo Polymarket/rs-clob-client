@@ -7,9 +7,7 @@ use polymarket_client_sdk::data::types::request::{
     TraderLeaderboardRequest, TradesRequest, ValueRequest,
 };
 use polymarket_client_sdk::data::types::{LeaderboardCategory, TimePeriod};
-use polymarket_client_sdk::types::address;
-
-const EXAMPLE_MARKET: &str = "0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917";
+use polymarket_client_sdk::types::{address, b256};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -18,7 +16,7 @@ async fn main() -> anyhow::Result<()> {
     let client = Client::default();
 
     let user = address!("56687bf447db6ffa42ffe2204a05edaa20f55839");
-    let market = EXAMPLE_MARKET.to_owned();
+    let market = b256!("dd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917");
 
     println!("health -- {:?}", client.health().await);
 
@@ -34,7 +32,7 @@ async fn main() -> anyhow::Result<()> {
     println!("activity -- {:?}", client.activity(&request).await);
 
     let request = HoldersRequest::builder()
-        .markets(vec![market.clone()])
+        .markets(vec![market])
         .limit(5)?
         .build();
     println!("holders -- {:?}", client.holders(&request).await);
