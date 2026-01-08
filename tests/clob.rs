@@ -1,3 +1,4 @@
+#![cfg(feature = "clob")]
 #![allow(
     clippy::unwrap_used,
     reason = "Do not need additional syntax for setting up tests, and https://github.com/rust-lang/rust-clippy/issues/13981"
@@ -1266,6 +1267,7 @@ mod unauthenticated {
 }
 
 mod authenticated {
+    #[cfg(feature = "heartbeats")]
     use std::time::Duration;
 
     use alloy::primitives::Signature;
@@ -1288,6 +1290,7 @@ mod authenticated {
         AssetType, OrderStatusType, OrderType, Side, SignableOrder, SignedOrder, TickSize,
         TraderSide,
     };
+    #[cfg(feature = "heartbeats")]
     use polymarket_client_sdk::error::Synchronization;
     use polymarket_client_sdk::types::{Address, address};
 

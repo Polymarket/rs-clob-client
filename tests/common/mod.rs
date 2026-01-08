@@ -1,3 +1,4 @@
+#![cfg(feature = "clob")]
 #![allow(
     clippy::unwrap_used,
     reason = "Do not need additional syntax for setting up tests, and https://github.com/rust-lang/rust-clippy/issues/13981"

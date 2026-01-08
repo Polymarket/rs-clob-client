@@ -68,7 +68,7 @@ The crate is modular with optional features for different Polymarket APIs:
 
 | Feature      | Description                                                                                                                                    |
 |--------------|------------------------------------------------------------------------------------------------------------------------------------------------|
-| *(default)*  | Core CLOB client for order placement, market data, and authentication                                                                          |
+| `clob`       | Core CLOB client for order placement, market data, and authentication                                                                          |
 | `tracing`    | Structured logging via [`tracing`](https://docs.rs/tracing) for HTTP requests, auth flows, and caching                                         |
 | `ws`         | WebSocket client for real-time orderbook, price, and user event streaming                                                                      |
 | `rtds`       | Real-time data streams for crypto prices (Binance, Chainlink) and comments                                                                     |
@@ -128,7 +128,7 @@ See `examples/` for the complete set. Below are hand-picked examples for common 
 ### CLOB Client
 
 #### Unauthenticated client (read-only)
-```rust,no_run
+```rust,ignore
 use polymarket_client_sdk::clob::Client;
 
 #[tokio::main]
@@ -149,7 +149,7 @@ Set `POLYMARKET_PRIVATE_KEY` as an environment variable with your private key.
 ##### [EOA](https://www.binance.com/en/academy/glossary/externally-owned-account-eoa) wallets
 If using MetaMask or hardware wallet, you must first set token allowances. See [Token Allowances](#token-allowances) section below.
 
-```rust,no_run
+```rust,ignore
 use std::str::FromStr as _;
 
 use alloy::signers::Signer as _;
@@ -230,7 +230,7 @@ See [SignatureType](src/clob/types/mod.rs#L182) for more information.
 
 ##### Place a market order
 
-```rust,no_run
+```rust,ignore
 use std::str::FromStr as _;
 
 use alloy::signers::Signer as _;
@@ -267,7 +267,7 @@ async fn main() -> anyhow::Result<()> {
 
 ##### Place a limit order
 
-```rust,no_run
+```rust,ignore
 use std::str::FromStr as _;
 
 use alloy::signers::Signer as _;
@@ -306,7 +306,7 @@ async fn main() -> anyhow::Result<()> {
 #### Builder-authenticated client
 
 For institutional/third-party app integrations with remote signing:
-```rust,no_run
+```rust,ignore
 use std::str::FromStr as _;
 
 use alloy::signers::Signer as _;
