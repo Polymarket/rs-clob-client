@@ -741,6 +741,7 @@ mod comments {
         Client,
         types::request::{CommentsByIdRequest, CommentsByUserAddressRequest, CommentsRequest},
     };
+    use polymarket_client_sdk::types::address;
     use reqwest::StatusCode;
     use serde_json::json;
 
@@ -838,24 +839,25 @@ mod comments {
         let client = Client::new(&server.base_url())?;
 
         let mock = server.mock(|when, then| {
+            // Address is serialized with EIP-55 checksum format
             when.method(GET)
-                .path("/comments/user_address/0x56687bf447db6ffa42ffe2204a05edaa20f55839");
+                .path("/comments/user_address/0x56687BF447DB6fFA42FFE2204a05EDAA20f55839");
             then.status(StatusCode::OK).json_body(json!([
                 {
                     "id": "1",
                     "body": "User comment",
-                    "userAddress": "0x56687bf447db6ffa42ffe2204a05edaa20f55839"
+                    "userAddress": "0x56687BF447DB6fFA42FFE2204a05EDAA20f55839"
                 },
                 {
                     "id": "2",
                     "body": "Another comment",
-                    "userAddress": "0x56687bf447db6ffa42ffe2204a05edaa20f55839"
+                    "userAddress": "0x56687BF447DB6fFA42FFE2204a05EDAA20f55839"
                 }
             ]));
         });
 
         let request = CommentsByUserAddressRequest::builder()
-            .user_address("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
+            .user_address(address!("0x56687bf447db6ffa42ffe2204a05edaa20f55839"))
             .build();
         let response = client.comments_by_user_address(&request).await?;
 
@@ -871,6 +873,7 @@ mod comments {
 mod profiles {
     use httpmock::{Method::GET, MockServer};
     use polymarket_client_sdk::gamma::{Client, types::request::PublicProfileRequest};
+    use polymarket_client_sdk::types::address;
     use reqwest::StatusCode;
     use serde_json::json;
 
@@ -880,6 +883,7 @@ mod profiles {
         let client = Client::new(&server.base_url())?;
 
         let mock = server.mock(|when, then| {
+            // Address serializes to lowercase hex via serde
             when.method(GET)
                 .path("/public-profile")
                 .query_param("address", "0x56687bf447db6ffa42ffe2204a05edaa20f55839");
@@ -894,7 +898,7 @@ mod profiles {
         });
 
         let request = PublicProfileRequest::builder()
-            .address("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
+            .address(address!("0x56687bf447db6ffa42ffe2204a05edaa20f55839"))
             .build();
         let response = client.public_profile(&request).await?;
 
@@ -996,6 +1000,7 @@ mod query_string {
         SeriesListRequest, TagByIdRequest, TagBySlugRequest, TagsRequest, TeamsRequest,
     };
     use polymarket_client_sdk::gamma::types::{ParentEntityType, RelatedTagsStatus};
+    use polymarket_client_sdk::types::{address, b256};
     use rust_decimal_macros::dec;
     use serde::Serialize;
 
@@ -1246,8 +1251,10 @@ mod query_string {
             .id(vec!["1".to_owned(), "2".to_owned()])
             .slug(vec!["market-1".to_owned()])
             .clob_token_ids(vec!["token1".to_owned(), "token2".to_owned()])
-            .condition_ids(vec!["cond1".to_owned()])
-            .market_maker_address(vec!["0x123".to_owned()])
+            .condition_ids(vec![b256!(
+                "0x0000000000000000000000000000000000000000000000000000000000000001"
+            )])
+            .market_maker_address(vec![address!("0x0000000000000000000000000000000000000123")])
             .liquidity_num_min(dec!(1000))
             .liquidity_num_max(dec!(100_000))
             .volume_num_min(dec!(500))
@@ -1281,8 +1288,11 @@ mod query_string {
         assert!(clob_qs.contains("clob_token_ids=token1"));
         assert!(clob_qs.contains("clob_token_ids=token2"));
         assert!(clob_qs.contains('&')); // Repeated params format
-        assert!(qs.contains("condition_ids=cond1"));
-        assert!(qs.contains("market_maker_address=0x123"));
+        // B256 and Address serialize to lowercase hex via serde
+        assert!(qs.contains(
+            "condition_ids=0x0000000000000000000000000000000000000000000000000000000000000001"
+        ));
+        assert!(qs.contains("market_maker_address=0x0000000000000000000000000000000000000123"));
         assert!(qs.contains("liquidity_num_min=1000"));
         assert!(qs.contains("liquidity_num_max=100000"));
         assert!(qs.contains("volume_num_min=500"));
@@ -1469,7 +1479,7 @@ mod query_string {
     #[test]
     fn comments_by_user_address_request_all_params() {
         let request = CommentsByUserAddressRequest::builder()
-            .user_address("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
+            .user_address(address!("0x56687bf447db6ffa42ffe2204a05edaa20f55839"))
             .limit(20)
             .offset(5)
             .order("createdAt".to_owned())
@@ -1486,10 +1496,11 @@ mod query_string {
     #[test]
     fn public_profile_request_params() {
         let request = PublicProfileRequest::builder()
-            .address("0x56687bf447db6ffa42ffe2204a05edaa20f55839")
+            .address(address!("0x56687bf447db6ffa42ffe2204a05edaa20f55839"))
             .build();
 
         let qs = query_string(&request);
+        // Address serializes to lowercase hex via serde
         assert!(qs.contains("address=0x56687bf447db6ffa42ffe2204a05edaa20f55839"));
     }
 

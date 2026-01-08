@@ -9,7 +9,7 @@ use serde::Serialize;
 use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as, skip_serializing_none};
 
 use crate::gamma::types::{ParentEntityType, RelatedTagsStatus};
-use crate::types::Decimal;
+use crate::types::{Address, B256, Decimal};
 
 #[serde_as]
 #[skip_serializing_none]
@@ -184,14 +184,14 @@ pub struct MarketsRequest {
     #[serde(skip_serializing)]
     #[builder(default)]
     pub clob_token_ids: Vec<String>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, B256>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
-    pub condition_ids: Vec<String>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    pub condition_ids: Vec<B256>,
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, Address>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
-    pub market_maker_address: Vec<String>,
+    pub market_maker_address: Vec<Address>,
     pub liquidity_num_min: Option<Decimal>,
     pub liquidity_num_max: Option<Decimal>,
     pub volume_num_min: Option<Decimal>,
@@ -329,8 +329,7 @@ pub struct CommentsByIdRequest {
 #[non_exhaustive]
 pub struct CommentsByUserAddressRequest {
     #[serde(skip_serializing)]
-    #[builder(into)]
-    pub user_address: String,
+    pub user_address: Address,
     pub limit: Option<i32>,
     pub offset: Option<i32>,
     pub order: Option<String>,
@@ -340,8 +339,7 @@ pub struct CommentsByUserAddressRequest {
 #[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
 pub struct PublicProfileRequest {
-    #[builder(into)]
-    pub address: String,
+    pub address: Address,
 }
 
 #[serde_as]

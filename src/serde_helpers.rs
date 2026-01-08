@@ -3,6 +3,10 @@
 //! When the `tracing` feature is enabled, this module also logs warnings for any
 //! unknown fields encountered during deserialization, helping detect API changes.
 
+use std::str::FromStr as _;
+
+use alloy::primitives::{Address, B256};
+use serde::Deserialize as _;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
@@ -69,6 +73,79 @@ impl serde_with::SerializeAs<String> for StringFromAny {
         S: serde::Serializer,
     {
         serializer.serialize_str(source)
+    }
+}
+
+/// A `serde_as` type for `Option<Address>` that treats empty strings as `None`.
+///
+/// Use with `#[serde_as(as = "OptionAddressFromHex")]` for `Option<Address>` fields.
+/// Handles null, missing fields, and empty strings as `None`.
+pub struct OptionAddressFromHex;
+
+impl<'de> serde_with::DeserializeAs<'de, Option<Address>> for OptionAddressFromHex {
+    fn deserialize_as<D>(deserializer: D) -> std::result::Result<Option<Address>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        // Deserialize as Option<String> first, then parse
+        let opt: Option<String> = Option::deserialize(deserializer)?;
+        match opt {
+            None => Ok(None),
+            Some(s) if s.is_empty() => Ok(None),
+            Some(s) => Address::from_str(&s)
+                .map(Some)
+                .map_err(serde::de::Error::custom),
+        }
+    }
+}
+
+impl serde_with::SerializeAs<Option<Address>> for OptionAddressFromHex {
+    fn serialize_as<S>(
+        source: &Option<Address>,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match source {
+            Some(addr) => serializer.serialize_str(&addr.to_string()),
+            None => serializer.serialize_none(),
+        }
+    }
+}
+
+/// A `serde_as` type for `Option<B256>` that treats empty strings as `None`.
+///
+/// Use with `#[serde_as(as = "OptionB256FromHex")]` for `Option<B256>` fields.
+/// Handles null, missing fields, and empty strings as `None`.
+pub struct OptionB256FromHex;
+
+impl<'de> serde_with::DeserializeAs<'de, Option<B256>> for OptionB256FromHex {
+    fn deserialize_as<D>(deserializer: D) -> std::result::Result<Option<B256>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        // Deserialize as Option<String> first, then parse
+        let opt: Option<String> = Option::deserialize(deserializer)?;
+        match opt {
+            None => Ok(None),
+            Some(s) if s.is_empty() => Ok(None),
+            Some(s) => B256::from_str(&s)
+                .map(Some)
+                .map_err(serde::de::Error::custom),
+        }
+    }
+}
+
+impl serde_with::SerializeAs<Option<B256>> for OptionB256FromHex {
+    fn serialize_as<S>(source: &Option<B256>, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match source {
+            Some(b) => serializer.serialize_str(&b.to_string()),
+            None => serializer.serialize_none(),
+        }
     }
 }
 
