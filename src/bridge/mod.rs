@@ -1,5 +1,7 @@
 //! Polymarket Bridge API client and types.
 //!
+//! **Feature flag:** `bridge` (required to use this module)
+//!
 //! This module provides a client for interacting with the Polymarket Bridge API,
 //! which enables bridging assets from various chains (EVM, Solana, Bitcoin) to
 //! USDC.e on Polygon for trading on Polymarket.

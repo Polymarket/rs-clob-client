@@ -115,12 +115,25 @@ pub fn deserialize_with_warnings<T: DeserializeOwned>(value: Value) -> crate::Re
     let result: T = serde_ignored::deserialize(value, |path| {
         unknown_paths.push(path.to_string());
     })
-    .inspect_err(|e| {
-        tracing::error!(
-            type_name = %type_name::<T>(),
-            error = %e,
-            "deserialization failed"
-        );
+    .inspect_err(|_| {
+        // Re-deserialize with serde_path_to_error to get the error path
+        let json_str = original.to_string();
+        let jd = &mut serde_json::Deserializer::from_str(&json_str);
+        let path_result: Result<T, _> = serde_path_to_error::deserialize(jd);
+        if let Err(path_err) = path_result {
+            let path = path_err.path().to_string();
+            let inner_error = path_err.inner();
+            let value_at_path = lookup_value(&original, &path);
+            let value_display = format_value(value_at_path);
+
+            tracing::error!(
+                type_name = %type_name::<T>(),
+                path = %path,
+                value = %value_display,
+                error = %inner_error,
+                "deserialization failed"
+            );
+        }
     })?;
 
     // Log warnings for unknown fields with their values
@@ -148,12 +161,12 @@ pub fn deserialize_with_warnings<T: DeserializeOwned>(value: Value) -> crate::Re
     Ok(serde_json::from_value(value)?)
 }
 
-/// Look up a value in a JSON structure by dot-separated path.
+/// Look up a value in a JSON structure by path.
 ///
-/// Handles paths from `serde_ignored` which use:
+/// Handles paths from both `serde_ignored` and `serde_path_to_error`:
 /// - `?` for Option wrappers (skipped, as JSON has no Option representation)
-/// - Numeric indices for arrays (e.g., `0`, `1`)
-/// - Field names for objects
+/// - Numeric indices for arrays: `items.0` or `items[0]`
+/// - Field names for objects: `foo.bar` or `foo.bar[0].baz`
 ///
 /// Returns `None` if the path doesn't exist or traverses a non-container value.
 #[cfg(feature = "tracing")]
@@ -164,12 +177,18 @@ fn lookup_value<'value>(value: &'value Value, path: &str) -> Option<&'value Valu
 
     let mut current = value;
 
-    // Filter empty segments and skip `?` (Option marker from serde_ignored)
-    for segment in path.split('.').filter(|s| !s.is_empty() && *s != "?") {
+    // Parse path segments, handling both dot notation and bracket notation
+    // e.g., "data[15].condition_id" -> ["data", "15", "condition_id"]
+    let segments = parse_path_segments(path);
+
+    for segment in segments {
+        if segment.is_empty() || segment == "?" {
+            continue;
+        }
+
         match current {
             Value::Object(map) => {
-                // Try as object key first, then as array index if current is actually an array
-                current = map.get(segment)?;
+                current = map.get(&segment)?;
             }
             Value::Array(arr) => {
                 let index: usize = segment.parse().ok()?;
@@ -180,6 +199,56 @@ fn lookup_value<'value>(value: &'value Value, path: &str) -> Option<&'value Valu
     }
 
     Some(current)
+}
+
+/// Parse a path string into segments, handling both dot and bracket notation.
+///
+/// Examples:
+/// - `"foo.bar"` -> `["foo", "bar"]`
+/// - `"data[15].condition_id"` -> `["data", "15", "condition_id"]`
+/// - `"items[0][1].value"` -> `["items", "0", "1", "value"]`
+#[cfg(feature = "tracing")]
+fn parse_path_segments(path: &str) -> Vec<String> {
+    let mut segments = Vec::new();
+    let mut current = String::new();
+
+    let mut chars = path.chars().peekable();
+    while let Some(ch) = chars.next() {
+        match ch {
+            '.' => {
+                if !current.is_empty() {
+                    segments.push(std::mem::take(&mut current));
+                }
+            }
+            '[' => {
+                if !current.is_empty() {
+                    segments.push(std::mem::take(&mut current));
+                }
+                // Collect until closing bracket
+                for inner in chars.by_ref() {
+                    if inner == ']' {
+                        break;
+                    }
+                    current.push(inner);
+                }
+                if !current.is_empty() {
+                    segments.push(std::mem::take(&mut current));
+                }
+            }
+            ']' => {
+                // Shouldn't happen if well-formed, but handle gracefully
+            }
+            _ => {
+                current.push(ch);
+            }
+        }
+    }
+
+    if !current.is_empty() {
+        segments.push(current);
+    }
+
+    segments
 }
 
 /// Format a JSON value for logging.

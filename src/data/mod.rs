@@ -1,5 +1,7 @@
 //! Polymarket Data API client and types.
 //!
+//! **Feature flag:** `data` (required to use this module)
+//!
 //! This module provides a client for interacting with the Polymarket Data API,
 //! which offers HTTP endpoints for querying user positions, trades, activity,
 //! market holders, open interest, volume data, and leaderboards.

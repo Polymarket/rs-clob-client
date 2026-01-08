@@ -137,7 +137,43 @@ impl Client<Unauthenticated> {
 
 // Methods available in any state
 impl<S: State> Client<S> {
-    /// Subscribe to Binance cryptocurrency price updates.
+    /// Subscribes to real-time cryptocurrency price updates from Binance.
+    ///
+    /// Returns a stream of cryptocurrency prices for the specified trading pairs.
+    /// If no symbols are provided, subscribes to all available cryptocurrency pairs.
+    /// Prices are sourced from Binance and updated in real-time.
+    ///
+    /// # Arguments
+    ///
+    /// * `symbols` - Optional list of trading pair symbols (e.g., `["BTCUSDT", "ETHUSDT"]`).
+    ///   If `None`, subscribes to all available pairs.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the subscription cannot be created or the WebSocket
+    /// connection fails.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use polymarket_client_sdk::rtds::Client;
+    /// use polymarket_client_sdk::ws::config::Config;
+    /// use futures::StreamExt;
+    /// use tokio::pin;
+    ///
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let client = Client::new("wss://rtds.polymarket.com", Config::default())?;
+    /// let stream = client.subscribe_crypto_prices(Some(vec!["BTCUSDT".to_string()]))?;
+    ///
+    /// pin!(stream);
+    ///
+    /// while let Some(price_result) = stream.next().await {
+    ///     let price = price_result?;
+    ///     println!("BTC Price: ${}", price.value);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn subscribe_crypto_prices(
         &self,
         symbols: Option<Vec<String>>,
