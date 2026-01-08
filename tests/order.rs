@@ -1358,7 +1358,7 @@ mod market {
                 .path("/book")
                 .query_param("token_id", token_id);
             then.status(StatusCode::OK).json_body(json!({
-                "market": "market",
+                "market": "0xbd31dc8a20211944f6b70f31557f1001557b59905b7738480ca09bd4532f84af",
                 "asset_id": token_id,
                 "timestamp": "1000",
                 "bids": bids,

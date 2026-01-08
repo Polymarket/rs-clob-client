@@ -8,7 +8,10 @@ use std::collections::HashMap;
 use bon::Builder;
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_with::{DefaultOnNull, TimestampMilliSeconds, TimestampSeconds, TryFromInto, serde_as};
+use serde_with::{
+    DefaultOnNull, NoneAsEmptyString, TimestampMilliSeconds, TimestampSeconds, TryFromInto,
+    serde_as,
+};
 use sha2::{Digest as _, Sha256};
 use uuid::Uuid;
 
@@ -16,7 +19,7 @@ use crate::Result;
 use crate::auth::ApiKey;
 use crate::clob::types::{OrderStatusType, OrderType, Side, TickSize, TraderSide};
 use crate::serde_helpers::StringFromAny;
-use crate::types::{Address, Decimal};
+use crate::types::{Address, B256, Decimal};
 
 #[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
@@ -110,7 +113,8 @@ pub struct GeoblockResponse {
 #[derive(Clone, Debug, Serialize, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct OrderBookSummaryResponse {
-    pub market: String,
+    /// The market condition ID.
+    pub market: B256,
     pub asset_id: String,
     #[serde_as(as = "TimestampMilliSeconds<String>")]
     pub timestamp: DateTime<Utc>,
@@ -182,21 +186,30 @@ pub struct MarketResponse {
     pub accepting_order_timestamp: Option<DateTime<Utc>>,
     pub minimum_order_size: Decimal,
     pub minimum_tick_size: Decimal,
-    pub condition_id: String,
-    pub question_id: String,
+    /// The market condition ID (unique market identifier).
+    pub condition_id: B256,
+    /// The CTF question ID.
+    pub question_id: B256,
     pub question: String,
     pub description: String,
     pub market_slug: String,
     pub end_date_iso: Option<DateTime<Utc>>,
     pub game_start_time: Option<DateTime<Utc>>,
     pub seconds_delay: u64,
-    pub fpmm: String,
+    /// The FPMM (Fixed Product Market Maker) contract address.
+    pub fpmm: Address,
     pub maker_base_fee: Decimal,
     pub taker_base_fee: Decimal,
     pub notifications_enabled: bool,
     pub neg_risk: bool,
-    pub neg_risk_market_id: String,
-    pub neg_risk_request_id: String,
+    /// The negative risk market ID (empty string if not a neg risk market).
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default)]
+    pub neg_risk_market_id: Option<B256>,
+    /// The negative risk request ID (empty string if not a neg risk market).
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default)]
+    pub neg_risk_request_id: Option<B256>,
     pub icon: String,
     pub image: String,
     pub rewards: Rewards,
@@ -229,7 +242,10 @@ pub struct Token {
 #[derive(Debug, Default, Deserialize, Clone, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct SimplifiedMarketResponse {
-    pub condition_id: String,
+    /// The market condition ID (unique market identifier).
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default)]
+    pub condition_id: Option<B256>,
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
     pub tokens: Vec<Token>,
@@ -268,11 +284,12 @@ pub struct PostOrderResponse {
     pub order_id: String,
     pub status: OrderStatusType,
     pub success: bool,
+    /// On-chain transaction hashes for the order execution.
     #[builder(default)]
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
     #[serde(alias = "transactionsHashes")]
-    pub transaction_hashes: Vec<String>,
+    pub transaction_hashes: Vec<B256>,
     #[builder(default)]
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
@@ -301,7 +318,8 @@ pub struct OpenOrderResponse {
     pub status: OrderStatusType,
     pub owner: ApiKey,
     pub maker_address: Address,
-    pub market: String,
+    /// The market condition ID.
+    pub market: B256,
     pub asset_id: String,
     pub side: Side,
     pub original_size: Decimal,
@@ -341,7 +359,8 @@ pub struct CancelOrdersResponse {
 pub struct TradeResponse {
     pub id: String,
     pub taker_order_id: String,
-    pub market: String,
+    /// The market condition ID.
+    pub market: B256,
     pub asset_id: String,
     pub side: Side,
     pub size: Decimal,
@@ -359,7 +378,8 @@ pub struct TradeResponse {
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
     pub maker_orders: Vec<MakerOrder>,
-    pub transaction_hash: String,
+    /// On-chain transaction hash.
+    pub transaction_hash: B256,
     pub trader_side: TraderSide,
     #[serde(default)]
     pub error_msg: Option<String>,
@@ -378,12 +398,14 @@ pub struct NotificationResponse {
 #[builder(on(String, into))]
 pub struct NotificationPayload {
     pub asset_id: String,
-    pub condition_id: String,
+    /// The market condition ID (unique market identifier).
+    pub condition_id: B256,
     #[serde(rename = "eventSlug")]
     pub event_slug: String,
     pub icon: String,
     pub image: String,
-    pub market: String,
+    /// The market condition ID (same as `condition_id`).
+    pub market: B256,
     pub market_slug: String,
     pub matched_size: Decimal,
     pub order_id: String,
@@ -398,7 +420,8 @@ pub struct NotificationPayload {
     pub series_slug: String,
     pub side: Side,
     pub trade_id: String,
-    pub transaction_hash: String,
+    /// On-chain transaction hash.
+    pub transaction_hash: B256,
     #[serde(alias = "type")]
     pub order_type: OrderType,
 }
@@ -458,7 +481,8 @@ pub struct Rewards {
 #[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct MarketInfo {
-    pub condition_id: String,
+    /// The market condition ID (unique market identifier).
+    pub condition_id: B256,
     pub asset_id: String,
     pub question: String,
     pub icon: String,
@@ -496,7 +520,8 @@ pub struct MakerOrder {
 #[builder(on(String, into))]
 pub struct UserEarningResponse {
     pub date: NaiveDate,
-    pub condition_id: String,
+    /// The market condition ID (unique market identifier).
+    pub condition_id: B256,
     pub asset_address: Address,
     pub maker_address: Address,
     pub earnings: Decimal,
@@ -519,7 +544,8 @@ pub struct TotalUserEarningResponse {
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct UserRewardsEarningResponse {
-    pub condition_id: String,
+    /// The market condition ID (unique market identifier).
+    pub condition_id: B256,
     pub question: String,
     pub market_slug: String,
     pub event_slug: String,
@@ -580,7 +606,8 @@ pub type RewardsPercentagesResponse = HashMap<String, Decimal>;
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct CurrentRewardResponse {
-    pub condition_id: String,
+    /// The market condition ID (unique market identifier).
+    pub condition_id: B256,
     #[serde(default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
     pub rewards_config: Vec<RewardsConfig>,
@@ -593,7 +620,8 @@ pub struct CurrentRewardResponse {
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct MarketRewardResponse {
-    pub condition_id: String,
+    /// The market condition ID (unique market identifier).
+    pub condition_id: B256,
     pub question: String,
     pub market_slug: String,
     pub event_slug: String,
@@ -629,9 +657,12 @@ pub struct BuilderApiKeyResponse {
 pub struct BuilderTradeResponse {
     pub id: String,
     pub trade_type: String,
-    pub taker_order_hash: String,
-    pub builder: String,
-    pub market: String,
+    /// Hash of the taker order.
+    pub taker_order_hash: B256,
+    /// Address of the builder.
+    pub builder: Address,
+    /// The market condition ID.
+    pub market: B256,
     pub asset_id: String,
     pub side: Side,
     pub size: Decimal,
@@ -641,8 +672,10 @@ pub struct BuilderTradeResponse {
     pub outcome: String,
     pub outcome_index: u32,
     pub owner: ApiKey,
-    pub maker: String,
-    pub transaction_hash: String,
+    /// Address of the maker.
+    pub maker: Address,
+    /// On-chain transaction hash.
+    pub transaction_hash: B256,
     #[serde_as(as = "TimestampSeconds<String>")]
     pub match_time: DateTime<Utc>,
     pub bucket_index: u32,
@@ -734,7 +767,7 @@ pub struct RfqRequest {
     /// Proxy address (may be same as user).
     pub proxy: Address,
     /// Market condition ID.
-    pub market: String,
+    pub market: B256,
     /// Token ID for the outcome token.
     pub token: String,
     /// Complement token ID.
@@ -767,7 +800,7 @@ pub struct RfqQuote {
     /// Proxy address (may be same as user).
     pub proxy: Address,
     /// Market condition ID.
-    pub market: String,
+    pub market: B256,
     /// Token ID for the outcome token.
     pub token: String,
     /// Complement token ID.

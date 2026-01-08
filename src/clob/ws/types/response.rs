@@ -3,13 +3,13 @@ use std::fmt;
 use serde::de::{IgnoredAny, MapAccess, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer as _, Serialize};
 use serde_json::Deserializer;
-use serde_with::{DisplayFromStr, serde_as};
+use serde_with::{DisplayFromStr, NoneAsEmptyString, serde_as};
 
 use crate::auth::ApiKey;
 use crate::clob::types::{Side, TraderSide};
 use crate::clob::ws::interest::MessageInterest;
 use crate::error::Kind;
-use crate::types::Decimal;
+use crate::types::{B256, Decimal};
 
 /// Top-level WebSocket message wrapper.
 ///
@@ -71,8 +71,8 @@ impl WsMessage {
 pub struct BookUpdate {
     /// Asset/token identifier
     pub asset_id: String,
-    /// Market identifier
-    pub market: String,
+    /// Market condition ID
+    pub market: B256,
     /// Unix timestamp in milliseconds
     #[serde_as(as = "DisplayFromStr")]
     pub timestamp: i64,
@@ -104,8 +104,8 @@ pub struct OrderBookLevel {
 #[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 pub struct PriceChange {
-    /// Market identifier
-    pub market: String,
+    /// Market condition ID
+    pub market: B256,
     #[serde_as(as = "DisplayFromStr")]
     pub timestamp: i64,
     #[serde(default)]
@@ -142,8 +142,8 @@ pub struct PriceChangeBatchEntry {
 pub struct TickSizeChange {
     /// Asset/token identifier
     pub asset_id: String,
-    /// Market identifier
-    pub market: String,
+    /// Market condition ID
+    pub market: B256,
     /// Previous tick size
     pub old_tick_size: Decimal,
     /// New tick size
@@ -160,8 +160,8 @@ pub struct TickSizeChange {
 pub struct LastTradePrice {
     /// Asset/token identifier
     pub asset_id: String,
-    /// Market identifier
-    pub market: String,
+    /// Market condition ID
+    pub market: B256,
     /// Last trade price
     pub price: Decimal,
     /// Side of the last trade
@@ -185,8 +185,8 @@ pub struct LastTradePrice {
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BestBidAsk {
-    /// Market identifier (condition ID)
-    pub market: String,
+    /// Market condition ID
+    pub market: B256,
     /// Asset/token identifier
     pub asset_id: String,
     /// Current best bid price
@@ -211,8 +211,8 @@ pub struct NewMarket {
     pub id: String,
     /// Market question
     pub question: String,
-    /// Market identifier (condition ID)
-    pub market: String,
+    /// Market condition ID
+    pub market: B256,
     /// Market slug
     pub slug: String,
     /// Market description
@@ -241,8 +241,8 @@ pub struct MarketResolved {
     pub id: String,
     /// Market question
     pub question: String,
-    /// Market identifier (condition ID)
-    pub market: String,
+    /// Market condition ID
+    pub market: B256,
     /// Market slug
     pub slug: String,
     /// Market description
@@ -300,12 +300,13 @@ pub struct MakerOrder {
 
 /// User trade execution message (authenticated channel only).
 #[non_exhaustive]
+#[serde_as]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TradeMessage {
     /// Trade identifier
     pub id: String,
-    /// Market identifier (condition ID)
-    pub market: String,
+    /// Market condition ID
+    pub market: B256,
     /// Asset/token identifier
     pub asset_id: String,
     /// Side of the trade (BUY or SELL)
@@ -346,9 +347,10 @@ pub struct TradeMessage {
     /// Fee rate in basis points (string in API response)
     #[serde(default)]
     pub fee_rate_bps: Option<String>,
-    /// Transaction hash
+    /// On-chain transaction hash
+    #[serde_as(as = "NoneAsEmptyString")]
     #[serde(default)]
-    pub transaction_hash: Option<String>,
+    pub transaction_hash: Option<B256>,
     /// Whether user was maker or taker
     #[serde(default)]
     pub trader_side: Option<TraderSide>,
@@ -360,8 +362,8 @@ pub struct TradeMessage {
 pub struct OrderMessage {
     /// Order identifier
     pub id: String,
-    /// Market identifier (condition ID)
-    pub market: String,
+    /// Market condition ID
+    pub market: B256,
     /// Asset/token identifier
     pub asset_id: String,
     /// Side of the order (BUY or SELL)
@@ -425,8 +427,8 @@ pub enum OrderStatus {
 pub struct MidpointUpdate {
     /// Asset/token identifier
     pub asset_id: String,
-    /// Market identifier
-    pub market: String,
+    /// Market condition ID
+    pub market: B256,
     /// Calculated midpoint price
     pub midpoint: Decimal,
     /// Unix timestamp in milliseconds
@@ -533,13 +535,18 @@ mod tests {
     use rust_decimal_macros::dec;
 
     use super::*;
+    use crate::types::b256;
+
+    // Test market condition ID
+    const TEST_MARKET: B256 =
+        b256!("0000000000000000000000000000000000000000000000000000000000000001");
 
     #[test]
     fn parse_book_message() {
         let json = r#"{
             "event_type": "book",
             "asset_id": "123",
-            "market": "market1",
+            "market": "0x0000000000000000000000000000000000000000000000000000000000000001",
             "timestamp": "1234567890",
             "bids": [{"price": "0.5", "size": "100"}],
             "asks": [{"price": "0.51", "size": "50"}]
@@ -549,6 +556,7 @@ mod tests {
         match msg {
             WsMessage::Book(book) => {
                 assert_eq!(book.asset_id, "123");
+                assert_eq!(book.market, TEST_MARKET);
                 assert_eq!(book.bids.len(), 1);
                 assert_eq!(book.asks.len(), 1);
             }
@@ -560,7 +568,7 @@ mod tests {
     fn parse_price_change_message() {
         let json = r#"{
             "event_type": "price_change",
-            "market": "market2",
+            "market": "0x0000000000000000000000000000000000000000000000000000000000000002",
             "timestamp": "1234567890",
             "price_changes": [{
                 "asset_id": "456",
@@ -587,7 +595,7 @@ mod tests {
     fn parse_price_change_interest_message() {
         let json = r#"{
             "event_type": "price_change",
-            "market": "market3",
+            "market": "0x0000000000000000000000000000000000000000000000000000000000000003",
             "timestamp": "1234567890",
             "price_changes": [
                 {
@@ -612,7 +620,9 @@ mod tests {
 
         match &msgs[0] {
             WsMessage::PriceChange(price) => {
-                assert_eq!(price.market, "market3");
+                let expected =
+                    b256!("0000000000000000000000000000000000000000000000000000000000000003");
+                assert_eq!(price.market, expected);
 
                 let changes = &price.price_changes;
                 assert_eq!(changes.len(), 2);
@@ -637,14 +647,14 @@ mod tests {
             {
                 "event_type": "book",
                 "asset_id": "asset1",
-                "market": "market1",
+                "market": "0x0000000000000000000000000000000000000000000000000000000000000001",
                 "timestamp": "1234567890",
                 "bids": [{"price": "0.5", "size": "100"}],
                 "asks": []
             },
             {
                 "event_type": "price_change",
-                "market": "market1",
+                "market": "0x0000000000000000000000000000000000000000000000000000000000000001",
                 "timestamp": "1234567891",
                 "price_changes": [{
                     "asset_id": "asset1",
@@ -655,7 +665,7 @@ mod tests {
             {
                 "event_type": "last_trade_price",
                 "asset_id": "asset2",
-                "market": "market1",
+                "market": "0x0000000000000000000000000000000000000000000000000000000000000001",
                 "price": "0.6",
                 "timestamp": "1234567892"
             }
@@ -665,7 +675,7 @@ mod tests {
         assert_eq!(msgs.len(), 3);
 
         assert!(matches!(&msgs[0], WsMessage::Book(b) if b.asset_id == "asset1"));
-        assert!(matches!(&msgs[1], WsMessage::PriceChange(p) if p.market == "market1"));
+        assert!(matches!(&msgs[1], WsMessage::PriceChange(p) if p.market == TEST_MARKET));
         assert!(matches!(&msgs[2], WsMessage::LastTradePrice(l) if l.asset_id == "asset2"));
     }
 
@@ -675,7 +685,7 @@ mod tests {
             {
                 "event_type": "book",
                 "asset_id": "asset1",
-                "market": "market1",
+                "market": "0x0000000000000000000000000000000000000000000000000000000000000001",
                 "timestamp": "1234567890",
                 "bids": [],
                 "asks": []
@@ -683,7 +693,7 @@ mod tests {
             {
                 "event_type": "trade",
                 "id": "trade1",
-                "market": "market1",
+                "market": "0x0000000000000000000000000000000000000000000000000000000000000001",
                 "asset_id": "asset1",
                 "side": "BUY",
                 "size": "10",
@@ -844,7 +854,7 @@ mod tests {
         let json = r#"[
             {
                 "event_type": "best_bid_ask",
-                "market": "market1",
+                "market": "0x0000000000000000000000000000000000000000000000000000000000000001",
                 "asset_id": "asset1",
                 "best_bid": "0.5",
                 "best_ask": "0.6",
@@ -854,7 +864,7 @@ mod tests {
             {
                 "event_type": "book",
                 "asset_id": "asset1",
-                "market": "market1",
+                "market": "0x0000000000000000000000000000000000000000000000000000000000000001",
                 "timestamp": "1234567890",
                 "bids": [],
                 "asks": []
@@ -932,7 +942,7 @@ mod tests {
         let json = r#"{
             "asset_id": "asset123",
             "event_type": "last_trade_price",
-            "market": "0x123",
+            "market": "0x0000000000000000000000000000000000000000000000000000000000000123",
             "price": "0.5",
             "timestamp": "1750428146322"
         }"#;
@@ -952,7 +962,7 @@ mod tests {
     #[test]
     fn matches_interest_custom_feature_messages() {
         let bba = WsMessage::BestBidAsk(BestBidAsk {
-            market: "m".to_owned(),
+            market: TEST_MARKET,
             asset_id: "a".to_owned(),
             best_bid: dec!(0.5),
             best_ask: dec!(0.6),
@@ -966,7 +976,7 @@ mod tests {
         let nm = WsMessage::NewMarket(NewMarket {
             id: "1".to_owned(),
             question: "q".to_owned(),
-            market: "m".to_owned(),
+            market: TEST_MARKET,
             slug: "s".to_owned(),
             description: "d".to_owned(),
             asset_ids: vec![],
@@ -980,7 +990,7 @@ mod tests {
         let mr = WsMessage::MarketResolved(MarketResolved {
             id: "1".to_owned(),
             question: "q".to_owned(),
-            market: "m".to_owned(),
+            market: TEST_MARKET,
             slug: "s".to_owned(),
             description: "d".to_owned(),
             asset_ids: vec![],

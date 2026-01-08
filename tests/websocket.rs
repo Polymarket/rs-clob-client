@@ -12,7 +12,7 @@ use std::time::Duration;
 
 use futures_util::{SinkExt as _, StreamExt as _};
 use polymarket_client_sdk::clob::ws::{Client, WsMessage};
-use polymarket_client_sdk::types::Address;
+use polymarket_client_sdk::types::{Address, b256};
 use polymarket_client_sdk::ws::config::Config;
 use serde_json::json;
 use tokio::net::TcpListener;
@@ -115,6 +115,7 @@ impl MockWsServer {
 /// <https://docs.polymarket.com/developers/CLOB/websocket/market-channel>
 /// <https://docs.polymarket.com/developers/CLOB/websocket/user-channel>
 mod payloads {
+    use polymarket_client_sdk::types::{B256, b256};
     use serde_json::{Value, json};
 
     pub const ASSET_ID: &str =
@@ -122,13 +123,16 @@ mod payloads {
 
     pub const OTHER_ASSET_ID: &str =
         "99999999999999999999999999999999999999999999999999999999999999999";
-    pub const MARKET: &str = "0xbd31dc8a20211944f6b70f31557f1001557b59905b7738480ca09bd4532f84af";
+    pub const MARKET_STR: &str =
+        "0xbd31dc8a20211944f6b70f31557f1001557b59905b7738480ca09bd4532f84af";
+    pub const MARKET: B256 =
+        b256!("bd31dc8a20211944f6b70f31557f1001557b59905b7738480ca09bd4532f84af");
 
     pub fn book() -> Value {
         json!({
             "event_type": "book",
             "asset_id": ASSET_ID,
-            "market": MARKET,
+            "market": MARKET_STR,
             "bids": [
                 { "price": ".48", "size": "30" },
                 { "price": ".49", "size": "20" },
@@ -167,7 +171,7 @@ mod payloads {
         json!({
             "event_type": "tick_size_change",
             "asset_id": ASSET_ID,
-            "market": MARKET,
+            "market": MARKET_STR,
             "old_tick_size": "0.01",
             "new_tick_size": "0.001",
             "timestamp": "100000000"
@@ -203,7 +207,7 @@ mod payloads {
                     "price": "0.57"
                 }
             ],
-            "market": "0xbd31dc8a20211944f6b70f31557f1001557b59905b7738480ca09bd4532f84af",
+            "market": MARKET_STR,
             "matchtime": "1672290701",
             "outcome": "YES",
             "owner": "9180014b-33c8-9240-a14b-bdca11c0a465",
@@ -224,7 +228,7 @@ mod payloads {
             "associate_trades": null,
             "event_type": "order",
             "id": "0xff354cd7ca7539dfa9c28d90943ab5779a4eac34b9b37a757d7b32bdfb11790b",
-            "market": "0xbd31dc8a20211944f6b70f31557f1001557b59905b7738480ca09bd4532f84af",
+            "market": MARKET_STR,
             "order_owner": "9180014b-33c8-9240-a14b-bdca11c0a465",
             "original_size": "10",
             "outcome": "YES",
@@ -385,7 +389,7 @@ mod market_channel {
         let empty_book = json!({
             "event_type": "book",
             "asset_id": payloads::ASSET_ID,
-            "market": payloads::MARKET,
+            "market": payloads::MARKET_STR,
             "bids": [],
             "asks": [{ "price": ".52", "size": "25" }],
             "timestamp": "123456789000"
@@ -452,10 +456,7 @@ mod user_channel {
                     order.id,
                     "0xff354cd7ca7539dfa9c28d90943ab5779a4eac34b9b37a757d7b32bdfb11790b"
                 );
-                assert_eq!(
-                    order.market,
-                    "0xbd31dc8a20211944f6b70f31557f1001557b59905b7738480ca09bd4532f84af"
-                );
+                assert_eq!(order.market, payloads::MARKET);
                 assert_eq!(order.price, dec!(0.57));
                 assert_eq!(order.side, Side::Sell);
                 assert_eq!(order.original_size, Some(dec!(10)));
@@ -494,10 +495,7 @@ mod user_channel {
         match result.unwrap().unwrap().unwrap() {
             WsMessage::Trade(trade) => {
                 assert_eq!(trade.id, "28c4d2eb-bbea-40e7-a9f0-b2fdb56b2c2e");
-                assert_eq!(
-                    trade.market,
-                    "0xbd31dc8a20211944f6b70f31557f1001557b59905b7738480ca09bd4532f84af"
-                );
+                assert_eq!(trade.market, payloads::MARKET);
                 assert_eq!(trade.price, dec!(0.57));
                 assert_eq!(trade.size, dec!(10));
                 assert_eq!(trade.side, Side::Buy);
@@ -635,7 +633,7 @@ mod user_channel {
         // Wait for connections to establish
         sleep(Duration::from_millis(100)).await;
 
-        let market = payloads::MARKET;
+        let market = payloads::MARKET_STR;
 
         // Subscribe to user events for a specific market
         let _stream = client
@@ -1237,7 +1235,7 @@ mod custom_features {
     pub fn best_bid_ask() -> serde_json::Value {
         json!({
             "event_type": "best_bid_ask",
-            "market": payloads::MARKET,
+            "market": payloads::MARKET_STR,
             "asset_id": payloads::ASSET_ID,
             "best_bid": "0.48",
             "best_ask": "0.52",
@@ -1251,7 +1249,7 @@ mod custom_features {
             "event_type": "new_market",
             "id": "12345",
             "question": "Will it rain tomorrow?",
-            "market": payloads::MARKET,
+            "market": payloads::MARKET_STR,
             "slug": "will-it-rain-tomorrow",
             "description": "A test market",
             "assets_ids": [payloads::ASSET_ID],
@@ -1265,7 +1263,7 @@ mod custom_features {
             "event_type": "market_resolved",
             "id": "12345",
             "question": "Will it rain tomorrow?",
-            "market": payloads::MARKET,
+            "market": payloads::MARKET_STR,
             "slug": "will-it-rain-tomorrow",
             "description": "A test market",
             "assets_ids": [payloads::ASSET_ID],
@@ -1568,7 +1566,7 @@ mod message_parsing {
         assert_eq!(ltp.asset_id, asset_id);
         assert_eq!(
             ltp.market,
-            "0x6a67b9d828d53862160e470329ffea5246f338ecfffdf2cab45211ec578b0347"
+            b256!("6a67b9d828d53862160e470329ffea5246f338ecfffdf2cab45211ec578b0347")
         );
         assert_eq!(ltp.price, dec!(0.456));
         assert_eq!(ltp.side, Some(Side::Buy));

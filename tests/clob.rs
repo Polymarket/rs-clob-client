@@ -14,7 +14,7 @@ use httpmock::MockServer;
 use polymarket_client_sdk::POLYGON;
 use polymarket_client_sdk::clob::types::SignatureType;
 use polymarket_client_sdk::clob::{Client, Config};
-use polymarket_client_sdk::types::Decimal;
+use polymarket_client_sdk::types::{Decimal, b256};
 use reqwest::StatusCode;
 use rust_decimal_macros::dec;
 use serde_json::json;
@@ -43,6 +43,7 @@ mod unauthenticated {
     };
     use polymarket_client_sdk::clob::types::{Interval, Side, TickSize, TimeRange};
     use polymarket_client_sdk::error::Status;
+    use polymarket_client_sdk::types::address;
     use reqwest::Method;
 
     use super::*;
@@ -241,10 +242,14 @@ mod unauthenticated {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
+        let test_market = b256!("0000000000000000000000000000000000000000000000000000000000000123");
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::GET)
                 .path("/prices-history")
-                .query_param("market", "0x123")
+                .query_param(
+                    "market",
+                    "0x0000000000000000000000000000000000000000000000000000000000000123",
+                )
                 .query_param("interval", "1h")
                 .query_param("fidelity", "10");
             then.status(StatusCode::OK).json_body(json!({
@@ -257,7 +262,7 @@ mod unauthenticated {
         });
 
         let request = PriceHistoryRequest::builder()
-            .market("0x123")
+            .market(test_market)
             .time_range(Interval::OneHour)
             .fidelity(10_u32)
             .build();
@@ -282,10 +287,14 @@ mod unauthenticated {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
+        let test_market = b256!("0000000000000000000000000000000000000000000000000000000000000123");
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::GET)
                 .path("/prices-history")
-                .query_param("market", "0x123")
+                .query_param(
+                    "market",
+                    "0x0000000000000000000000000000000000000000000000000000000000000123",
+                )
                 .query_param("startTs", "1000")
                 .query_param("endTs", "2000");
             then.status(StatusCode::OK).json_body(json!({
@@ -297,7 +306,7 @@ mod unauthenticated {
         });
 
         let request = PriceHistoryRequest::builder()
-            .market("0x123")
+            .market(test_market)
             .time_range(TimeRange::from_range(1000, 2000))
             .build();
         let response = client.price_history(&request).await?;
@@ -447,7 +456,7 @@ mod unauthenticated {
                 .path("/book")
                 .query_param("token_id", "1");
             then.status(StatusCode::OK).json_body(json!({
-                "market": "0xaabbcc",
+                "market": "0x00000000000000000000000000000000000000000000000000000000aabbcc00",
                 "asset_id": "100",
                 "tick_size": TickSize::Hundredth.as_decimal(),
                 "min_order_size": "100",
@@ -480,7 +489,9 @@ mod unauthenticated {
         let response = client.order_book(&request).await?;
 
         let expected = OrderBookSummaryResponse::builder()
-            .market("0xaabbcc")
+            .market(b256!(
+                "00000000000000000000000000000000000000000000000000000000aabbcc00"
+            ))
             .neg_risk(false)
             .timestamp(Utc.timestamp_millis_opt(123_456_789).unwrap())
             .min_order_size(Decimal::ONE_HUNDRED)
@@ -511,7 +522,7 @@ mod unauthenticated {
         assert_eq!(response, expected);
         assert_eq!(
             expected.hash()?,
-            "98800af6a111791440d0936f5bc0fe1ac15da6eda09cc050227fb82ab8ceca7f"
+            "87159628f72d09319cdb23020b3f55589c76897fd159604e919e96fe3bdf7285"
         );
         mock.assert();
 
@@ -528,7 +539,7 @@ mod unauthenticated {
                 .path("/books")
                 .json_body(json!([{ "token_id": "1" }]));
             then.status(StatusCode::OK).json_body(json!([{
-                "market": "market",
+                "market": "0x0000000000000000000000000000000000000000000000000000000000000001",
                 "asset_id": "asset",
                 "tick_size": TickSize::Hundredth.as_decimal(),
                 "min_order_size": "5",
@@ -546,7 +557,9 @@ mod unauthenticated {
 
         let expected = vec![
             OrderBookSummaryResponse::builder()
-                .market("market")
+                .market(b256!(
+                    "0000000000000000000000000000000000000000000000000000000000000001"
+                ))
                 .neg_risk(false)
                 .timestamp(DateTime::<Utc>::UNIX_EPOCH + TimeDelta::milliseconds(1))
                 .min_order_size(dec!(5))
@@ -644,15 +657,15 @@ mod unauthenticated {
                 "accepting_order_timestamp": "2024-01-15T12:34:56Z",
                 "minimum_order_size": "1",
                 "minimum_tick_size": "0.01",
-                "condition_id": "1",
-                "question_id": "q_67890",
+                "condition_id": "0x0000000000000000000000000000000000000000000000000000000000000001",
+                "question_id": "0x0000000000000000000000000000000000000000000000000000000067890abc",
                 "question": "Will BTC close above $50k today?",
                 "description": "A market about BTC daily close price",
                 "market_slug": "btc-close-above-50k",
                 "end_date_iso": "2024-02-01T00:00:00Z",
                 "game_start_time": null,
                 "seconds_delay": 5,
-                "fpmm": "fpmm_abc123",
+                "fpmm": "0x0000000000000000000000000000000000abc123",
                 "maker_base_fee": "0",
                 "taker_base_fee": 0.1,
                 "notifications_enabled": true,
@@ -700,20 +713,22 @@ mod unauthenticated {
             .accepting_order_timestamp("2024-01-15T12:34:56Z".parse::<DateTime<Utc>>().unwrap())
             .minimum_order_size(Decimal::ONE)
             .minimum_tick_size(TickSize::Hundredth.as_decimal())
-            .condition_id("1")
-            .question_id("q_67890")
+            .condition_id(b256!(
+                "0000000000000000000000000000000000000000000000000000000000000001"
+            ))
+            .question_id(b256!(
+                "0000000000000000000000000000000000000000000000000000000067890abc"
+            ))
             .question("Will BTC close above $50k today?")
             .description("A market about BTC daily close price")
             .market_slug("btc-close-above-50k")
             .end_date_iso("2024-02-01T00:00:00Z".parse::<DateTime<Utc>>().unwrap())
             .seconds_delay(5)
-            .fpmm("fpmm_abc123")
+            .fpmm(address!("0000000000000000000000000000000000abc123"))
             .maker_base_fee(Decimal::ZERO)
             .taker_base_fee(dec!(0.1))
             .notifications_enabled(true)
             .neg_risk(false)
-            .neg_risk_market_id("")
-            .neg_risk_request_id("")
             .icon("https://example.com/icon.png")
             .image("https://example.com/image.png")
             .rewards(
@@ -764,15 +779,15 @@ mod unauthenticated {
                         "accepting_order_timestamp": "2024-01-15T12:34:56Z",
                         "minimum_order_size": "1",
                         "minimum_tick_size": "0.01",
-                        "condition_id": "1",
-                        "question_id": "q_67890",
+                        "condition_id": "0x0000000000000000000000000000000000000000000000000000000000000001",
+                        "question_id": "0x0000000000000000000000000000000000000000000000000000000067890abc",
                         "question": "Will BTC close above $50k today?",
                         "description": "A market about BTC daily close price",
                         "market_slug": "btc-close-above-50k",
                         "end_date_iso": "2024-02-01T00:00:00Z",
                         "game_start_time": null,
                         "seconds_delay": 5,
-                        "fpmm": "fpmm_abc123",
+                        "fpmm": "0x0000000000000000000000000000000000abc123",
                         "maker_base_fee": "0",
                         "taker_base_fee": "0",
                         "notifications_enabled": true,
@@ -825,20 +840,22 @@ mod unauthenticated {
             .accepting_order_timestamp("2024-01-15T12:34:56Z".parse::<DateTime<Utc>>().unwrap())
             .minimum_order_size(Decimal::ONE)
             .minimum_tick_size(TickSize::Hundredth.as_decimal())
-            .condition_id("1")
-            .question_id("q_67890")
+            .condition_id(b256!(
+                "0000000000000000000000000000000000000000000000000000000000000001"
+            ))
+            .question_id(b256!(
+                "0000000000000000000000000000000000000000000000000000000067890abc"
+            ))
             .question("Will BTC close above $50k today?")
             .description("A market about BTC daily close price")
             .market_slug("btc-close-above-50k")
             .end_date_iso("2024-02-01T00:00:00Z".parse::<DateTime<Utc>>().unwrap())
             .seconds_delay(5)
-            .fpmm("fpmm_abc123")
+            .fpmm(address!("0000000000000000000000000000000000abc123"))
             .maker_base_fee(Decimal::ZERO)
             .taker_base_fee(Decimal::ZERO)
             .notifications_enabled(true)
             .neg_risk(false)
-            .neg_risk_market_id("")
-            .neg_risk_request_id("")
             .icon("https://example.com/icon.png")
             .image("https://example.com/image.png")
             .rewards(
@@ -888,7 +905,7 @@ mod unauthenticated {
             then.status(StatusCode::OK).json_body(json!({
                 "data": [
                     {
-                        "condition_id": "cond_12345",
+                        "condition_id": "0x00000000000000000000000000000000000000000000000000000000c0012345",
                         "tokens": [
                             {
                                 "token_id": "YES_TOKEN",
@@ -923,7 +940,9 @@ mod unauthenticated {
         let response = client.simplified_markets(None).await?;
 
         let simplified = SimplifiedMarketResponse::builder()
-            .condition_id("cond_12345")
+            .condition_id(b256!(
+                "00000000000000000000000000000000000000000000000000000000c0012345"
+            ))
             .tokens(vec![
                 Token::builder()
                     .token_id("YES_TOKEN")
@@ -973,7 +992,7 @@ mod unauthenticated {
             then.status(StatusCode::OK).json_body(json!({
                 "data": [
                     {
-                        "condition_id": "cond_12345",
+                        "condition_id": "0x00000000000000000000000000000000000000000000000000000000c0012345",
                         "tokens": [
                             {
                                 "token_id": "YES_TOKEN",
@@ -1008,7 +1027,9 @@ mod unauthenticated {
         let response = client.sampling_simplified_markets(None).await?;
 
         let simplified = SimplifiedMarketResponse::builder()
-            .condition_id("cond_12345")
+            .condition_id(b256!(
+                "00000000000000000000000000000000000000000000000000000000c0012345"
+            ))
             .tokens(vec![
                 Token::builder()
                     .token_id("YES_TOKEN")
@@ -1065,15 +1086,15 @@ mod unauthenticated {
                     "accepting_order_timestamp": "2024-01-15T12:34:56Z",
                     "minimum_order_size": "1",
                     "minimum_tick_size": "0.01",
-                    "condition_id": "1",
-                    "question_id": "q_67890",
+                    "condition_id": "0x0000000000000000000000000000000000000000000000000000000000000001",
+                    "question_id": "0x0000000000000000000000000000000000000000000000000000000067890abc",
                     "question": "Will BTC close above $50k today?",
                     "description": "A market about BTC daily close price",
                     "market_slug": "btc-close-above-50k",
                     "end_date_iso": "2024-02-01T00:00:00Z",
                     "game_start_time": null,
                     "seconds_delay": 5,
-                    "fpmm": "fpmm_abc123",
+                    "fpmm": "0x0000000000000000000000000000000000abc123",
                     "maker_base_fee": "0",
                     "taker_base_fee": "0",
                     "notifications_enabled": true,
@@ -1160,20 +1181,22 @@ mod unauthenticated {
             .accepting_order_timestamp("2024-01-15T12:34:56Z".parse::<DateTime<Utc>>().unwrap())
             .minimum_order_size(Decimal::ONE)
             .minimum_tick_size(TickSize::Hundredth.as_decimal())
-            .condition_id("1")
-            .question_id("q_67890")
+            .condition_id(b256!(
+                "0000000000000000000000000000000000000000000000000000000000000001"
+            ))
+            .question_id(b256!(
+                "0000000000000000000000000000000000000000000000000000000067890abc"
+            ))
             .question("Will BTC close above $50k today?")
             .description("A market about BTC daily close price")
             .market_slug("btc-close-above-50k")
             .end_date_iso("2024-02-01T00:00:00Z".parse::<DateTime<Utc>>().unwrap())
             .seconds_delay(5)
-            .fpmm("fpmm_abc123")
+            .fpmm(address!("0000000000000000000000000000000000abc123"))
             .maker_base_fee(Decimal::ZERO)
             .taker_base_fee(Decimal::ZERO)
             .notifications_enabled(true)
             .neg_risk(false)
-            .neg_risk_market_id("")
-            .neg_risk_request_id("")
             .icon("https://example.com/icon.png")
             .image("https://example.com/image.png")
             .rewards(
@@ -1289,7 +1312,7 @@ mod authenticated {
         TraderSide,
     };
     use polymarket_client_sdk::error::Synchronization;
-    use polymarket_client_sdk::types::{Address, address};
+    use polymarket_client_sdk::types::{Address, address, b256};
 
     use super::*;
     use crate::common::{
@@ -1552,9 +1575,9 @@ mod authenticated {
             .order_id("0x23b457271bce9fa09b4f79125c9ec09e968235a462de82e318ef4eb6fe0ffeb0")
             .status(OrderStatusType::Matched)
             .success(true)
-            .transaction_hashes(vec![
-                "0x2369f69af45a559ad6e769d3d209d2379af9d412315e27b9283594a6392557b6".to_owned(),
-            ])
+            .transaction_hashes(vec![b256!(
+                "2369f69af45a559ad6e769d3d209d2379af9d412315e27b9283594a6392557b6"
+            )])
             .build();
 
         assert_eq!(response, expected);
@@ -1573,7 +1596,7 @@ mod authenticated {
             "status": "LIVE",
             "owner": "ffffffff-ffff-ffff-ffff-ffffffffffff",
             "maker_address": "0x2222222222222222222222222222222222222222",
-            "market": "market_abc",
+            "market": "0x000000000000000000000000000000000000000000000000006d61726b657461",
             "asset_id": "asset_xyz",
             "side": "buy",
             "original_size": "10.0",
@@ -1605,7 +1628,9 @@ mod authenticated {
             .status(OrderStatusType::Live)
             .owner(Uuid::max())
             .maker_address(address!("0x2222222222222222222222222222222222222222"))
-            .market("market_abc")
+            .market(b256!(
+                "000000000000000000000000000000000000000000000000006d61726b657461"
+            ))
             .asset_id("asset_xyz")
             .side(Side::Buy)
             .original_size(dec!(10.0))
@@ -1636,7 +1661,7 @@ mod authenticated {
                     "status": "LIVE",
                     "owner": "ffffffff-ffff-ffff-ffff-ffffffffffff",
                     "maker_address": "0x2222222222222222222222222222222222222222",
-                    "market": "market_abc",
+                    "market": "0x000000000000000000000000000000000000000000000000006d61726b657461",
                     "asset_id": "asset_xyz",
                     "side": "buy",
                     "original_size": "10.0",
@@ -1675,7 +1700,9 @@ mod authenticated {
             .status(OrderStatusType::Live)
             .owner(Uuid::max())
             .maker_address(address!("0x2222222222222222222222222222222222222222"))
-            .market("market_abc")
+            .market(b256!(
+                "000000000000000000000000000000000000000000000000006d61726b657461"
+            ))
             .asset_id("asset_xyz")
             .side(Side::Buy)
             .original_size(dec!(10.0))
@@ -1857,7 +1884,9 @@ mod authenticated {
         });
 
         let request = CancelMarketOrderRequest::builder()
-            .market("m")
+            .market(b256!(
+                "000000000000000000000000000000000000000000000000000000000000006d"
+            ))
             .asset_id("a")
             .build();
 
@@ -1880,14 +1909,14 @@ mod authenticated {
                 .header(POLY_API_KEY, API_KEY)
                 .header(POLY_PASSPHRASE, PASSPHRASE)
                 .query_param("id", "1")
-                .query_param("market", "market");
+                .query_param("market", "0x000000000000000000000000000000000000000000000000000000006d61726b");
 
             then.status(StatusCode::OK).json_body(json!({
                 "data": [
                     {
                         "id": "1",
                         "taker_order_id": "taker_123",
-                        "market": "market",
+                        "market": "0x000000000000000000000000000000000000000000000000000000006d61726b",
                         "asset_id": "asset_xyz",
                         "side": "BUY",
                         "size": "12.5",
@@ -1934,13 +1963,20 @@ mod authenticated {
             }));
         });
 
-        let request = TradesRequest::builder().id("1").market("market").build();
+        let request = TradesRequest::builder()
+            .id("1")
+            .market(b256!(
+                "000000000000000000000000000000000000000000000000000000006d61726b"
+            ))
+            .build();
         let response = client.trades(&request, None).await?;
 
         let trade = TradeResponse::builder()
             .id("1")
             .taker_order_id("taker_123")
-            .market("market")
+            .market(b256!(
+                "000000000000000000000000000000000000000000000000000000006d61726b"
+            ))
             .asset_id("asset_xyz")
             .side(Side::Buy)
             .size(dec!(12.5))
@@ -1977,7 +2013,9 @@ mod authenticated {
                     .side(Side::Sell)
                     .build(),
             ])
-            .transaction_hash("0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd")
+            .transaction_hash(b256!(
+                "abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"
+            ))
             .trader_side(TraderSide::Taker)
             .build();
         let expected = Page::builder()
@@ -2044,11 +2082,15 @@ mod authenticated {
                 .owner(API_KEY)
                 .payload(NotificationPayload::builder()
                     .asset_id("71321045679252212594626385532706912750332728571942532289631379312455583992563")
-                    .condition_id("0x5f65177b394277fd294cd75650044e32ba009a95022d88a0c1d565897d72f8f1")
+                    .condition_id(b256!(
+                        "5f65177b394277fd294cd75650044e32ba009a95022d88a0c1d565897d72f8f1"
+                    ))
                     .event_slug("will-trump-win-the-2024-iowa-caucus")
                     .icon("https://polymarket-upload.s3.us-east-2.amazonaws.com/trump1+copy.png")
                     .image("https://polymarket-upload.s3.us-east-2.amazonaws.com/trump1+copy.png")
-                    .market("0x5f65177b394277fd294cd75650044e32ba009a95022d88a0c1d565897d72f8f1")
+                    .market(b256!(
+                        "5f65177b394277fd294cd75650044e32ba009a95022d88a0c1d565897d72f8f1"
+                    ))
                     .market_slug("will-trump-win-the-2024-iowa-caucus")
                     .matched_size(dec!(20))
                     .order_id("0x2ae21876d2702d8b71308d0999062db9625a691ce4593c5f10230eeeff945e70")
@@ -2062,9 +2104,9 @@ mod authenticated {
                     .series_slug("")
                     .side(Side::Buy)
                     .trade_id("565a5035-d70e-4493-9215-8cae52d26efe")
-                    .transaction_hash(
-                        "0x3bc57dcae83a930df64fce8fdc46a8fca9b98af92a7b83a8a2f2c657446c2a71",
-                    )
+                    .transaction_hash(b256!(
+                        "3bc57dcae83a930df64fce8fdc46a8fca9b98af92a7b83a8a2f2c657446c2a71"
+                    ))
                     .order_type(OrderType::Unknown(String::new()))
                     .build()
                 )
@@ -2239,7 +2281,7 @@ mod authenticated {
             then.status(StatusCode::OK).json_body(json!({
                 "data": [{
                     "date": "2025-12-08",
-                    "condition_id": "1",
+                    "condition_id": "0x0000000000000000000000000000000000000000000000000000000000000001",
                     "asset_address": "0x0000000000000000000000000000000000000001",
                     "maker_address": "0x0000000000000000000000000000000000000002",
                     "earnings": 1,
@@ -2258,7 +2300,9 @@ mod authenticated {
             .data(vec![
                 UserEarningResponse::builder()
                     .date(date)
-                    .condition_id("1")
+                    .condition_id(b256!(
+                        "0000000000000000000000000000000000000000000000000000000000000001"
+                    ))
                     .asset_address(address!("0x0000000000000000000000000000000000000001"))
                     .maker_address(address!("0x0000000000000000000000000000000000000002"))
                     .earnings(Decimal::ONE)
@@ -2336,7 +2380,7 @@ mod authenticated {
             then.status(StatusCode::OK).json_body(json!(
                 [
                     {
-                        "condition_id": "cond_123",
+                        "condition_id": "0x0000000000000000000000000000000000000000000000000000000c00d00123",
                         "question": "Will BTC be above $50k on December 31, 2025?",
                         "market_slug": "btc-above-50k-2025-12-31",
                         "event_slug": "btc-above-50k-2025",
@@ -2402,7 +2446,9 @@ mod authenticated {
 
         let expected = vec![
             UserRewardsEarningResponse::builder()
-                .condition_id("cond_123")
+                .condition_id(b256!(
+                    "0000000000000000000000000000000000000000000000000000000c00d00123"
+                ))
                 .question("Will BTC be above $50k on December 31, 2025?")
                 .market_slug("btc-above-50k-2025-12-31")
                 .event_slug("btc-above-50k-2025")
@@ -2502,7 +2548,7 @@ mod authenticated {
             then.status(StatusCode::OK).json_body(json!({
                 "data": [
                     {
-                        "condition_id": "cond_abc123",
+                        "condition_id": "0x000000000000000000000000000000000000000000000000000000c0dabc0123",
                         "rewards_max_spread": "0.05",
                         "rewards_min_size": "20.0",
                         "rewards_config": [
@@ -2532,7 +2578,9 @@ mod authenticated {
         let response = client.current_rewards(None).await?;
 
         let market_reward = CurrentRewardResponse::builder()
-            .condition_id("cond_abc123")
+            .condition_id(b256!(
+                "000000000000000000000000000000000000000000000000000000c0dabc0123"
+            ))
             .rewards_max_spread(dec!(0.05))
             .rewards_min_size(dec!(20.0))
             .rewards_config(vec![
@@ -2580,7 +2628,7 @@ mod authenticated {
             then.status(StatusCode::OK).json_body(json!({
                 "data": [
                     {
-                        "condition_id": "1",
+                        "condition_id": "0x0000000000000000000000000000000000000000000000000000000000000001",
                         "question": "Will BTC reach $100k in 2025?",
                         "market_slug": "btc-100k-2025",
                         "event_slug": "btc-2025",
@@ -2635,7 +2683,9 @@ mod authenticated {
             .await?;
 
         let market_reward = MarketRewardResponse::builder()
-            .condition_id("1")
+            .condition_id(b256!(
+                "0000000000000000000000000000000000000000000000000000000000000001"
+            ))
             .question("Will BTC reach $100k in 2025?")
             .market_slug("btc-100k-2025")
             .event_slug("btc-2025")
@@ -2787,6 +2837,7 @@ mod builder_authenticated {
         BuilderApiKeyResponse, BuilderTradeResponse, Page,
     };
     use polymarket_client_sdk::clob::types::{OrderStatusType, Side};
+    use polymarket_client_sdk::types::{address, b256};
 
     use super::*;
     use crate::common::{
@@ -3010,16 +3061,16 @@ mod builder_authenticated {
                 .header(POLY_BUILDER_SIGNATURE, "signature")
                 .header(POLY_BUILDER_TIMESTAMP, "1")
                 .query_param("id", "1")
-                .query_param("market", "market");
+                .query_param("market", "0x000000000000000000000000000000000000000000000000000000006d61726b");
 
             then.status(StatusCode::OK).json_body(json!({
                 "data": [
                     {
                         "id": "1",
                         "tradeType": "limit",
-                        "takerOrderHash": "0xtakerorderhash",
-                        "builder": "builder_1",
-                        "market": "market",
+                        "takerOrderHash": "0x0000000000000000000000000000000000000000000000000074616b65726f72",
+                        "builder": "0x00000000000000000000000000006275696c6431",
+                        "market": "0x000000000000000000000000000000000000000000000000000000006d61726b",
                         "assetId": "asset_xyz",
                         "side": "buy",
                         "size": "10.0",
@@ -3046,15 +3097,24 @@ mod builder_authenticated {
             }));
         });
 
-        let request = TradesRequest::builder().id("1").market("market").build();
+        let request = TradesRequest::builder()
+            .id("1")
+            .market(b256!(
+                "000000000000000000000000000000000000000000000000000000006d61726b"
+            ))
+            .build();
         let response = client.builder_trades(&request, None).await?;
 
         let trade = BuilderTradeResponse::builder()
             .id("1")
             .trade_type("limit")
-            .taker_order_hash("0xtakerorderhash")
-            .builder("builder_1")
-            .market("market")
+            .taker_order_hash(b256!(
+                "0000000000000000000000000000000000000000000000000074616b65726f72"
+            ))
+            .builder(address!("00000000000000000000000000006275696c6431"))
+            .market(b256!(
+                "000000000000000000000000000000000000000000000000000000006d61726b"
+            ))
             .asset_id("asset_xyz")
             .side(Side::Buy)
             .size(dec!(10.0))
@@ -3064,8 +3124,10 @@ mod builder_authenticated {
             .outcome("YES")
             .outcome_index(0)
             .owner(Uuid::max())
-            .maker("0x2222222222222222222222222222222222222222")
-            .transaction_hash("0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd")
+            .maker(address!("2222222222222222222222222222222222222222"))
+            .transaction_hash(b256!(
+                "abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"
+            ))
             .match_time("2025-09-22T22:19:57Z".parse()?)
             .bucket_index(3)
             .fee(dec!(0.1))

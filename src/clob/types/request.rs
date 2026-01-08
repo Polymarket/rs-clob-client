@@ -13,9 +13,9 @@ use crate::auth::ApiKey;
 use crate::clob::types::{AssetType, Side, SignatureType, TimeRange};
 #[cfg(feature = "rfq")]
 use crate::clob::types::{RfqSortBy, RfqSortDir, RfqState};
-use crate::types::Address;
 #[cfg(feature = "rfq")]
 use crate::types::Decimal;
+use crate::types::{Address, B256};
 
 #[non_exhaustive]
 #[derive(Debug, Serialize, Builder)]
@@ -62,8 +62,8 @@ pub struct LastTradePriceRequest {
 #[derive(Debug, Serialize, Builder)]
 #[builder(on(String, into))]
 pub struct PriceHistoryRequest {
-    /// The market (condition ID) to get price history for.
-    pub market: String,
+    /// The market condition ID.
+    pub market: B256,
     /// The time range for the price history query.
     /// Either a predefined interval or explicit start/end timestamps.
     #[serde(flatten)]
@@ -77,7 +77,8 @@ pub struct PriceHistoryRequest {
 #[derive(Debug, Default, Serialize, Builder)]
 #[builder(on(String, into))]
 pub struct CancelMarketOrderRequest {
-    pub market: Option<String>,
+    /// The market condition ID to cancel orders for.
+    pub market: Option<B256>,
     pub asset_id: Option<String>,
 }
 
@@ -90,7 +91,8 @@ pub struct TradesRequest {
     pub taker_address: Option<Address>,
     #[serde(rename = "maker")]
     pub maker_address: Option<Address>,
-    pub market: Option<String>,
+    /// The market condition ID to filter trades.
+    pub market: Option<B256>,
     pub asset_id: Option<String>,
     pub before: Option<i64>,
     pub after: Option<i64>,
@@ -102,7 +104,8 @@ pub struct TradesRequest {
 pub struct OrdersRequest {
     #[serde(rename = "id")]
     pub order_id: Option<String>,
-    pub market: Option<String>,
+    /// The market condition ID to filter orders.
+    pub market: Option<B256>,
     pub asset_id: Option<String>,
 }
 
@@ -175,6 +178,7 @@ pub struct CancelRfqRequestRequest {
 /// Query parameters for getting RFQ requests.
 #[cfg(feature = "rfq")]
 #[non_exhaustive]
+#[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Builder)]
 #[serde(rename_all = "camelCase")]
@@ -190,10 +194,11 @@ pub struct RfqRequestsRequest {
     #[serde(rename = "requestIds", skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub request_ids: Vec<String>,
-    /// Filter by condition IDs.
+    /// Filter by market condition IDs.
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, B256>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
-    pub markets: Vec<String>,
+    pub markets: Vec<B256>,
     /// Minimum size in tokens.
     pub size_min: Option<Decimal>,
     /// Maximum size in tokens.
@@ -247,6 +252,7 @@ pub struct CancelRfqQuoteRequest {
 /// Query parameters for getting RFQ quotes.
 #[cfg(feature = "rfq")]
 #[non_exhaustive]
+#[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Builder)]
 #[serde(rename_all = "camelCase")]
@@ -266,10 +272,11 @@ pub struct RfqQuotesRequest {
     #[serde(rename = "requestIds", skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub request_ids: Vec<String>,
-    /// Filter by condition IDs.
+    /// Filter by market condition IDs.
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, B256>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
-    pub markets: Vec<String>,
+    pub markets: Vec<B256>,
     /// Minimum size in tokens.
     pub size_min: Option<Decimal>,
     /// Maximum size in tokens.
@@ -374,11 +381,13 @@ pub struct ApproveRfqOrderRequest {
 mod tests {
     use super::*;
     use crate::ToQueryParams as _;
+    use crate::types::b256;
 
     #[test]
     fn trades_request_as_params_should_succeed() {
+        let market = b256!("0000000000000000000000000000000000000000000000000000000000010000");
         let request = TradesRequest::builder()
-            .market("10000")
+            .market(market)
             .asset_id("100")
             .id("aa-bb")
             .maker_address(Address::ZERO)
@@ -386,29 +395,30 @@ mod tests {
 
         assert_eq!(
             request.query_params(None),
-            "?id=aa-bb&maker=0x0000000000000000000000000000000000000000&market=10000&asset_id=100"
+            "?id=aa-bb&maker=0x0000000000000000000000000000000000000000&market=0x0000000000000000000000000000000000000000000000000000000000010000&asset_id=100"
         );
         assert_eq!(
             request.query_params(Some("1")),
-            "?id=aa-bb&maker=0x0000000000000000000000000000000000000000&market=10000&asset_id=100&next_cursor=1"
+            "?id=aa-bb&maker=0x0000000000000000000000000000000000000000&market=0x0000000000000000000000000000000000000000000000000000000000010000&asset_id=100&next_cursor=1"
         );
     }
 
     #[test]
     fn orders_request_as_params_should_succeed() {
+        let market = b256!("0000000000000000000000000000000000000000000000000000000000010000");
         let request = OrdersRequest::builder()
-            .market("10000")
+            .market(market)
             .asset_id("100")
             .order_id("aa-bb")
             .build();
 
         assert_eq!(
             request.query_params(None),
-            "?id=aa-bb&market=10000&asset_id=100"
+            "?id=aa-bb&market=0x0000000000000000000000000000000000000000000000000000000000010000&asset_id=100"
         );
         assert_eq!(
             request.query_params(Some("1")),
-            "?id=aa-bb&market=10000&asset_id=100&next_cursor=1"
+            "?id=aa-bb&market=0x0000000000000000000000000000000000000000000000000000000000010000&asset_id=100&next_cursor=1"
         );
     }
 

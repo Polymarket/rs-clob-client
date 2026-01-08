@@ -563,7 +563,7 @@ impl<S: State> Client<S> {
         let mut req = self
             .client()
             .request(Method::GET, format!("{}prices-history", self.host()))
-            .query(&[("market", request.market.as_str())]);
+            .query(&[("market", request.market.to_string())]);
 
         match request.time_range {
             TimeRange::Interval { interval } => {
