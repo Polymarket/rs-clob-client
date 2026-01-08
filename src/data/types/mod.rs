@@ -18,7 +18,7 @@ pub type Title = String;
 /// The side of a trade (buy or sell).
 ///
 /// Used to indicate whether a trade was a purchase or sale of outcome tokens.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
 #[serde(rename_all = "UPPERCASE")]
 #[strum(serialize_all = "UPPERCASE")]
 #[non_exhaustive]
@@ -27,6 +27,9 @@ pub enum Side {
     Buy,
     /// Selling outcome tokens (going short or closing a long position).
     Sell,
+    /// Unknown side from the API (captures the raw value for debugging).
+    #[serde(untagged)]
+    Unknown(String),
 }
 
 /// The type of on-chain activity for a user.
