@@ -12,13 +12,13 @@ use dashmap::{DashMap, Entry};
 use futures::Stream;
 use tokio::sync::broadcast::error::RecvError;
 
-use super::error::WsError;
 use super::interest::{InterestTracker, MessageInterest};
 use super::types::request::SubscriptionRequest;
 use super::types::response::WsMessage;
 use crate::Result;
 use crate::auth::Credentials;
 use crate::ws::ConnectionManager;
+use crate::ws::WsError;
 use crate::ws::connection::ConnectionState;
 
 /// What a subscription is targeting.
