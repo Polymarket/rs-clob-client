@@ -124,9 +124,14 @@ impl Client {
         crate::request(&self.client, request, None).await
     }
 
-    /// Performs a health check on the API.
+    /// Performs a health check on the Gamma API.
     ///
-    /// Returns "OK" when the API is healthy.
+    /// Returns "OK" when the API is healthy and operational. Use this for monitoring
+    /// and verifying the API's availability.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API is unreachable or returns a non-200 status code.
     pub async fn status(&self) -> Result<HealthResponse> {
         let request = self
             .client
@@ -149,38 +154,89 @@ impl Client {
         Ok(response.text().await?)
     }
 
-    /// Lists teams with optional filters.
+    /// Retrieves a list of sports teams with optional filtering.
+    ///
+    /// Returns teams participating in sports markets. Use filters to narrow results
+    /// by sport type, league, or other criteria.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails.
     pub async fn teams(&self, request: &TeamsRequest) -> Result<Vec<Team>> {
         self.get("teams", request).await
     }
 
-    /// Gets sports metadata.
+    /// Retrieves metadata for all supported sports.
+    ///
+    /// Returns information about sports categories available on Polymarket,
+    /// including sports like NFL, NBA, MLB, etc. Useful for discovering
+    /// what sports markets are available.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails.
     pub async fn sports(&self) -> Result<Vec<SportsMetadata>> {
         self.get("sports", &()).await
     }
 
-    /// Gets valid sports market types.
+    /// Retrieves valid market types for sports.
+    ///
+    /// Returns the different types of sports markets available (e.g., moneyline,
+    /// spread, over/under). Use this to understand what formats are supported.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails.
     pub async fn sports_market_types(&self) -> Result<SportsMarketTypesResponse> {
         self.get("sports/market-types", &()).await
     }
 
-    /// Lists tags with optional filters.
+    /// Retrieves a list of tags with optional filtering.
+    ///
+    /// Tags categorize markets and events (e.g., "Politics", "Crypto", "Sports").
+    /// Use filters to search for specific tag types or categories.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails.
     pub async fn tags(&self, request: &TagsRequest) -> Result<Vec<Tag>> {
         self.get("tags", request).await
     }
 
-    /// Gets a tag by ID.
+    /// Retrieves a single tag by its unique ID.
+    ///
+    /// Returns detailed information about a specific tag including its name,
+    /// description, and associated markets.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the tag ID is invalid or the request fails.
     pub async fn tag_by_id(&self, request: &TagByIdRequest) -> Result<Tag> {
         self.get(&format!("tags/{}", request.id), request).await
     }
 
-    /// Gets a tag by slug.
+    /// Retrieves a single tag by its URL-friendly slug.
+    ///
+    /// Returns the same information as [`Self::tag_by_id`] but uses a human-readable
+    /// slug identifier instead of a numeric ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the slug is invalid or the request fails.
     pub async fn tag_by_slug(&self, request: &TagBySlugRequest) -> Result<Tag> {
         self.get(&format!("tags/slug/{}", request.slug), request)
             .await
     }
 
-    /// Gets related tag relationships by tag ID.
+    /// Retrieves related tag relationships for a tag by ID.
+    ///
+    /// Returns tags that are semantically related to the specified tag, including
+    /// the relationship type (e.g., parent, child, related). Useful for discovering
+    /// related markets and topics.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the tag ID is invalid or the request fails.
     pub async fn related_tags_by_id(
         &self,
         request: &RelatedTagsByIdRequest,
@@ -189,7 +245,13 @@ impl Client {
             .await
     }
 
-    /// Gets related tag relationships by tag slug.
+    /// Retrieves related tag relationships for a tag by slug.
+    ///
+    /// Same as [`Self::related_tags_by_id`] but uses a slug identifier instead of an ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the slug is invalid or the request fails.
     pub async fn related_tags_by_slug(
         &self,
         request: &RelatedTagsBySlugRequest,
@@ -198,7 +260,14 @@ impl Client {
             .await
     }
 
-    /// Gets tags related to a tag by ID.
+    /// Retrieves tags that are related to a specified tag by ID.
+    ///
+    /// Returns the actual tag objects (not just relationships) for tags related to
+    /// the specified tag. This provides full tag details for related topics.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the tag ID is invalid or the request fails.
     pub async fn tags_related_to_tag_by_id(
         &self,
         request: &RelatedTagsByIdRequest,
@@ -207,7 +276,13 @@ impl Client {
             .await
     }
 
-    /// Gets tags related to a tag by slug.
+    /// Retrieves tags that are related to a specified tag by slug.
+    ///
+    /// Same as [`Self::tags_related_to_tag_by_id`] but uses a slug identifier instead of an ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the slug is invalid or the request fails.
     pub async fn tags_related_to_tag_by_slug(
         &self,
         request: &RelatedTagsBySlugRequest,
@@ -219,29 +294,65 @@ impl Client {
         .await
     }
 
-    /// Lists events with optional filters.
+    /// Retrieves a list of events with optional filtering.
+    ///
+    /// Events are collections of related markets (e.g., "2024 Presidential Election").
+    /// Use filters to search by tags, active status, or other criteria.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails.
     pub async fn events(&self, request: &EventsRequest) -> Result<Vec<Event>> {
         self.get("events", request).await
     }
 
-    /// Gets an event by ID.
+    /// Retrieves a single event by its unique ID.
+    ///
+    /// Returns detailed information about an event including its markets,
+    /// description, and associated tags.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the event ID is invalid or the request fails.
     pub async fn event_by_id(&self, request: &EventByIdRequest) -> Result<Event> {
         self.get(&format!("events/{}", request.id), request).await
     }
 
-    /// Gets an event by slug.
+    /// Retrieves a single event by its URL-friendly slug.
+    ///
+    /// Returns the same information as [`Self::event_by_id`] but uses a slug
+    /// identifier instead of a numeric ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the slug is invalid or the request fails.
     pub async fn event_by_slug(&self, request: &EventBySlugRequest) -> Result<Event> {
         self.get(&format!("events/slug/{}", request.slug), request)
             .await
     }
 
-    /// Gets tags for an event by ID.
+    /// Retrieves all tags associated with an event.
+    ///
+    /// Returns the categorization tags for a specific event, helping understand
+    /// the event's topics and categories.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the event ID is invalid or the request fails.
     pub async fn event_tags(&self, request: &EventTagsRequest) -> Result<Vec<Tag>> {
         self.get(&format!("events/{}/tags", request.id), request)
             .await
     }
 
-    /// Lists markets with optional filters.
+    /// Retrieves a list of prediction markets with optional filtering.
+    ///
+    /// Markets are the core trading instruments on Polymarket. Use filters to search
+    /// by tags, events, active status, or CLOB token IDs. Returns market details
+    /// including current prices, volume, and outcome information.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails.
     pub async fn markets(&self, request: &MarketsRequest) -> Result<Vec<Market>> {
         // Build base query string using the standard ToQueryParams trait
         let base_query = request.query_params(None);
@@ -264,44 +375,101 @@ impl Client {
         crate::request(&self.client, req, None).await
     }
 
-    /// Gets a market by ID.
+    /// Retrieves a single market by its unique ID.
+    ///
+    /// Returns detailed information about a specific market including outcomes,
+    /// current prices, volume, and resolution details.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the market ID is invalid or the request fails.
     pub async fn market_by_id(&self, request: &MarketByIdRequest) -> Result<Market> {
         self.get(&format!("markets/{}", request.id), request).await
     }
 
-    /// Gets a market by slug.
+    /// Retrieves a single market by its URL-friendly slug.
+    ///
+    /// Returns the same information as [`Self::market_by_id`] but uses a slug
+    /// identifier instead of a numeric ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the slug is invalid or the request fails.
     pub async fn market_by_slug(&self, request: &MarketBySlugRequest) -> Result<Market> {
         self.get(&format!("markets/slug/{}", request.slug), request)
             .await
     }
 
-    /// Gets tags for a market by ID.
+    /// Retrieves all tags associated with a market.
+    ///
+    /// Returns the categorization tags for a specific market, helping understand
+    /// the market's topics and categories.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the market ID is invalid or the request fails.
     pub async fn market_tags(&self, request: &MarketTagsRequest) -> Result<Vec<Tag>> {
         self.get(&format!("markets/{}/tags", request.id), request)
             .await
     }
 
-    /// Lists series with optional filters.
+    /// Retrieves a list of market series with optional filtering.
+    ///
+    /// Series are groups of related markets that follow a pattern (e.g., weekly
+    /// sports outcomes, monthly economic indicators). Useful for tracking recurring
+    /// predictions over time.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails.
     pub async fn series(&self, request: &SeriesListRequest) -> Result<Vec<Series>> {
         self.get("series", request).await
     }
 
-    /// Gets a series by ID.
+    /// Retrieves a single series by its unique ID.
+    ///
+    /// Returns detailed information about a series including all markets in the series
+    /// and their resolution history.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the series ID is invalid or the request fails.
     pub async fn series_by_id(&self, request: &SeriesByIdRequest) -> Result<Series> {
         self.get(&format!("series/{}", request.id), request).await
     }
 
-    /// Lists comments with optional filters.
+    /// Retrieves a list of user comments with optional filtering.
+    ///
+    /// Comments are user-generated discussions and analysis on markets and events.
+    /// Use filters to search by market, event, or other criteria.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails.
     pub async fn comments(&self, request: &CommentsRequest) -> Result<Vec<Comment>> {
         self.get("comments", request).await
     }
 
-    /// Gets comments by comment ID.
+    /// Retrieves comments by their unique comment ID.
+    ///
+    /// Returns comments with the specified ID, including nested replies and
+    /// associated metadata.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the comment ID is invalid or the request fails.
     pub async fn comments_by_id(&self, request: &CommentsByIdRequest) -> Result<Vec<Comment>> {
         self.get(&format!("comments/{}", request.id), request).await
     }
 
-    /// Gets comments by user address.
+    /// Retrieves all comments authored by a specific wallet address.
+    ///
+    /// Returns comments posted by a particular user, useful for viewing a user's
+    /// contribution history and market analysis.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the address is invalid or the request fails.
     pub async fn comments_by_user_address(
         &self,
         request: &CommentsByUserAddressRequest,
@@ -313,12 +481,27 @@ impl Client {
         .await
     }
 
-    /// Gets a public profile by wallet address.
+    /// Retrieves a public trading profile for a wallet address.
+    ///
+    /// Returns public statistics about a trader including their trading history,
+    /// win rate, and other performance metrics. Only publicly visible information
+    /// is returned.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the address is invalid or the request fails.
     pub async fn public_profile(&self, request: &PublicProfileRequest) -> Result<PublicProfile> {
         self.get("public-profile", request).await
     }
 
-    /// Searches markets, events, and profiles.
+    /// Searches across markets, events, and user profiles.
+    ///
+    /// Performs a text search to find markets, events, or users matching the query.
+    /// Useful for discovery and finding specific content across the platform.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails or the search query is invalid.
     pub async fn search(&self, request: &SearchRequest) -> Result<SearchResults> {
         self.get("public-search", request).await
     }
