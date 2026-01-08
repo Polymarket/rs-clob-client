@@ -396,7 +396,7 @@ pub struct OrderMessage {
 
 /// Order status for WebSocket order messages.
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum OrderStatus {
     /// Order is open and active
@@ -413,6 +413,9 @@ pub enum OrderStatus {
     Update,
     /// Order cancellation in progress
     Cancellation,
+    /// Unknown order status from the API (captures the raw value for debugging).
+    #[serde(untagged)]
+    Unknown(String),
 }
 
 /// Calculated midpoint update (derived from orderbook).

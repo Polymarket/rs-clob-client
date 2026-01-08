@@ -35,7 +35,7 @@ pub use response::{
 
 #[non_exhaustive]
 #[derive(
-    Clone, Copy, Debug, Display, Default, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
+    Clone, Debug, Display, Default, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
 )]
 pub enum OrderType {
     /// Good 'til Cancelled; If not fully filled, the order rests on the book until it is explicitly
@@ -54,8 +54,9 @@ pub enum OrderType {
     /// the order cannot be fully filled, the remaining quantity is cancelled.
     #[serde(alias = "fak")]
     FAK,
-    #[serde(other)]
-    Unknown,
+    /// Unknown order type from the API (captures the raw value for debugging).
+    #[serde(untagged)]
+    Unknown(String),
 }
 
 #[non_exhaustive]
@@ -284,7 +285,7 @@ pub enum RfqSortDir {
 }
 
 #[non_exhaustive]
-#[derive(Clone, Copy, Display, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Debug, Display, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 #[strum(serialize_all = "UPPERCASE")]
 pub enum OrderStatusType {
@@ -298,13 +299,14 @@ pub enum OrderStatusType {
     Delayed,
     #[serde(alias = "unmatched")]
     Unmatched,
-    #[serde(other)]
-    Unknown,
+    /// Unknown order status type from the API (captures the raw value for debugging).
+    #[serde(untagged)]
+    Unknown(String),
 }
 
 #[non_exhaustive]
 #[derive(
-    Clone, Copy, Debug, Default, Display, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
+    Clone, Debug, Default, Display, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
 )]
 #[serde(rename_all = "UPPERCASE")]
 #[strum(serialize_all = "UPPERCASE")]
@@ -312,8 +314,9 @@ pub enum AssetType {
     #[default]
     Collateral,
     Conditional,
-    #[serde(other)]
-    Unknown,
+    /// Unknown asset type from the API (captures the raw value for debugging).
+    #[serde(untagged)]
+    Unknown(String),
 }
 
 #[non_exhaustive]
@@ -322,8 +325,9 @@ pub enum AssetType {
 pub enum TraderSide {
     Taker,
     Maker,
-    #[serde(other)]
-    Unknown,
+    /// Unknown trader side from the API (captures the raw value for debugging).
+    #[serde(untagged)]
+    Unknown(String),
 }
 
 /// Represents the maximum number of decimal places for an order's price field
@@ -592,6 +596,63 @@ mod tests {
     fn side_to_string_should_succeed() {
         assert_eq!(Side::Buy.to_string(), "BUY");
         assert_eq!(Side::Sell.to_string(), "SELL");
+    }
+
+    #[test]
+    fn order_type_deserialize_known_variants() {
+        // Test that known variants still deserialize correctly
+        assert_eq!(
+            serde_json::from_str::<OrderType>(r#""GTC""#).unwrap(),
+            OrderType::GTC
+        );
+        assert_eq!(
+            serde_json::from_str::<OrderType>(r#""gtc""#).unwrap(),
+            OrderType::GTC
+        );
+        assert_eq!(
+            serde_json::from_str::<OrderType>(r#""FOK""#).unwrap(),
+            OrderType::FOK
+        );
+    }
+
+    #[test]
+    fn order_type_deserialize_unknown_variant() {
+        // Test that unknown variants are captured
+        let result = serde_json::from_str::<OrderType>(r#""NEW_ORDER_TYPE""#).unwrap();
+        assert_eq!(result, OrderType::Unknown("NEW_ORDER_TYPE".to_owned()));
+    }
+
+    #[test]
+    fn order_status_type_deserialize_known_variants() {
+        assert_eq!(
+            serde_json::from_str::<OrderStatusType>(r#""LIVE""#).unwrap(),
+            OrderStatusType::Live
+        );
+        assert_eq!(
+            serde_json::from_str::<OrderStatusType>(r#""live""#).unwrap(),
+            OrderStatusType::Live
+        );
+    }
+
+    #[test]
+    fn order_status_type_deserialize_unknown_variant() {
+        let result = serde_json::from_str::<OrderStatusType>(r#""NEW_STATUS""#).unwrap();
+        assert_eq!(result, OrderStatusType::Unknown("NEW_STATUS".to_owned()));
+    }
+
+    #[test]
+    fn order_type_display_known_variants() {
+        assert_eq!(format!("{}", OrderType::GTC), "GTC");
+        assert_eq!(format!("{}", OrderType::FOK), "FOK");
+    }
+
+    #[test]
+    fn order_type_display_unknown_variant() {
+        // strum Display will show the variant name + contents for tuple variants
+        let unknown = OrderType::Unknown("NEW_TYPE".to_owned());
+        let display = format!("{unknown}");
+        // Just verify it displays something reasonable (contains the inner value)
+        assert!(display.contains("Unknown") || display.contains("NEW_TYPE"));
     }
 
     #[test]

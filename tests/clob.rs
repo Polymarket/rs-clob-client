@@ -2065,7 +2065,7 @@ mod authenticated {
                     .transaction_hash(
                         "0x3bc57dcae83a930df64fce8fdc46a8fca9b98af92a7b83a8a2f2c657446c2a71",
                     )
-                    .order_type(OrderType::Unknown)
+                    .order_type(OrderType::Unknown(String::new()))
                     .build()
                 )
                 .build(),

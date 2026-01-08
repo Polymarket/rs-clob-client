@@ -134,7 +134,7 @@ pub struct CommentProfile {
 
 /// Comment message types.
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CommentType {
     /// New comment created
@@ -145,6 +145,9 @@ pub enum CommentType {
     ReactionCreated,
     /// Reaction removed from a comment
     ReactionRemoved,
+    /// Unknown comment type from the API (captures the raw value for debugging).
+    #[serde(untagged)]
+    Unknown(String),
 }
 
 /// Deserialize messages from the byte slice.
