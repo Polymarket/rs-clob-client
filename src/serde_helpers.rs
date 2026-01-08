@@ -100,6 +100,8 @@ impl serde_with::SerializeAs<String> for StringFromAny {
 pub fn deserialize_with_warnings<T: DeserializeOwned>(value: Value) -> crate::Result<T> {
     use std::any::type_name;
 
+    use serde::de::Error as _;
+
     tracing::trace!(
         type_name = %type_name::<T>(),
         json = %value,
@@ -112,34 +114,44 @@ pub fn deserialize_with_warnings<T: DeserializeOwned>(value: Value) -> crate::Re
     // Collect unknown field paths during deserialization
     let mut unknown_paths: Vec<String> = Vec::new();
 
-    let result: T = serde_ignored::deserialize(value, |path| {
+    let result: Result<T, _> = serde_ignored::deserialize(value, |path| {
         unknown_paths.push(path.to_string());
-    })
-    .inspect_err(|e| {
-        tracing::error!(
-            type_name = %type_name::<T>(),
-            error = %e,
-            "deserialization failed"
-        );
-    })?;
+    });
 
-    // Log warnings for unknown fields with their values
-    if !unknown_paths.is_empty() {
-        let type_name = type_name::<T>();
-        for path in unknown_paths {
-            let field_value = lookup_value(&original, &path);
-            let value_display = format_value(field_value);
+    if let Ok(value) = result {
+        // Log warnings for unknown fields with their values
+        if !unknown_paths.is_empty() {
+            let type_name = type_name::<T>();
+            for path in unknown_paths {
+                let field_value = lookup_value(&original, &path);
+                let value_display = format_value(field_value);
 
-            tracing::warn!(
-                type_name = %type_name,
-                field = %path,
-                value = %value_display,
-                "unknown field in API response"
-            );
+                tracing::warn!(
+                    type_name = %type_name,
+                    field = %path,
+                    value = %value_display,
+                    "unknown field in API response"
+                );
+            }
         }
+        Ok(value)
+    } else {
+        // Re-deserialize with serde_path_to_error to get detailed error path
+        let json_str = original.to_string();
+        let mut jd = serde_json::Deserializer::from_str(&json_str);
+        serde_path_to_error::deserialize(&mut jd)
+            .inspect_err(|e| {
+                let field_value = lookup_value(&original, &e.path().to_string());
+                tracing::error!(
+                    type_name = %type_name::<T>(),
+                    field = %e.path(),
+                    value = %format_value(field_value),
+                    error = %e.inner(),
+                    "deserialization failed"
+                );
+            })
+            .map_err(|e| crate::Error::from(serde_json::Error::custom(e.to_string())))
     }
-
-    Ok(result)
 }
 
 /// Pass-through deserialization when tracing is disabled.
@@ -157,6 +169,7 @@ pub fn deserialize_with_warnings<T: DeserializeOwned>(value: Value) -> crate::Re
 ///
 /// Returns `None` if the path doesn't exist or traverses a non-container value.
 #[cfg(feature = "tracing")]
+#[expect(clippy::string_slice, reason = "JSON paths are ASCII, safe to slice")]
 fn lookup_value<'value>(value: &'value Value, path: &str) -> Option<&'value Value> {
     if path.is_empty() {
         return Some(value);
@@ -164,18 +177,36 @@ fn lookup_value<'value>(value: &'value Value, path: &str) -> Option<&'value Valu
 
     let mut current = value;
 
-    // Filter empty segments and skip `?` (Option marker from serde_ignored)
-    for segment in path.split('.').filter(|s| !s.is_empty() && *s != "?") {
-        match current {
-            Value::Object(map) => {
-                // Try as object key first, then as array index if current is actually an array
-                current = map.get(segment)?;
+    // Parse path like "[0].asset", "foo.bar[2].baz", or "?.0.field" (serde_ignored format)
+    let mut remaining = path;
+    while !remaining.is_empty() {
+        // Skip leading dots
+        remaining = remaining.trim_start_matches('.');
+
+        if remaining.starts_with('[') {
+            // Bracket notation array index: [0]
+            let end = remaining.find(']')?;
+            let index: usize = remaining[1..end].parse().ok()?;
+            current = current.as_array()?.get(index)?;
+            remaining = &remaining[end + 1..];
+        } else {
+            // Object key or dot notation array index
+            let end = remaining.find(['.', '[']).unwrap_or(remaining.len());
+            let key = &remaining[..end];
+            if !key.is_empty() && key != "?" {
+                // Try as array index first (for serde_ignored format like "?.0")
+                if let Ok(index) = key.parse::<usize>() {
+                    if let Some(arr) = current.as_array() {
+                        current = arr.get(index)?;
+                    } else {
+                        // Fall back to object key
+                        current = current.as_object()?.get(key)?;
+                    }
+                } else {
+                    current = current.as_object()?.get(key)?;
+                }
             }
-            Value::Array(arr) => {
-                let index: usize = segment.parse().ok()?;
-                current = arr.get(index)?;
-            }
-            _ => return None,
+            remaining = &remaining[end..];
         }
     }
 
@@ -608,6 +639,148 @@ mod tests {
         assert!(
             all_output.contains("secret_new_field"),
             "Expected 'secret_new_field' in output, got: {all_output}"
+        );
+    }
+
+    /// Test that verifies errors show field path and value when deserialization fails.
+    #[cfg(feature = "tracing")]
+    #[test]
+    fn error_shows_field_path_and_value() {
+        use std::sync::{Arc, Mutex};
+
+        use tracing_subscriber::layer::SubscriberExt as _;
+
+        #[expect(dead_code, reason = "fields only used for deserialization test")]
+        #[derive(Debug, Deserialize)]
+        struct TypeWithInt {
+            name: String,
+            count: i32, // This field expects an integer
+        }
+
+        // Capture errors in a buffer
+        let errors: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+        let errors_clone = Arc::clone(&errors);
+
+        let layer = tracing_subscriber::fmt::layer()
+            .with_writer(move || {
+                struct CaptureWriter(Arc<Mutex<Vec<String>>>);
+                impl std::io::Write for CaptureWriter {
+                    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+                        if let Ok(s) = std::str::from_utf8(buf) {
+                            self.0.lock().expect("lock").push(s.to_owned());
+                        }
+                        Ok(buf.len())
+                    }
+                    fn flush(&mut self) -> std::io::Result<()> {
+                        Ok(())
+                    }
+                }
+                CaptureWriter(Arc::clone(&errors_clone))
+            })
+            .with_ansi(false);
+
+        let subscriber = tracing_subscriber::registry().with(layer);
+
+        // Run the deserialization with our subscriber
+        tracing::subscriber::with_default(subscriber, || {
+            let json = serde_json::json!({
+                "name": "test",
+                "count": "not_a_number"  // Wrong type - will fail
+            });
+
+            let result: crate::Result<TypeWithInt> = deserialize_with_warnings(json);
+            assert!(result.is_err(), "deserialization should fail");
+        });
+
+        // Check that error log was captured with field path and value
+        let captured = errors.lock().expect("lock");
+        let all_output = captured.join("");
+
+        assert!(
+            all_output.contains("deserialization failed"),
+            "Expected 'deserialization failed' in output, got: {all_output}"
+        );
+        assert!(
+            all_output.contains("count"),
+            "Expected field path 'count' in output, got: {all_output}"
+        );
+        assert!(
+            all_output.contains("not_a_number"),
+            "Expected field value 'not_a_number' in output, got: {all_output}"
+        );
+    }
+
+    /// Test error reporting for nested fields in arrays.
+    #[cfg(feature = "tracing")]
+    #[test]
+    fn error_shows_nested_array_path() {
+        use std::sync::{Arc, Mutex};
+
+        use tracing_subscriber::layer::SubscriberExt as _;
+
+        #[expect(dead_code, reason = "fields only used for deserialization test")]
+        #[derive(Debug, Deserialize)]
+        struct Item {
+            id: i32,
+        }
+
+        #[expect(dead_code, reason = "fields only used for deserialization test")]
+        #[derive(Debug, Deserialize)]
+        struct Container {
+            items: Vec<Item>,
+        }
+
+        let errors: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+        let errors_clone = Arc::clone(&errors);
+
+        let layer = tracing_subscriber::fmt::layer()
+            .with_writer(move || {
+                struct CaptureWriter(Arc<Mutex<Vec<String>>>);
+                impl std::io::Write for CaptureWriter {
+                    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+                        if let Ok(s) = std::str::from_utf8(buf) {
+                            self.0.lock().expect("lock").push(s.to_owned());
+                        }
+                        Ok(buf.len())
+                    }
+                    fn flush(&mut self) -> std::io::Result<()> {
+                        Ok(())
+                    }
+                }
+                CaptureWriter(Arc::clone(&errors_clone))
+            })
+            .with_ansi(false);
+
+        let subscriber = tracing_subscriber::registry().with(layer);
+
+        tracing::subscriber::with_default(subscriber, || {
+            let json = serde_json::json!({
+                "items": [
+                    {"id": 1},
+                    {"id": "bad"},  // Second item has wrong type
+                    {"id": 3}
+                ]
+            });
+
+            let result: crate::Result<Container> = deserialize_with_warnings(json);
+            assert!(result.is_err(), "deserialization should fail");
+        });
+
+        let captured = errors.lock().expect("lock");
+        let all_output = captured.join("");
+
+        assert!(
+            all_output.contains("deserialization failed"),
+            "Expected 'deserialization failed' in output, got: {all_output}"
+        );
+        // Should show path to the failing field, like "items[1].id"
+        assert!(
+            all_output.contains("items") && all_output.contains('1') && all_output.contains("id"),
+            "Expected path containing 'items', '1', and 'id' in output, got: {all_output}"
+        );
+        assert!(
+            all_output.contains("bad"),
+            "Expected field value 'bad' in output, got: {all_output}"
         );
     }
 }
