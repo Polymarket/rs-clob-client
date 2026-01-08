@@ -9,8 +9,8 @@ use once_cell::sync::OnceCell;
 use super::interest::InterestTracker;
 use super::subscription::{ChannelType, SubscriptionManager};
 use super::types::response::{
-    BestBidAsk, BookUpdate, MarketResolved, MidpointUpdate, NewMarket, OrderMessage, PriceChange,
-    TradeMessage, WsMessage,
+    BestBidAsk, BookUpdate, LastTradePrice, MarketResolved, MidpointUpdate, NewMarket,
+    OrderMessage, PriceChange, TradeMessage, WsMessage,
 };
 use crate::Result;
 use crate::auth::state::{Authenticated, State, Unauthenticated};
@@ -160,6 +160,23 @@ impl<S: State> Client<S> {
         Ok(stream.filter_map(|msg_result| async move {
             match msg_result {
                 Ok(WsMessage::Book(book)) => Some(Ok(book)),
+                Err(e) => Some(Err(e)),
+                _ => None,
+            }
+        }))
+    }
+
+    /// Subscribe to `last_trade_price` updates for specific assets.
+    pub fn subscribe_last_trade_price(
+        &self,
+        asset_ids: Vec<String>,
+    ) -> Result<impl Stream<Item = Result<LastTradePrice>>> {
+        let resources = self.market_resources()?;
+        let stream = resources.subscriptions.subscribe_market(asset_ids)?;
+
+        Ok(stream.filter_map(|msg_result| async move {
+            match msg_result {
+                Ok(WsMessage::LastTradePrice(last_trade_price)) => Some(Ok(last_trade_price)),
                 Err(e) => Some(Err(e)),
                 _ => None,
             }

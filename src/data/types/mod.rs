@@ -49,6 +49,8 @@ pub enum ActivityType {
     Reward,
     /// Converting between token types.
     Conversion,
+    /// Yield
+    Yield,
 }
 
 /// Sort criteria for position queries.
