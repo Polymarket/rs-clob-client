@@ -9,14 +9,7 @@
     feature = "data",
     feature = "gamma"
 ))]
-use serde::de::DeserializeOwned;
-#[cfg(any(
-    feature = "bridge",
-    feature = "clob",
-    feature = "data",
-    feature = "gamma"
-))]
-use serde_json::Value;
+use {serde::de::DeserializeOwned, serde_json::Value};
 
 /// A `serde_as` type that deserializes strings or integers as `String`.
 ///

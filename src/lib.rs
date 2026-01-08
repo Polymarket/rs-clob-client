@@ -30,14 +30,7 @@ use phf::phf_map;
     feature = "data",
     feature = "gamma"
 ))]
-use reqwest::header::HeaderMap;
-#[cfg(any(
-    feature = "bridge",
-    feature = "clob",
-    feature = "data",
-    feature = "gamma"
-))]
-use reqwest::{Request, StatusCode};
+use reqwest::{Request, StatusCode, header::HeaderMap};
 use serde::Serialize;
 #[cfg(any(
     feature = "bridge",
