@@ -2,7 +2,7 @@ use std::fmt;
 
 use serde::de::StdError;
 use serde::{Deserialize, Serialize};
-use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as};
+use serde_with::{formats::CommaSeparator, serde_as, StringWithSeparator};
 
 use crate::types::Decimal;
 
@@ -55,8 +55,6 @@ pub enum ActivityType {
     /// Yield
     Yield,
     /// Maker rebate (fee rebate for providing liquidity).
-    #[serde(rename = "MAKER_REBATE")]
-    #[strum(serialize = "MAKER_REBATE")]
     MakerRebate,
     /// Unknown activity type from the API (captures the raw value for debugging).
     #[serde(untagged)]
