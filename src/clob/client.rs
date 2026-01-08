@@ -2018,6 +2018,7 @@ impl<K: Kind> Client<Authenticated<K>> {
         Ok(())
     }
 
+    #[cfg(feature = "heartbeats")]
     /// Stops automatic heartbeat posting.
     ///
     /// Cancels the background heartbeat task and waits for it to terminate cleanly.
@@ -2030,7 +2031,6 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// # Note
     ///
     /// Requires the `heartbeats` feature to be enabled.
-    #[cfg(feature = "heartbeats")]
     pub async fn stop_heartbeats(&mut self) -> Result<()> {
         self.heartbeat_token.cancel_and_wait().await
     }

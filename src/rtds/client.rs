@@ -157,15 +157,19 @@ impl<S: State> Client<S> {
     ///
     /// ```no_run
     /// use polymarket_client_sdk::rtds::Client;
+    /// use polymarket_client_sdk::ws::config::Config;
     /// use futures::StreamExt;
+    /// use tokio::pin;
     ///
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// let client = Client::new("wss://rtds.polymarket.com")?;
-    /// let mut stream = client.subscribe_crypto_prices(Some(vec!["BTCUSDT".to_string()]))?;
+    /// let client = Client::new("wss://rtds.polymarket.com", Config::default())?;
+    /// let stream = client.subscribe_crypto_prices(Some(vec!["BTCUSDT".to_string()]))?;
+    ///
+    /// pin!(stream);
     ///
     /// while let Some(price_result) = stream.next().await {
     ///     let price = price_result?;
-    ///     println!("BTC Price: ${}", price.price);
+    ///     println!("BTC Price: ${}", price.value);
     /// }
     /// # Ok(())
     /// # }

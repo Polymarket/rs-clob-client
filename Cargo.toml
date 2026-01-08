@@ -19,6 +19,9 @@ categories = [
 edition = "2024"
 rust-version = "1.88.0" # MSRV
 
+[package.metadata.docs.rs]
+all-features = true
+
 [features]
 default = []
 data = []
