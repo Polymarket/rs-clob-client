@@ -30,7 +30,7 @@ gamma = []
 bridge = []
 ctf = ["alloy/contract", "alloy/providers"]
 rfq = []
-tracing = ["dep:tracing", "dep:serde_ignored"]
+tracing = ["dep:tracing", "dep:serde_ignored", "dep:serde_path_to_error"]
 ws = ["dep:backoff", "dep:bitflags", "dep:tokio", "dep:tokio-tungstenite"]
 rtds = ["dep:backoff", "dep:tokio", "dep:tokio-tungstenite"]
 heartbeats = ["dep:tokio", "dep:tokio-util"]
@@ -65,6 +65,7 @@ secrecy = { version = "0.10", features = ["serde"] }
 serde = "1.0.228"
 serde_ignored = { version = "0.1", optional = true }
 serde_json = "1.0.148"
+serde_path_to_error = { version = "0.1", optional = true }
 serde_repr = "0.1.20"
 serde_urlencoded = { version = "0.7.1" }
 serde_with = { version = "3.16.1", features = ["chrono_0_4"] }
