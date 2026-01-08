@@ -1524,6 +1524,8 @@ impl<K: Kind> Client<Authenticated<K>> {
                             Err(e) => {
                                 #[cfg(feature = "tracing")]
                                 error!("Unable to post heartbeat: {e:?}");
+                                #[cfg(not(feature = "tracing"))]
+                                let _ = &e;
                             }
                         }
                     }
