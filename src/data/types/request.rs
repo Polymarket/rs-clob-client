@@ -14,8 +14,7 @@ use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as, skip_se
 
 use super::{
     ActivitySortBy, ActivityType, BoundedIntError, ClosedPositionSortBy, LeaderboardCategory,
-    LeaderboardOrderBy, MarketFilter, PositionSortBy, Side, SortDirection, TimePeriod, Title,
-    TradeFilter,
+    LeaderboardOrderBy, MarketFilter, PositionSortBy, Side, SortDirection, TimePeriod, TradeFilter,
 };
 use crate::types::{Address, B256, Decimal};
 
@@ -98,7 +97,7 @@ pub struct PositionsRequest {
     pub sort_direction: Option<SortDirection>,
     /// Filter by market title substring (max 100 chars).
     #[builder(into)]
-    pub title: Option<Title>,
+    pub title: Option<String>,
 }
 
 #[expect(clippy::ref_option, reason = "Need an explicit reference for serde")]
@@ -392,7 +391,7 @@ pub struct ClosedPositionsRequest {
     pub filter: Option<MarketFilter>,
     /// Filter by market title substring (max 100 chars).
     #[builder(into)]
-    pub title: Option<Title>,
+    pub title: Option<String>,
     /// Maximum number of positions to return (0-50, default: 10).
     #[builder(with = |v: i32| -> Result<_, BoundedIntError> { validate_bound(v, 0, 50, "limit") })]
     pub limit: Option<i32>,

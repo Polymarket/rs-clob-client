@@ -4,13 +4,10 @@ use serde::de::StdError;
 use serde::{Deserialize, Serialize};
 use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as};
 
-use crate::types::Decimal;
+use crate::types::{B256, Decimal};
 
 pub mod request;
 pub mod response;
-
-/// Type alias for market title filter strings.
-pub type Title = String;
 
 /// The side of a trade (buy or sell).
 ///
@@ -281,10 +278,7 @@ pub enum LeaderboardOrderBy {
 pub enum MarketFilter {
     /// Filter by condition IDs (market identifiers).
     #[serde(rename = "market")]
-    Markets(
-        #[serde_as(as = "StringWithSeparator::<CommaSeparator, crate::types::B256>")]
-        Vec<crate::types::B256>,
-    ),
+    Markets(#[serde_as(as = "StringWithSeparator::<CommaSeparator, B256>")] Vec<B256>),
     /// Filter by event IDs (groups of related markets).
     #[serde(rename = "eventId")]
     EventIds(#[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")] Vec<String>),
@@ -293,7 +287,7 @@ pub enum MarketFilter {
 impl MarketFilter {
     /// Creates a filter for specific markets by their condition IDs.
     #[must_use]
-    pub fn markets<I: IntoIterator<Item = crate::types::B256>>(ids: I) -> Self {
+    pub fn markets<I: IntoIterator<Item = B256>>(ids: I) -> Self {
         Self::Markets(ids.into_iter().collect())
     }
 

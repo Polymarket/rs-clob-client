@@ -25,7 +25,7 @@ use polymarket_client_sdk::data::types::request::{
 };
 use polymarket_client_sdk::data::types::{LeaderboardCategory, TimePeriod};
 use polymarket_client_sdk::types::{Address, B256, address, b256};
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
@@ -55,7 +55,7 @@ async fn main() -> anyhow::Result<()> {
     // Health check
     match client.health().await {
         Ok(status) => info!(endpoint = "health", status = %status.data),
-        Err(e) => debug!(endpoint = "health", error = %e),
+        Err(e) => error!(endpoint = "health", error = %e),
     }
 
     // Fetch leaderboard to get real trader addresses
@@ -155,7 +155,7 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
             }
-            Err(e) => debug!(endpoint = "holders", market = %market, error = %e),
+            Err(e) => error!(endpoint = "holders", market = %market, error = %e),
         }
     }
 
@@ -175,7 +175,7 @@ async fn main() -> anyhow::Result<()> {
                     );
                 }
             }
-            Err(e) => debug!(endpoint = "activity", user = %user, error = %e),
+            Err(e) => error!(endpoint = "activity", user = %user, error = %e),
         }
 
         match client
@@ -192,7 +192,7 @@ async fn main() -> anyhow::Result<()> {
                     );
                 }
             }
-            Err(e) => debug!(endpoint = "value", user = %user, error = %e),
+            Err(e) => error!(endpoint = "value", user = %user, error = %e),
         }
 
         match client
@@ -214,7 +214,7 @@ async fn main() -> anyhow::Result<()> {
                     );
                 }
             }
-            Err(e) => debug!(endpoint = "closed_positions", user = %user, error = %e),
+            Err(e) => error!(endpoint = "closed_positions", user = %user, error = %e),
         }
 
         match client
@@ -228,7 +228,7 @@ async fn main() -> anyhow::Result<()> {
                     markets_traded = traded.traded
                 );
             }
-            Err(e) => debug!(endpoint = "traded", user = %user, error = %e),
+            Err(e) => error!(endpoint = "traded", user = %user, error = %e),
         }
     }
 
@@ -246,7 +246,7 @@ async fn main() -> anyhow::Result<()> {
                 );
             }
         }
-        Err(e) => debug!(endpoint = "trades", error = %e),
+        Err(e) => error!(endpoint = "trades", error = %e),
     }
 
     // Open interest
@@ -261,7 +261,7 @@ async fn main() -> anyhow::Result<()> {
                 );
             }
         }
-        Err(e) => debug!(endpoint = "open_interest", error = %e),
+        Err(e) => error!(endpoint = "open_interest", error = %e),
     }
 
     // Live volume (using event ID 1 as example)
@@ -283,7 +283,7 @@ async fn main() -> anyhow::Result<()> {
                 );
             }
         }
-        Err(e) => debug!(endpoint = "live_volume", event_id = 1, error = %e),
+        Err(e) => error!(endpoint = "live_volume", event_id = 1, error = %e),
     }
 
     // Builder leaderboard
@@ -307,7 +307,7 @@ async fn main() -> anyhow::Result<()> {
                 );
             }
         }
-        Err(e) => debug!(endpoint = "builder_leaderboard", error = %e),
+        Err(e) => error!(endpoint = "builder_leaderboard", error = %e),
     }
 
     // Builder volume time series
@@ -330,7 +330,7 @@ async fn main() -> anyhow::Result<()> {
                 );
             }
         }
-        Err(e) => debug!(endpoint = "builder_volume", error = %e),
+        Err(e) => error!(endpoint = "builder_volume", error = %e),
     }
 
     Ok(())
