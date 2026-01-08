@@ -687,4 +687,194 @@ mod tests {
             "Expected 'secret_new_field' in output, got: {all_output}"
         );
     }
+
+    mod option_address_from_hex {
+        use alloy::primitives::Address;
+        use serde::Deserialize;
+        use serde_with::serde_as;
+
+        use crate::serde_helpers::OptionAddressFromHex;
+
+        #[serde_as]
+        #[derive(Debug, Deserialize)]
+        struct TestStruct {
+            #[serde_as(as = "OptionAddressFromHex")]
+            #[serde(default)]
+            address: Option<Address>,
+        }
+
+        #[test]
+        fn deserializes_valid_address() {
+            let json = r#"{"address": "0x5f3e759d09e1059e4c46d6984f07cbb36a73bdf1"}"#;
+            let result: TestStruct = serde_json::from_str(json).unwrap();
+            assert!(result.address.is_some());
+            assert_eq!(
+                result.address.unwrap().to_string().to_lowercase(),
+                "0x5f3e759d09e1059e4c46d6984f07cbb36a73bdf1"
+            );
+        }
+
+        #[test]
+        fn empty_string_becomes_none() {
+            let json = r#"{"address": ""}"#;
+            let result: TestStruct = serde_json::from_str(json).unwrap();
+            assert!(result.address.is_none());
+        }
+
+        #[test]
+        fn null_becomes_none() {
+            let json = r#"{"address": null}"#;
+            let result: TestStruct = serde_json::from_str(json).unwrap();
+            assert!(result.address.is_none());
+        }
+
+        #[test]
+        fn missing_field_becomes_none() {
+            let json = "{}";
+            let result: TestStruct = serde_json::from_str(json).unwrap();
+            assert!(result.address.is_none());
+        }
+
+        #[test]
+        fn invalid_address_returns_error() {
+            let json = r#"{"address": "not-an-address"}"#;
+            let result: Result<TestStruct, _> = serde_json::from_str(json);
+            result.unwrap_err();
+        }
+
+        #[test]
+        fn serializes_some_address() {
+            use serde::Serialize;
+
+            #[serde_as]
+            #[derive(Serialize)]
+            struct SerTestStruct {
+                #[serde_as(as = "OptionAddressFromHex")]
+                address: Option<Address>,
+            }
+
+            let addr: Address = "0x5f3e759d09e1059e4c46d6984f07cbb36a73bdf1"
+                .parse()
+                .unwrap();
+            let s = SerTestStruct {
+                address: Some(addr),
+            };
+            let json = serde_json::to_string(&s).unwrap();
+            assert!(
+                json.to_lowercase()
+                    .contains("0x5f3e759d09e1059e4c46d6984f07cbb36a73bdf1")
+            );
+        }
+
+        #[test]
+        fn serializes_none_as_null() {
+            use serde::Serialize;
+
+            #[serde_as]
+            #[derive(Serialize)]
+            struct SerTestStruct {
+                #[serde_as(as = "OptionAddressFromHex")]
+                address: Option<Address>,
+            }
+
+            let s = SerTestStruct { address: None };
+            let json = serde_json::to_string(&s).unwrap();
+            assert_eq!(json, r#"{"address":null}"#);
+        }
+    }
+
+    mod option_b256_from_hex {
+        use alloy::primitives::B256;
+        use serde::Deserialize;
+        use serde_with::serde_as;
+
+        use crate::serde_helpers::OptionB256FromHex;
+
+        #[serde_as]
+        #[derive(Debug, Deserialize)]
+        struct TestStruct {
+            #[serde_as(as = "OptionB256FromHex")]
+            #[serde(default)]
+            condition_id: Option<B256>,
+        }
+
+        #[test]
+        fn deserializes_valid_b256() {
+            let json = r#"{"condition_id": "0xe3b423dfad8c22ff75c9899c4e8176f628cf4ad4caa00481764d320e7415f7a9"}"#;
+            let result: TestStruct = serde_json::from_str(json).unwrap();
+            assert!(result.condition_id.is_some());
+            assert_eq!(
+                result.condition_id.unwrap().to_string().to_lowercase(),
+                "0xe3b423dfad8c22ff75c9899c4e8176f628cf4ad4caa00481764d320e7415f7a9"
+            );
+        }
+
+        #[test]
+        fn empty_string_becomes_none() {
+            let json = r#"{"condition_id": ""}"#;
+            let result: TestStruct = serde_json::from_str(json).unwrap();
+            assert!(result.condition_id.is_none());
+        }
+
+        #[test]
+        fn null_becomes_none() {
+            let json = r#"{"condition_id": null}"#;
+            let result: TestStruct = serde_json::from_str(json).unwrap();
+            assert!(result.condition_id.is_none());
+        }
+
+        #[test]
+        fn missing_field_becomes_none() {
+            let json = "{}";
+            let result: TestStruct = serde_json::from_str(json).unwrap();
+            assert!(result.condition_id.is_none());
+        }
+
+        #[test]
+        fn invalid_b256_returns_error() {
+            let json = r#"{"condition_id": "not-a-hash"}"#;
+            let result: Result<TestStruct, _> = serde_json::from_str(json);
+            result.unwrap_err();
+        }
+
+        #[test]
+        fn serializes_some_b256() {
+            use serde::Serialize;
+
+            #[serde_as]
+            #[derive(Serialize)]
+            struct SerTestStruct {
+                #[serde_as(as = "OptionB256FromHex")]
+                condition_id: Option<B256>,
+            }
+
+            let hash: B256 = "0xe3b423dfad8c22ff75c9899c4e8176f628cf4ad4caa00481764d320e7415f7a9"
+                .parse()
+                .unwrap();
+            let s = SerTestStruct {
+                condition_id: Some(hash),
+            };
+            let json = serde_json::to_string(&s).unwrap();
+            assert!(
+                json.to_lowercase()
+                    .contains("0xe3b423dfad8c22ff75c9899c4e8176f628cf4ad4caa00481764d320e7415f7a9")
+            );
+        }
+
+        #[test]
+        fn serializes_none_as_null() {
+            use serde::Serialize;
+
+            #[serde_as]
+            #[derive(Serialize)]
+            struct SerTestStruct {
+                #[serde_as(as = "OptionB256FromHex")]
+                condition_id: Option<B256>,
+            }
+
+            let s = SerTestStruct { condition_id: None };
+            let json = serde_json::to_string(&s).unwrap();
+            assert_eq!(json, r#"{"condition_id":null}"#);
+        }
+    }
 }
