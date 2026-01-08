@@ -5,9 +5,10 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_with::NoneAsEmptyString;
 use serde_with::serde_as;
 
-use crate::serde_helpers::{OptionAddressFromHex, OptionB256FromHex, StringFromAny};
+use crate::serde_helpers::StringFromAny;
 use crate::types::{Address, B256, Decimal};
 
 /// Image optimization metadata.
@@ -336,7 +337,7 @@ pub struct Event {
 pub struct Market {
     pub id: String,
     pub question: Option<String>,
-    #[serde_as(as = "OptionB256FromHex")]
+    #[serde_as(as = "NoneAsEmptyString")]
     #[serde(default)]
     pub condition_id: Option<B256>,
     pub slug: Option<String>,
@@ -367,7 +368,7 @@ pub struct Market {
     pub lower_bound_date: Option<String>,
     pub upper_bound_date: Option<String>,
     pub closed: Option<bool>,
-    #[serde_as(as = "OptionAddressFromHex")]
+    #[serde_as(as = "NoneAsEmptyString")]
     #[serde(default)]
     pub market_maker_address: Option<Address>,
     pub created_by: Option<i32>,
@@ -506,10 +507,10 @@ pub struct Market {
 #[non_exhaustive]
 pub struct ClobReward {
     pub id: Option<String>,
-    #[serde_as(as = "OptionAddressFromHex")]
+    #[serde_as(as = "NoneAsEmptyString")]
     #[serde(default)]
     pub asset_address: Option<Address>,
-    #[serde_as(as = "OptionB256FromHex")]
+    #[serde_as(as = "NoneAsEmptyString")]
     #[serde(default)]
     pub condition_id: Option<B256>,
     pub start_date: Option<String>,
@@ -587,10 +588,10 @@ pub struct CommentProfile {
     pub bio: Option<String>,
     pub is_mod: Option<bool>,
     pub is_creator: Option<bool>,
-    #[serde_as(as = "OptionAddressFromHex")]
+    #[serde_as(as = "NoneAsEmptyString")]
     #[serde(default)]
     pub proxy_wallet: Option<Address>,
-    #[serde_as(as = "OptionAddressFromHex")]
+    #[serde_as(as = "NoneAsEmptyString")]
     #[serde(default)]
     pub base_address: Option<Address>,
     pub profile_image: Option<String>,
@@ -609,7 +610,7 @@ pub struct Reaction {
     pub comment_id: Option<i32>,
     pub reaction_type: Option<String>,
     pub icon: Option<String>,
-    #[serde_as(as = "OptionAddressFromHex")]
+    #[serde_as(as = "NoneAsEmptyString")]
     #[serde(default)]
     pub user_address: Option<Address>,
     pub created_at: Option<DateTime<Utc>>,
@@ -629,10 +630,10 @@ pub struct Comment {
     pub parent_entity_id: Option<i32>,
     #[serde(rename = "parentCommentID")]
     pub parent_comment_id: Option<String>,
-    #[serde_as(as = "OptionAddressFromHex")]
+    #[serde_as(as = "NoneAsEmptyString")]
     #[serde(default)]
     pub user_address: Option<Address>,
-    #[serde_as(as = "OptionAddressFromHex")]
+    #[serde_as(as = "NoneAsEmptyString")]
     #[serde(default)]
     pub reply_address: Option<Address>,
     pub created_at: Option<DateTime<Utc>>,
@@ -660,7 +661,7 @@ pub struct PublicProfileUser {
 #[non_exhaustive]
 pub struct PublicProfile {
     pub created_at: Option<DateTime<Utc>>,
-    #[serde_as(as = "OptionAddressFromHex")]
+    #[serde_as(as = "NoneAsEmptyString")]
     #[serde(default)]
     pub proxy_wallet: Option<Address>,
     pub profile_image: Option<String>,
@@ -708,7 +709,7 @@ pub struct Profile {
     pub display_username_public: Option<bool>,
     pub profile_image: Option<String>,
     pub bio: Option<String>,
-    #[serde_as(as = "OptionAddressFromHex")]
+    #[serde_as(as = "NoneAsEmptyString")]
     #[serde(default)]
     pub proxy_wallet: Option<Address>,
     pub profile_image_optimized: Option<ImageOptimization>,
