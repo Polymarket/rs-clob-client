@@ -94,12 +94,14 @@ async fn main() -> anyhow::Result<()> {
         Err(e) => debug!(stream = "crypto_prices_filtered", error = %e),
     }
 
-    // Subscribe to Chainlink price feeds
+    // Subscribe to specific Chainlink symbol
+    let chainlink_symbol = "btc/usd".to_owned();
     info!(
         stream = "chainlink_prices",
-        "Subscribing to Chainlink price feeds"
+        symbol = %chainlink_symbol,
+        "Subscribing to Chainlink price feed"
     );
-    match client.subscribe_chainlink_prices(None) {
+    match client.subscribe_chainlink_prices(Some(chainlink_symbol)) {
         Ok(stream) => {
             let mut stream = Box::pin(stream);
             let mut count = 0;
