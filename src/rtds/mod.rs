@@ -5,6 +5,8 @@
 
 //! Real-Time Data Socket (RTDS) client for streaming Polymarket data.
 //!
+//! **Feature flag:** `rtds` (required to use this module)
+//!
 //! This module provides a WebSocket-based client for subscribing to real-time
 //! data streams from Polymarket's RTDS service.
 //!
