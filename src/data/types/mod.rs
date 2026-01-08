@@ -54,6 +54,10 @@ pub enum ActivityType {
     Conversion,
     /// Yield
     Yield,
+    /// Maker rebate (fee rebate for providing liquidity).
+    #[serde(rename = "MAKER_REBATE")]
+    #[strum(serialize = "MAKER_REBATE")]
+    MakerRebate,
     /// Unknown activity type from the API (captures the raw value for debugging).
     #[serde(untagged)]
     Unknown(String),
