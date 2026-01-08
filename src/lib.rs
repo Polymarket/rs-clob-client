@@ -195,11 +195,10 @@ pub trait ToQueryParams: Serialize {
     fn query_params(&self, next_cursor: Option<&str>) -> String {
         let mut params = serde_urlencoded::to_string(self)
             .inspect_err(|e| {
-                #[cfg(not(feature = "tracing"))]
-                let _: &serde_urlencoded::ser::Error = e;
-
                 #[cfg(feature = "tracing")]
                 tracing::error!("Unable to convert to URL-encoded string {e:?}");
+                #[cfg(not(feature = "tracing"))]
+                let _ = &e;
             })
             .unwrap_or_default();
 
