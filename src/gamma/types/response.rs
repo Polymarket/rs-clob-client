@@ -5,10 +5,11 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_with::NoneAsEmptyString;
 use serde_with::serde_as;
 
 use crate::serde_helpers::StringFromAny;
-use crate::types::Decimal;
+use crate::types::{Address, B256, Decimal};
 
 /// Image optimization metadata.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -329,13 +330,16 @@ pub struct Event {
 }
 
 /// A prediction market.
+#[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct Market {
     pub id: String,
     pub question: Option<String>,
-    pub condition_id: Option<String>,
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default)]
+    pub condition_id: Option<B256>,
     pub slug: Option<String>,
     pub twitter_card_image: Option<String>,
     pub resolution_source: Option<String>,
@@ -364,7 +368,9 @@ pub struct Market {
     pub lower_bound_date: Option<String>,
     pub upper_bound_date: Option<String>,
     pub closed: Option<bool>,
-    pub market_maker_address: Option<String>,
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default)]
+    pub market_maker_address: Option<Address>,
     pub created_by: Option<i32>,
     pub updated_by: Option<i32>,
     pub created_at: Option<DateTime<Utc>>,
@@ -495,13 +501,18 @@ pub struct Market {
 }
 
 /// CLOB rewards configuration for a market.
+#[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct ClobReward {
     pub id: Option<String>,
-    pub asset_address: Option<String>,
-    pub condition_id: Option<String>,
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default)]
+    pub asset_address: Option<Address>,
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default)]
+    pub condition_id: Option<B256>,
     pub start_date: Option<String>,
     pub end_date: Option<String>,
     pub rewards_amount: Option<Decimal>,
@@ -566,6 +577,7 @@ pub struct CommentPosition {
 }
 
 /// A comment profile.
+#[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
@@ -576,14 +588,19 @@ pub struct CommentProfile {
     pub bio: Option<String>,
     pub is_mod: Option<bool>,
     pub is_creator: Option<bool>,
-    pub proxy_wallet: Option<String>,
-    pub base_address: Option<String>,
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default)]
+    pub proxy_wallet: Option<Address>,
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default)]
+    pub base_address: Option<Address>,
     pub profile_image: Option<String>,
     pub profile_image_optimized: Option<ImageOptimization>,
     pub positions: Option<Vec<CommentPosition>>,
 }
 
 /// A reaction to a comment.
+#[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
@@ -593,12 +610,15 @@ pub struct Reaction {
     pub comment_id: Option<i32>,
     pub reaction_type: Option<String>,
     pub icon: Option<String>,
-    pub user_address: Option<String>,
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default)]
+    pub user_address: Option<Address>,
     pub created_at: Option<DateTime<Utc>>,
     pub profile: Option<CommentProfile>,
 }
 
 /// A comment on an event, series, or market.
+#[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
@@ -610,8 +630,12 @@ pub struct Comment {
     pub parent_entity_id: Option<i32>,
     #[serde(rename = "parentCommentID")]
     pub parent_comment_id: Option<String>,
-    pub user_address: Option<String>,
-    pub reply_address: Option<String>,
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default)]
+    pub user_address: Option<Address>,
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default)]
+    pub reply_address: Option<Address>,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
     pub profile: Option<CommentProfile>,
@@ -631,12 +655,15 @@ pub struct PublicProfileUser {
 }
 
 /// Public profile response.
+#[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct PublicProfile {
     pub created_at: Option<DateTime<Utc>>,
-    pub proxy_wallet: Option<String>,
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default)]
+    pub proxy_wallet: Option<Address>,
     pub profile_image: Option<String>,
     pub display_username_public: Option<bool>,
     pub bio: Option<String>,
@@ -659,6 +686,7 @@ pub struct SearchTag {
 }
 
 /// A profile in search results.
+#[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
@@ -681,7 +709,9 @@ pub struct Profile {
     pub display_username_public: Option<bool>,
     pub profile_image: Option<String>,
     pub bio: Option<String>,
-    pub proxy_wallet: Option<String>,
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default)]
+    pub proxy_wallet: Option<Address>,
     pub profile_image_optimized: Option<ImageOptimization>,
     pub is_close_only: Option<bool>,
     pub is_cert_req: Option<bool>,

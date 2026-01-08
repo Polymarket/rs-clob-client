@@ -69,7 +69,7 @@ impl<OrderKind, K: AuthKind> OrderBuilder<OrderKind, K> {
         self
     }
 
-    /// Sets the [`Side`] for this builder.
+    /// Sets the nonce for this builder.
     #[must_use]
     pub fn nonce(mut self, nonce: u64) -> Self {
         self.nonce = Some(nonce);
