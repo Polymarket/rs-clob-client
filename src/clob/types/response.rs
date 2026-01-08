@@ -187,9 +187,13 @@ pub struct MarketResponse {
     pub minimum_order_size: Decimal,
     pub minimum_tick_size: Decimal,
     /// The market condition ID (unique market identifier).
-    pub condition_id: B256,
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default)]
+    pub condition_id: Option<B256>,
     /// The CTF question ID.
-    pub question_id: B256,
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default)]
+    pub question_id: Option<B256>,
     pub question: String,
     pub description: String,
     pub market_slug: String,
@@ -197,7 +201,9 @@ pub struct MarketResponse {
     pub game_start_time: Option<DateTime<Utc>>,
     pub seconds_delay: u64,
     /// The FPMM (Fixed Product Market Maker) contract address.
-    pub fpmm: Address,
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default)]
+    pub fpmm: Option<Address>,
     pub maker_base_fee: Decimal,
     pub taker_base_fee: Decimal,
     pub notifications_enabled: bool,

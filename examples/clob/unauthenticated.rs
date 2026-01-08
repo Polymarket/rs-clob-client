@@ -1,81 +1,294 @@
-#![allow(clippy::print_stdout, reason = "Examples are okay to print to stdout")]
+//! Comprehensive CLOB API endpoint explorer (unauthenticated).
+//!
+//! This example dynamically tests all unauthenticated CLOB API endpoints by:
+//! 1. Fetching markets to discover real token IDs and condition IDs
+//! 2. Using those IDs for subsequent price, orderbook, and trade queries
+//!
+//! Run with tracing enabled:
+//! ```sh
+//! RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example unauthenticated --features tracing
+//! ```
+//!
+//! Optionally log to a file:
+//! ```sh
+//! LOG_FILE=clob.log RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example unauthenticated --features tracing
+//! ```
+
+use std::collections::HashMap;
+use std::fs::File;
 
 use polymarket_client_sdk::clob::types::Side;
 use polymarket_client_sdk::clob::types::request::{
     LastTradePriceRequest, MidpointRequest, OrderBookSummaryRequest, PriceRequest, SpreadRequest,
 };
 use polymarket_client_sdk::clob::{Client, Config};
+use tracing::{debug, info, warn};
+use tracing_subscriber::EnvFilter;
+use tracing_subscriber::layer::SubscriberExt as _;
+use tracing_subscriber::util::SubscriberInitExt as _;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let client = Client::new("https://clob.polymarket.com", Config::default())?;
-
-    let token_id = "102200530570339469387764365697342150521708074903735836831685780223982723092914";
-    let condition_id = "0x65805e37d6c891808a44064013a0c80babf87010fe6e69204b17381fd0761fdd";
-
-    println!("ok -- {:?}", client.ok().await);
-    println!("server_time -- {:?}", client.server_time().await);
-
-    let midpoint_request = MidpointRequest::builder().token_id(token_id).build();
-    println!("midpoint -- {:?}", client.midpoint(&midpoint_request).await);
-    println!(
-        "midpoints -- {:?}",
-        client.midpoints(&[midpoint_request]).await
-    );
-
-    let price_request = PriceRequest::builder()
-        .token_id(token_id)
-        .side(Side::Sell)
-        .build();
-    println!("price -- {:?}", client.price(&price_request).await);
-    println!("prices -- {:?}", client.prices(&[price_request]).await);
-
-    let spread_request = SpreadRequest::builder().token_id(token_id).build();
-    println!("spread -- {:?}", client.spread(&spread_request).await);
-    println!("spreads -- {:?}", client.spreads(&[spread_request]).await);
-
-    println!("tick_size -- {:?}", client.tick_size(token_id).await);
-    println!("neg_risk -- {:?}", client.neg_risk(token_id).await);
-    println!("fee_rate_bps -- {:?}", client.fee_rate_bps(token_id).await);
-
-    let order_book_request = OrderBookSummaryRequest::builder()
-        .token_id(token_id)
-        .build();
-    let book = client.order_book(&order_book_request).await;
-    if let Ok(book) = book {
-        println!("order_book -- {book:?}");
-        println!("order_book hash -- {:?}", book.hash());
+    if let Ok(path) = std::env::var("LOG_FILE") {
+        let file = File::create(path)?;
+        tracing_subscriber::registry()
+            .with(EnvFilter::from_default_env())
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .with_writer(file)
+                    .with_ansi(false),
+            )
+            .init();
+    } else {
+        tracing_subscriber::fmt::init();
     }
 
-    println!(
-        "order_books -- {:?}",
-        client.order_books(&[order_book_request]).await
-    );
+    let client = Client::new("https://clob.polymarket.com", Config::default())?;
 
-    let last_trade_price_request = LastTradePriceRequest::builder().token_id(token_id).build();
-    println!(
-        "last_trade_price -- {:?}",
-        client.last_trade_price(&last_trade_price_request).await
-    );
-    println!(
-        "last_trade_prices -- {:?}",
-        client.last_trades_prices(&[last_trade_price_request]).await
-    );
+    // Health check endpoints
+    match client.ok().await {
+        Ok(_) => info!(endpoint = "ok", status = "healthy"),
+        Err(e) => debug!(endpoint = "ok", error = %e),
+    }
 
-    println!("market -- {:?}", client.market(condition_id).await);
-    println!("markets -- {:?}", client.markets(None).await);
-    println!(
-        "sampling_markets -- {:?}",
-        client.sampling_markets(None).await
-    );
-    println!(
-        "simplified_markets -- {:?}",
-        client.simplified_markets(None).await
-    );
-    println!(
-        "sampling_simplified_markets -- {:?}",
-        client.sampling_simplified_markets(None).await
-    );
+    match client.server_time().await {
+        Ok(time) => info!(endpoint = "server_time", timestamp = %time),
+        Err(e) => debug!(endpoint = "server_time", error = %e),
+    }
+
+    // Fetch markets to discover real token IDs and condition IDs
+    let markets_result = client.markets(None).await;
+
+    let (token_id, condition_id) = match &markets_result {
+        Ok(page) => {
+            info!(
+                endpoint = "markets",
+                count = page.data.len(),
+                has_next = !page.next_cursor.is_empty()
+            );
+
+            // Find an active market with tokens and a valid condition_id
+            let active_market = page
+                .data
+                .iter()
+                .find(|m| m.active && !m.tokens.is_empty() && m.condition_id.is_some());
+
+            if let Some(market) = active_market {
+                let cid = market.condition_id.expect("checked above");
+                info!(
+                    endpoint = "markets",
+                    condition_id = %cid,
+                    question = %market.question,
+                    tokens = market.tokens.len()
+                );
+                (Some(market.tokens[0].token_id.clone()), Some(cid))
+            } else {
+                warn!(endpoint = "markets", "no active market with tokens found");
+                (None, None)
+            }
+        }
+        Err(e) => {
+            debug!(endpoint = "markets", error = %e);
+            (None, None)
+        }
+    };
+
+    // Test market lookup by condition ID
+    if let Some(cid) = &condition_id {
+        match client.market(&cid.to_string()).await {
+            Ok(market) => info!(
+                endpoint = "market",
+                condition_id = %cid,
+                question = %market.question,
+                active = market.active
+            ),
+            Err(e) => debug!(endpoint = "market", condition_id = %cid, error = %e),
+        }
+    }
+
+    // Test sampling markets
+    match client.sampling_markets(None).await {
+        Ok(page) => info!(
+            endpoint = "sampling_markets",
+            count = page.data.len(),
+            has_next = !page.next_cursor.is_empty()
+        ),
+        Err(e) => debug!(endpoint = "sampling_markets", error = %e),
+    }
+
+    // Test simplified markets
+    match client.simplified_markets(None).await {
+        Ok(page) => info!(
+            endpoint = "simplified_markets",
+            count = page.data.len(),
+            has_next = !page.next_cursor.is_empty()
+        ),
+        Err(e) => debug!(endpoint = "simplified_markets", error = %e),
+    }
+
+    // Test sampling simplified markets
+    match client.sampling_simplified_markets(None).await {
+        Ok(page) => info!(
+            endpoint = "sampling_simplified_markets",
+            count = page.data.len(),
+            has_next = !page.next_cursor.is_empty()
+        ),
+        Err(e) => debug!(endpoint = "sampling_simplified_markets", error = %e),
+    }
+
+    // Use discovered token_id for price and order book queries
+    if let Some(token_id) = &token_id {
+        // Midpoint
+        let midpoint_request = MidpointRequest::builder().token_id(token_id).build();
+        match client.midpoint(&midpoint_request).await {
+            Ok(midpoint) => info!(endpoint = "midpoint", token_id = %token_id, mid = %midpoint.mid),
+            Err(e) => debug!(endpoint = "midpoint", token_id = %token_id, error = %e),
+        }
+
+        // Midpoints (batch)
+        match client.midpoints(&[midpoint_request]).await {
+            Ok(midpoints) => info!(endpoint = "midpoints", count = midpoints.midpoints.len()),
+            Err(e) => debug!(endpoint = "midpoints", error = %e),
+        }
+
+        // Price (buy side)
+        let buy_price_request = PriceRequest::builder()
+            .token_id(token_id)
+            .side(Side::Buy)
+            .build();
+        match client.price(&buy_price_request).await {
+            Ok(price) => info!(
+                endpoint = "price",
+                token_id = %token_id,
+                side = "buy",
+                price = %price.price
+            ),
+            Err(e) => debug!(endpoint = "price", token_id = %token_id, side = "buy", error = %e),
+        }
+
+        // Price (sell side)
+        let sell_price_request = PriceRequest::builder()
+            .token_id(token_id)
+            .side(Side::Sell)
+            .build();
+        match client.price(&sell_price_request).await {
+            Ok(price) => info!(
+                endpoint = "price",
+                token_id = %token_id,
+                side = "sell",
+                price = %price.price
+            ),
+            Err(e) => debug!(endpoint = "price", token_id = %token_id, side = "sell", error = %e),
+        }
+
+        // Prices (batch)
+        match client
+            .prices(&[buy_price_request, sell_price_request])
+            .await
+        {
+            Ok(prices) => info!(
+                endpoint = "prices",
+                count = prices.prices.as_ref().map_or(0, HashMap::len)
+            ),
+            Err(e) => debug!(endpoint = "prices", error = %e),
+        }
+
+        // Spread
+        let spread_request = SpreadRequest::builder().token_id(token_id).build();
+        match client.spread(&spread_request).await {
+            Ok(spread) => info!(
+                endpoint = "spread",
+                token_id = %token_id,
+                spread = %spread.spread
+            ),
+            Err(e) => debug!(endpoint = "spread", token_id = %token_id, error = %e),
+        }
+
+        // Spreads (batch)
+        match client.spreads(&[spread_request]).await {
+            Ok(spreads) => info!(
+                endpoint = "spreads",
+                count = spreads.spreads.as_ref().map_or(0, HashMap::len)
+            ),
+            Err(e) => debug!(endpoint = "spreads", error = %e),
+        }
+
+        // Tick size
+        match client.tick_size(token_id).await {
+            Ok(tick_size) => info!(
+                endpoint = "tick_size",
+                token_id = %token_id,
+                tick_size = %tick_size.minimum_tick_size
+            ),
+            Err(e) => debug!(endpoint = "tick_size", token_id = %token_id, error = %e),
+        }
+
+        // Neg risk
+        match client.neg_risk(token_id).await {
+            Ok(neg_risk) => info!(
+                endpoint = "neg_risk",
+                token_id = %token_id,
+                neg_risk = neg_risk.neg_risk
+            ),
+            Err(e) => debug!(endpoint = "neg_risk", token_id = %token_id, error = %e),
+        }
+
+        // Fee rate
+        match client.fee_rate_bps(token_id).await {
+            Ok(fee_rate) => info!(
+                endpoint = "fee_rate_bps",
+                token_id = %token_id,
+                base_fee = fee_rate.base_fee
+            ),
+            Err(e) => debug!(endpoint = "fee_rate_bps", token_id = %token_id, error = %e),
+        }
+
+        // Order book
+        let order_book_request = OrderBookSummaryRequest::builder()
+            .token_id(token_id)
+            .build();
+        match client.order_book(&order_book_request).await {
+            Ok(book) => {
+                let hash = book.hash().unwrap_or_default();
+                info!(
+                    endpoint = "order_book",
+                    token_id = %token_id,
+                    bids = book.bids.len(),
+                    asks = book.asks.len(),
+                    hash = %hash
+                );
+            }
+            Err(e) => debug!(endpoint = "order_book", token_id = %token_id, error = %e),
+        }
+
+        // Order books (batch)
+        match client.order_books(&[order_book_request]).await {
+            Ok(books) => info!(endpoint = "order_books", count = books.len()),
+            Err(e) => debug!(endpoint = "order_books", error = %e),
+        }
+
+        // Last trade price
+        let last_trade_request = LastTradePriceRequest::builder().token_id(token_id).build();
+        match client.last_trade_price(&last_trade_request).await {
+            Ok(last_trade) => info!(
+                endpoint = "last_trade_price",
+                token_id = %token_id,
+                price = %last_trade.price
+            ),
+            Err(e) => debug!(endpoint = "last_trade_price", token_id = %token_id, error = %e),
+        }
+
+        // Last trade prices (batch)
+        match client.last_trades_prices(&[last_trade_request]).await {
+            Ok(prices) => info!(endpoint = "last_trade_prices", count = prices.len()),
+            Err(e) => debug!(endpoint = "last_trade_prices", error = %e),
+        }
+    } else {
+        debug!(
+            endpoint = "price_queries",
+            "skipped - no token_id discovered"
+        );
+    }
 
     Ok(())
 }
