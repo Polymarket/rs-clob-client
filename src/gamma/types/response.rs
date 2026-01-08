@@ -386,8 +386,9 @@ pub struct Market {
     pub market_group: Option<i32>,
     pub group_item_title: Option<String>,
     pub group_item_threshold: Option<String>,
-    #[serde(rename = "questionID")]
-    pub question_id: Option<String>,
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default, rename = "questionID")]
+    pub question_id: Option<B256>,
     pub uma_end_date: Option<String>,
     pub enable_order_book: Option<bool>,
     pub order_price_min_tick_size: Option<Decimal>,

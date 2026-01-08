@@ -211,10 +211,10 @@ pub struct MarketsRequest {
     #[builder(default)]
     pub sports_market_types: Vec<String>,
     pub rewards_min_size: Option<Decimal>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, B256>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
-    pub question_ids: Vec<String>,
+    pub question_ids: Vec<B256>,
     pub include_tag: Option<bool>,
     pub closed: Option<bool>,
 }

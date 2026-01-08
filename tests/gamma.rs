@@ -1269,7 +1269,10 @@ mod query_string {
             .game_id("game123".to_owned())
             .sports_market_types(vec!["moneyline".to_owned(), "spread".to_owned()])
             .rewards_min_size(dec!(100))
-            .question_ids(vec!["q1".to_owned(), "q2".to_owned()])
+            .question_ids(vec![
+                b256!("0x0000000000000000000000000000000000000000000000000000000000000001"),
+                b256!("0x0000000000000000000000000000000000000000000000000000000000000002"),
+            ])
             .include_tag(true)
             .closed(false)
             .build();
@@ -1307,7 +1310,8 @@ mod query_string {
         assert!(qs.contains("game_id=game123"));
         assert!(qs.contains("sports_market_types=moneyline%2Cspread"));
         assert!(qs.contains("rewards_min_size=100"));
-        assert!(qs.contains("question_ids=q1%2Cq2"));
+        // B256 question_ids serialize to lowercase hex via serde (comma = %2C URL-encoded)
+        assert!(qs.contains("question_ids=0x0000000000000000000000000000000000000000000000000000000000000001%2C0x0000000000000000000000000000000000000000000000000000000000000002"));
         assert!(qs.contains("include_tag=true"));
         assert!(qs.contains("closed=false"));
     }
