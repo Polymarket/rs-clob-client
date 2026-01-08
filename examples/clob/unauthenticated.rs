@@ -22,7 +22,7 @@ use polymarket_client_sdk::clob::types::request::{
     LastTradePriceRequest, MidpointRequest, OrderBookSummaryRequest, PriceRequest, SpreadRequest,
 };
 use polymarket_client_sdk::clob::{Client, Config};
-use tracing::{debug, info, warn};
+use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
@@ -48,12 +48,12 @@ async fn main() -> anyhow::Result<()> {
     // Health check endpoints
     match client.ok().await {
         Ok(_) => info!(endpoint = "ok", status = "healthy"),
-        Err(e) => debug!(endpoint = "ok", error = %e),
+        Err(e) => error!(endpoint = "ok", error = %e),
     }
 
     match client.server_time().await {
         Ok(time) => info!(endpoint = "server_time", timestamp = %time),
-        Err(e) => debug!(endpoint = "server_time", error = %e),
+        Err(e) => error!(endpoint = "server_time", error = %e),
     }
 
     // Fetch markets to discover real token IDs and condition IDs
@@ -88,7 +88,7 @@ async fn main() -> anyhow::Result<()> {
             }
         }
         Err(e) => {
-            debug!(endpoint = "markets", error = %e);
+            error!(endpoint = "markets", error = %e);
             (None, None)
         }
     };
@@ -102,7 +102,7 @@ async fn main() -> anyhow::Result<()> {
                 question = %market.question,
                 active = market.active
             ),
-            Err(e) => debug!(endpoint = "market", condition_id = %cid, error = %e),
+            Err(e) => error!(endpoint = "market", condition_id = %cid, error = %e),
         }
     }
 
@@ -113,7 +113,7 @@ async fn main() -> anyhow::Result<()> {
             count = page.data.len(),
             has_next = !page.next_cursor.is_empty()
         ),
-        Err(e) => debug!(endpoint = "sampling_markets", error = %e),
+        Err(e) => error!(endpoint = "sampling_markets", error = %e),
     }
 
     // Test simplified markets
@@ -123,7 +123,7 @@ async fn main() -> anyhow::Result<()> {
             count = page.data.len(),
             has_next = !page.next_cursor.is_empty()
         ),
-        Err(e) => debug!(endpoint = "simplified_markets", error = %e),
+        Err(e) => error!(endpoint = "simplified_markets", error = %e),
     }
 
     // Test sampling simplified markets
@@ -133,7 +133,7 @@ async fn main() -> anyhow::Result<()> {
             count = page.data.len(),
             has_next = !page.next_cursor.is_empty()
         ),
-        Err(e) => debug!(endpoint = "sampling_simplified_markets", error = %e),
+        Err(e) => error!(endpoint = "sampling_simplified_markets", error = %e),
     }
 
     // Use discovered token_id for price and order book queries
@@ -142,13 +142,13 @@ async fn main() -> anyhow::Result<()> {
         let midpoint_request = MidpointRequest::builder().token_id(token_id).build();
         match client.midpoint(&midpoint_request).await {
             Ok(midpoint) => info!(endpoint = "midpoint", token_id = %token_id, mid = %midpoint.mid),
-            Err(e) => debug!(endpoint = "midpoint", token_id = %token_id, error = %e),
+            Err(e) => error!(endpoint = "midpoint", token_id = %token_id, error = %e),
         }
 
         // Midpoints (batch)
         match client.midpoints(&[midpoint_request]).await {
             Ok(midpoints) => info!(endpoint = "midpoints", count = midpoints.midpoints.len()),
-            Err(e) => debug!(endpoint = "midpoints", error = %e),
+            Err(e) => error!(endpoint = "midpoints", error = %e),
         }
 
         // Price (buy side)
@@ -163,7 +163,7 @@ async fn main() -> anyhow::Result<()> {
                 side = "buy",
                 price = %price.price
             ),
-            Err(e) => debug!(endpoint = "price", token_id = %token_id, side = "buy", error = %e),
+            Err(e) => error!(endpoint = "price", token_id = %token_id, side = "buy", error = %e),
         }
 
         // Price (sell side)
@@ -178,7 +178,7 @@ async fn main() -> anyhow::Result<()> {
                 side = "sell",
                 price = %price.price
             ),
-            Err(e) => debug!(endpoint = "price", token_id = %token_id, side = "sell", error = %e),
+            Err(e) => error!(endpoint = "price", token_id = %token_id, side = "sell", error = %e),
         }
 
         // Prices (batch)
@@ -190,7 +190,7 @@ async fn main() -> anyhow::Result<()> {
                 endpoint = "prices",
                 count = prices.prices.as_ref().map_or(0, HashMap::len)
             ),
-            Err(e) => debug!(endpoint = "prices", error = %e),
+            Err(e) => error!(endpoint = "prices", error = %e),
         }
 
         // Spread
@@ -201,7 +201,7 @@ async fn main() -> anyhow::Result<()> {
                 token_id = %token_id,
                 spread = %spread.spread
             ),
-            Err(e) => debug!(endpoint = "spread", token_id = %token_id, error = %e),
+            Err(e) => error!(endpoint = "spread", token_id = %token_id, error = %e),
         }
 
         // Spreads (batch)
@@ -210,7 +210,7 @@ async fn main() -> anyhow::Result<()> {
                 endpoint = "spreads",
                 count = spreads.spreads.as_ref().map_or(0, HashMap::len)
             ),
-            Err(e) => debug!(endpoint = "spreads", error = %e),
+            Err(e) => error!(endpoint = "spreads", error = %e),
         }
 
         // Tick size
@@ -220,7 +220,7 @@ async fn main() -> anyhow::Result<()> {
                 token_id = %token_id,
                 tick_size = %tick_size.minimum_tick_size
             ),
-            Err(e) => debug!(endpoint = "tick_size", token_id = %token_id, error = %e),
+            Err(e) => error!(endpoint = "tick_size", token_id = %token_id, error = %e),
         }
 
         // Neg risk
@@ -230,7 +230,7 @@ async fn main() -> anyhow::Result<()> {
                 token_id = %token_id,
                 neg_risk = neg_risk.neg_risk
             ),
-            Err(e) => debug!(endpoint = "neg_risk", token_id = %token_id, error = %e),
+            Err(e) => error!(endpoint = "neg_risk", token_id = %token_id, error = %e),
         }
 
         // Fee rate
@@ -240,7 +240,7 @@ async fn main() -> anyhow::Result<()> {
                 token_id = %token_id,
                 base_fee = fee_rate.base_fee
             ),
-            Err(e) => debug!(endpoint = "fee_rate_bps", token_id = %token_id, error = %e),
+            Err(e) => error!(endpoint = "fee_rate_bps", token_id = %token_id, error = %e),
         }
 
         // Order book
@@ -258,13 +258,13 @@ async fn main() -> anyhow::Result<()> {
                     hash = %hash
                 );
             }
-            Err(e) => debug!(endpoint = "order_book", token_id = %token_id, error = %e),
+            Err(e) => error!(endpoint = "order_book", token_id = %token_id, error = %e),
         }
 
         // Order books (batch)
         match client.order_books(&[order_book_request]).await {
             Ok(books) => info!(endpoint = "order_books", count = books.len()),
-            Err(e) => debug!(endpoint = "order_books", error = %e),
+            Err(e) => error!(endpoint = "order_books", error = %e),
         }
 
         // Last trade price
@@ -275,16 +275,16 @@ async fn main() -> anyhow::Result<()> {
                 token_id = %token_id,
                 price = %last_trade.price
             ),
-            Err(e) => debug!(endpoint = "last_trade_price", token_id = %token_id, error = %e),
+            Err(e) => error!(endpoint = "last_trade_price", token_id = %token_id, error = %e),
         }
 
         // Last trade prices (batch)
         match client.last_trades_prices(&[last_trade_request]).await {
             Ok(prices) => info!(endpoint = "last_trade_prices", count = prices.len()),
-            Err(e) => debug!(endpoint = "last_trade_prices", error = %e),
+            Err(e) => error!(endpoint = "last_trade_prices", error = %e),
         }
     } else {
-        debug!(
+        warn!(
             endpoint = "price_queries",
             "skipped - no token_id discovered"
         );

@@ -17,7 +17,7 @@ use futures::Stream;
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::{Client as ReqwestClient, Method, Request};
 use serde_json::json;
-#[cfg(feature = "tracing")]
+#[cfg(all(feature = "tracing", feature = "heartbeats"))]
 use tracing::{debug, error};
 use url::Url;
 use uuid::Uuid;

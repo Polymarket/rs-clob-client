@@ -113,10 +113,12 @@ required-features = ["heartbeats", "tracing"]
 [[example]]
 name = "streaming"
 path = "examples/clob/streaming.rs"
+required-features = ["tracing"]
 
 [[example]]
 name = "unauthenticated"
 path = "examples/clob/unauthenticated.rs"
+required-features = ["tracing"]
 
 [[example]]
 name = "approvals"
