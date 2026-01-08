@@ -139,8 +139,14 @@ impl Serialize for Subscription {
         map.serialize_entry("type", &self.msg_type)?;
 
         if let Some(filters) = &self.filters {
-            // Parse filters as JSON value to emit raw JSON, not escaped string
-            if let Ok(json_value) = serde_json::from_str::<Value>(filters) {
+            // Chainlink endpoint expects filters as a JSON string (escaped),
+            // while other endpoints (like Binance crypto_prices) expect raw JSON.
+            // See: https://github.com/Polymarket/rs-clob-client/issues/136
+            if self.topic == "crypto_prices_chainlink" {
+                // Chainlink: emit filters as string, e.g. "{\"symbol\":\"btc/usd\"}"
+                map.serialize_entry("filters", filters)?;
+            } else if let Ok(json_value) = serde_json::from_str::<Value>(filters) {
+                // Other topics: parse and emit as raw JSON, e.g. ["btcusdt","ethusdt"]
                 map.serialize_entry("filters", &json_value)?;
             } else {
                 // Fallback: emit as string if not valid JSON
@@ -188,6 +194,12 @@ mod tests {
         let json = serde_json::to_string(&request).unwrap();
         assert!(json.contains("\"topic\":\"crypto_prices_chainlink\""));
         assert!(json.contains("\"type\":\"*\""));
+        // Chainlink filters should be a JSON string (escaped), not a raw JSON object
+        // See: https://github.com/Polymarket/rs-clob-client/issues/136
+        assert!(
+            json.contains(r#""filters":"{\"symbol\":\"eth/usd\"}""#),
+            "Chainlink filters should be serialized as escaped JSON string, got: {json}"
+        );
     }
 
     #[test]
@@ -198,5 +210,49 @@ mod tests {
         let json = serde_json::to_string(&request).unwrap();
         assert!(json.contains("\"topic\":\"comments\""));
         assert!(json.contains("\"type\":\"comment_created\""));
+    }
+
+    #[test]
+    fn serialize_chainlink_without_filters() {
+        // When no symbol is provided, there should be no filters field
+        let sub = Subscription::chainlink_prices(None);
+        let request = SubscriptionRequest::subscribe(vec![sub]);
+
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(json.contains("\"topic\":\"crypto_prices_chainlink\""));
+        assert!(!json.contains("\"filters\""));
+    }
+
+    #[test]
+    fn serialize_crypto_prices_without_filters() {
+        // When no symbols are provided, there should be no filters field
+        let sub = Subscription::crypto_prices(None);
+        let request = SubscriptionRequest::subscribe(vec![sub]);
+
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(json.contains("\"topic\":\"crypto_prices\""));
+        assert!(!json.contains("\"filters\""));
+    }
+
+    #[test]
+    fn serialize_mixed_subscriptions() {
+        // Verify Chainlink and Binance subscriptions serialize differently in same request
+        let chainlink = Subscription::chainlink_prices(Some("btc/usd".to_owned()));
+        let binance =
+            Subscription::crypto_prices(Some(vec!["btcusdt".to_owned(), "ethusdt".to_owned()]));
+        let request = SubscriptionRequest::subscribe(vec![chainlink, binance]);
+
+        let json = serde_json::to_string(&request).unwrap();
+
+        // Chainlink should have escaped string filters
+        assert!(
+            json.contains(r#""filters":"{\"symbol\":\"btc/usd\"}""#),
+            "Chainlink filters should be escaped string, got: {json}"
+        );
+        // Binance should have raw JSON array filters
+        assert!(
+            json.contains("\"filters\":[\"btcusdt\",\"ethusdt\"]"),
+            "Binance filters should be raw JSON array, got: {json}"
+        );
     }
 }
