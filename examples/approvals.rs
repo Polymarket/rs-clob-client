@@ -129,12 +129,12 @@ async fn main() -> anyhow::Result<()> {
     for (name, target) in &targets {
         match check_allowance(&token, owner, *target).await {
             Ok(allowance) => info!(contract = name, usdc_allowance = %allowance),
-            Err(e) => error!(contract = name, error = %e, "failed to check USDC allowance"),
+            Err(e) => error!(contract = name, error = ?e, "failed to check USDC allowance"),
         }
 
         match check_approval_for_all(&ctf, owner, *target).await {
             Ok(approved) => info!(contract = name, ctf_approved = approved),
-            Err(e) => error!(contract = name, error = %e, "failed to check CTF approval"),
+            Err(e) => error!(contract = name, error = ?e, "failed to check CTF approval"),
         }
     }
 
@@ -145,12 +145,12 @@ async fn main() -> anyhow::Result<()> {
 
         match approve(&token, *target, U256::MAX).await {
             Ok(tx_hash) => info!(contract = name, tx = %tx_hash, "USDC approved"),
-            Err(e) => error!(contract = name, error = %e, "USDC approve failed"),
+            Err(e) => error!(contract = name, error = ?e, "USDC approve failed"),
         }
 
         match set_approval_for_all(&ctf, *target, true).await {
             Ok(tx_hash) => info!(contract = name, tx = %tx_hash, "CTF approved"),
-            Err(e) => error!(contract = name, error = %e, "CTF setApprovalForAll failed"),
+            Err(e) => error!(contract = name, error = ?e, "CTF setApprovalForAll failed"),
         }
     }
 
@@ -159,12 +159,12 @@ async fn main() -> anyhow::Result<()> {
     for (name, target) in &targets {
         match check_allowance(&token, owner, *target).await {
             Ok(allowance) => info!(contract = name, usdc_allowance = %allowance, "verified"),
-            Err(e) => error!(contract = name, error = %e, "verification failed"),
+            Err(e) => error!(contract = name, error = ?e, "verification failed"),
         }
 
         match check_approval_for_all(&ctf, owner, *target).await {
             Ok(approved) => info!(contract = name, ctf_approved = approved, "verified"),
-            Err(e) => error!(contract = name, error = %e, "verification failed"),
+            Err(e) => error!(contract = name, error = ?e, "verification failed"),
         }
     }
 
