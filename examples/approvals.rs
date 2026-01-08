@@ -43,7 +43,7 @@ use alloy::signers::local::LocalSigner;
 use alloy::sol;
 use polymarket_client_sdk::types::{Address, address};
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR, contract_config};
-use tracing::{debug, info};
+use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
@@ -69,7 +69,7 @@ sol! {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    if let Ok(path) = std::env::var("LOG_FILE") {
+    if let Ok(path) = env::var("LOG_FILE") {
         let file = File::create(path)?;
         tracing_subscriber::registry()
             .with(EnvFilter::from_default_env())
@@ -128,21 +128,13 @@ async fn main() -> anyhow::Result<()> {
 
     for (name, target) in &targets {
         match check_allowance(&token, owner, *target).await {
-            Ok(allowance) => {
-                info!(contract = name, usdc_allowance = %allowance);
-            }
-            Err(e) => {
-                debug!(contract = name, error = %e, "failed to check USDC allowance");
-            }
+            Ok(allowance) => info!(contract = name, usdc_allowance = %allowance),
+            Err(e) => error!(contract = name, error = ?e, "failed to check USDC allowance"),
         }
 
         match check_approval_for_all(&ctf, owner, *target).await {
-            Ok(approved) => {
-                info!(contract = name, ctf_approved = approved);
-            }
-            Err(e) => {
-                debug!(contract = name, error = %e, "failed to check CTF approval");
-            }
+            Ok(approved) => info!(contract = name, ctf_approved = approved),
+            Err(e) => error!(contract = name, error = ?e, "failed to check CTF approval"),
         }
     }
 
@@ -153,12 +145,12 @@ async fn main() -> anyhow::Result<()> {
 
         match approve(&token, *target, U256::MAX).await {
             Ok(tx_hash) => info!(contract = name, tx = %tx_hash, "USDC approved"),
-            Err(e) => debug!(contract = name, error = %e, "USDC approve failed"),
+            Err(e) => error!(contract = name, error = ?e, "USDC approve failed"),
         }
 
         match set_approval_for_all(&ctf, *target, true).await {
             Ok(tx_hash) => info!(contract = name, tx = %tx_hash, "CTF approved"),
-            Err(e) => debug!(contract = name, error = %e, "CTF setApprovalForAll failed"),
+            Err(e) => error!(contract = name, error = ?e, "CTF setApprovalForAll failed"),
         }
     }
 
@@ -166,21 +158,13 @@ async fn main() -> anyhow::Result<()> {
 
     for (name, target) in &targets {
         match check_allowance(&token, owner, *target).await {
-            Ok(allowance) => {
-                info!(contract = name, usdc_allowance = %allowance, "verified");
-            }
-            Err(e) => {
-                debug!(contract = name, error = %e, "verification failed");
-            }
+            Ok(allowance) => info!(contract = name, usdc_allowance = %allowance, "verified"),
+            Err(e) => error!(contract = name, error = ?e, "verification failed"),
         }
 
         match check_approval_for_all(&ctf, owner, *target).await {
-            Ok(approved) => {
-                info!(contract = name, ctf_approved = approved, "verified");
-            }
-            Err(e) => {
-                debug!(contract = name, error = %e, "verification failed");
-            }
+            Ok(approved) => info!(contract = name, ctf_approved = approved, "verified"),
+            Err(e) => error!(contract = name, error = ?e, "verification failed"),
         }
     }
 
