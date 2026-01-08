@@ -55,8 +55,8 @@ pub struct ApiError {
 pub struct Position {
     /// The user's proxy wallet address.
     pub proxy_wallet: Address,
-    /// The outcome token asset identifier.
-    pub asset: B256,
+    /// The outcome token asset identifier (decimal string from API).
+    pub asset: String,
     /// The market condition ID (unique market identifier).
     pub condition_id: B256,
     /// Number of outcome tokens held.
@@ -100,7 +100,7 @@ pub struct Position {
     /// Name of the opposite outcome.
     pub opposite_outcome: String,
     /// Asset identifier of the opposite outcome.
-    pub opposite_asset: B256,
+    pub opposite_asset: String,
     /// Market end/resolution date.
     pub end_date: String,
     /// Whether this is a negative risk market.
@@ -117,8 +117,8 @@ pub struct Position {
 pub struct ClosedPosition {
     /// The user's proxy wallet address.
     pub proxy_wallet: Address,
-    /// The outcome token asset identifier.
-    pub asset: B256,
+    /// The outcome token asset identifier (decimal string from API).
+    pub asset: String,
     /// The market condition ID (unique market identifier).
     pub condition_id: B256,
     /// Average entry price for the position.
@@ -146,7 +146,7 @@ pub struct ClosedPosition {
     /// Name of the opposite outcome.
     pub opposite_outcome: String,
     /// Asset identifier of the opposite outcome.
-    pub opposite_asset: B256,
+    pub opposite_asset: String,
     /// Market end/resolution date.
     pub end_date: String,
 }
@@ -163,8 +163,8 @@ pub struct Trade {
     pub proxy_wallet: Address,
     /// Trade side (BUY or SELL).
     pub side: Side,
-    /// The outcome token asset identifier.
-    pub asset: B256,
+    /// The outcome token asset identifier (decimal string from API).
+    pub asset: String,
     /// The market condition ID (unique market identifier).
     pub condition_id: B256,
     /// Number of tokens traded.
@@ -224,8 +224,8 @@ pub struct Activity {
     pub transaction_hash: B256,
     /// Price per token (for trades).
     pub price: Option<Decimal>,
-    /// Outcome token asset identifier (for trades).
-    pub asset: Option<B256>,
+    /// Outcome token asset identifier (for trades, decimal string from API).
+    pub asset: Option<String>,
     /// Trade side (for trades only).
     #[serde(default, deserialize_with = "deserialize_optional_side")]
     pub side: Option<Side>,
@@ -264,8 +264,8 @@ pub struct Holder {
     pub proxy_wallet: Address,
     /// Holder's bio (if public).
     pub bio: Option<String>,
-    /// The outcome token asset identifier.
-    pub asset: B256,
+    /// The outcome token asset identifier (decimal string from API).
+    pub asset: String,
     /// Holder's pseudonym (if set).
     pub pseudonym: Option<String>,
     /// Amount of tokens held.
@@ -290,8 +290,8 @@ pub struct Holder {
 #[derive(Debug, Clone, Deserialize)]
 #[non_exhaustive]
 pub struct MetaHolder {
-    /// The outcome token identifier.
-    pub token: B256,
+    /// The outcome token identifier (decimal string from API).
+    pub token: String,
     /// List of holders for this token.
     pub holders: Vec<Holder>,
 }
@@ -327,8 +327,8 @@ pub struct Value {
 #[derive(Debug, Clone, Deserialize)]
 #[non_exhaustive]
 pub struct OpenInterest {
-    /// The market condition ID.
-    pub market: B256,
+    /// The market condition ID (or "GLOBAL" for aggregate).
+    pub market: String,
     /// Open interest value in USDC.
     pub value: Decimal,
 }
@@ -339,8 +339,8 @@ pub struct OpenInterest {
 #[derive(Debug, Clone, Deserialize)]
 #[non_exhaustive]
 pub struct MarketVolume {
-    /// The market condition ID.
-    pub market: B256,
+    /// The market condition ID (or "GLOBAL" for aggregate).
+    pub market: String,
     /// Trading volume in USDC.
     pub value: Decimal,
 }

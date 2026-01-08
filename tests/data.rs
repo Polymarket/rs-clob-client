@@ -5,7 +5,6 @@ use polymarket_client_sdk::types::{Address, B256, address, b256};
 const TEST_USER: Address = address!("1234567890abcdef1234567890abcdef12345678");
 const TEST_CONDITION_ID: B256 =
     b256!("abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890");
-const TEST_ASSET: B256 = b256!("1111111111111111111111111111111111111111111111111111111111111111");
 
 fn test_user() -> Address {
     TEST_USER
@@ -13,10 +12,6 @@ fn test_user() -> Address {
 
 fn test_condition_id() -> B256 {
     TEST_CONDITION_ID
-}
-
-fn test_asset() -> B256 {
-    TEST_ASSET
 }
 
 mod health {
@@ -272,7 +267,7 @@ mod holders {
     use rust_decimal_macros::dec;
     use serde_json::json;
 
-    use super::{address, test_asset, test_condition_id, test_user};
+    use super::{address, test_condition_id, test_user};
 
     #[tokio::test]
     async fn holders_should_succeed() -> anyhow::Result<()> {
@@ -321,7 +316,10 @@ mod holders {
         let response = client.holders(&request).await?;
 
         assert_eq!(response.len(), 1);
-        assert_eq!(response[0].token, test_asset());
+        assert_eq!(
+            response[0].token,
+            "0x1111111111111111111111111111111111111111111111111111111111111111"
+        );
         let holders = &response[0].holders;
         assert_eq!(holders.len(), 2);
         assert_eq!(holders[0].proxy_wallet, test_user());
@@ -563,14 +561,12 @@ mod open_interest {
     use rust_decimal_macros::dec;
     use serde_json::json;
 
-    use super::{b256, test_condition_id};
+    use super::test_condition_id;
 
     #[tokio::test]
     async fn open_interest_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url())?;
-
-        let market2 = b256!("cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc");
 
         let mock = server.mock(|when, then| {
             when.method(GET).path("/oi");
@@ -591,9 +587,15 @@ mod open_interest {
             .await?;
 
         assert_eq!(response.len(), 2);
-        assert_eq!(response[0].market, test_condition_id());
+        assert_eq!(
+            response[0].market,
+            "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+        );
         assert_eq!(response[0].value, dec!(1_500_000.0));
-        assert_eq!(response[1].market, market2);
+        assert_eq!(
+            response[1].market,
+            "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        );
         mock.assert();
 
         Ok(())
@@ -624,7 +626,10 @@ mod open_interest {
         let response = client.open_interest(&request).await?;
 
         assert_eq!(response.len(), 1);
-        assert_eq!(response[0].market, test_condition_id());
+        assert_eq!(
+            response[0].market,
+            "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+        );
         mock.assert();
 
         Ok(())
@@ -638,14 +643,10 @@ mod live_volume {
     use rust_decimal_macros::dec;
     use serde_json::json;
 
-    use super::{b256, test_condition_id};
-
     #[tokio::test]
     async fn live_volume_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url())?;
-
-        let market2 = b256!("dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd");
 
         let mock = server.mock(|when, then| {
             when.method(GET)
@@ -676,9 +677,15 @@ mod live_volume {
         assert_eq!(response[0].total, dec!(250_000.0));
         let markets = &response[0].markets;
         assert_eq!(markets.len(), 2);
-        assert_eq!(markets[0].market, test_condition_id());
+        assert_eq!(
+            markets[0].market,
+            "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+        );
         assert_eq!(markets[0].value, dec!(150_000.0));
-        assert_eq!(markets[1].market, market2);
+        assert_eq!(
+            markets[1].market,
+            "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        );
         mock.assert();
 
         Ok(())
