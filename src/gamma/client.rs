@@ -179,10 +179,10 @@ impl Client {
         self.get("sports", &()).await
     }
 
-    /// Retrieves valid market types for sports betting.
+    /// Retrieves valid market types for sports.
     ///
     /// Returns the different types of sports markets available (e.g., moneyline,
-    /// spread, over/under). Use this to understand what betting formats are supported.
+    /// spread, over/under). Use this to understand what formats are supported.
     ///
     /// # Errors
     ///
