@@ -94,34 +94,36 @@
 //! ## Authenticated Client
 //!
 //! ```rust,no_run
-//! use std::str::FromStr;
+//! use std::str::FromStr as _;
+//!
 //! use alloy::signers::Signer;
 //! use alloy::signers::local::LocalSigner;
 //! use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 //! use polymarket_client_sdk::clob::{Client, Config};
 //! use polymarket_client_sdk::clob::types::{Side, SignedOrder};
+//! use polymarket_client_sdk::types::{dec, Decimal};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // Create signer from private key
 //! let private_key = std::env::var(PRIVATE_KEY_VAR)?;
 //! let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(POLYGON));
 //!
-//! // Authenticate
 //! let client = Client::new("https://clob.polymarket.com", Config::default())?
 //!     .authentication_builder(&signer)
 //!     .authenticate()
 //!     .await?;
 //!
-//! // Build and place an order
 //! let order = client
-//!     .order()
+//!     .limit_order()
 //!     .token_id("102200...")
 //!     .side(Side::Buy)
-//!     .price(0.5)
-//!     .size(10.0)
-//!     .build()?;
+//!     .price(dec!(0.5))
+//!     .size(Decimal::TEN)
+//!     .build()
+//!     .await?;
 //!
-//! let response = client.post_order(&order).await?;
+//! let signed_order = client.sign(&signer, order).await?;
+//! let response = client.post_order(signed_order).await?;
 //! println!("Order ID: {}", response.order_id);
 //! # Ok(())
 //! # }
