@@ -49,13 +49,14 @@ async fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
     let write_mode = args.iter().any(|arg| arg == "--write");
 
+    let chain = POLYGON;
     info!("=== CTF (Conditional Token Framework) Example ===");
 
     // For read-only operations, we don't need a wallet
     let provider = ProviderBuilder::new().connect(RPC_URL).await?;
-    let client = Client::new(provider, POLYGON)?;
+    let client = Client::new(provider, chain)?;
 
-    info!("Connected to Polygon mainnet");
+    info!("Connected to Polygon {chain}");
     info!("CTF contract: 0x4D97DCd97eC945f40cF65F87097ACe5EA0476045");
 
     // Example: Calculate a condition ID
@@ -134,14 +135,14 @@ async fn main() -> Result<()> {
 
         let private_key =
             env::var(PRIVATE_KEY_VAR).expect("Need a private key for write operations");
-        let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(POLYGON));
+        let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(chain));
 
         let provider = ProviderBuilder::new()
             .wallet(signer.clone())
             .connect(RPC_URL)
             .await?;
 
-        let client = Client::new(provider, POLYGON)?;
+        let client = Client::new(provider, chain)?;
         let wallet_address = signer.address();
 
         info!("Using wallet: {wallet_address:?}");
