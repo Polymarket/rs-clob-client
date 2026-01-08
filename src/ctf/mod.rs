@@ -1,5 +1,7 @@
 //! CTF (Conditional Token Framework) API client.
 //!
+//! **Feature flag:** `ctf` (required to use this module)
+//!
 //! The Conditional Token Framework is Gnosis's smart contract system that tokenizes
 //! all Polymarket outcomes as binary ERC1155 tokens on Polygon. Each market has two
 //! outcome tokens ("YES" and "NO") backed by USDC collateral.

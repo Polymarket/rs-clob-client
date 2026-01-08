@@ -6,10 +6,10 @@
 //!   as well as enums for filtering and categorization.
 //!
 //! - **Request types**: Builder-pattern structs for each API endpoint
-//!   (e.g., [`EventsRequest`], [`MarketsRequest`]).
+//!   (e.g., [`request::EventsRequest`], [`request::MarketsRequest`]).
 //!
 //! - **Response types**: Structs representing API responses
-//!   (e.g., [`Event`], [`Market`], [`Tag`]).
+//!   (e.g., [`response::Event`], [`response::Market`], [`response::Tag`]).
 //!
 //! # Request Building
 //!

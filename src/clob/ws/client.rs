@@ -149,7 +149,20 @@ impl Client<Unauthenticated> {
 
 // Methods available in any state
 impl<S: State> Client<S> {
-    /// Subscribe to orderbook updates for specific assets.
+    /// Subscribes to real-time orderbook updates for specified market assets.
+    ///
+    /// Returns a stream of orderbook snapshots showing all bid and ask levels.
+    /// Each update contains the full orderbook state at that moment, useful for
+    /// maintaining an accurate local orderbook copy.
+    ///
+    /// # Arguments
+    ///
+    /// * `asset_ids` - List of asset/token IDs to monitor
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the subscription cannot be created or the WebSocket
+    /// connection is not established.
     pub fn subscribe_orderbook(
         &self,
         asset_ids: Vec<String>,
@@ -166,7 +179,19 @@ impl<S: State> Client<S> {
         }))
     }
 
-    /// Subscribe to `last_trade_price` updates for specific assets.
+    /// Subscribes to real-time last trade price updates for specified assets.
+    ///
+    /// Returns a stream of the most recent executed trade price for each asset.
+    /// This reflects the latest market consensus price from actual transactions.
+    ///
+    /// # Arguments
+    ///
+    /// * `asset_ids` - List of asset/token IDs to monitor
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the subscription cannot be created or the WebSocket
+    /// connection is not established.
     pub fn subscribe_last_trade_price(
         &self,
         asset_ids: Vec<String>,
@@ -183,7 +208,20 @@ impl<S: State> Client<S> {
         }))
     }
 
-    /// Subscribe to price changes for specific assets.
+    /// Subscribes to real-time price changes for specified assets.
+    ///
+    /// Returns a stream of price updates when the best bid or ask changes.
+    /// More lightweight than full orderbook subscriptions when you only need
+    /// top-of-book prices.
+    ///
+    /// # Arguments
+    ///
+    /// * `asset_ids` - List of asset/token IDs to monitor
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the subscription cannot be created or the WebSocket
+    /// connection is not established.
     pub fn subscribe_prices(
         &self,
         asset_ids: Vec<String>,
@@ -200,7 +238,20 @@ impl<S: State> Client<S> {
         }))
     }
 
-    /// Subscribe to midpoint updates (calculated from best bid/ask).
+    /// Subscribes to real-time midpoint price updates for specified assets.
+    ///
+    /// Returns a stream of midpoint prices calculated as the average of the best
+    /// bid and best ask: `(best_bid + best_ask) / 2`. This provides a fair market
+    /// price estimate that updates with every orderbook change.
+    ///
+    /// # Arguments
+    ///
+    /// * `asset_ids` - List of asset/token IDs to monitor
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the subscription cannot be created or the WebSocket
+    /// connection is not established.
     pub fn subscribe_midpoints(
         &self,
         asset_ids: Vec<String>,
@@ -361,7 +412,24 @@ impl<S: State> Client<S> {
 
 // Methods only available for authenticated clients
 impl<K: AuthKind> Client<Authenticated<K>> {
-    /// Subscribe to raw user channel events (orders and trades).
+    /// Subscribes to all user-specific events (orders and trades) for specified markets.
+    ///
+    /// Returns a stream of raw WebSocket messages containing both order updates
+    /// (fills, cancellations, placements) and trade executions. Use this for
+    /// comprehensive monitoring of all trading activity.
+    ///
+    /// # Arguments
+    ///
+    /// * `markets` - List of market condition IDs to monitor
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the subscription cannot be created, the WebSocket
+    /// connection is not established, or authentication fails.
+    ///
+    /// # Note
+    ///
+    /// This method is only available on authenticated clients.
     pub fn subscribe_user_events(
         &self,
         markets: Vec<String>,
@@ -373,7 +441,23 @@ impl<K: AuthKind> Client<Authenticated<K>> {
             .subscribe_user(markets, &self.inner.state.credentials)
     }
 
-    /// Subscribe to user's order updates.
+    /// Subscribes to real-time order status updates for the authenticated user.
+    ///
+    /// Returns a stream of order events including order placement, fills, partial fills,
+    /// and cancellations. Useful for tracking the lifecycle of your orders in real-time.
+    ///
+    /// # Arguments
+    ///
+    /// * `markets` - List of market condition IDs to monitor
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the subscription cannot be created, the WebSocket
+    /// connection is not established, or authentication fails.
+    ///
+    /// # Note
+    ///
+    /// This method is only available on authenticated clients.
     pub fn subscribe_orders(
         &self,
         markets: Vec<String>,
@@ -389,7 +473,24 @@ impl<K: AuthKind> Client<Authenticated<K>> {
         }))
     }
 
-    /// Subscribe to user's trade executions.
+    /// Subscribes to real-time trade execution updates for the authenticated user.
+    ///
+    /// Returns a stream of trade events when your orders are matched and executed.
+    /// Each trade event contains details about the execution price, size, maker/taker
+    /// side, and associated order IDs.
+    ///
+    /// # Arguments
+    ///
+    /// * `markets` - List of market condition IDs to monitor
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the subscription cannot be created, the WebSocket
+    /// connection is not established, or authentication fails.
+    ///
+    /// # Note
+    ///
+    /// This method is only available on authenticated clients.
     pub fn subscribe_trades(
         &self,
         markets: Vec<String>,

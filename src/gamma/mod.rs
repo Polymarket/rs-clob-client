@@ -1,5 +1,7 @@
 //! Polymarket Gamma API client and types.
 //!
+//! **Feature flag:** `gamma` (required to use this module)
+//!
 //! This module provides a client for interacting with the Polymarket Gamma API,
 //! which offers HTTP endpoints for querying events, markets, tags, series,
 //! comments, profiles, and search functionality.
