@@ -6,12 +6,60 @@
 use bon::Builder;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
-use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as, skip_serializing_none};
+use serde_with::skip_serializing_none;
 
 use crate::gamma::types::{ParentEntityType, RelatedTagsStatus};
 use crate::types::{Address, B256, Decimal};
 
-#[serde_as]
+/// Converts a serializable request struct to query parameter pairs.
+///
+/// The Gamma API expects array parameters as repeated keys (`?key=val1&key=val2`)
+/// instead of comma-separated values. This function handles that by:
+/// 1. Serializing the struct to JSON
+/// 2. Iterating through each field
+/// 3. For array values, creating multiple pairs with the same key
+///
+/// The resulting `Vec<(String, String)>` can be passed to reqwest's `.query()` method.
+pub fn to_query_pairs<T: Serialize>(value: &T) -> Vec<(String, String)> {
+    let json = serde_json::to_value(value).unwrap_or(serde_json::Value::Null);
+
+    let Some(obj) = json.as_object() else {
+        return Vec::new();
+    };
+
+    let mut pairs = Vec::new();
+    for (key, val) in obj {
+        match val {
+            serde_json::Value::Array(arr) => {
+                for item in arr {
+                    if let Some(s) = json_value_to_string(item) {
+                        pairs.push((key.clone(), s));
+                    }
+                }
+            }
+            serde_json::Value::Null => {} // Skip null values
+            _ => {
+                if let Some(s) = json_value_to_string(val) {
+                    pairs.push((key.clone(), s));
+                }
+            }
+        }
+    }
+    pairs
+}
+
+/// Converts a JSON value to a string suitable for query parameters.
+fn json_value_to_string(val: &serde_json::Value) -> Option<String> {
+    match val {
+        serde_json::Value::String(s) => Some(s.clone()),
+        serde_json::Value::Number(n) => Some(n.to_string()),
+        serde_json::Value::Bool(b) => Some(b.to_string()),
+        serde_json::Value::Null => None,
+        // For nested objects/arrays, serialize as JSON string
+        _ => Some(val.to_string()),
+    }
+}
+
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
 #[non_exhaustive]
@@ -20,15 +68,12 @@ pub struct TeamsRequest {
     pub offset: Option<i32>,
     pub order: Option<String>,
     pub ascending: Option<bool>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub league: Vec<String>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub name: Vec<String>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub abbreviation: Vec<String>,
@@ -88,29 +133,24 @@ pub struct RelatedTagsBySlugRequest {
     pub status: Option<RelatedTagsStatus>,
 }
 
-#[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
 #[non_exhaustive]
 pub struct EventsRequest {
     pub limit: Option<i32>,
     pub offset: Option<i32>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub order: Vec<String>,
     pub ascending: Option<bool>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub id: Vec<String>,
     #[builder(into)]
     pub tag_id: Option<String>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub exclude_tag_id: Vec<String>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub slug: Vec<String>,
@@ -164,7 +204,6 @@ pub struct EventTagsRequest {
     pub id: String,
 }
 
-#[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
 #[non_exhaustive]
@@ -173,22 +212,18 @@ pub struct MarketsRequest {
     pub offset: Option<i32>,
     pub order: Option<String>,
     pub ascending: Option<bool>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub id: Vec<String>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub slug: Vec<String>,
-    #[serde(skip_serializing)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub clob_token_ids: Vec<String>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, B256>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub condition_ids: Vec<B256>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, Address>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub market_maker_address: Vec<Address>,
@@ -206,33 +241,15 @@ pub struct MarketsRequest {
     pub cyom: Option<bool>,
     pub uma_resolution_status: Option<String>,
     pub game_id: Option<String>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub sports_market_types: Vec<String>,
     pub rewards_min_size: Option<Decimal>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, B256>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub question_ids: Vec<B256>,
     pub include_tag: Option<bool>,
     pub closed: Option<bool>,
-}
-
-impl MarketsRequest {
-    /// Returns the repeated query parameters for `clob_token_ids`.
-    ///
-    /// The Gamma API expects `clob_token_ids` as repeated query parameters
-    /// (`?clob_token_ids=id1&clob_token_ids=id2`), not comma-separated.
-    /// This method builds that portion of the query string.
-    #[must_use]
-    pub fn clob_token_ids_query(&self) -> String {
-        self.clob_token_ids
-            .iter()
-            .map(|id| format!("clob_token_ids={id}"))
-            .collect::<Vec<_>>()
-            .join("&")
-    }
 }
 
 #[skip_serializing_none]
@@ -263,7 +280,6 @@ pub struct MarketTagsRequest {
     pub id: String,
 }
 
-#[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
 #[non_exhaustive]
@@ -272,15 +288,12 @@ pub struct SeriesListRequest {
     pub offset: Option<i32>,
     pub order: Option<String>,
     pub ascending: Option<bool>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub slug: Vec<String>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub categories_ids: Vec<String>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub categories_labels: Vec<String>,
@@ -342,7 +355,6 @@ pub struct PublicProfileRequest {
     pub address: Address,
 }
 
-#[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
@@ -353,7 +365,6 @@ pub struct SearchRequest {
     pub events_status: Option<String>,
     pub limit_per_type: Option<i32>,
     pub page: Option<i32>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub events_tag: Vec<String>,
@@ -363,7 +374,6 @@ pub struct SearchRequest {
     pub search_tags: Option<bool>,
     pub search_profiles: Option<bool>,
     pub recurrence: Option<String>,
-    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub exclude_tag_id: Vec<String>,

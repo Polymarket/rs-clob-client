@@ -44,8 +44,8 @@ use super::types::response::{
     Comment, Event, HealthResponse, Market, PublicProfile, RelatedTag, SearchResults, Series,
     SportsMarketTypesResponse, SportsMetadata, Tag, Team,
 };
+use crate::Result;
 use crate::error::Error;
-use crate::{Result, ToQueryParams as _};
 
 /// HTTP client for the Polymarket Gamma API.
 ///
@@ -116,10 +116,11 @@ impl Client {
         path: &str,
         req: &Req,
     ) -> Result<Res> {
-        let query = req.query_params(None);
+        let pairs = super::types::request::to_query_pairs(req);
         let request = self
             .client
-            .request(Method::GET, format!("{}{path}{query}", self.host))
+            .request(Method::GET, format!("{}{path}", self.host))
+            .query(&pairs)
             .build()?;
         crate::request(&self.client, request, None).await
     }
@@ -354,25 +355,7 @@ impl Client {
     ///
     /// Returns an error if the request fails.
     pub async fn markets(&self, request: &MarketsRequest) -> Result<Vec<Market>> {
-        // Build base query string using the standard ToQueryParams trait
-        let base_query = request.query_params(None);
-
-        // Build repeated params for clob_token_ids (API expects repeated keys, not comma-separated)
-        let clob_params = request.clob_token_ids_query();
-
-        // Combine query string parts
-        let query = match (base_query.is_empty(), clob_params.is_empty()) {
-            (true, true) => String::new(),
-            (true, false) => format!("?{clob_params}"),
-            (false, true) => base_query,
-            (false, false) => format!("{base_query}&{clob_params}"),
-        };
-
-        let req = self
-            .client
-            .request(Method::GET, format!("{}markets{query}", self.host))
-            .build()?;
-        crate::request(&self.client, req, None).await
+        self.get("markets", request).await
     }
 
     /// Retrieves a single market by its unique ID.

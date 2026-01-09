@@ -1004,11 +1004,15 @@ mod query_string {
     use serde::Serialize;
 
     fn query_string<T: Serialize>(request: &T) -> String {
-        let params = serde_urlencoded::to_string(request).unwrap_or_default();
-        if params.is_empty() {
-            params
+        let pairs = polymarket_client_sdk::gamma::types::request::to_query_pairs(request);
+        if pairs.is_empty() {
+            String::new()
         } else {
-            format!("?{params}")
+            let mut encoder = url::form_urlencoded::Serializer::new(String::new());
+            for (k, v) in &pairs {
+                encoder.append_pair(k, v);
+            }
+            format!("?{}", encoder.finish())
         }
     }
 
@@ -1029,9 +1033,12 @@ mod query_string {
         assert!(qs.contains("offset=5"));
         assert!(qs.contains("order=name"));
         assert!(qs.contains("ascending=true"));
-        assert!(qs.contains("league=NBA%2CNFL"));
+        // Arrays should be repeated params, not comma-separated
+        assert!(qs.contains("league=NBA"));
+        assert!(qs.contains("league=NFL"));
         assert!(qs.contains("name=Lakers"));
-        assert!(qs.contains("abbreviation=LAL%2CBOS"));
+        assert!(qs.contains("abbreviation=LAL"));
+        assert!(qs.contains("abbreviation=BOS"));
     }
 
     #[test]
@@ -1166,10 +1173,15 @@ mod query_string {
         assert!(qs.contains("offset=10"));
         assert!(qs.contains("order=startDate"));
         assert!(qs.contains("ascending=true"));
-        assert!(qs.contains("id=1%2C2%2C3"));
+        // Arrays should be repeated params, not comma-separated
+        assert!(qs.contains("id=1"));
+        assert!(qs.contains("id=2"));
+        assert!(qs.contains("id=3"));
         assert!(qs.contains("tag_id=42"));
-        assert!(qs.contains("exclude_tag_id=10%2C20"));
-        assert!(qs.contains("slug=event-1%2Cevent-2"));
+        assert!(qs.contains("exclude_tag_id=10"));
+        assert!(qs.contains("exclude_tag_id=20"));
+        assert!(qs.contains("slug=event-1"));
+        assert!(qs.contains("slug=event-2"));
         assert!(qs.contains("tag_slug=politics"));
         assert!(qs.contains("related_tags=true"));
         assert!(qs.contains("active=true"));
@@ -1282,15 +1294,14 @@ mod query_string {
         assert!(qs.contains("offset=50"));
         assert!(qs.contains("order=volume"));
         assert!(qs.contains("ascending=false"));
-        assert!(qs.contains("id=1%2C2"));
+        // Arrays should be repeated params, not comma-separated
+        assert!(qs.contains("id=1"));
+        assert!(qs.contains("id=2"));
         assert!(qs.contains("slug=market-1"));
-        // clob_token_ids is handled separately via clob_token_ids_query() for repeated params
-        assert!(!qs.contains("clob_token_ids"));
-        let clob_qs = request.clob_token_ids_query();
-        assert!(clob_qs.contains("clob_token_ids=token1"));
-        assert!(clob_qs.contains("clob_token_ids=token2"));
-        assert!(clob_qs.contains('&')); // Repeated params format
-        // B256 and Address serialize to lowercase hex via serde
+        // clob_token_ids is now handled with repeated params like all other arrays
+        assert!(qs.contains("clob_token_ids=token1"));
+        assert!(qs.contains("clob_token_ids=token2"));
+        // B256 and Address serialize to lowercase hex via serde (repeated params)
         assert!(qs.contains(
             "condition_ids=0x0000000000000000000000000000000000000000000000000000000000000001"
         ));
@@ -1308,10 +1319,16 @@ mod query_string {
         assert!(qs.contains("cyom=false"));
         assert!(qs.contains("uma_resolution_status=resolved"));
         assert!(qs.contains("game_id=game123"));
-        assert!(qs.contains("sports_market_types=moneyline%2Cspread"));
+        assert!(qs.contains("sports_market_types=moneyline"));
+        assert!(qs.contains("sports_market_types=spread"));
         assert!(qs.contains("rewards_min_size=100"));
-        // B256 question_ids serialize to lowercase hex via serde (comma = %2C URL-encoded)
-        assert!(qs.contains("question_ids=0x0000000000000000000000000000000000000000000000000000000000000001%2C0x0000000000000000000000000000000000000000000000000000000000000002"));
+        // B256 question_ids serialize to lowercase hex via serde (repeated params)
+        assert!(qs.contains(
+            "question_ids=0x0000000000000000000000000000000000000000000000000000000000000001"
+        ));
+        assert!(qs.contains(
+            "question_ids=0x0000000000000000000000000000000000000000000000000000000000000002"
+        ));
         assert!(qs.contains("include_tag=true"));
         assert!(qs.contains("closed=false"));
     }
@@ -1387,9 +1404,14 @@ mod query_string {
         assert!(qs.contains("offset=5"));
         assert!(qs.contains("order=title"));
         assert!(qs.contains("ascending=true"));
-        assert!(qs.contains("slug=series-1%2Cseries-2"));
-        assert!(qs.contains("categories_ids=1%2C2%2C3"));
-        assert!(qs.contains("categories_labels=Sports%2CPolitics"));
+        // Arrays should be repeated params, not comma-separated
+        assert!(qs.contains("slug=series-1"));
+        assert!(qs.contains("slug=series-2"));
+        assert!(qs.contains("categories_ids=1"));
+        assert!(qs.contains("categories_ids=2"));
+        assert!(qs.contains("categories_ids=3"));
+        assert!(qs.contains("categories_labels=Sports"));
+        assert!(qs.contains("categories_labels=Politics"));
         assert!(qs.contains("closed=false"));
         assert!(qs.contains("include_chat=true"));
         assert!(qs.contains("recurrence=daily"));
@@ -1532,14 +1554,17 @@ mod query_string {
         assert!(qs.contains("events_status=active"));
         assert!(qs.contains("limit_per_type=10"));
         assert!(qs.contains("page=2"));
-        assert!(qs.contains("events_tag=crypto%2Cfinance"));
+        // Arrays should be repeated params, not comma-separated
+        assert!(qs.contains("events_tag=crypto"));
+        assert!(qs.contains("events_tag=finance"));
         assert!(qs.contains("keep_closed_markets=5"));
         assert!(qs.contains("sort=volume"));
         assert!(qs.contains("ascending=false"));
         assert!(qs.contains("search_tags=true"));
         assert!(qs.contains("search_profiles=true"));
         assert!(qs.contains("recurrence=weekly"));
-        assert!(qs.contains("exclude_tag_id=1%2C2"));
+        assert!(qs.contains("exclude_tag_id=1"));
+        assert!(qs.contains("exclude_tag_id=2"));
         assert!(qs.contains("optimized=true"));
     }
 
