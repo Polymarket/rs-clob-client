@@ -273,8 +273,9 @@ pub struct Event {
     pub liquidity_amm: Option<Decimal>,
     pub liquidity_clob: Option<Decimal>,
     pub neg_risk: Option<bool>,
-    #[serde(rename = "negRiskMarketID")]
-    pub neg_risk_market_id: Option<String>,
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default, rename = "negRiskMarketID")]
+    pub neg_risk_market_id: Option<B256>,
     pub neg_risk_fee_bips: Option<i32>,
     pub comment_count: Option<i32>,
     pub image_optimized: Option<ImageOptimization>,
@@ -491,10 +492,12 @@ pub struct Market {
     pub fees_enabled: Option<bool>,
     pub holding_rewards_enabled: Option<bool>,
     pub neg_risk: Option<bool>,
-    #[serde(rename = "negRiskRequestID")]
-    pub neg_risk_request_id: Option<String>,
-    #[serde(rename = "negRiskMarketID")]
-    pub neg_risk_market_id: Option<String>,
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default, rename = "negRiskRequestID")]
+    pub neg_risk_request_id: Option<B256>,
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default, rename = "negRiskMarketID")]
+    pub neg_risk_market_id: Option<B256>,
     pub sent_discord: Option<bool>,
     pub twitter_card_last_refreshed: Option<String>,
     pub twitter_card_location: Option<String>,
