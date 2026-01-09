@@ -1,7 +1,8 @@
 use bon::Builder;
 use serde::Deserialize;
+use serde_with::{DisplayFromStr, serde_as};
 
-use crate::types::Decimal;
+use crate::types::{Address, ChainId, Decimal};
 
 /// Response containing deposit addresses for different blockchain networks.
 #[non_exhaustive]
@@ -19,7 +20,7 @@ pub struct DepositResponse {
 #[builder(on(String, into))]
 pub struct DepositAddresses {
     /// EVM-compatible deposit address (Ethereum, Polygon, Arbitrum, Base, etc.).
-    pub evm: String,
+    pub evm: Address,
     /// Solana Virtual Machine deposit address.
     pub svm: String,
     /// Bitcoin deposit address.
@@ -39,12 +40,15 @@ pub struct SupportedAssetsResponse {
 
 /// A supported asset with chain and token information.
 #[non_exhaustive]
+#[serde_as]
 #[derive(Debug, Clone, Deserialize, PartialEq, Builder)]
 #[builder(on(String, into))]
 #[serde(rename_all = "camelCase")]
 pub struct SupportedAsset {
-    /// Chain ID.
-    pub chain_id: String,
+    /// Blockchain chain ID (e.g., 1 for Ethereum mainnet, 137 for Polygon).
+    /// Deserialized from JSON string representation (e.g., `"137"`).
+    #[serde_as(as = "DisplayFromStr")]
+    pub chain_id: ChainId,
     /// Human-readable chain name.
     pub chain_name: String,
     /// Token information.

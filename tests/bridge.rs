@@ -42,7 +42,7 @@ mod deposit {
         let expected = DepositResponse::builder()
             .address(
                 DepositAddresses::builder()
-                    .evm("0x23566f8b2E82aDfCf01846E54899d110e97AC053")
+                    .evm(address!("23566f8b2E82aDfCf01846E54899d110e97AC053"))
                     .svm("CrvTBvzryYxBHbWu2TiQpcqD5M7Le7iBKzVmEj3f36Jb")
                     .btc("bc1q8eau83qffxcj8ht4hsjdza3lha9r3egfqysj3g")
                     .build(),
@@ -84,7 +84,7 @@ mod deposit {
         assert!(response.note.is_none());
         assert_eq!(
             response.address.evm,
-            "0x23566f8b2E82aDfCf01846E54899d110e97AC053"
+            address!("23566f8b2E82aDfCf01846E54899d110e97AC053")
         );
         mock.assert();
 
@@ -165,7 +165,7 @@ mod supported_assets {
         let expected = SupportedAssetsResponse::builder()
             .supported_assets(vec![
                 SupportedAsset::builder()
-                    .chain_id("1")
+                    .chain_id(1_u64)
                     .chain_name("Ethereum")
                     .token(
                         Token::builder()
@@ -178,7 +178,7 @@ mod supported_assets {
                     .min_checkout_usd(dec!(45))
                     .build(),
                 SupportedAsset::builder()
-                    .chain_id("137")
+                    .chain_id(137_u64)
                     .chain_name("Polygon")
                     .token(
                         Token::builder()
