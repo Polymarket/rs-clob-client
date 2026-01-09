@@ -133,6 +133,7 @@ pub enum TimeRange {
         interval: Interval,
     },
     /// Use explicit start and end timestamps.
+    #[serde(rename_all = "camelCase")]
     Range {
         /// Start timestamp (Unix seconds).
         start_ts: i64,

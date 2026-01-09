@@ -11,13 +11,15 @@ use polymarket_client_sdk::clob::types::request::{
 };
 use polymarket_client_sdk::clob::types::{Amount, OrderType, Side};
 use polymarket_client_sdk::clob::{Client, Config};
-use polymarket_client_sdk::types::Decimal;
+use polymarket_client_sdk::types::{Decimal, U256};
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 use rust_decimal_macros::dec;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let token_id = "15871154585880608648532107628464183779895785213830018178010423617714102767076";
+    let token_id = U256::from_str(
+        "15871154585880608648532107628464183779895785213830018178010423617714102767076",
+    )?;
 
     let private_key = std::env::var(PRIVATE_KEY_VAR).expect("Need a private key");
     let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(POLYGON));

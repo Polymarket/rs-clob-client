@@ -70,8 +70,11 @@
 //! ## Unauthenticated Client
 //!
 //! ```rust,no_run
+//! use std::str::FromStr as _;
+//!
 //! use polymarket_client_sdk::clob::{Client, Config};
 //! use polymarket_client_sdk::clob::types::request::MidpointRequest;
+//! use polymarket_client_sdk::types::U256;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // Create an unauthenticated client
@@ -83,7 +86,7 @@
 //!
 //! // Get midpoint price for a token
 //! let request = MidpointRequest::builder()
-//!     .token_id("102200...")
+//!     .token_id(U256::from_str("15871154585880608648532107628464183779895785213830018178010423617714102767076")?)
 //!     .build();
 //! let midpoint = client.midpoint(&request).await?;
 //! println!("Midpoint: {}", midpoint.mid);
@@ -101,7 +104,7 @@
 //! use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 //! use polymarket_client_sdk::clob::{Client, Config};
 //! use polymarket_client_sdk::clob::types::{Side, SignedOrder};
-//! use polymarket_client_sdk::types::{dec, Decimal};
+//! use polymarket_client_sdk::types::{dec, Decimal, U256};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // Create signer from private key
@@ -115,7 +118,7 @@
 //!
 //! let order = client
 //!     .limit_order()
-//!     .token_id("102200...")
+//!     .token_id(U256::from_str("15871154585880608648532107628464183779895785213830018178010423617714102767076")?)
 //!     .side(Side::Buy)
 //!     .price(dec!(0.5))
 //!     .size(Decimal::TEN)

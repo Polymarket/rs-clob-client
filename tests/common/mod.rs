@@ -34,7 +34,6 @@ pub const SIGNATURE: &str = "0xfdfb5abf512e439ea61c8595c18e527e718bf16010acf57ce
 pub const TIMESTAMP: &str = "100000";
 
 pub const BUILDER_PASSPHRASE: &str = "passphrase";
-pub const TOKEN_1: &str = "1";
 
 pub const POLY_ADDRESS: &str = "POLY_ADDRESS";
 pub const POLY_API_KEY: &str = "POLY_API_KEY";
@@ -54,6 +53,16 @@ pub const BUILDER_API_KEY: Uuid = Uuid::max();
 pub const USDC_DECIMALS: u32 = 6;
 
 pub type TestClient = Client<Authenticated<Normal>>;
+
+pub fn token_1() -> U256 {
+    U256::from_str("15871154585880608648532107628464183779895785213830018178010423617714102767076")
+        .unwrap()
+}
+
+pub fn token_2() -> U256 {
+    U256::from_str("99920934651435586775038877380223724073374199451810545861447160390199026872860")
+        .unwrap()
+}
 
 pub async fn create_authenticated(server: &MockServer) -> anyhow::Result<TestClient> {
     let signer = LocalSigner::from_str(PRIVATE_KEY)?.with_chain_id(Some(POLYGON));
@@ -89,7 +98,7 @@ pub async fn create_authenticated(server: &MockServer) -> anyhow::Result<TestCli
     Ok(client)
 }
 
-pub fn ensure_requirements(server: &MockServer, token_id: &str, tick_size: TickSize) {
+pub fn ensure_requirements(server: &MockServer, token_id: U256, tick_size: TickSize) {
     server.mock(|when, then| {
         when.method(httpmock::Method::GET).path("/neg-risk");
         then.status(StatusCode::OK)
@@ -105,7 +114,7 @@ pub fn ensure_requirements(server: &MockServer, token_id: &str, tick_size: TickS
     server.mock(|when, then| {
         when.method(httpmock::Method::GET)
             .path("/tick-size")
-            .query_param("token_id", token_id);
+            .query_param("token_id", token_id.to_string());
         then.status(StatusCode::OK).json_body(json!({
                 "minimum_tick_size": tick_size.as_decimal(),
         }));

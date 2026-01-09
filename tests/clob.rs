@@ -23,7 +23,7 @@ use uuid::Uuid;
 
 use crate::common::{
     POLY_ADDRESS, POLY_API_KEY, POLY_PASSPHRASE, PRIVATE_KEY, create_authenticated,
-    ensure_requirements,
+    ensure_requirements, token_1, token_2,
 };
 
 mod unauthenticated {
@@ -93,12 +93,12 @@ mod unauthenticated {
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::GET)
                 .path("/midpoint")
-                .query_param("token_id", "1");
+                .query_param("token_id", token_1().to_string());
             then.status(StatusCode::OK)
                 .json_body(json!({ "mid": "0.5" }));
         });
 
-        let request = MidpointRequest::builder().token_id("1").build();
+        let request = MidpointRequest::builder().token_id(token_1()).build();
         let response = client.midpoint(&request).await?;
 
         let expected = MidpointResponse::builder().mid(dec!(0.5)).build();
@@ -117,17 +117,17 @@ mod unauthenticated {
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::POST)
                 .path("/midpoints")
-                .json_body(json!([{ "token_id": "1" }]));
+                .json_body(json!([{ "token_id": token_1().to_string() }]));
             then.status(StatusCode::OK).json_body(json!(
-                { "1": 0.5 }
+                { token_1().to_string(): 0.5 }
             ));
         });
 
-        let request = MidpointRequest::builder().token_id("1").build();
+        let request = MidpointRequest::builder().token_id(token_1()).build();
         let response = client.midpoints(&[request]).await?;
 
         let expected = MidpointsResponse::builder()
-            .midpoints(HashMap::from_iter([("1".to_owned(), dec!(0.5))]))
+            .midpoints(HashMap::from_iter([(token_1(), dec!(0.5))]))
             .build();
 
         assert_eq!(response, expected);
@@ -144,14 +144,14 @@ mod unauthenticated {
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::GET)
                 .path("/price")
-                .query_param("token_id", "1")
+                .query_param("token_id", token_1().to_string())
                 .query_param("side", "BUY");
             then.status(StatusCode::OK)
                 .json_body(json!({ "price": "0.5" }));
         });
 
         let request = PriceRequest::builder()
-            .token_id("1")
+            .token_id(token_1())
             .side(Side::Buy)
             .build();
         let response = client.price(&request).await?;
@@ -162,7 +162,7 @@ mod unauthenticated {
         mock.assert();
 
         let request = PriceRequest::builder()
-            .token_id("1")
+            .token_id(token_1())
             .side(Side::Sell)
             .build();
         let err = client.price(&request).await.unwrap_err();
@@ -187,18 +187,18 @@ mod unauthenticated {
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::POST)
                 .path("/prices")
-                .json_body(json!([{ "token_id": "1", "side": "BUY" }]));
+                .json_body(json!([{ "token_id": token_1().to_string(), "side": "BUY" }]));
             then.status(StatusCode::OK)
-                .json_body(json!({ "1": { "BUY": 0.5 } }));
+                .json_body(json!({ token_1().to_string(): { "BUY": 0.5 } }));
         });
 
         let mut price_map = HashMap::new();
         let mut side_map = HashMap::new();
         side_map.insert(Side::Buy, dec!(0.5));
-        price_map.insert("1".to_owned(), side_map);
+        price_map.insert(token_1(), side_map);
 
         let request = PriceRequest::builder()
-            .token_id("1")
+            .token_id(token_1())
             .side(Side::Buy)
             .build();
         let response = client.prices(&[request]).await?;
@@ -219,7 +219,7 @@ mod unauthenticated {
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::GET).path("/prices");
             then.status(StatusCode::OK)
-                .json_body(json!({ "1": { "BUY": 0.5, "SELL": 0.6 } }));
+                .json_body(json!({ token_1().to_string(): { "BUY": 0.5, "SELL": 0.6 } }));
         });
 
         let response = client.all_prices().await?;
@@ -228,7 +228,7 @@ mod unauthenticated {
         let mut side_map = HashMap::new();
         side_map.insert(Side::Buy, dec!(0.5));
         side_map.insert(Side::Sell, dec!(0.6));
-        price_map.insert("1".to_owned(), side_map);
+        price_map.insert(token_1(), side_map);
 
         let expected = PricesResponse::builder().prices(price_map).build();
 
@@ -265,7 +265,7 @@ mod unauthenticated {
         let request = PriceHistoryRequest::builder()
             .market(test_market)
             .time_range(Interval::OneHour)
-            .fidelity(10_u32)
+            .fidelity(10)
             .build();
         let response = client.price_history(&request).await?;
 
@@ -333,12 +333,12 @@ mod unauthenticated {
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::GET)
                 .path("/spread")
-                .query_param("token_id", "1");
+                .query_param("token_id", token_1().to_string());
             then.status(StatusCode::OK)
                 .json_body(json!({ "spread": "0.5" }));
         });
 
-        let request = SpreadRequest::builder().token_id("1").build();
+        let request = SpreadRequest::builder().token_id(token_1()).build();
         let response = client.spread(&request).await?;
 
         let expected = SpreadResponse::builder().spread(dec!(0.5)).build();
@@ -357,15 +357,15 @@ mod unauthenticated {
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::POST)
                 .path("/spreads")
-                .json_body(json!([{ "token_id": "1" }]));
+                .json_body(json!([{ "token_id": token_1().to_string() }]));
             then.status(StatusCode::OK)
-                .json_body(json!({ "spreads": { "1": 2 } }));
+                .json_body(json!({ "spreads": { token_1().to_string(): 2 } }));
         });
 
         let mut spread_map = HashMap::new();
-        spread_map.insert("1".to_owned(), Decimal::TWO);
+        spread_map.insert(token_1(), Decimal::TWO);
 
-        let request = SpreadRequest::builder().token_id("1").build();
+        let request = SpreadRequest::builder().token_id(token_1()).build();
         let response = client.spreads(&[request]).await?;
 
         let expected = SpreadsResponse::builder().spreads(spread_map).build();
@@ -384,12 +384,12 @@ mod unauthenticated {
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::GET)
                 .path("/tick-size")
-                .query_param("token_id", "1");
+                .query_param("token_id", token_1().to_string());
             then.status(StatusCode::OK)
                 .json_body(json!({ "minimum_tick_size": "0.1" }));
         });
 
-        let response = client.tick_size("1").await?;
+        let response = client.tick_size(token_1()).await?;
 
         let expected = TickSizeResponse::builder()
             .minimum_tick_size(TickSize::Tenth)
@@ -409,12 +409,12 @@ mod unauthenticated {
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::GET)
                 .path("/neg-risk")
-                .query_param("token_id", "1");
+                .query_param("token_id", token_1().to_string());
             then.status(StatusCode::OK)
                 .json_body(json!({ "neg_risk": true }));
         });
 
-        let response = client.neg_risk("1").await?;
+        let response = client.neg_risk(token_1()).await?;
 
         let expected = NegRiskResponse::builder().neg_risk(true).build();
 
@@ -432,12 +432,12 @@ mod unauthenticated {
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::GET)
                 .path("/fee-rate")
-                .query_param("token_id", "1");
+                .query_param("token_id", token_1().to_string());
             then.status(StatusCode::OK)
                 .json_body(json!({ "base_fee": 0 }));
         });
 
-        let response = client.fee_rate_bps("1").await?;
+        let response = client.fee_rate_bps(token_1()).await?;
 
         let expected = FeeRateResponse::builder().base_fee(0).build();
 
@@ -455,10 +455,10 @@ mod unauthenticated {
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::GET)
                 .path("/book")
-                .query_param("token_id", "1");
+                .query_param("token_id", token_1().to_string());
             then.status(StatusCode::OK).json_body(json!({
                 "market": "0x00000000000000000000000000000000000000000000000000000000aabbcc00",
-                "asset_id": "100",
+                "asset_id": token_1(),
                 "tick_size": TickSize::Hundredth.as_decimal(),
                 "min_order_size": "100",
                 "neg_risk": false,
@@ -486,7 +486,9 @@ mod unauthenticated {
             }));
         });
 
-        let request = OrderBookSummaryRequest::builder().token_id("1").build();
+        let request = OrderBookSummaryRequest::builder()
+            .token_id(token_1())
+            .build();
         let response = client.order_book(&request).await?;
 
         let expected = OrderBookSummaryResponse::builder()
@@ -497,7 +499,7 @@ mod unauthenticated {
             .timestamp(Utc.timestamp_millis_opt(123_456_789).unwrap())
             .min_order_size(Decimal::ONE_HUNDRED)
             .tick_size(TickSize::Hundredth)
-            .asset_id("100")
+            .asset_id(token_1())
             .bids(vec![
                 OrderSummary::builder()
                     .price(dec!(0.3))
@@ -523,7 +525,7 @@ mod unauthenticated {
         assert_eq!(response, expected);
         assert_eq!(
             expected.hash()?,
-            "87159628f72d09319cdb23020b3f55589c76897fd159604e919e96fe3bdf7285"
+            "9e71d5176094f0d300d74850b2699dbfd7083dd3f1f3b640d0d65fa96d36d3b4"
         );
         mock.assert();
 
@@ -538,10 +540,10 @@ mod unauthenticated {
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::POST)
                 .path("/books")
-                .json_body(json!([{ "token_id": "1" }]));
+                .json_body(json!([{ "token_id": token_1().to_string() }]));
             then.status(StatusCode::OK).json_body(json!([{
                 "market": "0x0000000000000000000000000000000000000000000000000000000000000001",
-                "asset_id": "asset",
+                "asset_id": token_1(),
                 "tick_size": TickSize::Hundredth.as_decimal(),
                 "min_order_size": "5",
                 "neg_risk": false,
@@ -553,7 +555,9 @@ mod unauthenticated {
             }]));
         });
 
-        let request = OrderBookSummaryRequest::builder().token_id("1").build();
+        let request = OrderBookSummaryRequest::builder()
+            .token_id(token_1())
+            .build();
         let response = client.order_books(&[request]).await?;
 
         let expected = vec![
@@ -565,7 +569,7 @@ mod unauthenticated {
                 .timestamp(DateTime::<Utc>::UNIX_EPOCH + TimeDelta::milliseconds(1))
                 .min_order_size(dec!(5))
                 .tick_size(TickSize::Hundredth)
-                .asset_id("asset")
+                .asset_id(token_1())
                 .asks(vec![
                     OrderSummary::builder()
                         .price(Decimal::TWO)
@@ -589,14 +593,12 @@ mod unauthenticated {
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::GET)
                 .path("/last-trade-price")
-                .query_param("token_id", "1");
+                .query_param("token_id", token_1().to_string());
             then.status(StatusCode::OK)
                 .json_body(json!({ "price": 0.12, "side": "BUY" }));
         });
 
-        let request = LastTradePriceRequest::builder()
-            .token_id("1".to_owned())
-            .build();
+        let request = LastTradePriceRequest::builder().token_id(token_1()).build();
         let response = client.last_trade_price(&request).await?;
 
         let expected = LastTradePriceResponse::builder()
@@ -618,19 +620,18 @@ mod unauthenticated {
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::GET)
                 .path("/last-trades-prices")
-                .json_body(json!([{ "token_id": "1" }]));
-            then.status(StatusCode::OK)
-                .json_body(json!([{ "token_id": "1", "price": 0.12, "side": "BUY" }]));
+                .json_body(json!([{ "token_id": token_1().to_string() }]));
+            then.status(StatusCode::OK).json_body(
+                json!([{ "token_id": token_1().to_string(), "price": 0.12, "side": "BUY" }]),
+            );
         });
 
-        let request = LastTradePriceRequest::builder()
-            .token_id("1".to_owned())
-            .build();
+        let request = LastTradePriceRequest::builder().token_id(token_1()).build();
         let response = client.last_trades_prices(&[request]).await?;
 
         let expected = vec![
             LastTradesPricesResponse::builder()
-                .token_id("1".to_owned())
+                .token_id(token_1())
                 .price(dec!(0.12))
                 .side(Side::Buy)
                 .build(),
@@ -683,13 +684,13 @@ mod unauthenticated {
                 "is_50_50_outcome": false,
                 "tokens": [
                     {
-                        "token_id": "YES_TOKEN",
+                        "token_id": token_1(),
                         "outcome": "YES",
                         "price": "0.55",
                         "winner": false
                     },
                     {
-                        "token_id": "NO_TOKEN",
+                        "token_id": token_2(),
                         "outcome": "NO",
                         "price": "0.45",
                         "winner": false
@@ -741,13 +742,13 @@ mod unauthenticated {
             .is_50_50_outcome(false)
             .tokens(vec![
                 Token::builder()
-                    .token_id("YES_TOKEN")
+                    .token_id(token_1())
                     .outcome("YES")
                     .price(dec!(0.55))
                     .winner(false)
                     .build(),
                 Token::builder()
-                    .token_id("NO_TOKEN")
+                    .token_id(token_2())
                     .outcome("NO")
                     .price(dec!(0.45))
                     .winner(false)
@@ -805,13 +806,13 @@ mod unauthenticated {
                         "is_50_50_outcome": false,
                         "tokens": [
                             {
-                                "token_id": "YES_TOKEN",
+                                "token_id": token_1(),
                                 "outcome": "YES",
                                 "price": "0.55",
                                 "winner": false
                             },
                             {
-                                "token_id": "NO_TOKEN",
+                                "token_id": token_2(),
                                 "outcome": "NO",
                                 "price": "0.45",
                                 "winner": false
@@ -868,13 +869,13 @@ mod unauthenticated {
             .is_50_50_outcome(false)
             .tokens(vec![
                 Token::builder()
-                    .token_id("YES_TOKEN")
+                    .token_id(token_1())
                     .outcome("YES")
                     .price(dec!(0.55))
                     .winner(false)
                     .build(),
                 Token::builder()
-                    .token_id("NO_TOKEN")
+                    .token_id(token_2())
                     .outcome("NO")
                     .price(dec!(0.45))
                     .winner(false)
@@ -909,13 +910,13 @@ mod unauthenticated {
                         "condition_id": "0x00000000000000000000000000000000000000000000000000000000c0012345",
                         "tokens": [
                             {
-                                "token_id": "YES_TOKEN",
+                                "token_id": token_1(),
                                 "outcome": "YES",
                                 "price": "0.55",
                                 "winner": false
                             },
                             {
-                                "token_id": "NO_TOKEN",
+                                "token_id": token_2(),
                                 "outcome": "NO",
                                 "price": "0.45",
                                 "winner": false
@@ -946,13 +947,13 @@ mod unauthenticated {
             ))
             .tokens(vec![
                 Token::builder()
-                    .token_id("YES_TOKEN")
+                    .token_id(token_1())
                     .outcome("YES")
                     .price(dec!(0.55))
                     .winner(false)
                     .build(),
                 Token::builder()
-                    .token_id("NO_TOKEN")
+                    .token_id(token_2())
                     .outcome("NO")
                     .price(dec!(0.45))
                     .winner(false)
@@ -996,13 +997,13 @@ mod unauthenticated {
                         "condition_id": "0x00000000000000000000000000000000000000000000000000000000c0012345",
                         "tokens": [
                             {
-                                "token_id": "YES_TOKEN",
+                                "token_id": token_1(),
                                 "outcome": "YES",
                                 "price": "0.55",
                                 "winner": false
                             },
                             {
-                                "token_id": "NO_TOKEN",
+                                "token_id": token_2(),
                                 "outcome": "NO",
                                 "price": "0.45",
                                 "winner": false
@@ -1033,13 +1034,13 @@ mod unauthenticated {
             ))
             .tokens(vec![
                 Token::builder()
-                    .token_id("YES_TOKEN")
+                    .token_id(token_1())
                     .outcome("YES")
                     .price(dec!(0.55))
                     .winner(false)
                     .build(),
                 Token::builder()
-                    .token_id("NO_TOKEN")
+                    .token_id(token_2())
                     .outcome("NO")
                     .price(dec!(0.45))
                     .winner(false)
@@ -1112,13 +1113,13 @@ mod unauthenticated {
                     "is_50_50_outcome": false,
                     "tokens": [
                         {
-                            "token_id": "YES_TOKEN",
+                            "token_id": token_1(),
                             "outcome": "YES",
                             "price": "0.55",
                             "winner": false
                         },
                         {
-                            "token_id": "NO_TOKEN",
+                            "token_id": token_2(),
                             "outcome": "NO",
                             "price": "0.45",
                             "winner": false
@@ -1209,13 +1210,13 @@ mod unauthenticated {
             .is_50_50_outcome(false)
             .tokens(vec![
                 Token::builder()
-                    .token_id("YES_TOKEN")
+                    .token_id(token_1())
                     .outcome("YES")
                     .price(dec!(0.55))
                     .winner(false)
                     .build(),
                 Token::builder()
-                    .token_id("NO_TOKEN")
+                    .token_id(token_2())
                     .outcome("NO")
                     .price(dec!(0.45))
                     .winner(false)
@@ -1429,17 +1430,17 @@ mod authenticated {
             .authenticate()
             .await?;
 
-        ensure_requirements(&server, "123", TickSize::Thousandth);
+        ensure_requirements(&server, token_1(), TickSize::Thousandth);
 
         assert_eq!(
-            client.tick_size("123").await?.minimum_tick_size,
+            client.tick_size(token_1()).await?.minimum_tick_size,
             TickSize::Thousandth
         );
 
         let taker = address!("0xf7fB45986800e2D259BAa25B56466bd02dA37a44");
         let signable_order = client
             .limit_order()
-            .token_id("123")
+            .token_id(token_1())
             .price(dec!(0.512))
             .size(Decimal::ONE_HUNDRED)
             .side(Side::Buy)
@@ -1457,12 +1458,12 @@ mod authenticated {
             .post_only(false)
             .signature(Signature::new(
                 U256::from_str(
-                    "83481775348298569941382281649378839838022156673358335472613408323829135581822",
+                    "67938079796141091828598175285011746318151402208362009718761031231176791189384",
                 )?,
                 U256::from_str(
-                    "14700784935255652319392527293337942251542995764256618215552578034044377798980",
+                    "31661255856293674232712511615893783899761903915420680037924826147367342033568",
                 )?,
-                false,
+                true,
             ))
             .build();
 
@@ -1489,7 +1490,7 @@ mod authenticated {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
-        ensure_requirements(&server, "1", TickSize::Hundredth);
+        ensure_requirements(&server, token_1(), TickSize::Hundredth);
 
         let mock = server.mock(|when, then| {
             when.method(POST)
@@ -1549,7 +1550,7 @@ mod authenticated {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
-        ensure_requirements(&server, "1", TickSize::Hundredth);
+        ensure_requirements(&server, token_1(), TickSize::Hundredth);
 
         let mock = server.mock(|when, then| {
             when.method(POST)
@@ -1600,7 +1601,7 @@ mod authenticated {
             "owner": "ffffffff-ffff-ffff-ffff-ffffffffffff",
             "maker_address": "0x2222222222222222222222222222222222222222",
             "market": "0x000000000000000000000000000000000000000000000000006d61726b657461",
-            "asset_id": "asset_xyz",
+            "asset_id": token_1(),
             "side": "buy",
             "original_size": "10.0",
             "size_matched": "2.5",
@@ -1634,7 +1635,7 @@ mod authenticated {
             .market(b256!(
                 "000000000000000000000000000000000000000000000000006d61726b657461"
             ))
-            .asset_id("asset_xyz")
+            .asset_id(token_1())
             .side(Side::Buy)
             .original_size(dec!(10.0))
             .size_matched(dec!(2.5))
@@ -1665,7 +1666,7 @@ mod authenticated {
                     "owner": "ffffffff-ffff-ffff-ffff-ffffffffffff",
                     "maker_address": "0x2222222222222222222222222222222222222222",
                     "market": "0x000000000000000000000000000000000000000000000000006d61726b657461",
-                    "asset_id": "asset_xyz",
+                    "asset_id": token_1(),
                     "side": "buy",
                     "original_size": "10.0",
                     "size_matched": "2.5",
@@ -1706,7 +1707,7 @@ mod authenticated {
             .market(b256!(
                 "000000000000000000000000000000000000000000000000006d61726b657461"
             ))
-            .asset_id("asset_xyz")
+            .asset_id(token_1())
             .side(Side::Buy)
             .original_size(dec!(10.0))
             .size_matched(dec!(2.5))
@@ -1882,7 +1883,7 @@ mod authenticated {
                 .path("/cancel-market-orders");
             then.status(StatusCode::OK).json_body(json!({
                 "market": "m",
-                "asset_id": "a",
+                "asset_id": token_1(),
             }));
         });
 
@@ -1890,7 +1891,7 @@ mod authenticated {
             .market(b256!(
                 "000000000000000000000000000000000000000000000000000000000000006d"
             ))
-            .asset_id("a")
+            .asset_id(token_1())
             .build();
 
         client.cancel_market_orders(&request).await?;
@@ -1920,7 +1921,7 @@ mod authenticated {
                         "id": "1",
                         "taker_order_id": "taker_123",
                         "market": "0x000000000000000000000000000000000000000000000000000000006d61726b",
-                        "asset_id": "asset_xyz",
+                        "asset_id": token_1(),
                         "side": "BUY",
                         "size": "12.5",
                         "fee_rate_bps": "5",
@@ -1940,7 +1941,7 @@ mod authenticated {
                                 "matched_amount": "5.0",
                                 "price": "0.42",
                                 "fee_rate_bps": "5",
-                                "asset_id": "asset_xyz",
+                                "asset_id": token_1(),
                                 "outcome": "YES",
                                 "side": "SELL"
                             },
@@ -1951,7 +1952,7 @@ mod authenticated {
                                 "matched_amount": "7.5",
                                 "price": "0.42",
                                 "fee_rate_bps": "5",
-                                "asset_id": "asset_xyz",
+                                "asset_id": token_1(),
                                 "outcome": "YES",
                                 "side": "SELL"
                             }
@@ -1980,7 +1981,7 @@ mod authenticated {
             .market(b256!(
                 "000000000000000000000000000000000000000000000000000000006d61726b"
             ))
-            .asset_id("asset_xyz")
+            .asset_id(token_1())
             .side(Side::Buy)
             .size(dec!(12.5))
             .fee_rate_bps(dec!(5))
@@ -2000,7 +2001,7 @@ mod authenticated {
                     .matched_amount(dec!(5.0))
                     .price(dec!(0.42))
                     .fee_rate_bps(dec!(5))
-                    .asset_id("asset_xyz")
+                    .asset_id(token_1())
                     .outcome("YES")
                     .side(Side::Sell)
                     .build(),
@@ -2011,7 +2012,7 @@ mod authenticated {
                     .matched_amount(dec!(7.5))
                     .price(dec!(0.42))
                     .fee_rate_bps(dec!(5))
-                    .asset_id("asset_xyz")
+                    .asset_id(token_1())
                     .outcome("YES")
                     .side(Side::Sell)
                     .build(),
@@ -2084,7 +2085,7 @@ mod authenticated {
                 .r#type(1)
                 .owner(API_KEY)
                 .payload(NotificationPayload::builder()
-                    .asset_id("71321045679252212594626385532706912750332728571942532289631379312455583992563")
+                    .asset_id(U256::from_str("71321045679252212594626385532706912750332728571942532289631379312455583992563").unwrap())
                     .condition_id(b256!(
                         "5f65177b394277fd294cd75650044e32ba009a95022d88a0c1d565897d72f8f1"
                     ))
@@ -2159,7 +2160,7 @@ mod authenticated {
                 .header(POLY_API_KEY, API_KEY)
                 .header(POLY_PASSPHRASE, PASSPHRASE)
                 .query_param("asset_type", "COLLATERAL")
-                .query_param("token_id", "1")
+                .query_param("token_id", token_1().to_string())
                 .query_param("signature_type", "0");
             // Trying different Decimal deserialization routes
             then.status(StatusCode::OK).json_body(json!({
@@ -2170,7 +2171,7 @@ mod authenticated {
 
         let request = BalanceAllowanceRequest::builder()
             .asset_type(AssetType::Collateral)
-            .token_id("1")
+            .token_id(token_1())
             .build();
         let response = client.balance_allowance(request).await?;
 
@@ -2197,14 +2198,14 @@ mod authenticated {
                 .header(POLY_API_KEY, API_KEY)
                 .header(POLY_PASSPHRASE, PASSPHRASE)
                 .query_param("asset_type", "COLLATERAL")
-                .query_param("token_id", "1")
+                .query_param("token_id", token_1().to_string())
                 .query_param("signature_type", "0");
             then.status(StatusCode::OK).json_body(json!(null));
         });
 
         let request = BalanceAllowanceRequest::builder()
             .asset_type(AssetType::Collateral)
-            .token_id("1")
+            .token_id(token_1())
             .build();
         client.update_balance_allowance(request).await?;
 
@@ -2393,13 +2394,13 @@ mod authenticated {
                         "market_competitiveness": "0.80",
                         "tokens": [
                             {
-                                "token_id": "YES_TOKEN",
+                                "token_id": token_1(),
                                 "outcome": "YES",
                                 "price": "0.55",
                                 "winner": true
                             },
                             {
-                                "token_id": "NO_TOKEN",
+                                "token_id": token_2(),
                                 "outcome": "NO",
                                 "price": "0.45",
                                 "winner": false
@@ -2461,13 +2462,13 @@ mod authenticated {
                 .market_competitiveness(dec!(0.80))
                 .tokens(vec![
                     Token::builder()
-                        .token_id("YES_TOKEN")
+                        .token_id(token_1())
                         .outcome("YES")
                         .price(dec!(0.55))
                         .winner(true)
                         .build(),
                     Token::builder()
-                        .token_id("NO_TOKEN")
+                        .token_id(token_2())
                         .outcome("NO")
                         .price(dec!(0.45))
                         .winner(false)
@@ -2641,13 +2642,13 @@ mod authenticated {
                         "market_competitiveness": 0.05,
                         "tokens": [
                             {
-                                "token_id": "YES_TOKEN",
+                                "token_id": token_1(),
                                 "outcome": "YES",
                                 "price": "0.58",
                                 "winner": true
                             },
                             {
-                                "token_id": "NO_TOKEN",
+                                "token_id": token_2(),
                                 "outcome": "NO",
                                 "price": "0.42",
                                 "winner": false
@@ -2698,13 +2699,13 @@ mod authenticated {
             .market_competitiveness(dec!(0.05))
             .tokens(vec![
                 Token::builder()
-                    .token_id("YES_TOKEN")
+                    .token_id(token_1())
                     .outcome("YES")
                     .price(dec!(0.58))
                     .winner(true)
                     .build(),
                 Token::builder()
-                    .token_id("NO_TOKEN")
+                    .token_id(token_2())
                     .outcome("NO")
                     .price(dec!(0.42))
                     .winner(false)
@@ -3074,7 +3075,7 @@ mod builder_authenticated {
                         "takerOrderHash": "0x0000000000000000000000000000000000000000000000000074616b65726f72",
                         "builder": "0x00000000000000000000000000006275696c6431",
                         "market": "0x000000000000000000000000000000000000000000000000000000006d61726b",
-                        "assetId": "asset_xyz",
+                        "assetId": token_1(),
                         "side": "buy",
                         "size": "10.0",
                         "sizeUsdc": "100.0",
@@ -3118,7 +3119,7 @@ mod builder_authenticated {
             .market(b256!(
                 "000000000000000000000000000000000000000000000000000000006d61726b"
             ))
-            .asset_id("asset_xyz")
+            .asset_id(token_1())
             .side(Side::Buy)
             .size(dec!(10.0))
             .size_usdc(dec!(100.0))

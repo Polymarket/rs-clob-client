@@ -1,5 +1,4 @@
 use std::marker::PhantomData;
-use std::str::FromStr as _;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use alloy::primitives::U256;
@@ -40,7 +39,7 @@ pub struct OrderBuilder<OrderKind, K: AuthKind> {
     pub(crate) signer: Address,
     pub(crate) signature_type: SignatureType,
     pub(crate) salt_generator: fn() -> u64,
-    pub(crate) token_id: Option<String>,
+    pub(crate) token_id: Option<U256>,
     pub(crate) price: Option<Decimal>,
     pub(crate) size: Option<Decimal>,
     pub(crate) amount: Option<Amount>,
@@ -57,8 +56,8 @@ pub struct OrderBuilder<OrderKind, K: AuthKind> {
 impl<OrderKind, K: AuthKind> OrderBuilder<OrderKind, K> {
     /// Sets the `token_id` for this builder. This is a required field.
     #[must_use]
-    pub fn token_id<ID: Into<String>>(mut self, token_id: ID) -> Self {
-        self.token_id = Some(token_id.into());
+    pub fn token_id(mut self, token_id: U256) -> Self {
+        self.token_id = Some(token_id);
         self
     }
 
@@ -123,7 +122,7 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
         tracing::instrument(skip(self), err(level = "warn"))
     )]
     pub async fn build(self) -> Result<SignableOrder> {
-        let Some(token_id) = self.token_id.clone() else {
+        let Some(token_id) = self.token_id else {
             return Err(Error::validation(
                 "Unable to build Order due to missing token ID",
             ));
@@ -147,10 +146,10 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
             )));
         }
 
-        let fee_rate = self.client.fee_rate_bps(&token_id).await?;
+        let fee_rate = self.client.fee_rate_bps(token_id).await?;
         let minimum_tick_size = self
             .client
-            .tick_size(&token_id)
+            .tick_size(token_id)
             .await?
             .minimum_tick_size
             .as_decimal();
@@ -236,7 +235,7 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
             salt: U256::from(salt),
             maker: self.funder.unwrap_or(self.signer),
             taker,
-            tokenId: U256::from_str(&token_id)?,
+            tokenId: token_id,
             makerAmount: U256::from(to_fixed_u128(maker_amount)),
             takerAmount: U256::from(to_fixed_u128(taker_amount)),
             side: side as u8,
@@ -283,7 +282,6 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
     async fn calculate_price(&self, order_type: OrderType) -> Result<Decimal> {
         let token_id = self
             .token_id
-            .as_ref()
             .expect("Token ID was already validated in `build`");
         let side = self.side.expect("Side was already validated in `build`");
         let amount = self
@@ -294,7 +292,7 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         let book = self
             .client
             .order_book(&OrderBookSummaryRequest {
-                token_id: token_id.to_owned(),
+                token_id,
                 side: None,
             })
             .await?;
@@ -348,7 +346,7 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         tracing::instrument(skip(self), err(level = "warn"))
     )]
     pub async fn build(self) -> Result<SignableOrder> {
-        let Some(token_id) = self.token_id.clone() else {
+        let Some(token_id) = self.token_id else {
             return Err(Error::validation(
                 "Unable to build Order due to missing token ID",
             ));
@@ -381,11 +379,11 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
 
         let minimum_tick_size = self
             .client
-            .tick_size(&token_id)
+            .tick_size(token_id)
             .await?
             .minimum_tick_size
             .as_decimal();
-        let fee_rate = self.client.fee_rate_bps(&token_id).await?;
+        let fee_rate = self.client.fee_rate_bps(token_id).await?;
 
         let decimals = minimum_tick_size.scale();
 
@@ -449,7 +447,7 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
             salt: U256::from(salt),
             maker: self.funder.unwrap_or(self.signer),
             taker,
-            tokenId: U256::from_str(&token_id)?,
+            tokenId: token_id,
             makerAmount: U256::from(to_fixed_u128(maker_amount)),
             takerAmount: U256::from(to_fixed_u128(taker_amount)),
             side: side as u8,

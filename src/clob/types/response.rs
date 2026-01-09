@@ -19,7 +19,7 @@ use crate::Result;
 use crate::auth::ApiKey;
 use crate::clob::types::{OrderStatusType, OrderType, Side, TickSize, TraderSide};
 use crate::serde_helpers::StringFromAny;
-use crate::types::{Address, B256, Decimal};
+use crate::types::{Address, B256, Decimal, U256};
 
 #[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
@@ -31,7 +31,7 @@ pub struct MidpointResponse {
 #[derive(Clone, Debug, Default, Deserialize, Builder, PartialEq)]
 #[serde(transparent)]
 pub struct MidpointsResponse {
-    pub midpoints: HashMap<String, Decimal>,
+    pub midpoints: HashMap<U256, Decimal>,
 }
 
 #[non_exhaustive]
@@ -44,7 +44,7 @@ pub struct PriceResponse {
 #[derive(Clone, Debug, Default, Deserialize, Builder, PartialEq)]
 #[serde(transparent)]
 pub struct PricesResponse {
-    pub prices: Option<HashMap<String, HashMap<Side, Decimal>>>,
+    pub prices: Option<HashMap<U256, HashMap<Side, Decimal>>>,
 }
 
 #[non_exhaustive]
@@ -56,7 +56,7 @@ pub struct SpreadResponse {
 #[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
 pub struct SpreadsResponse {
-    pub spreads: Option<HashMap<String, Decimal>>,
+    pub spreads: Option<HashMap<U256, Decimal>>,
 }
 
 #[non_exhaustive]
@@ -115,7 +115,7 @@ pub struct GeoblockResponse {
 pub struct OrderBookSummaryResponse {
     /// The market condition ID.
     pub market: B256,
-    pub asset_id: String,
+    pub asset_id: U256,
     #[serde_as(as = "TimestampMilliSeconds<String>")]
     pub timestamp: DateTime<Utc>,
     #[serde(default)]
@@ -164,7 +164,7 @@ pub struct LastTradePriceResponse {
 #[derive(Debug, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct LastTradesPricesResponse {
-    pub token_id: String,
+    pub token_id: U256,
     pub price: Decimal,
     pub side: Side,
 }
@@ -232,7 +232,7 @@ pub struct MarketResponse {
 #[derive(Debug, Serialize, Deserialize, Clone, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct Token {
-    pub token_id: String,
+    pub token_id: U256,
     pub outcome: String,
     pub price: Decimal,
     #[serde(default)]
@@ -326,7 +326,7 @@ pub struct OpenOrderResponse {
     pub maker_address: Address,
     /// The market condition ID.
     pub market: B256,
-    pub asset_id: String,
+    pub asset_id: U256,
     pub side: Side,
     pub original_size: Decimal,
     pub size_matched: Decimal,
@@ -367,7 +367,7 @@ pub struct TradeResponse {
     pub taker_order_id: String,
     /// The market condition ID.
     pub market: B256,
-    pub asset_id: String,
+    pub asset_id: U256,
     pub side: Side,
     pub size: Decimal,
     pub fee_rate_bps: Decimal,
@@ -403,7 +403,7 @@ pub struct NotificationResponse {
 #[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct NotificationPayload {
-    pub asset_id: String,
+    pub asset_id: U256,
     /// The market condition ID (unique market identifier).
     pub condition_id: B256,
     #[serde(rename = "eventSlug")]
@@ -486,18 +486,6 @@ pub struct Rewards {
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
-pub struct MarketInfo {
-    /// The market condition ID (unique market identifier).
-    pub condition_id: B256,
-    pub asset_id: String,
-    pub question: String,
-    pub icon: String,
-    pub slug: String,
-}
-
-#[non_exhaustive]
-#[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
-#[builder(on(String, into))]
 pub struct UserInfo {
     pub address: Address,
     pub username: String,
@@ -516,7 +504,7 @@ pub struct MakerOrder {
     pub matched_amount: Decimal,
     pub price: Decimal,
     pub fee_rate_bps: Decimal,
-    pub asset_id: String,
+    pub asset_id: U256,
     pub outcome: String,
     pub side: Side,
 }
@@ -669,7 +657,7 @@ pub struct BuilderTradeResponse {
     pub builder: Address,
     /// The market condition ID.
     pub market: B256,
-    pub asset_id: String,
+    pub asset_id: U256,
     pub side: Side,
     pub size: Decimal,
     pub size_usdc: Decimal,

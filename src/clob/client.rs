@@ -396,11 +396,11 @@ struct ClientInner<S: State> {
     /// The inner [`ReqwestClient`] used to make requests to `host`.
     client: ReqwestClient,
     /// Local cache of [`TickSize`] per token ID
-    tick_sizes: DashMap<String, TickSize>,
+    tick_sizes: DashMap<U256, TickSize>,
     /// Local cache representing whether this token is part of a `neg_risk` market
-    neg_risk: DashMap<String, bool>,
+    neg_risk: DashMap<U256, bool>,
     /// Local cache representing the fee rate in basis points per token ID
-    fee_rate_bps: DashMap<String, u32>,
+    fee_rate_bps: DashMap<U256, u32>,
     /// The funder for this [`ClientInner`]. If funder is present, then `signature_type` cannot
     /// be [`SignatureType::Eoa`]. Conversely, if funder is absent, then `signature_type` cannot be
     /// [`SignatureType::Proxy`] or [`SignatureType::GnosisSafe`].
@@ -542,10 +542,10 @@ impl<S: State> Client<S> {
     ///
     /// Returns an error if the request fails or the token ID is invalid.
     pub async fn midpoint(&self, request: &MidpointRequest) -> Result<MidpointResponse> {
+        let params = request.query_params(None);
         let request = self
             .client()
-            .request(Method::GET, format!("{}midpoint", self.host()))
-            .query(&[("token_id", request.token_id.as_str())])
+            .request(Method::GET, format!("{}midpoint{params}", self.host()))
             .build()?;
 
         crate::request(&self.inner.client, request, None).await
@@ -578,13 +578,10 @@ impl<S: State> Client<S> {
     ///
     /// Returns an error if the request fails or the token ID is invalid.
     pub async fn price(&self, request: &PriceRequest) -> Result<PriceResponse> {
+        let params = request.query_params(None);
         let request = self
             .client()
-            .request(Method::GET, format!("{}price", self.host()))
-            .query(&[
-                ("token_id", request.token_id.as_str()),
-                ("side", &request.side.to_string()),
-            ])
+            .request(Method::GET, format!("{}price{params}", self.host()))
             .build()?;
 
         crate::request(&self.inner.client, request, None).await
@@ -637,25 +634,11 @@ impl<S: State> Client<S> {
         &self,
         request: &PriceHistoryRequest,
     ) -> Result<PriceHistoryResponse> {
-        use crate::clob::types::TimeRange;
-
-        let mut req = self
-            .client()
-            .request(Method::GET, format!("{}prices-history", self.host()))
-            .query(&[("market", request.market.to_string())]);
-
-        match request.time_range {
-            TimeRange::Interval { interval } => {
-                req = req.query(&[("interval", interval.to_string())]);
-            }
-            TimeRange::Range { start_ts, end_ts } => {
-                req = req.query(&[("startTs", start_ts), ("endTs", end_ts)]);
-            }
-        }
-
-        if let Some(fidelity) = request.fidelity {
-            req = req.query(&[("fidelity", fidelity)]);
-        }
+        let params = request.query_params(None);
+        let req = self.client().request(
+            Method::GET,
+            format!("{}prices-history{params}", self.host()),
+        );
 
         crate::request(&self.inner.client, req.build()?, None).await
     }
@@ -670,10 +653,10 @@ impl<S: State> Client<S> {
     ///
     /// Returns an error if the request fails or the token ID is invalid.
     pub async fn spread(&self, request: &SpreadRequest) -> Result<SpreadResponse> {
+        let params = request.query_params(None);
         let request = self
             .client()
-            .request(Method::GET, format!("{}spread", self.host()))
-            .query(&[("token_id", request.token_id.as_str())])
+            .request(Method::GET, format!("{}spread{params}", self.host()))
             .build()?;
 
         crate::request(&self.inner.client, request, None).await
@@ -706,8 +689,8 @@ impl<S: State> Client<S> {
     /// # Errors
     ///
     /// Returns an error if the request fails or the token ID is invalid.
-    pub async fn tick_size(&self, token_id: &str) -> Result<TickSizeResponse> {
-        if let Some(tick_size) = self.inner.tick_sizes.get(token_id) {
+    pub async fn tick_size(&self, token_id: U256) -> Result<TickSizeResponse> {
+        if let Some(tick_size) = self.inner.tick_sizes.get(&token_id) {
             #[cfg(feature = "tracing")]
             tracing::trace!(token_id = %token_id, tick_size = ?tick_size.value(), "cache hit: tick_size");
             return Ok(TickSizeResponse {
@@ -721,7 +704,7 @@ impl<S: State> Client<S> {
         let request = self
             .client()
             .request(Method::GET, format!("{}tick-size", self.host()))
-            .query(&[("token_id", token_id)])
+            .query(&[("token_id", token_id.to_string())])
             .build()?;
 
         let response =
@@ -729,7 +712,7 @@ impl<S: State> Client<S> {
 
         self.inner
             .tick_sizes
-            .insert(token_id.to_owned(), response.minimum_tick_size);
+            .insert(token_id, response.minimum_tick_size);
 
         #[cfg(feature = "tracing")]
         tracing::trace!(token_id = %token_id, "cached tick_size");
@@ -746,8 +729,8 @@ impl<S: State> Client<S> {
     /// # Errors
     ///
     /// Returns an error if the request fails or the token ID is invalid.
-    pub async fn neg_risk(&self, token_id: &str) -> Result<NegRiskResponse> {
-        if let Some(neg_risk) = self.inner.neg_risk.get(token_id) {
+    pub async fn neg_risk(&self, token_id: U256) -> Result<NegRiskResponse> {
+        if let Some(neg_risk) = self.inner.neg_risk.get(&token_id) {
             #[cfg(feature = "tracing")]
             tracing::trace!(token_id = %token_id, neg_risk = *neg_risk, "cache hit: neg_risk");
             return Ok(NegRiskResponse {
@@ -761,14 +744,12 @@ impl<S: State> Client<S> {
         let request = self
             .client()
             .request(Method::GET, format!("{}neg-risk", self.host()))
-            .query(&[("token_id", token_id)])
+            .query(&[("token_id", token_id.to_string())])
             .build()?;
 
         let response = crate::request::<NegRiskResponse>(&self.inner.client, request, None).await?;
 
-        self.inner
-            .neg_risk
-            .insert(token_id.to_owned(), response.neg_risk);
+        self.inner.neg_risk.insert(token_id, response.neg_risk);
 
         #[cfg(feature = "tracing")]
         tracing::trace!(token_id = %token_id, "cached neg_risk");
@@ -784,8 +765,8 @@ impl<S: State> Client<S> {
     /// # Errors
     ///
     /// Returns an error if the request fails or the token ID is invalid.
-    pub async fn fee_rate_bps(&self, token_id: &str) -> Result<FeeRateResponse> {
-        if let Some(base_fee) = self.inner.fee_rate_bps.get(token_id) {
+    pub async fn fee_rate_bps(&self, token_id: U256) -> Result<FeeRateResponse> {
+        if let Some(base_fee) = self.inner.fee_rate_bps.get(&token_id) {
             #[cfg(feature = "tracing")]
             tracing::trace!(token_id = %token_id, base_fee = *base_fee, "cache hit: fee_rate_bps");
             return Ok(FeeRateResponse {
@@ -799,14 +780,12 @@ impl<S: State> Client<S> {
         let request = self
             .client()
             .request(Method::GET, format!("{}fee-rate", self.host()))
-            .query(&[("token_id", token_id)])
+            .query(&[("token_id", token_id.to_string())])
             .build()?;
 
         let response = crate::request::<FeeRateResponse>(&self.inner.client, request, None).await?;
 
-        self.inner
-            .fee_rate_bps
-            .insert(token_id.to_owned(), response.base_fee);
+        self.inner.fee_rate_bps.insert(token_id, response.base_fee);
 
         #[cfg(feature = "tracing")]
         tracing::trace!(token_id = %token_id, "cached fee_rate_bps");
@@ -883,10 +862,10 @@ impl<S: State> Client<S> {
         &self,
         request: &OrderBookSummaryRequest,
     ) -> Result<OrderBookSummaryResponse> {
+        let params = request.query_params(None);
         let request = self
             .client()
-            .request(Method::GET, format!("{}book", self.host()))
-            .query(&[("token_id", request.token_id.as_str())])
+            .request(Method::GET, format!("{}book{params}", self.host()))
             .build()?;
 
         crate::request(&self.inner.client, request, None).await
@@ -925,10 +904,13 @@ impl<S: State> Client<S> {
         &self,
         request: &LastTradePriceRequest,
     ) -> Result<LastTradePriceResponse> {
+        let params = request.query_params(None);
         let request = self
             .client()
-            .request(Method::GET, format!("{}last-trade-price", self.host()))
-            .query(&[("token_id", request.token_id.as_str())])
+            .request(
+                Method::GET,
+                format!("{}last-trade-price{params}", self.host()),
+            )
             .build()?;
 
         crate::request(&self.inner.client, request, None).await
@@ -1376,8 +1358,8 @@ impl<K: Kind> Client<Authenticated<K>> {
             post_only,
         }: SignableOrder,
     ) -> Result<SignedOrder> {
-        let token_id = order.tokenId.to_string();
-        let neg_risk = self.neg_risk(&token_id).await?.neg_risk;
+        let token_id = order.tokenId;
+        let neg_risk = self.neg_risk(token_id).await?.neg_risk;
         let chain_id = signer
             .chain_id()
             .expect("Validated not none in `authenticate`");

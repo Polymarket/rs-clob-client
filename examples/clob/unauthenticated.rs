@@ -81,7 +81,7 @@ async fn main() -> anyhow::Result<()> {
                     question = %market.question,
                     tokens = market.tokens.len()
                 );
-                (Some(market.tokens[0].token_id.clone()), Some(cid))
+                (Some(market.tokens[0].token_id), Some(cid))
             } else {
                 warn!(endpoint = "markets", "no active market with tokens found");
                 (None, None)
@@ -93,7 +93,6 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    // Test market lookup by condition ID
     if let Some(cid) = &condition_id {
         match client.market(&cid.to_string()).await {
             Ok(market) => info!(
@@ -106,7 +105,6 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
-    // Test sampling markets
     match client.sampling_markets(None).await {
         Ok(page) => info!(
             endpoint = "sampling_markets",
@@ -116,7 +114,6 @@ async fn main() -> anyhow::Result<()> {
         Err(e) => error!(endpoint = "sampling_markets", error = %e),
     }
 
-    // Test simplified markets
     match client.simplified_markets(None).await {
         Ok(page) => info!(
             endpoint = "simplified_markets",
@@ -126,7 +123,6 @@ async fn main() -> anyhow::Result<()> {
         Err(e) => error!(endpoint = "simplified_markets", error = %e),
     }
 
-    // Test sampling simplified markets
     match client.sampling_simplified_markets(None).await {
         Ok(page) => info!(
             endpoint = "sampling_simplified_markets",
@@ -136,22 +132,18 @@ async fn main() -> anyhow::Result<()> {
         Err(e) => error!(endpoint = "sampling_simplified_markets", error = %e),
     }
 
-    // Use discovered token_id for price and order book queries
-    if let Some(token_id) = &token_id {
-        // Midpoint
+    if let Some(token_id) = token_id {
         let midpoint_request = MidpointRequest::builder().token_id(token_id).build();
         match client.midpoint(&midpoint_request).await {
             Ok(midpoint) => info!(endpoint = "midpoint", token_id = %token_id, mid = %midpoint.mid),
             Err(e) => error!(endpoint = "midpoint", token_id = %token_id, error = %e),
         }
 
-        // Midpoints (batch)
         match client.midpoints(&[midpoint_request]).await {
             Ok(midpoints) => info!(endpoint = "midpoints", count = midpoints.midpoints.len()),
             Err(e) => error!(endpoint = "midpoints", error = %e),
         }
 
-        // Price (buy side)
         let buy_price_request = PriceRequest::builder()
             .token_id(token_id)
             .side(Side::Buy)
@@ -166,7 +158,6 @@ async fn main() -> anyhow::Result<()> {
             Err(e) => error!(endpoint = "price", token_id = %token_id, side = "buy", error = %e),
         }
 
-        // Price (sell side)
         let sell_price_request = PriceRequest::builder()
             .token_id(token_id)
             .side(Side::Sell)
@@ -181,7 +172,6 @@ async fn main() -> anyhow::Result<()> {
             Err(e) => error!(endpoint = "price", token_id = %token_id, side = "sell", error = %e),
         }
 
-        // Prices (batch)
         match client
             .prices(&[buy_price_request, sell_price_request])
             .await
@@ -193,7 +183,6 @@ async fn main() -> anyhow::Result<()> {
             Err(e) => error!(endpoint = "prices", error = %e),
         }
 
-        // Spread
         let spread_request = SpreadRequest::builder().token_id(token_id).build();
         match client.spread(&spread_request).await {
             Ok(spread) => info!(
@@ -204,7 +193,6 @@ async fn main() -> anyhow::Result<()> {
             Err(e) => error!(endpoint = "spread", token_id = %token_id, error = %e),
         }
 
-        // Spreads (batch)
         match client.spreads(&[spread_request]).await {
             Ok(spreads) => info!(
                 endpoint = "spreads",
@@ -213,7 +201,6 @@ async fn main() -> anyhow::Result<()> {
             Err(e) => error!(endpoint = "spreads", error = %e),
         }
 
-        // Tick size
         match client.tick_size(token_id).await {
             Ok(tick_size) => info!(
                 endpoint = "tick_size",
@@ -223,7 +210,6 @@ async fn main() -> anyhow::Result<()> {
             Err(e) => error!(endpoint = "tick_size", token_id = %token_id, error = %e),
         }
 
-        // Neg risk
         match client.neg_risk(token_id).await {
             Ok(neg_risk) => info!(
                 endpoint = "neg_risk",
@@ -233,7 +219,6 @@ async fn main() -> anyhow::Result<()> {
             Err(e) => error!(endpoint = "neg_risk", token_id = %token_id, error = %e),
         }
 
-        // Fee rate
         match client.fee_rate_bps(token_id).await {
             Ok(fee_rate) => info!(
                 endpoint = "fee_rate_bps",
@@ -243,7 +228,6 @@ async fn main() -> anyhow::Result<()> {
             Err(e) => error!(endpoint = "fee_rate_bps", token_id = %token_id, error = %e),
         }
 
-        // Order book
         let order_book_request = OrderBookSummaryRequest::builder()
             .token_id(token_id)
             .build();
@@ -261,13 +245,11 @@ async fn main() -> anyhow::Result<()> {
             Err(e) => error!(endpoint = "order_book", token_id = %token_id, error = %e),
         }
 
-        // Order books (batch)
         match client.order_books(&[order_book_request]).await {
             Ok(books) => info!(endpoint = "order_books", count = books.len()),
             Err(e) => error!(endpoint = "order_books", error = %e),
         }
 
-        // Last trade price
         let last_trade_request = LastTradePriceRequest::builder().token_id(token_id).build();
         match client.last_trade_price(&last_trade_request).await {
             Ok(last_trade) => info!(
@@ -278,7 +260,6 @@ async fn main() -> anyhow::Result<()> {
             Err(e) => error!(endpoint = "last_trade_price", token_id = %token_id, error = %e),
         }
 
-        // Last trade prices (batch)
         match client.last_trades_prices(&[last_trade_request]).await {
             Ok(prices) => info!(endpoint = "last_trade_prices", count = prices.len()),
             Err(e) => error!(endpoint = "last_trade_prices", error = %e),

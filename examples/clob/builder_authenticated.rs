@@ -7,6 +7,7 @@ use alloy::signers::local::LocalSigner;
 use polymarket_client_sdk::auth::builder::Config as BuilderConfig;
 use polymarket_client_sdk::clob::types::request::TradesRequest;
 use polymarket_client_sdk::clob::{Client, Config};
+use polymarket_client_sdk::types::U256;
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 
 #[tokio::main]
@@ -28,7 +29,10 @@ async fn main() -> anyhow::Result<()> {
     let keys = client.builder_api_keys().await?;
     println!("{keys:#?}");
 
-    let request = TradesRequest::builder().asset_id("asset").build();
+    let token_id = U256::from_str(
+        "15871154585880608648532107628464183779895785213830018178010423617714102767076",
+    )?;
+    let request = TradesRequest::builder().asset_id(token_id).build();
     println!(
         "builder_trades -- {:?}",
         client.builder_trades(&request, None).await?

@@ -271,6 +271,7 @@ mod quote {
 
 mod execution {
     use super::*;
+    use crate::common::token_1;
 
     #[tokio::test]
     async fn rfq_accept_quote_should_succeed() -> anyhow::Result<()> {
@@ -291,7 +292,7 @@ mod execution {
             .quote_id("0196f484-9fbd-74c1-bfc1-75ac21c1cf84")
             .maker_amount(dec!(50000000))
             .taker_amount(dec!(3000000))
-            .token_id("12345")
+            .token_id(token_1())
             .maker(maker)
             .signer(maker)
             .taker(Address::ZERO)
@@ -331,7 +332,7 @@ mod execution {
             .quote_id("0196f484-9fbd-74c1-bfc1-75ac21c1cf84")
             .maker_amount(dec!(50000000))
             .taker_amount(dec!(3000000))
-            .token_id("12345")
+            .token_id(token_1())
             .maker(maker)
             .signer(maker)
             .taker(Address::ZERO)

@@ -5,6 +5,7 @@ use std::str::FromStr as _;
 use alloy::signers::Signer as _;
 use alloy::signers::local::LocalSigner;
 use polymarket_client_sdk::clob::{Client, Config};
+use polymarket_client_sdk::types::U256;
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 use tokio::join;
 
@@ -19,7 +20,9 @@ async fn unauthenticated() -> anyhow::Result<()> {
     let client = Client::new("https://clob.polymarket.com", Config::default())?;
     let client_clone = client.clone();
 
-    let token_id = "42334954850219754195241248003172889699504912694714162671145392673031415571339";
+    let token_id = U256::from_str(
+        "42334954850219754195241248003172889699504912694714162671145392673031415571339",
+    )?;
 
     let thread = tokio::spawn(async move {
         let results = join!(

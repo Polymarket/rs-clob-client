@@ -18,7 +18,7 @@ use reqwest::StatusCode;
 use rust_decimal_macros::dec;
 
 use crate::common::{
-    TOKEN_1, USDC_DECIMALS, create_authenticated, ensure_requirements, to_decimal,
+    USDC_DECIMALS, create_authenticated, ensure_requirements, to_decimal, token_1, token_2,
 };
 
 /// Tests for the lifecycle of a [`Client`] as it moves from [`Unauthenticated`] to [`Authenticated`]
@@ -38,12 +38,12 @@ mod lifecycle {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
-        ensure_requirements(&server, "1", TickSize::Tenth);
-        ensure_requirements(&server, "2", TickSize::Thousandth);
+        ensure_requirements(&server, token_1(), TickSize::Tenth);
+        ensure_requirements(&server, token_2(), TickSize::Thousandth);
 
         let signable_order = client
             .limit_order()
-            .token_id("1")
+            .token_id(token_1())
             .size(Decimal::ONE_HUNDRED)
             .price(dec!(0.1))
             .nonce(1)
@@ -53,7 +53,7 @@ mod lifecycle {
 
         let signable_order_2 = client
             .limit_order()
-            .token_id("2")
+            .token_id(token_2())
             .price(dec!(0.512))
             .size(Decimal::ONE_HUNDRED)
             .side(Side::Buy)
@@ -89,12 +89,12 @@ mod lifecycle {
             .authenticate()
             .await?;
 
-        ensure_requirements(&server, "1", TickSize::Tenth);
-        ensure_requirements(&server, "2", TickSize::Thousandth);
+        ensure_requirements(&server, token_1(), TickSize::Tenth);
+        ensure_requirements(&server, token_2(), TickSize::Thousandth);
 
         let signable_order = client
             .limit_order()
-            .token_id("1")
+            .token_id(token_1())
             .size(Decimal::ONE_HUNDRED)
             .price(dec!(0.1))
             .nonce(1)
@@ -104,7 +104,7 @@ mod lifecycle {
 
         let signable_order_2 = client
             .limit_order()
-            .token_id("2")
+            .token_id(token_2())
             .price(dec!(0.512))
             .size(Decimal::ONE_HUNDRED)
             .side(Side::Buy)
@@ -143,11 +143,11 @@ mod lifecycle {
             .authenticate()
             .await?;
 
-        ensure_requirements(&server, "1", TickSize::Tenth);
+        ensure_requirements(&server, token_1(), TickSize::Tenth);
 
         let signable_order = client
             .limit_order()
-            .token_id("1")
+            .token_id(token_1())
             .size(Decimal::ONE_HUNDRED)
             .price(dec!(0.1))
             .nonce(1)
@@ -171,7 +171,7 @@ mod lifecycle {
 
         let signable_order = client
             .limit_order()
-            .token_id("1")
+            .token_id(token_1())
             .size(Decimal::ONE_HUNDRED)
             .price(dec!(0.1))
             .nonce(1)
@@ -214,11 +214,11 @@ mod lifecycle {
 
         mock.assert();
 
-        ensure_requirements(&server, "1", TickSize::Tenth);
+        ensure_requirements(&server, token_1(), TickSize::Tenth);
 
         let signable_order = client
             .limit_order()
-            .token_id("1")
+            .token_id(token_1())
             .size(Decimal::ONE_HUNDRED)
             .price(dec!(0.1))
             .nonce(1)
@@ -235,11 +235,11 @@ mod lifecycle {
         assert_eq!(signable_order.order.side, Side::Buy as u8);
         assert_ne!(signable_order.order.maker, signable_order.order.signer);
 
-        ensure_requirements(&server, "2", TickSize::Tenth);
+        ensure_requirements(&server, token_2(), TickSize::Tenth);
 
         let signable_order = client
             .limit_order()
-            .token_id("2")
+            .token_id(token_2())
             .size(Decimal::TEN)
             .price(dec!(0.2))
             .nonce(2)
@@ -287,11 +287,11 @@ mod lifecycle {
 
         mock.assert();
 
-        ensure_requirements(&server, "1", TickSize::Tenth);
+        ensure_requirements(&server, token_1(), TickSize::Tenth);
 
         let signable_order = client
             .limit_order()
-            .token_id("1")
+            .token_id(token_1())
             .size(Decimal::ONE_HUNDRED)
             .price(dec!(0.1))
             .nonce(1)
@@ -308,7 +308,7 @@ mod lifecycle {
         assert_eq!(signable_order.order.side, Side::Buy as u8);
         assert_ne!(signable_order.order.maker, signable_order.order.signer);
 
-        ensure_requirements(&server, "2", TickSize::Tenth);
+        ensure_requirements(&server, token_2(), TickSize::Tenth);
 
         client.deauthenticate().await?;
         let client = Client::new(&server.base_url(), Config::default())?
@@ -318,7 +318,7 @@ mod lifecycle {
 
         let signable_order = client
             .limit_order()
-            .token_id("2")
+            .token_id(token_2())
             .size(Decimal::TEN)
             .price(dec!(0.2))
             .nonce(2)
@@ -411,11 +411,11 @@ mod lifecycle {
             .authenticate()
             .await?;
 
-        ensure_requirements(&server, TOKEN_1, TickSize::Tenth);
+        ensure_requirements(&server, token_1(), TickSize::Tenth);
 
         let signable_order = client
             .limit_order()
-            .token_id(TOKEN_1)
+            .token_id(token_1())
             .size(Decimal::ONE_HUNDRED)
             .price(dec!(0.5))
             .side(Side::Buy)
@@ -451,11 +451,11 @@ mod lifecycle {
             .authenticate()
             .await?;
 
-        ensure_requirements(&server, TOKEN_1, TickSize::Tenth);
+        ensure_requirements(&server, token_1(), TickSize::Tenth);
 
         let signable_order = client
             .limit_order()
-            .token_id(TOKEN_1)
+            .token_id(token_1())
             .size(Decimal::ONE_HUNDRED)
             .price(dec!(0.5))
             .side(Side::Buy)
@@ -502,11 +502,11 @@ mod lifecycle {
             .authenticate()
             .await?;
 
-        ensure_requirements(&server, TOKEN_1, TickSize::Tenth);
+        ensure_requirements(&server, token_1(), TickSize::Tenth);
 
         let signable_order = client
             .limit_order()
-            .token_id(TOKEN_1)
+            .token_id(token_1())
             .size(Decimal::ONE_HUNDRED)
             .price(dec!(0.5))
             .side(Side::Buy)
@@ -575,11 +575,11 @@ mod limit {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
-        ensure_requirements(&server, TOKEN_1, TickSize::Tenth);
+        ensure_requirements(&server, token_1(), TickSize::Tenth);
 
         let err = client
             .limit_order()
-            .token_id(TOKEN_1)
+            .token_id(token_1())
             .price(dec!(0.5))
             .size(dec!(21.04))
             .side(Side::Buy)
@@ -600,11 +600,11 @@ mod limit {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
-        ensure_requirements(&server, TOKEN_1, TickSize::Tenth);
+        ensure_requirements(&server, token_1(), TickSize::Tenth);
 
         let err = client
             .limit_order()
-            .token_id(TOKEN_1)
+            .token_id(token_1())
             .price(dec!(0.5))
             .size(dec!(21.04))
             .side(Side::Buy)
@@ -625,11 +625,11 @@ mod limit {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
-        ensure_requirements(&server, TOKEN_1, TickSize::Tenth);
+        ensure_requirements(&server, token_1(), TickSize::Tenth);
 
         let err = client
             .limit_order()
-            .token_id(TOKEN_1)
+            .token_id(token_1())
             .size(dec!(21.04))
             .side(Side::Buy)
             .nonce(123)
@@ -643,7 +643,7 @@ mod limit {
 
         let err = client
             .limit_order()
-            .token_id(TOKEN_1)
+            .token_id(token_1())
             .price(dec!(0.5))
             .side(Side::Buy)
             .nonce(123)
@@ -663,11 +663,11 @@ mod limit {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
-        ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+        ensure_requirements(&server, token_1(), TickSize::Hundredth);
 
         let err = client
             .limit_order()
-            .token_id(TOKEN_1)
+            .token_id(token_1())
             .price(dec!(0.005))
             .size(dec!(21.04))
             .side(Side::Buy)
@@ -691,11 +691,11 @@ mod limit {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
-        ensure_requirements(&server, TOKEN_1, TickSize::Tenth);
+        ensure_requirements(&server, token_1(), TickSize::Tenth);
 
         let err = client
             .limit_order()
-            .token_id(TOKEN_1)
+            .token_id(token_1())
             .price(dec!(-0.5))
             .size(dec!(21.04))
             .side(Side::Buy)
@@ -710,7 +710,7 @@ mod limit {
 
         let err = client
             .limit_order()
-            .token_id(TOKEN_1)
+            .token_id(token_1())
             .price(dec!(0.5))
             .size(dec!(-21.04))
             .side(Side::Buy)
@@ -734,11 +734,11 @@ mod limit {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::Tenth);
+            ensure_requirements(&server, token_1(), TickSize::Tenth);
 
             let signable_order = client
                 .limit_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .price(dec!(0.5))
                 .size(dec!(21.04))
                 .side(Side::Buy)
@@ -757,7 +757,7 @@ mod limit {
             assert_eq!(signable_order.order.maker, client.address());
             assert_eq!(signable_order.order.signer, client.address());
             assert_eq!(signable_order.order.taker, Address::ZERO);
-            assert_eq!(signable_order.order.tokenId.to_string(), TOKEN_1);
+            assert_eq!(signable_order.order.tokenId, token_1());
             assert_eq!(signable_order.order.makerAmount, U256::from(10_520_000));
             assert_eq!(signable_order.order.takerAmount, U256::from(21_040_000));
             assert_eq!(signable_order.order.expiration, U256::from(50000));
@@ -774,11 +774,11 @@ mod limit {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+            ensure_requirements(&server, token_1(), TickSize::Hundredth);
 
             let signable_order = client
                 .limit_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .price(dec!(0.56))
                 .size(dec!(21.04))
                 .side(Side::Buy)
@@ -797,7 +797,7 @@ mod limit {
             assert_eq!(signable_order.order.maker, client.address());
             assert_eq!(signable_order.order.signer, client.address());
             assert_eq!(signable_order.order.taker, Address::ZERO);
-            assert_eq!(signable_order.order.tokenId.to_string(), TOKEN_1);
+            assert_eq!(signable_order.order.tokenId, token_1());
             assert_eq!(signable_order.order.makerAmount, U256::from(11_782_400));
             assert_eq!(signable_order.order.takerAmount, U256::from(21_040_000));
             assert_eq!(signable_order.order.expiration, U256::from(50000));
@@ -814,11 +814,11 @@ mod limit {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::Thousandth);
+            ensure_requirements(&server, token_1(), TickSize::Thousandth);
 
             let signable_order = client
                 .limit_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .price(dec!(0.056))
                 .size(dec!(21.04))
                 .side(Side::Buy)
@@ -837,7 +837,7 @@ mod limit {
             assert_eq!(signable_order.order.maker, client.address());
             assert_eq!(signable_order.order.signer, client.address());
             assert_eq!(signable_order.order.taker, Address::ZERO);
-            assert_eq!(signable_order.order.tokenId.to_string(), TOKEN_1);
+            assert_eq!(signable_order.order.tokenId, token_1());
             assert_eq!(signable_order.order.makerAmount, U256::from(1_178_240));
             assert_eq!(signable_order.order.takerAmount, U256::from(21_040_000));
             assert_eq!(signable_order.order.expiration, U256::from(50000));
@@ -854,11 +854,11 @@ mod limit {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::TenThousandth);
+            ensure_requirements(&server, token_1(), TickSize::TenThousandth);
 
             let signable_order = client
                 .limit_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .price(dec!(0.0056))
                 .size(dec!(21.04))
                 .side(Side::Buy)
@@ -877,7 +877,7 @@ mod limit {
             assert_eq!(signable_order.order.maker, client.address());
             assert_eq!(signable_order.order.signer, client.address());
             assert_eq!(signable_order.order.taker, Address::ZERO);
-            assert_eq!(signable_order.order.tokenId.to_string(), TOKEN_1);
+            assert_eq!(signable_order.order.tokenId, token_1());
             assert_eq!(signable_order.order.makerAmount, U256::from(117_824));
             assert_eq!(signable_order.order.takerAmount, U256::from(21_040_000));
             assert_eq!(signable_order.order.expiration, U256::from(50000));
@@ -894,11 +894,11 @@ mod limit {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+            ensure_requirements(&server, token_1(), TickSize::Hundredth);
 
             let signable_order = client
                 .limit_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .price(dec!(0.24))
                 .size(dec!(15))
                 .side(Side::Buy)
@@ -916,11 +916,11 @@ mod limit {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+            ensure_requirements(&server, token_1(), TickSize::Hundredth);
 
             let signable_order = client
                 .limit_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .price(dec!(0.82))
                 .size(dec!(101))
                 .side(Side::Buy)
@@ -938,11 +938,11 @@ mod limit {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+            ensure_requirements(&server, token_1(), TickSize::Hundredth);
 
             let err = client
                 .limit_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .price(dec!(0.78))
                 .size(dec!(12.8205))
                 .side(Side::Buy)
@@ -964,11 +964,11 @@ mod limit {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+            ensure_requirements(&server, token_1(), TickSize::Hundredth);
 
             let signable_order = client
                 .limit_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .price(dec!(0.58))
                 .size(dec!(18233.33))
                 .side(Side::Buy)
@@ -996,11 +996,11 @@ mod limit {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::Tenth);
+            ensure_requirements(&server, token_1(), TickSize::Tenth);
 
             let signable_order = client
                 .limit_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .price(dec!(0.5))
                 .size(dec!(21.04))
                 .side(Side::Sell)
@@ -1019,7 +1019,7 @@ mod limit {
             assert_eq!(signable_order.order.maker, client.address());
             assert_eq!(signable_order.order.signer, client.address());
             assert_eq!(signable_order.order.taker, Address::ZERO);
-            assert_eq!(signable_order.order.tokenId.to_string(), TOKEN_1);
+            assert_eq!(signable_order.order.tokenId, token_1());
             assert_eq!(signable_order.order.makerAmount, U256::from(21_040_000));
             assert_eq!(signable_order.order.takerAmount, U256::from(10_520_000));
             assert_eq!(signable_order.order.expiration, U256::from(50000));
@@ -1036,11 +1036,11 @@ mod limit {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+            ensure_requirements(&server, token_1(), TickSize::Hundredth);
 
             let signable_order = client
                 .limit_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .price(dec!(0.56))
                 .size(dec!(21.04))
                 .side(Side::Sell)
@@ -1059,7 +1059,7 @@ mod limit {
             assert_eq!(signable_order.order.maker, client.address());
             assert_eq!(signable_order.order.signer, client.address());
             assert_eq!(signable_order.order.taker, Address::ZERO);
-            assert_eq!(signable_order.order.tokenId.to_string(), TOKEN_1);
+            assert_eq!(signable_order.order.tokenId, token_1());
             assert_eq!(signable_order.order.makerAmount, U256::from(21_040_000));
             assert_eq!(signable_order.order.takerAmount, U256::from(11_782_400));
             assert_eq!(signable_order.order.expiration, U256::from(50000));
@@ -1076,11 +1076,11 @@ mod limit {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::Thousandth);
+            ensure_requirements(&server, token_1(), TickSize::Thousandth);
 
             let signable_order = client
                 .limit_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .price(dec!(0.056))
                 .size(dec!(21.04))
                 .side(Side::Sell)
@@ -1099,7 +1099,7 @@ mod limit {
             assert_eq!(signable_order.order.maker, client.address());
             assert_eq!(signable_order.order.signer, client.address());
             assert_eq!(signable_order.order.taker, Address::ZERO);
-            assert_eq!(signable_order.order.tokenId.to_string(), TOKEN_1);
+            assert_eq!(signable_order.order.tokenId, token_1());
             assert_eq!(signable_order.order.makerAmount, U256::from(21_040_000));
             assert_eq!(signable_order.order.takerAmount, U256::from(1_178_240));
             assert_eq!(signable_order.order.expiration, U256::from(50000));
@@ -1116,11 +1116,11 @@ mod limit {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::TenThousandth);
+            ensure_requirements(&server, token_1(), TickSize::TenThousandth);
 
             let signable_order = client
                 .limit_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .price(dec!(0.0056))
                 .size(dec!(21.04))
                 .side(Side::Sell)
@@ -1139,7 +1139,7 @@ mod limit {
             assert_eq!(signable_order.order.maker, client.address());
             assert_eq!(signable_order.order.signer, client.address());
             assert_eq!(signable_order.order.taker, Address::ZERO);
-            assert_eq!(signable_order.order.tokenId.to_string(), TOKEN_1);
+            assert_eq!(signable_order.order.tokenId, token_1());
             assert_eq!(signable_order.order.makerAmount, U256::from(21_040_000));
             assert_eq!(signable_order.order.takerAmount, U256::from(117_824));
             assert_eq!(signable_order.order.expiration, U256::from(50000));
@@ -1156,11 +1156,11 @@ mod limit {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+            ensure_requirements(&server, token_1(), TickSize::Hundredth);
 
             let signable_order = client
                 .limit_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .price(dec!(0.24))
                 .size(dec!(15))
                 .side(Side::Sell)
@@ -1178,11 +1178,11 @@ mod limit {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+            ensure_requirements(&server, token_1(), TickSize::Hundredth);
 
             let signable_order = client
                 .limit_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .price(dec!(0.82))
                 .size(dec!(101))
                 .side(Side::Sell)
@@ -1200,11 +1200,11 @@ mod limit {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+            ensure_requirements(&server, token_1(), TickSize::Hundredth);
 
             let err = client
                 .limit_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .price(dec!(0.78))
                 .size(dec!(12.8205))
                 .side(Side::Sell)
@@ -1227,11 +1227,11 @@ mod limit {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+            ensure_requirements(&server, token_1(), TickSize::Hundredth);
 
             let signable_order = client
                 .limit_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .price(dec!(0.39))
                 .size(dec!(2435.89))
                 .side(Side::Sell)
@@ -1252,11 +1252,11 @@ mod limit {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+            ensure_requirements(&server, token_1(), TickSize::Hundredth);
 
             let signable_order = client
                 .limit_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .price(dec!(0.43))
                 .size(dec!(19.1))
                 .side(Side::Sell)
@@ -1275,20 +1275,17 @@ mod limit {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
-        let token_id = "123".to_owned();
-        let token_id_2 = "456".to_owned();
-
-        ensure_requirements(&server, &token_id, TickSize::Thousandth);
-        ensure_requirements(&server, &token_id_2, TickSize::Hundredth);
+        ensure_requirements(&server, token_1(), TickSize::Thousandth);
+        ensure_requirements(&server, token_2(), TickSize::Hundredth);
 
         assert_eq!(
-            client.tick_size(&token_id).await?.minimum_tick_size,
+            client.tick_size(token_1()).await?.minimum_tick_size,
             TickSize::Thousandth
         );
 
         let signable_order = client
             .limit_order()
-            .token_id(token_id.clone())
+            .token_id(token_1())
             .price(dec!(0.512))
             .size(Decimal::ONE_HUNDRED)
             .side(Side::Buy)
@@ -1297,7 +1294,7 @@ mod limit {
 
         assert_eq!(signable_order.order.maker, client.address());
         assert_eq!(signable_order.order.taker, Address::ZERO);
-        assert_eq!(signable_order.order.tokenId.to_string(), token_id);
+        assert_eq!(signable_order.order.tokenId, token_1());
         assert_eq!(signable_order.order.makerAmount, U256::from(51_200_000));
         assert_eq!(signable_order.order.takerAmount, U256::from(100_000_000));
         assert_eq!(signable_order.order.expiration, U256::ZERO);
@@ -1308,7 +1305,7 @@ mod limit {
 
         let signable_order = client
             .limit_order()
-            .token_id(token_id_2.clone())
+            .token_id(token_2())
             .price(dec!(0.78))
             .size(dec!(12.82))
             .side(Side::Buy)
@@ -1317,7 +1314,7 @@ mod limit {
 
         assert_eq!(signable_order.order.maker, client.address());
         assert_eq!(signable_order.order.taker, Address::ZERO);
-        assert_eq!(signable_order.order.tokenId.to_string(), token_id_2);
+        assert_eq!(signable_order.order.tokenId, token_2());
         assert_eq!(signable_order.order.makerAmount, U256::from(9_999_600));
         assert_eq!(signable_order.order.takerAmount, U256::from(12_820_000));
         assert_eq!(signable_order.order.expiration, U256::ZERO);
@@ -1328,7 +1325,7 @@ mod limit {
 
         let _order = client
             .limit_order()
-            .token_id(token_id_2.clone())
+            .token_id(token_2())
             .order_type(OrderType::GTC)
             .price(dec!(0.78))
             .size(dec!(12.82))
@@ -1348,7 +1345,7 @@ mod market {
 
     fn ensure_requirements_for_market_price(
         server: &MockServer,
-        token_id: &str,
+        token_id: U256,
         bids: &[OrderSummary],
         asks: &[OrderSummary],
     ) {
@@ -1357,7 +1354,7 @@ mod market {
         server.mock(|when, then| {
             when.method(httpmock::Method::GET)
                 .path("/book")
-                .query_param("token_id", token_id);
+                .query_param("token_id", token_id.to_string());
             then.status(StatusCode::OK).json_body(json!({
                 "market": "0xbd31dc8a20211944f6b70f31557f1001557b59905b7738480ca09bd4532f84af",
                 "asset_id": token_id,
@@ -1373,7 +1370,7 @@ mod market {
         server.mock(|when, then| {
             when.method(httpmock::Method::GET)
                 .path("/tick-size")
-                .query_param("token_id", token_id);
+                .query_param("token_id", token_id.to_string());
             then.status(StatusCode::OK).json_body(json!({
                 "minimum_tick_size": minimum_tick_size.as_decimal(),
             }));
@@ -1382,7 +1379,7 @@ mod market {
         server.mock(|when, then| {
             when.method(httpmock::Method::GET)
                 .path("/fee-rate")
-                .query_param("token_id", token_id);
+                .query_param("token_id", token_id.to_string());
             then.status(StatusCode::OK)
                 .json_body(json!({ "base_fee": 0 }));
         });
@@ -1401,11 +1398,11 @@ mod market {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
-                ensure_requirements_for_market_price(&server, TOKEN_1, &[], &[]);
+                ensure_requirements_for_market_price(&server, token_1(), &[], &[]);
 
                 let err = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
                     .side(Side::Buy)
                     .order_type(OrderType::FOK)
@@ -1416,7 +1413,7 @@ mod market {
 
                 assert_eq!(
                     msg,
-                    "No opposing orders for 1 which means there is no market price"
+                    "No opposing orders for 15871154585880608648532107628464183779895785213830018178010423617714102767076 which means there is no market price"
                 );
 
                 Ok(())
@@ -1429,7 +1426,7 @@ mod market {
 
                 ensure_requirements_for_market_price(
                     &server,
-                    TOKEN_1,
+                    token_1(),
                     &[],
                     &[
                         OrderSummary::builder()
@@ -1445,7 +1442,7 @@ mod market {
 
                 let err = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
                     .side(Side::Buy)
                     .order_type(OrderType::FOK)
@@ -1454,7 +1451,10 @@ mod market {
                     .unwrap_err();
                 let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
-                assert_eq!(msg, "Insufficient liquidity to fill order for 1 at 100");
+                assert_eq!(
+                    msg,
+                    "Insufficient liquidity to fill order for 15871154585880608648532107628464183779895785213830018178010423617714102767076 at 100"
+                );
 
                 Ok(())
             }
@@ -1466,7 +1466,7 @@ mod market {
 
                 ensure_requirements_for_market_price(
                     &server,
-                    TOKEN_1,
+                    token_1(),
                     &[],
                     &[
                         OrderSummary::builder()
@@ -1486,7 +1486,7 @@ mod market {
 
                 let signable_order = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
                     .side(Side::Buy)
                     .order_type(OrderType::FOK)
@@ -1502,9 +1502,14 @@ mod market {
                 assert_eq!(signable_order.order.maker, client.address());
                 assert_eq!(signable_order.order.signer, client.address());
                 assert_eq!(signable_order.order.taker, Address::ZERO);
-                assert_eq!(signable_order.order.tokenId, U256::ONE);
+                assert_eq!(
+                    signable_order.order.tokenId,
+                    U256::from_str(
+                        "15871154585880608648532107628464183779895785213830018178010423617714102767076"
+                    )?
+                );
                 assert_eq!(signable_order.order.makerAmount, U256::from(100_000_000)); // 100 USDC
-                assert_eq!(signable_order.order.takerAmount, U256::from(200_000_000)); // 200 `TOKEN_1` tokens
+                assert_eq!(signable_order.order.takerAmount, U256::from(200_000_000)); // 200 `token_1()` tokens
                 assert_eq!(signable_order.order.expiration, U256::ZERO);
                 assert_eq!(signable_order.order.nonce, U256::ZERO);
                 assert_eq!(signable_order.order.feeRateBps, U256::ZERO);
@@ -1521,7 +1526,7 @@ mod market {
 
                 ensure_requirements_for_market_price(
                     &server,
-                    TOKEN_1,
+                    token_1(),
                     &[],
                     &[
                         OrderSummary::builder()
@@ -1541,7 +1546,7 @@ mod market {
 
                 let signable_order = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
                     .side(Side::Buy)
                     .order_type(OrderType::FOK)
@@ -1555,7 +1560,7 @@ mod market {
                 assert_eq!(price, dec!(0.4));
 
                 assert_eq!(maker_amount, U256::from(100_000_000)); // 100 USDC
-                assert_eq!(taker_amount, U256::from(250_000_000)); // 250 `TOKEN_1` tokens
+                assert_eq!(taker_amount, U256::from(250_000_000)); // 250 `token_1()` tokens
 
                 Ok(())
             }
@@ -1567,7 +1572,7 @@ mod market {
 
                 ensure_requirements_for_market_price(
                     &server,
-                    TOKEN_1,
+                    token_1(),
                     &[],
                     &[
                         OrderSummary::builder()
@@ -1587,7 +1592,7 @@ mod market {
 
                 let signable_order = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
                     .side(Side::Buy)
                     .order_type(OrderType::FOK)
@@ -1601,7 +1606,7 @@ mod market {
                 assert_eq!(price, dec!(0.5));
 
                 assert_eq!(maker_amount, U256::from(100_000_000)); // 100 USDC
-                assert_eq!(taker_amount, U256::from(200_000_000)); // 200 `TOKEN_1` tokens
+                assert_eq!(taker_amount, U256::from(200_000_000)); // 200 `token_1()` tokens
 
                 Ok(())
             }
@@ -1613,7 +1618,7 @@ mod market {
 
                 ensure_requirements_for_market_price(
                     &server,
-                    TOKEN_1,
+                    token_1(),
                     &[],
                     &[
                         OrderSummary::builder()
@@ -1633,7 +1638,7 @@ mod market {
 
                 let signable_order = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
                     .side(Side::Buy)
                     .order_type(OrderType::FOK)
@@ -1647,7 +1652,7 @@ mod market {
                 assert_eq!(price, dec!(0.5));
 
                 assert_eq!(maker_amount, U256::from(100_000_000)); // 100 USDC
-                assert_eq!(taker_amount, U256::from(200_000_000)); // 200 `TOKEN_1` tokens
+                assert_eq!(taker_amount, U256::from(200_000_000)); // 200 `token_1()` tokens
 
                 Ok(())
             }
@@ -1661,11 +1666,11 @@ mod market {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
-                ensure_requirements_for_market_price(&server, TOKEN_1, &[], &[]);
+                ensure_requirements_for_market_price(&server, token_1(), &[], &[]);
 
                 let err = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
                     .side(Side::Buy)
                     .build()
@@ -1675,7 +1680,7 @@ mod market {
 
                 assert_eq!(
                     msg,
-                    "No opposing orders for 1 which means there is no market price"
+                    "No opposing orders for 15871154585880608648532107628464183779895785213830018178010423617714102767076 which means there is no market price"
                 );
 
                 Ok(())
@@ -1688,7 +1693,7 @@ mod market {
 
                 ensure_requirements_for_market_price(
                     &server,
-                    TOKEN_1,
+                    token_1(),
                     &[],
                     &[
                         OrderSummary::builder()
@@ -1704,7 +1709,7 @@ mod market {
 
                 let signable_order = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
                     .side(Side::Buy)
                     .build()
@@ -1719,9 +1724,14 @@ mod market {
                 assert_eq!(signable_order.order.maker, client.address());
                 assert_eq!(signable_order.order.signer, client.address());
                 assert_eq!(signable_order.order.taker, Address::ZERO);
-                assert_eq!(signable_order.order.tokenId, U256::ONE);
+                assert_eq!(
+                    signable_order.order.tokenId,
+                    U256::from_str(
+                        "15871154585880608648532107628464183779895785213830018178010423617714102767076"
+                    )?
+                );
                 assert_eq!(signable_order.order.makerAmount, U256::from(100_000_000)); // 100 USDC
-                assert_eq!(signable_order.order.takerAmount, U256::from(200_000_000)); // 200 `TOKEN_1` tokens
+                assert_eq!(signable_order.order.takerAmount, U256::from(200_000_000)); // 200 `token_1()` tokens
                 assert_eq!(signable_order.order.expiration, U256::ZERO);
                 assert_eq!(signable_order.order.nonce, U256::ZERO);
                 assert_eq!(signable_order.order.feeRateBps, U256::ZERO);
@@ -1738,7 +1748,7 @@ mod market {
 
                 ensure_requirements_for_market_price(
                     &server,
-                    TOKEN_1,
+                    token_1(),
                     &[],
                     &[
                         OrderSummary::builder()
@@ -1758,7 +1768,7 @@ mod market {
 
                 let signable_order = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
                     .side(Side::Buy)
                     .build()
@@ -1771,7 +1781,7 @@ mod market {
                 assert_eq!(price, dec!(0.5));
 
                 assert_eq!(maker_amount, U256::from(100_000_000)); // 100 USDC
-                assert_eq!(taker_amount, U256::from(200_000_000)); // 200 `TOKEN_1` tokens
+                assert_eq!(taker_amount, U256::from(200_000_000)); // 200 `token_1()` tokens
 
                 Ok(())
             }
@@ -1783,7 +1793,7 @@ mod market {
 
                 ensure_requirements_for_market_price(
                     &server,
-                    TOKEN_1,
+                    token_1(),
                     &[],
                     &[
                         OrderSummary::builder()
@@ -1803,7 +1813,7 @@ mod market {
 
                 let signable_order = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
                     .side(Side::Buy)
                     .build()
@@ -1816,7 +1826,7 @@ mod market {
                 assert_eq!(price, dec!(0.4));
 
                 assert_eq!(maker_amount, U256::from(100_000_000)); // 100 USDC
-                assert_eq!(taker_amount, U256::from(250_000_000)); // 250 `TOKEN_1` tokens
+                assert_eq!(taker_amount, U256::from(250_000_000)); // 250 `token_1()` tokens
 
                 Ok(())
             }
@@ -1828,7 +1838,7 @@ mod market {
 
                 ensure_requirements_for_market_price(
                     &server,
-                    TOKEN_1,
+                    token_1(),
                     &[],
                     &[
                         OrderSummary::builder()
@@ -1848,7 +1858,7 @@ mod market {
 
                 let signable_order = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
                     .side(Side::Buy)
                     .build()
@@ -1861,7 +1871,7 @@ mod market {
                 assert_eq!(price, dec!(0.5));
 
                 assert_eq!(maker_amount, U256::from(100_000_000)); // 100 USDC
-                assert_eq!(taker_amount, U256::from(200_000_000)); // 200 `TOKEN_1` tokens
+                assert_eq!(taker_amount, U256::from(200_000_000)); // 200 `token_1()` tokens
 
                 Ok(())
             }
@@ -1873,7 +1883,7 @@ mod market {
 
                 ensure_requirements_for_market_price(
                     &server,
-                    TOKEN_1,
+                    token_1(),
                     &[],
                     &[
                         OrderSummary::builder()
@@ -1893,7 +1903,7 @@ mod market {
 
                 let signable_order = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
                     .side(Side::Buy)
                     .build()
@@ -1906,7 +1916,7 @@ mod market {
                 assert_eq!(price, dec!(0.5));
 
                 assert_eq!(maker_amount, U256::from(100_000_000)); // 100 USDC
-                assert_eq!(taker_amount, U256::from(200_000_000)); // 200 `TOKEN_1` tokens
+                assert_eq!(taker_amount, U256::from(200_000_000)); // 200 `token_1()` tokens
 
                 Ok(())
             }
@@ -1917,11 +1927,11 @@ mod market {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::Tenth);
+            ensure_requirements(&server, token_1(), TickSize::Tenth);
             // Always gives a market price of 0.5 for 100
             ensure_requirements_for_market_price(
                 &server,
-                TOKEN_1,
+                token_1(),
                 &[],
                 &[OrderSummary::builder()
                     .price(dec!(0.5))
@@ -1931,7 +1941,7 @@ mod market {
 
             let signable_order = client
                 .market_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
                 .side(Side::Buy)
                 .nonce(123)
@@ -1948,7 +1958,7 @@ mod market {
             assert_eq!(signable_order.order.maker, client.address());
             assert_eq!(signable_order.order.signer, client.address());
             assert_eq!(signable_order.order.taker, Address::ZERO);
-            assert_eq!(signable_order.order.tokenId.to_string(), TOKEN_1);
+            assert_eq!(signable_order.order.tokenId, token_1());
             assert_eq!(signable_order.order.makerAmount, U256::from(100_000_000));
             assert_eq!(signable_order.order.takerAmount, U256::from(200_000_000));
             assert_eq!(signable_order.order.expiration, U256::from(0));
@@ -1965,11 +1975,11 @@ mod market {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+            ensure_requirements(&server, token_1(), TickSize::Hundredth);
             // Always gives a market price of 0.56 for 100
             ensure_requirements_for_market_price(
                 &server,
-                TOKEN_1,
+                token_1(),
                 &[],
                 &[OrderSummary::builder()
                     .price(dec!(0.56))
@@ -1979,7 +1989,7 @@ mod market {
 
             let signable_order = client
                 .market_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
                 .side(Side::Buy)
                 .nonce(123)
@@ -1997,7 +2007,7 @@ mod market {
             assert_eq!(signable_order.order.maker, client.address());
             assert_eq!(signable_order.order.signer, client.address());
             assert_eq!(signable_order.order.taker, Address::ZERO);
-            assert_eq!(signable_order.order.tokenId.to_string(), TOKEN_1);
+            assert_eq!(signable_order.order.tokenId, token_1());
             assert_eq!(signable_order.order.makerAmount, U256::from(100_000_000));
             assert_eq!(signable_order.order.takerAmount, U256::from(178_571_400));
             assert_eq!(signable_order.order.expiration, U256::from(0));
@@ -2014,11 +2024,11 @@ mod market {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::Thousandth);
+            ensure_requirements(&server, token_1(), TickSize::Thousandth);
             // Always gives a market price of 0.056 for 100
             ensure_requirements_for_market_price(
                 &server,
-                TOKEN_1,
+                token_1(),
                 &[],
                 &[OrderSummary::builder()
                     .price(dec!(0.056))
@@ -2028,7 +2038,7 @@ mod market {
 
             let signable_order = client
                 .market_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
                 .side(Side::Buy)
                 .nonce(123)
@@ -2046,7 +2056,7 @@ mod market {
             assert_eq!(signable_order.order.maker, client.address());
             assert_eq!(signable_order.order.signer, client.address());
             assert_eq!(signable_order.order.taker, Address::ZERO);
-            assert_eq!(signable_order.order.tokenId.to_string(), TOKEN_1);
+            assert_eq!(signable_order.order.tokenId, token_1());
             assert_eq!(signable_order.order.makerAmount, U256::from(100_000_000));
             assert_eq!(signable_order.order.takerAmount, U256::from(1_785_714_280));
             assert_eq!(signable_order.order.expiration, U256::from(0));
@@ -2063,11 +2073,11 @@ mod market {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::TenThousandth);
+            ensure_requirements(&server, token_1(), TickSize::TenThousandth);
             // Always gives a market price of 0.0056 for 100
             ensure_requirements_for_market_price(
                 &server,
-                TOKEN_1,
+                token_1(),
                 &[],
                 &[OrderSummary::builder()
                     .price(dec!(0.0056))
@@ -2077,7 +2087,7 @@ mod market {
 
             let signable_order = client
                 .market_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
                 .side(Side::Buy)
                 .nonce(123)
@@ -2095,7 +2105,7 @@ mod market {
             assert_eq!(signable_order.order.maker, client.address());
             assert_eq!(signable_order.order.signer, client.address());
             assert_eq!(signable_order.order.taker, Address::ZERO);
-            assert_eq!(signable_order.order.tokenId.to_string(), TOKEN_1);
+            assert_eq!(signable_order.order.tokenId, token_1());
             assert_eq!(signable_order.order.makerAmount, U256::from(100_000_000));
             assert_eq!(
                 signable_order.order.takerAmount,
@@ -2115,11 +2125,11 @@ mod market {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements_for_market_price(&server, TOKEN_1, &[], &[]);
+            ensure_requirements_for_market_price(&server, token_1(), &[], &[]);
 
             let err = client
                 .market_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
                 .side(Side::Buy)
                 .order_type(OrderType::FOK)
@@ -2133,7 +2143,7 @@ mod market {
                 .reason;
             assert_eq!(
                 msg,
-                "No opposing orders for 1 which means there is no market price"
+                "No opposing orders for 15871154585880608648532107628464183779895785213830018178010423617714102767076 which means there is no market price"
             );
             Ok(())
         }
@@ -2147,7 +2157,7 @@ mod market {
             // only 50 shares available on asks
             ensure_requirements_for_market_price(
                 &server,
-                TOKEN_1,
+                token_1(),
                 &[],
                 &[OrderSummary::builder()
                     .price(dec!(0.5))
@@ -2157,7 +2167,7 @@ mod market {
 
             let err = client
                 .market_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
                 .side(Side::Buy)
                 .order_type(OrderType::FOK)
@@ -2169,7 +2179,10 @@ mod market {
                 .downcast_ref::<polymarket_client_sdk::error::Validation>()
                 .unwrap()
                 .reason;
-            assert_eq!(msg, "Insufficient liquidity to fill order for 1 at 100");
+            assert_eq!(
+                msg,
+                "Insufficient liquidity to fill order for 15871154585880608648532107628464183779895785213830018178010423617714102767076 at 100"
+            );
             Ok(())
         }
 
@@ -2182,7 +2195,7 @@ mod market {
             // cutoff price should end at 0.4 for 250 shares
             ensure_requirements_for_market_price(
                 &server,
-                TOKEN_1,
+                token_1(),
                 &[],
                 &[
                     OrderSummary::builder()
@@ -2198,7 +2211,7 @@ mod market {
 
             let signable_order = client
                 .market_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .amount(Amount::shares(dec!(250))?)
                 .side(Side::Buy)
                 .order_type(OrderType::FOK)
@@ -2219,7 +2232,7 @@ mod market {
             // cutoff price should end at 0.4 for 250 shares
             ensure_requirements_for_market_price(
                 &server,
-                TOKEN_1,
+                token_1(),
                 &[],
                 &[
                     OrderSummary::builder()
@@ -2235,7 +2248,7 @@ mod market {
 
             let signable_order = client
                 .market_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .amount(Amount::shares(dec!(250))?)
                 .side(Side::Buy)
                 .price(dec!(0.5))
@@ -2261,11 +2274,11 @@ mod market {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
-                ensure_requirements_for_market_price(&server, TOKEN_1, &[], &[]);
+                ensure_requirements_for_market_price(&server, token_1(), &[], &[]);
 
                 let err = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
                     .side(Side::Sell)
                     .order_type(OrderType::FOK)
@@ -2276,7 +2289,7 @@ mod market {
 
                 assert_eq!(
                     msg,
-                    "No opposing orders for 1 which means there is no market price"
+                    "No opposing orders for 15871154585880608648532107628464183779895785213830018178010423617714102767076 which means there is no market price"
                 );
 
                 Ok(())
@@ -2289,7 +2302,7 @@ mod market {
 
                 ensure_requirements_for_market_price(
                     &server,
-                    TOKEN_1,
+                    token_1(),
                     &[
                         OrderSummary::builder()
                             .price(dec!(0.4))
@@ -2305,7 +2318,7 @@ mod market {
 
                 let err = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
                     .side(Side::Sell)
                     .order_type(OrderType::FOK)
@@ -2314,7 +2327,10 @@ mod market {
                     .unwrap_err();
                 let msg = &err.downcast_ref::<Validation>().unwrap().reason;
 
-                assert_eq!(msg, "Insufficient liquidity to fill order for 1 at 100");
+                assert_eq!(
+                    msg,
+                    "Insufficient liquidity to fill order for 15871154585880608648532107628464183779895785213830018178010423617714102767076 at 100"
+                );
 
                 Ok(())
             }
@@ -2326,7 +2342,7 @@ mod market {
 
                 ensure_requirements_for_market_price(
                     &server,
-                    TOKEN_1,
+                    token_1(),
                     &[
                         OrderSummary::builder()
                             .price(dec!(0.3))
@@ -2346,7 +2362,7 @@ mod market {
 
                 let signable_order = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
                     .side(Side::Sell)
                     .order_type(OrderType::FOK)
@@ -2362,8 +2378,13 @@ mod market {
                 assert_eq!(signable_order.order.maker, client.address());
                 assert_eq!(signable_order.order.signer, client.address());
                 assert_eq!(signable_order.order.taker, Address::ZERO);
-                assert_eq!(signable_order.order.tokenId, U256::ONE);
-                assert_eq!(maker_amount, U256::from(100_000_000)); // 100 `TOKEN_1` tokens
+                assert_eq!(
+                    signable_order.order.tokenId,
+                    U256::from_str(
+                        "15871154585880608648532107628464183779895785213830018178010423617714102767076"
+                    )?
+                );
+                assert_eq!(maker_amount, U256::from(100_000_000)); // 100 `token_1()` tokens
                 assert_eq!(taker_amount, U256::from(50_000_000)); // 50 USDC
                 assert_eq!(signable_order.order.expiration, U256::ZERO);
                 assert_eq!(signable_order.order.nonce, U256::ZERO);
@@ -2381,7 +2402,7 @@ mod market {
 
                 ensure_requirements_for_market_price(
                     &server,
-                    TOKEN_1,
+                    token_1(),
                     &[
                         OrderSummary::builder()
                             .price(dec!(0.3))
@@ -2401,7 +2422,7 @@ mod market {
 
                 let signable_order = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
                     .side(Side::Sell)
                     .order_type(OrderType::FOK)
@@ -2414,7 +2435,7 @@ mod market {
                 let price = to_decimal(taker_amount) / to_decimal(maker_amount);
                 assert_eq!(price, dec!(0.4));
 
-                assert_eq!(maker_amount, U256::from(100_000_000)); // 100 `TOKEN_1` tokens
+                assert_eq!(maker_amount, U256::from(100_000_000)); // 100 `token_1()` tokens
                 assert_eq!(taker_amount, U256::from(40_000_000)); // 40 USDC
 
                 Ok(())
@@ -2427,7 +2448,7 @@ mod market {
 
                 ensure_requirements_for_market_price(
                     &server,
-                    TOKEN_1,
+                    token_1(),
                     &[
                         OrderSummary::builder()
                             .price(dec!(0.3))
@@ -2447,7 +2468,7 @@ mod market {
 
                 let signable_order = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::shares(dec!(200))?)
                     .side(Side::Sell)
                     .order_type(OrderType::FOK)
@@ -2460,7 +2481,7 @@ mod market {
                 let price = to_decimal(taker_amount) / to_decimal(maker_amount);
                 assert_eq!(price, dec!(0.4));
 
-                assert_eq!(maker_amount, U256::from(200_000_000)); // 200 `TOKEN_1` tokens
+                assert_eq!(maker_amount, U256::from(200_000_000)); // 200 `token_1()` tokens
                 assert_eq!(taker_amount, U256::from(80_000_000)); // 80 USDC
 
                 Ok(())
@@ -2473,7 +2494,7 @@ mod market {
 
                 ensure_requirements_for_market_price(
                     &server,
-                    TOKEN_1,
+                    token_1(),
                     &[
                         OrderSummary::builder()
                             .price(dec!(0.3))
@@ -2493,7 +2514,7 @@ mod market {
 
                 let signable_order = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::shares(dec!(300))?)
                     .side(Side::Sell)
                     .order_type(OrderType::FOK)
@@ -2506,7 +2527,7 @@ mod market {
                 let price = to_decimal(taker_amount) / to_decimal(maker_amount);
                 assert_eq!(price, dec!(0.3));
 
-                assert_eq!(maker_amount, U256::from(300_000_000)); // 300 `TOKEN_1` tokens
+                assert_eq!(maker_amount, U256::from(300_000_000)); // 300 `token_1()` tokens
                 assert_eq!(taker_amount, U256::from(90_000_000)); // 90 USDC
 
                 Ok(())
@@ -2519,7 +2540,7 @@ mod market {
 
                 ensure_requirements_for_market_price(
                     &server,
-                    TOKEN_1,
+                    token_1(),
                     &[
                         OrderSummary::builder()
                             .price(dec!(0.3))
@@ -2539,7 +2560,7 @@ mod market {
 
                 let signable_order = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::shares(dec!(300))?)
                     .side(Side::Sell)
                     .order_type(OrderType::FOK)
@@ -2552,7 +2573,7 @@ mod market {
                 let price = to_decimal(taker_amount) / to_decimal(maker_amount);
                 assert_eq!(price, dec!(0.3));
 
-                assert_eq!(maker_amount, U256::from(300_000_000)); // 300 `TOKEN_1` tokens
+                assert_eq!(maker_amount, U256::from(300_000_000)); // 300 `token_1()` tokens
                 assert_eq!(taker_amount, U256::from(90_000_000)); // 90 USDC
 
                 Ok(())
@@ -2567,11 +2588,11 @@ mod market {
                 let server = MockServer::start();
                 let client = create_authenticated(&server).await?;
 
-                ensure_requirements_for_market_price(&server, TOKEN_1, &[], &[]);
+                ensure_requirements_for_market_price(&server, token_1(), &[], &[]);
 
                 let err = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
                     .side(Side::Sell)
                     .build()
@@ -2581,7 +2602,7 @@ mod market {
 
                 assert_eq!(
                     msg,
-                    "No opposing orders for 1 which means there is no market price"
+                    "No opposing orders for 15871154585880608648532107628464183779895785213830018178010423617714102767076 which means there is no market price"
                 );
 
                 Ok(())
@@ -2594,7 +2615,7 @@ mod market {
 
                 ensure_requirements_for_market_price(
                     &server,
-                    TOKEN_1,
+                    token_1(),
                     &[
                         OrderSummary::builder()
                             .price(dec!(0.4))
@@ -2610,7 +2631,7 @@ mod market {
 
                 let signable_order = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
                     .side(Side::Sell)
                     .build()
@@ -2625,9 +2646,14 @@ mod market {
                 assert_eq!(signable_order.order.maker, client.address());
                 assert_eq!(signable_order.order.signer, client.address());
                 assert_eq!(signable_order.order.taker, Address::ZERO);
-                assert_eq!(signable_order.order.tokenId, U256::ONE);
+                assert_eq!(
+                    signable_order.order.tokenId,
+                    U256::from_str(
+                        "15871154585880608648532107628464183779895785213830018178010423617714102767076"
+                    )?
+                );
                 assert_eq!(signable_order.order.makerAmount, U256::from(100_000_000)); // 100 USDC
-                assert_eq!(signable_order.order.takerAmount, U256::from(40_000_000)); // 40 `TOKEN_1` tokens
+                assert_eq!(signable_order.order.takerAmount, U256::from(40_000_000)); // 40 `token_1()` tokens
                 assert_eq!(signable_order.order.expiration, U256::ZERO);
                 assert_eq!(signable_order.order.nonce, U256::ZERO);
                 assert_eq!(signable_order.order.feeRateBps, U256::ZERO);
@@ -2644,7 +2670,7 @@ mod market {
 
                 ensure_requirements_for_market_price(
                     &server,
-                    TOKEN_1,
+                    token_1(),
                     &[
                         OrderSummary::builder()
                             .price(dec!(0.3))
@@ -2664,7 +2690,7 @@ mod market {
 
                 let signable_order = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
                     .side(Side::Sell)
                     .build()
@@ -2676,7 +2702,7 @@ mod market {
                 let price = to_decimal(taker_amount) / to_decimal(maker_amount);
                 assert_eq!(price, dec!(0.5));
 
-                assert_eq!(maker_amount, U256::from(100_000_000)); // 100 `TOKEN_1` tokens
+                assert_eq!(maker_amount, U256::from(100_000_000)); // 100 `token_1()` tokens
                 assert_eq!(taker_amount, U256::from(50_000_000)); // 50 USDC
 
                 Ok(())
@@ -2689,7 +2715,7 @@ mod market {
 
                 ensure_requirements_for_market_price(
                     &server,
-                    TOKEN_1,
+                    token_1(),
                     &[
                         OrderSummary::builder()
                             .price(dec!(0.3))
@@ -2709,7 +2735,7 @@ mod market {
 
                 let signable_order = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
                     .side(Side::Sell)
                     .build()
@@ -2721,7 +2747,7 @@ mod market {
                 let price = to_decimal(taker_amount) / to_decimal(maker_amount);
                 assert_eq!(price, dec!(0.4));
 
-                assert_eq!(maker_amount, U256::from(100_000_000)); // 100 `TOKEN_1` tokens
+                assert_eq!(maker_amount, U256::from(100_000_000)); // 100 `token_1()` tokens
                 assert_eq!(taker_amount, U256::from(40_000_000)); // 40 USDC
 
                 Ok(())
@@ -2734,7 +2760,7 @@ mod market {
 
                 ensure_requirements_for_market_price(
                     &server,
-                    TOKEN_1,
+                    token_1(),
                     &[
                         OrderSummary::builder()
                             .price(dec!(0.3))
@@ -2754,7 +2780,7 @@ mod market {
 
                 let signable_order = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::shares(dec!(200))?)
                     .side(Side::Sell)
                     .build()
@@ -2766,7 +2792,7 @@ mod market {
                 let price = to_decimal(taker_amount) / to_decimal(maker_amount);
                 assert_eq!(price, dec!(0.4));
 
-                assert_eq!(maker_amount, U256::from(200_000_000)); // 200 `TOKEN_1` tokens
+                assert_eq!(maker_amount, U256::from(200_000_000)); // 200 `token_1()` tokens
                 assert_eq!(taker_amount, U256::from(80_000_000)); // 80 USDC
 
                 Ok(())
@@ -2779,7 +2805,7 @@ mod market {
 
                 ensure_requirements_for_market_price(
                     &server,
-                    TOKEN_1,
+                    token_1(),
                     &[
                         OrderSummary::builder()
                             .price(dec!(0.3))
@@ -2799,7 +2825,7 @@ mod market {
 
                 let signable_order = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
                     .side(Side::Sell)
                     .build()
@@ -2811,7 +2837,7 @@ mod market {
                 let price = to_decimal(taker_amount) / to_decimal(maker_amount);
                 assert_eq!(price, dec!(0.5));
 
-                assert_eq!(maker_amount, U256::from(100_000_000)); // 100 `TOKEN_1` tokens
+                assert_eq!(maker_amount, U256::from(100_000_000)); // 100 `token_1()` tokens
                 assert_eq!(taker_amount, U256::from(50_000_000)); // 50 USDC
 
                 Ok(())
@@ -2824,7 +2850,7 @@ mod market {
 
                 ensure_requirements_for_market_price(
                     &server,
-                    TOKEN_1,
+                    token_1(),
                     &[
                         OrderSummary::builder()
                             .price(dec!(0.3))
@@ -2844,7 +2870,7 @@ mod market {
 
                 let signable_order = client
                     .market_order()
-                    .token_id(TOKEN_1)
+                    .token_id(token_1())
                     .amount(Amount::shares(dec!(300))?)
                     .side(Side::Sell)
                     .build()
@@ -2856,7 +2882,7 @@ mod market {
                 let price = to_decimal(taker_amount) / to_decimal(maker_amount);
                 assert_eq!(price, dec!(0.3));
 
-                assert_eq!(maker_amount, U256::from(300_000_000)); // 300 `TOKEN_1` tokens
+                assert_eq!(maker_amount, U256::from(300_000_000)); // 300 `token_1()` tokens
                 assert_eq!(taker_amount, U256::from(90_000_000)); // 90 USDC
 
                 Ok(())
@@ -2868,11 +2894,11 @@ mod market {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::Tenth);
+            ensure_requirements(&server, token_1(), TickSize::Tenth);
             // Always gives a market price of 0.5 for 100
             ensure_requirements_for_market_price(
                 &server,
-                TOKEN_1,
+                token_1(),
                 &[OrderSummary::builder()
                     .price(dec!(0.5))
                     .size(Decimal::ONE_HUNDRED)
@@ -2882,7 +2908,7 @@ mod market {
 
             let signable_order = client
                 .market_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
                 .side(Side::Sell)
                 .nonce(123)
@@ -2899,7 +2925,7 @@ mod market {
             assert_eq!(signable_order.order.maker, client.address());
             assert_eq!(signable_order.order.signer, client.address());
             assert_eq!(signable_order.order.taker, Address::ZERO);
-            assert_eq!(signable_order.order.tokenId.to_string(), TOKEN_1);
+            assert_eq!(signable_order.order.tokenId, token_1());
             assert_eq!(signable_order.order.makerAmount, U256::from(100_000_000));
             assert_eq!(signable_order.order.takerAmount, U256::from(50_000_000));
             assert_eq!(signable_order.order.expiration, U256::from(0));
@@ -2916,11 +2942,11 @@ mod market {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::Hundredth);
+            ensure_requirements(&server, token_1(), TickSize::Hundredth);
             // Always gives a market price of 0.56 for 100
             ensure_requirements_for_market_price(
                 &server,
-                TOKEN_1,
+                token_1(),
                 &[OrderSummary::builder()
                     .price(dec!(0.56))
                     .size(Decimal::ONE_HUNDRED)
@@ -2930,7 +2956,7 @@ mod market {
 
             let signable_order = client
                 .market_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
                 .side(Side::Sell)
                 .nonce(123)
@@ -2948,7 +2974,7 @@ mod market {
             assert_eq!(signable_order.order.maker, client.address());
             assert_eq!(signable_order.order.signer, client.address());
             assert_eq!(signable_order.order.taker, Address::ZERO);
-            assert_eq!(signable_order.order.tokenId.to_string(), TOKEN_1);
+            assert_eq!(signable_order.order.tokenId, token_1());
             assert_eq!(signable_order.order.makerAmount, U256::from(100_000_000));
             assert_eq!(signable_order.order.takerAmount, U256::from(56_000_000));
             assert_eq!(signable_order.order.expiration, U256::from(0));
@@ -2965,11 +2991,11 @@ mod market {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::Thousandth);
+            ensure_requirements(&server, token_1(), TickSize::Thousandth);
             // Always gives a market price of 0.056 for 100
             ensure_requirements_for_market_price(
                 &server,
-                TOKEN_1,
+                token_1(),
                 &[OrderSummary::builder()
                     .price(dec!(0.056))
                     .size(Decimal::ONE_HUNDRED)
@@ -2979,7 +3005,7 @@ mod market {
 
             let signable_order = client
                 .market_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
                 .side(Side::Sell)
                 .nonce(123)
@@ -2997,7 +3023,7 @@ mod market {
             assert_eq!(signable_order.order.maker, client.address());
             assert_eq!(signable_order.order.signer, client.address());
             assert_eq!(signable_order.order.taker, Address::ZERO);
-            assert_eq!(signable_order.order.tokenId.to_string(), TOKEN_1);
+            assert_eq!(signable_order.order.tokenId, token_1());
             assert_eq!(signable_order.order.makerAmount, U256::from(100_000_000));
             assert_eq!(signable_order.order.takerAmount, U256::from(5_600_000));
             assert_eq!(signable_order.order.expiration, U256::from(0));
@@ -3014,11 +3040,11 @@ mod market {
             let server = MockServer::start();
             let client = create_authenticated(&server).await?;
 
-            ensure_requirements(&server, TOKEN_1, TickSize::TenThousandth);
+            ensure_requirements(&server, token_1(), TickSize::TenThousandth);
             // Always gives a market price of 0.0056 for 100
             ensure_requirements_for_market_price(
                 &server,
-                TOKEN_1,
+                token_1(),
                 &[OrderSummary::builder()
                     .price(dec!(0.0056))
                     .size(Decimal::ONE_HUNDRED)
@@ -3028,7 +3054,7 @@ mod market {
 
             let signable_order = client
                 .market_order()
-                .token_id(TOKEN_1)
+                .token_id(token_1())
                 .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
                 .side(Side::Sell)
                 .nonce(123)
@@ -3046,7 +3072,7 @@ mod market {
             assert_eq!(signable_order.order.maker, client.address());
             assert_eq!(signable_order.order.signer, client.address());
             assert_eq!(signable_order.order.taker, Address::ZERO);
-            assert_eq!(signable_order.order.tokenId.to_string(), TOKEN_1);
+            assert_eq!(signable_order.order.tokenId, token_1());
             assert_eq!(signable_order.order.makerAmount, U256::from(100_000_000));
             assert_eq!(signable_order.order.takerAmount, U256::from(560_000));
             assert_eq!(signable_order.order.expiration, U256::from(0));
@@ -3077,7 +3103,7 @@ mod market {
 
         let err = client
             .market_order()
-            .token_id(TOKEN_1)
+            .token_id(token_1())
             .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
             .build()
             .await
@@ -3088,7 +3114,7 @@ mod market {
 
         let err = client
             .market_order()
-            .token_id(TOKEN_1)
+            .token_id(token_1())
             .side(Side::Buy)
             .build()
             .await
@@ -3105,11 +3131,11 @@ mod market {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
-        ensure_requirements_for_market_price(&server, TOKEN_1, &[], &[]);
+        ensure_requirements_for_market_price(&server, token_1(), &[], &[]);
 
         let err = client
             .market_order()
-            .token_id(TOKEN_1)
+            .token_id(token_1())
             .amount(Amount::shares(Decimal::ONE_HUNDRED)?)
             .side(Side::Sell)
             .order_type(OrderType::GTC)
@@ -3131,11 +3157,11 @@ mod market {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
-        ensure_requirements_for_market_price(&server, TOKEN_1, &[], &[]);
+        ensure_requirements_for_market_price(&server, token_1(), &[], &[]);
 
         let err = client
             .market_order()
-            .token_id(TOKEN_1)
+            .token_id(token_1())
             .amount(Amount::usdc(Decimal::ONE_HUNDRED)?)
             .side(Side::Sell)
             .build()
