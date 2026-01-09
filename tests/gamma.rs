@@ -991,6 +991,7 @@ mod market_tags {
 
 mod query_string {
     use chrono::{TimeZone as _, Utc};
+    use polymarket_client_sdk::ToQueryParams as _;
     use polymarket_client_sdk::gamma::types::request::{
         CommentsByIdRequest, CommentsByUserAddressRequest, CommentsRequest, EventByIdRequest,
         EventBySlugRequest, EventTagsRequest, EventsRequest, MarketByIdRequest,
@@ -1001,20 +1002,6 @@ mod query_string {
     use polymarket_client_sdk::gamma::types::{ParentEntityType, RelatedTagsStatus};
     use polymarket_client_sdk::types::{address, b256};
     use rust_decimal_macros::dec;
-    use serde::Serialize;
-
-    fn query_string<T: Serialize>(request: &T) -> String {
-        let pairs = polymarket_client_sdk::gamma::types::request::to_query_pairs(request);
-        if pairs.is_empty() {
-            String::new()
-        } else {
-            let mut encoder = url::form_urlencoded::Serializer::new(String::new());
-            for (k, v) in &pairs {
-                encoder.append_pair(k, v);
-            }
-            format!("?{}", encoder.finish())
-        }
-    }
 
     #[test]
     fn teams_request_all_params() {
@@ -1028,7 +1015,7 @@ mod query_string {
             .abbreviation(vec!["LAL".to_owned(), "BOS".to_owned()])
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.contains("limit=10"));
         assert!(qs.contains("offset=5"));
         assert!(qs.contains("order=name"));
@@ -1049,7 +1036,7 @@ mod query_string {
             .abbreviation(vec![])
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(!qs.contains("league="));
         assert!(!qs.contains("name="));
         assert!(!qs.contains("abbreviation="));
@@ -1066,7 +1053,7 @@ mod query_string {
             .is_carousel(true)
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.contains("limit=20"));
         assert!(qs.contains("offset=10"));
         assert!(qs.contains("order=label"));
@@ -1082,7 +1069,7 @@ mod query_string {
             .include_template(true)
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.contains("include_template=true"));
     }
 
@@ -1093,7 +1080,7 @@ mod query_string {
             .include_template(false)
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.contains("include_template=false"));
     }
 
@@ -1105,7 +1092,7 @@ mod query_string {
             .status(RelatedTagsStatus::Active)
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.contains("omit_empty=true"));
         assert!(qs.contains("status=active"));
     }
@@ -1118,7 +1105,7 @@ mod query_string {
             .status(RelatedTagsStatus::Closed)
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.contains("omit_empty=false"));
         assert!(qs.contains("status=closed"));
     }
@@ -1130,7 +1117,7 @@ mod query_string {
             .status(RelatedTagsStatus::All)
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.contains("status=all"));
     }
 
@@ -1168,7 +1155,7 @@ mod query_string {
             .end_date_max(end_date)
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.contains("limit=50"));
         assert!(qs.contains("offset=10"));
         assert!(qs.contains("order=startDate"));
@@ -1210,7 +1197,7 @@ mod query_string {
             .slug(vec![])
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(!qs.contains("id="));
         assert!(!qs.contains("exclude_tag_id="));
         assert!(!qs.contains("slug="));
@@ -1224,7 +1211,7 @@ mod query_string {
             .include_template(false)
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.contains("include_chat=true"));
         assert!(qs.contains("include_template=false"));
     }
@@ -1237,7 +1224,7 @@ mod query_string {
             .include_template(true)
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.contains("include_chat=false"));
         assert!(qs.contains("include_template=true"));
     }
@@ -1245,7 +1232,7 @@ mod query_string {
     #[test]
     fn event_tags_request_empty_params() {
         let request = EventTagsRequest::builder().id("123").build();
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.is_empty());
     }
 
@@ -1289,7 +1276,7 @@ mod query_string {
             .closed(false)
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.contains("limit=100"));
         assert!(qs.contains("offset=50"));
         assert!(qs.contains("order=volume"));
@@ -1345,7 +1332,7 @@ mod query_string {
             .question_ids(vec![])
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(!qs.contains("id="));
         assert!(!qs.contains("slug="));
         assert!(!qs.contains("clob_token_ids="));
@@ -1362,7 +1349,7 @@ mod query_string {
             .include_tag(true)
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.contains("include_tag=true"));
     }
 
@@ -1373,14 +1360,14 @@ mod query_string {
             .include_tag(false)
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.contains("include_tag=false"));
     }
 
     #[test]
     fn market_tags_request_empty_params() {
         let request = MarketTagsRequest::builder().id("456").build();
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.is_empty());
     }
 
@@ -1399,7 +1386,7 @@ mod query_string {
             .recurrence("daily".to_owned())
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.contains("limit=25"));
         assert!(qs.contains("offset=5"));
         assert!(qs.contains("order=title"));
@@ -1425,7 +1412,7 @@ mod query_string {
             .categories_labels(vec![])
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(!qs.contains("slug="));
         assert!(!qs.contains("categories_ids="));
         assert!(!qs.contains("categories_labels="));
@@ -1438,7 +1425,7 @@ mod query_string {
             .include_chat(true)
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.contains("include_chat=true"));
     }
 
@@ -1455,7 +1442,7 @@ mod query_string {
             .holders_only(true)
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.contains("limit=50"));
         assert!(qs.contains("offset=10"));
         assert!(qs.contains("order=createdAt"));
@@ -1473,7 +1460,7 @@ mod query_string {
             .parent_entity_id("series-123")
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.contains("parent_entity_type=Series"));
         assert!(qs.contains("parent_entity_id=series-123"));
     }
@@ -1485,7 +1472,7 @@ mod query_string {
             .parent_entity_id("market-456")
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.contains("parent_entity_type=market"));
         assert!(qs.contains("parent_entity_id=market-456"));
     }
@@ -1497,7 +1484,7 @@ mod query_string {
             .get_positions(true)
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.contains("get_positions=true"));
     }
 
@@ -1511,7 +1498,7 @@ mod query_string {
             .ascending(true)
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.contains("limit=20"));
         assert!(qs.contains("offset=5"));
         assert!(qs.contains("order=createdAt"));
@@ -1524,7 +1511,7 @@ mod query_string {
             .address(address!("0x56687bf447db6ffa42ffe2204a05edaa20f55839"))
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         // Address serializes to lowercase hex via serde
         assert!(qs.contains("address=0x56687bf447db6ffa42ffe2204a05edaa20f55839"));
     }
@@ -1548,7 +1535,7 @@ mod query_string {
             .optimized(true)
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(qs.contains("q=bitcoin"));
         assert!(qs.contains("cache=true"));
         assert!(qs.contains("events_status=active"));
@@ -1576,14 +1563,14 @@ mod query_string {
             .exclude_tag_id(vec![])
             .build();
 
-        let qs = query_string(&request);
+        let qs = request.query_params(None);
         assert!(!qs.contains("events_tag="));
         assert!(!qs.contains("exclude_tag_id="));
     }
 
     #[test]
     fn unit_query_string_returns_empty() {
-        let qs = query_string(&());
+        let qs = ().query_params(None);
         assert!(qs.is_empty());
     }
 }

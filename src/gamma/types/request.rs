@@ -11,55 +11,6 @@ use serde_with::skip_serializing_none;
 use crate::gamma::types::{ParentEntityType, RelatedTagsStatus};
 use crate::types::{Address, B256, Decimal};
 
-/// Converts a serializable request struct to query parameter pairs.
-///
-/// The Gamma API expects array parameters as repeated keys (`?key=val1&key=val2`)
-/// instead of comma-separated values. This function handles that by:
-/// 1. Serializing the struct to JSON
-/// 2. Iterating through each field
-/// 3. For array values, creating multiple pairs with the same key
-///
-/// The resulting `Vec<(String, String)>` can be passed to reqwest's `.query()` method.
-pub fn to_query_pairs<T: Serialize>(value: &T) -> Vec<(String, String)> {
-    let json = serde_json::to_value(value).unwrap_or(serde_json::Value::Null);
-
-    let Some(obj) = json.as_object() else {
-        return Vec::new();
-    };
-
-    let mut pairs = Vec::new();
-    for (key, val) in obj {
-        match val {
-            serde_json::Value::Array(arr) => {
-                for item in arr {
-                    if let Some(s) = json_value_to_string(item) {
-                        pairs.push((key.clone(), s));
-                    }
-                }
-            }
-            serde_json::Value::Null => {} // Skip null values
-            _ => {
-                if let Some(s) = json_value_to_string(val) {
-                    pairs.push((key.clone(), s));
-                }
-            }
-        }
-    }
-    pairs
-}
-
-/// Converts a JSON value to a string suitable for query parameters.
-fn json_value_to_string(val: &serde_json::Value) -> Option<String> {
-    match val {
-        serde_json::Value::String(s) => Some(s.clone()),
-        serde_json::Value::Number(n) => Some(n.to_string()),
-        serde_json::Value::Bool(b) => Some(b.to_string()),
-        serde_json::Value::Null => None,
-        // For nested objects/arrays, serialize as JSON string
-        _ => Some(val.to_string()),
-    }
-}
-
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
 #[non_exhaustive]

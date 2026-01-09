@@ -44,8 +44,8 @@ use super::types::response::{
     Comment, Event, HealthResponse, Market, PublicProfile, RelatedTag, SearchResults, Series,
     SportsMarketTypesResponse, SportsMetadata, Tag, Team,
 };
-use crate::Result;
 use crate::error::Error;
+use crate::{Result, ToQueryParams as _};
 
 /// HTTP client for the Polymarket Gamma API.
 ///
@@ -116,11 +116,10 @@ impl Client {
         path: &str,
         req: &Req,
     ) -> Result<Res> {
-        let pairs = super::types::request::to_query_pairs(req);
+        let query = req.query_params(None);
         let request = self
             .client
-            .request(Method::GET, format!("{}{path}", self.host))
-            .query(&pairs)
+            .request(Method::GET, format!("{}{path}{query}", self.host))
             .build()?;
         crate::request(&self.client, request, None).await
     }

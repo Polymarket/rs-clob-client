@@ -3380,11 +3380,11 @@ dependencies = [
  "rust_decimal_macros",
  "secrecy",
  "serde",
+ "serde_html_form",
  "serde_ignored",
  "serde_json",
  "serde_path_to_error",
  "serde_repr",
- "serde_urlencoded",
  "serde_with",
  "sha2",
  "strum_macros",
@@ -4313,6 +4313,19 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.110",
+]
+
+[[package]]
+name = "serde_html_form"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0946d52b4b7e28823148aebbeceb901012c595ad737920d504fa8634bb099e6f"
+dependencies = [
+ "form_urlencoded",
+ "indexmap 2.12.1",
+ "itoa",
+ "ryu",
+ "serde_core",
 ]
 
 [[package]]
