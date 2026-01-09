@@ -9,15 +9,13 @@ use serde::Serialize;
 use serde_with::{
     DisplayFromStr, StringWithSeparator, formats::CommaSeparator, serde_as, skip_serializing_none,
 };
+#[cfg(feature = "rfq")]
+use {
+    crate::clob::types::{RfqSortBy, RfqSortDir, RfqState},
+    crate::{Timestamp, auth::ApiKey, types::Decimal},
+};
 
-use crate::Timestamp;
-#[cfg(feature = "rfq")]
-use crate::auth::ApiKey;
 use crate::clob::types::{AssetType, Side, SignatureType, TimeRange};
-#[cfg(feature = "rfq")]
-use crate::clob::types::{RfqSortBy, RfqSortDir, RfqState};
-#[cfg(feature = "rfq")]
-use crate::types::Decimal;
 use crate::types::U256;
 use crate::types::{Address, B256};
 
