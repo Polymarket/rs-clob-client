@@ -46,6 +46,8 @@ pub enum RelatedTagsStatus {
     Unknown(String),
 }
 
+crate::impl_unknown_enum_variant!(RelatedTagsStatus, "RelatedTagsStatus");
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
 #[non_exhaustive]
 pub enum ParentEntityType {
@@ -58,3 +60,5 @@ pub enum ParentEntityType {
     #[serde(untagged)]
     Unknown(String),
 }
+
+crate::impl_unknown_enum_variant!(ParentEntityType, "ParentEntityType");

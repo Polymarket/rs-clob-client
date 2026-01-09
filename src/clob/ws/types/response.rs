@@ -113,6 +113,7 @@ pub struct PriceChange {
 }
 
 #[non_exhaustive]
+#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 pub struct PriceChangeBatchEntry {
     /// Asset/token identifier
@@ -353,11 +354,13 @@ pub struct TradeMessage {
     pub transaction_hash: Option<B256>,
     /// Whether user was maker or taker
     #[serde(default)]
+    #[serde_as(as = "Option<crate::serde_helpers::WarnOnUnknown<TraderSide>>")]
     pub trader_side: Option<TraderSide>,
 }
 
 /// User order update message (authenticated channel only).
 #[non_exhaustive]
+#[serde_as]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct OrderMessage {
     /// Order identifier
@@ -419,6 +422,8 @@ pub enum OrderStatus {
     #[serde(untagged)]
     Unknown(String),
 }
+
+crate::impl_unknown_enum_variant!(OrderStatus, "ws::OrderStatus");
 
 /// Calculated midpoint update (derived from orderbook).
 #[non_exhaustive]

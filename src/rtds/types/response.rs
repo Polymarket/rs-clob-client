@@ -150,6 +150,8 @@ pub enum CommentType {
     Unknown(String),
 }
 
+crate::impl_unknown_enum_variant!(CommentType, "CommentType");
+
 /// Deserialize messages from the byte slice.
 ///
 /// Handles both single objects and arrays of messages.

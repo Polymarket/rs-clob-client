@@ -59,6 +59,8 @@ pub enum OrderType {
     Unknown(String),
 }
 
+crate::impl_unknown_enum_variant!(OrderType, "OrderType");
+
 #[non_exhaustive]
 #[derive(
     Clone, Copy, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
@@ -304,6 +306,8 @@ pub enum OrderStatusType {
     Unknown(String),
 }
 
+crate::impl_unknown_enum_variant!(OrderStatusType, "OrderStatusType");
+
 #[non_exhaustive]
 #[derive(
     Clone, Debug, Default, Display, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
@@ -319,6 +323,8 @@ pub enum AssetType {
     Unknown(String),
 }
 
+crate::impl_unknown_enum_variant!(AssetType, "AssetType");
+
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "UPPERCASE")]
@@ -329,6 +335,8 @@ pub enum TraderSide {
     #[serde(untagged)]
     Unknown(String),
 }
+
+crate::impl_unknown_enum_variant!(TraderSide, "TraderSide");
 
 /// Represents the maximum number of decimal places for an order's price field
 #[non_exhaustive]

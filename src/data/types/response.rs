@@ -155,6 +155,7 @@ pub struct ClosedPosition {
 ///
 /// Returned by the `/trades` endpoint. Represents an executed order where
 /// outcome tokens were bought or sold.
+#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
@@ -162,6 +163,7 @@ pub struct Trade {
     /// The trader's proxy wallet address.
     pub proxy_wallet: Address,
     /// Trade side (BUY or SELL).
+    #[serde_as(as = "crate::serde_helpers::WarnOnUnknown<Side>")]
     pub side: Side,
     /// The outcome token asset identifier (decimal string from API).
     pub asset: String,
@@ -203,6 +205,7 @@ pub struct Trade {
 ///
 /// Returned by the `/activity` endpoint. Represents various on-chain operations
 /// including trades, splits, merges, redemptions, rewards, and conversions.
+#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
@@ -215,6 +218,7 @@ pub struct Activity {
     pub condition_id: B256,
     /// Type of activity (TRADE, SPLIT, MERGE, REDEEM, REWARD, CONVERSION).
     #[serde(rename = "type")]
+    #[serde_as(as = "crate::serde_helpers::WarnOnUnknown<ActivityType>")]
     pub activity_type: ActivityType,
     /// Number of tokens involved in the activity.
     pub size: Decimal,

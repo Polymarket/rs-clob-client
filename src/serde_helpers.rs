@@ -2,6 +2,20 @@
 //!
 //! When the `tracing` feature is enabled, this module also logs warnings for any
 //! unknown fields encountered during deserialization, helping detect API changes.
+//!
+//! ## Unknown Enum Variant Warnings
+//!
+//! The [`WarnOnUnknown`] wrapper type can be used with `serde_as` to emit warnings when
+//! an enum deserializes to its `Unknown(String)` variant. This helps detect when the API
+//! starts sending new values that the library doesn't explicitly handle.
+//!
+//! ```ignore
+//! #[serde_as]
+//! struct Response {
+//!     #[serde_as(as = "WarnOnUnknown<OrderType>")]
+//!     order_type: OrderType,
+//! }
+//! ```
 
 #[cfg(any(
     feature = "bridge",
@@ -77,6 +91,153 @@ impl serde_with::SerializeAs<String> for StringFromAny {
         S: serde::Serializer,
     {
         serializer.serialize_str(source)
+    }
+}
+
+/// Trait for enums that have an `Unknown(String)` variant to capture unrecognized values.
+///
+/// Implementing this trait allows the enum to be used with [`WarnOnUnknown`] to emit
+/// warnings when an unknown variant is deserialized from the API.
+///
+/// # Example
+///
+/// ```ignore
+/// #[derive(Deserialize)]
+/// enum OrderType {
+///     GTC,
+///     FOK,
+///     #[serde(untagged)]
+///     Unknown(String),
+/// }
+///
+/// impl UnknownEnumVariant for OrderType {
+///     fn as_unknown(&self) -> Option<&str> {
+///         match self {
+///             OrderType::Unknown(s) => Some(s),
+///             _ => None,
+///         }
+///     }
+///     fn type_name() -> &'static str { "OrderType" }
+/// }
+/// ```
+#[cfg(any(
+    feature = "bridge",
+    feature = "clob",
+    feature = "data",
+    feature = "gamma"
+))]
+pub trait UnknownEnumVariant {
+    /// Returns the unknown value if this is an `Unknown` variant, otherwise `None`.
+    fn as_unknown(&self) -> Option<&str>;
+
+    /// Returns the name of this enum type for logging purposes.
+    fn type_name() -> &'static str;
+}
+
+/// Implements [`UnknownEnumVariant`] for an enum with an `Unknown(String)` variant.
+///
+/// # Example
+///
+/// ```ignore
+/// impl_unknown_enum_variant!(OrderType, "OrderType");
+/// ```
+#[cfg(any(
+    feature = "bridge",
+    feature = "clob",
+    feature = "data",
+    feature = "gamma"
+))]
+#[macro_export]
+macro_rules! impl_unknown_enum_variant {
+    ($enum_name:ident, $type_name:literal) => {
+        impl $crate::serde_helpers::UnknownEnumVariant for $enum_name {
+            fn as_unknown(&self) -> Option<&str> {
+                match self {
+                    $enum_name::Unknown(s) => Some(s),
+                    _ => None,
+                }
+            }
+
+            fn type_name() -> &'static str {
+                $type_name
+            }
+        }
+    };
+}
+
+/// A `serde_as` wrapper that logs a warning when an enum deserializes to its `Unknown` variant.
+///
+/// Use with `#[serde_as(as = "WarnOnUnknown<EnumType>")]` on struct fields.
+/// When the `tracing` feature is disabled, this is a no-op passthrough.
+///
+/// # Example
+///
+/// ```ignore
+/// use serde_with::serde_as;
+///
+/// #[serde_as]
+/// #[derive(Deserialize)]
+/// struct Response {
+///     #[serde_as(as = "WarnOnUnknown<OrderType>")]
+///     order_type: OrderType,
+/// }
+/// ```
+#[cfg(any(
+    feature = "bridge",
+    feature = "clob",
+    feature = "data",
+    feature = "gamma"
+))]
+pub struct WarnOnUnknown<T>(std::marker::PhantomData<T>);
+
+#[cfg(any(
+    feature = "bridge",
+    feature = "clob",
+    feature = "data",
+    feature = "gamma"
+))]
+impl<'de, T> serde_with::DeserializeAs<'de, T> for WarnOnUnknown<T>
+where
+    T: serde::Deserialize<'de> + UnknownEnumVariant,
+{
+    fn deserialize_as<D>(deserializer: D) -> std::result::Result<T, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = T::deserialize(deserializer)?;
+
+        #[cfg(feature = "tracing")]
+        if let Some(unknown_value) = value.as_unknown() {
+            tracing::warn!(
+                enum_type = T::type_name(),
+                unknown_value = %unknown_value,
+                "unknown enum variant in API response"
+            );
+        }
+
+        // Silence unused variable warning when tracing is disabled
+        #[cfg(not(feature = "tracing"))]
+        let _ = &value;
+
+        Ok(value)
+    }
+}
+
+#[cfg(any(
+    feature = "bridge",
+    feature = "clob",
+    feature = "data",
+    feature = "gamma"
+))]
+impl<T> serde_with::SerializeAs<T> for WarnOnUnknown<T>
+where
+    T: serde::Serialize,
+{
+    fn serialize_as<S>(source: &T, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        source.serialize(serializer)
     }
 }
 
@@ -727,5 +888,132 @@ mod tests {
         // Path "?.outer.?.inner" should skip ? markers
         let result = lookup_value(&json, "?.outer.?.inner");
         assert_eq!(result, Some(&Value::String("value".to_owned())));
+    }
+
+    // ========== WarnOnUnknown tests ==========
+    #[cfg(any(
+        feature = "bridge",
+        feature = "clob",
+        feature = "data",
+        feature = "gamma"
+    ))]
+    mod warn_on_unknown_tests {
+        use serde::Deserialize;
+        use serde_with::serde_as;
+
+        use super::super::{UnknownEnumVariant as _, WarnOnUnknown};
+
+        /// Test enum with an Unknown variant
+        #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+        #[serde(rename_all = "UPPERCASE")]
+        enum TestOrderType {
+            Gtc,
+            Fok,
+            #[serde(untagged)]
+            Unknown(String),
+        }
+
+        crate::impl_unknown_enum_variant!(TestOrderType, "TestOrderType");
+
+        #[serde_as]
+        #[derive(Debug, Deserialize)]
+        struct TestResponse {
+            #[serde_as(as = "WarnOnUnknown<TestOrderType>")]
+            order_type: TestOrderType,
+        }
+
+        #[test]
+        fn warn_on_unknown_deserialize_known_variant() {
+            let json = serde_json::json!({ "order_type": "GTC" });
+            let result: TestResponse =
+                serde_json::from_value(json).expect("deserialization failed");
+            assert_eq!(result.order_type, TestOrderType::Gtc);
+        }
+
+        #[test]
+        fn warn_on_unknown_deserialize_unknown_variant() {
+            let json = serde_json::json!({ "order_type": "NEW_TYPE" });
+            let result: TestResponse =
+                serde_json::from_value(json).expect("deserialization failed");
+            assert_eq!(
+                result.order_type,
+                TestOrderType::Unknown("NEW_TYPE".to_owned())
+            );
+        }
+
+        #[test]
+        fn unknown_enum_variant_trait_returns_none_for_known() {
+            let gtc = TestOrderType::Gtc;
+            assert_eq!(gtc.as_unknown(), None);
+        }
+
+        #[test]
+        fn unknown_enum_variant_trait_returns_some_for_unknown() {
+            let unknown = TestOrderType::Unknown("MYSTERY".to_owned());
+            assert_eq!(unknown.as_unknown(), Some("MYSTERY"));
+        }
+
+        /// Test that verifies warnings are actually emitted for unknown enum variants.
+        #[cfg(feature = "tracing")]
+        #[test]
+        fn warning_is_emitted_for_unknown_enum_variant() {
+            use std::sync::{Arc, Mutex};
+
+            use tracing_subscriber::layer::SubscriberExt as _;
+
+            // Capture warnings in a buffer
+            let warnings: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+            let warnings_clone = Arc::clone(&warnings);
+
+            // Custom layer that captures warn events
+            let layer = tracing_subscriber::fmt::layer()
+                .with_writer(move || {
+                    struct CaptureWriter(Arc<Mutex<Vec<String>>>);
+                    impl std::io::Write for CaptureWriter {
+                        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+                            if let Ok(s) = std::str::from_utf8(buf) {
+                                self.0.lock().expect("lock").push(s.to_owned());
+                            }
+                            Ok(buf.len())
+                        }
+                        fn flush(&mut self) -> std::io::Result<()> {
+                            Ok(())
+                        }
+                    }
+                    CaptureWriter(Arc::clone(&warnings_clone))
+                })
+                .with_ansi(false);
+
+            let subscriber = tracing_subscriber::registry().with(layer);
+
+            // Run the deserialization with our subscriber
+            tracing::subscriber::with_default(subscriber, || {
+                let json = serde_json::json!({ "order_type": "BRAND_NEW_TYPE" });
+
+                let result: TestResponse =
+                    serde_json::from_value(json).expect("deserialization should succeed");
+                assert_eq!(
+                    result.order_type,
+                    TestOrderType::Unknown("BRAND_NEW_TYPE".to_owned())
+                );
+            });
+
+            // Check that warnings were captured
+            let captured = warnings.lock().expect("lock");
+            let all_output = captured.join("");
+
+            assert!(
+                all_output.contains("unknown enum variant"),
+                "Expected 'unknown enum variant' in output, got: {all_output}"
+            );
+            assert!(
+                all_output.contains("BRAND_NEW_TYPE"),
+                "Expected 'BRAND_NEW_TYPE' in output, got: {all_output}"
+            );
+            assert!(
+                all_output.contains("TestOrderType"),
+                "Expected 'TestOrderType' in output, got: {all_output}"
+            );
+        }
     }
 }

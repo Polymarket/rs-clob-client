@@ -26,6 +26,8 @@ pub enum Side {
     Unknown(String),
 }
 
+crate::impl_unknown_enum_variant!(Side, "data::Side");
+
 /// The type of on-chain activity for a user.
 ///
 /// Activities represent various operations that users can perform on the Polymarket protocol.
@@ -54,6 +56,8 @@ pub enum ActivityType {
     #[serde(untagged)]
     Unknown(String),
 }
+
+crate::impl_unknown_enum_variant!(ActivityType, "ActivityType");
 
 /// Sort criteria for position queries.
 ///
