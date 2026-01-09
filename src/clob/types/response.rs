@@ -9,8 +9,8 @@ use bon::Builder;
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{
-    DefaultOnNull, NoneAsEmptyString, TimestampMilliSeconds, TimestampSeconds, TryFromInto,
-    serde_as,
+    DefaultOnError, DefaultOnNull, NoneAsEmptyString, TimestampMilliSeconds, TimestampSeconds,
+    TryFromInto, serde_as,
 };
 use sha2::{Digest as _, Sha256};
 use uuid::Uuid;
@@ -209,7 +209,7 @@ pub struct MarketResponse {
     pub notifications_enabled: bool,
     pub neg_risk: bool,
     /// The negative risk market ID (empty string if not a neg risk market).
-    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde_as(as = "DefaultOnError<NoneAsEmptyString>")]
     #[serde(default)]
     pub neg_risk_market_id: Option<B256>,
     /// The negative risk request ID (empty string if not a neg risk market).

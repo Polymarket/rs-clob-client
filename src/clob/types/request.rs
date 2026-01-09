@@ -411,7 +411,7 @@ mod tests {
         let market = b256!("0000000000000000000000000000000000000000000000000000000000010000");
         let request = TradesRequest::builder()
             .market(market)
-            .asset_id(U256::from_str_radix("100", 10).unwrap())
+            .asset_id(U256::from(100))
             .id("aa-bb")
             .maker_address(Address::ZERO)
             .build();
@@ -431,7 +431,7 @@ mod tests {
         let market = b256!("0000000000000000000000000000000000000000000000000000000000010000");
         let request = OrdersRequest::builder()
             .market(market)
-            .asset_id(U256::from_str_radix("100", 10).unwrap())
+            .asset_id(U256::from(100))
             .order_id("aa-bb")
             .build();
 

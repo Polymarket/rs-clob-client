@@ -17,15 +17,75 @@
 use std::collections::HashMap;
 use std::fs::File;
 
+use futures_util::StreamExt as _;
 use polymarket_client_sdk::clob::types::Side;
 use polymarket_client_sdk::clob::types::request::{
     LastTradePriceRequest, MidpointRequest, OrderBookSummaryRequest, PriceRequest, SpreadRequest,
 };
 use polymarket_client_sdk::clob::{Client, Config};
+use polymarket_client_sdk::types::{B256, Decimal, U256};
 use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
+
+/// Finds a market with an active orderbook by streaming through all markets.
+///
+/// Returns a tuple of (`token_id`, `condition_id`) from a market that:
+/// - Has orderbook enabled (`enable_order_book` = true)
+/// - Is active and not closed
+/// - Is accepting orders
+/// - Has tokens with non-zero prices
+///
+/// This ensures subsequent price/midpoint/orderbook API calls will succeed.
+async fn find_market_with_orderbook(client: &Client) -> anyhow::Result<(U256, B256)> {
+    info!("Searching for a market with an active orderbook...");
+
+    let mut stream = Box::pin(client.stream_data(Client::markets));
+
+    while let Some(maybe_market) = stream.next().await {
+        match maybe_market {
+            Ok(market) => {
+                if market.enable_order_book
+                    && market.active
+                    && !market.closed
+                    && !market.archived
+                    && market.accepting_orders
+                    && !market.tokens.is_empty()
+                    && market.tokens.iter().any(|t| t.price > Decimal::ZERO)
+                {
+                    let condition_id = market
+                        .condition_id
+                        .ok_or_else(|| anyhow::anyhow!("Market missing condition_id"))?;
+                    let token_id = market
+                        .tokens
+                        .first()
+                        .map(|t| t.token_id)
+                        .ok_or_else(|| anyhow::anyhow!("Market has no tokens"))?;
+
+                    let request = MidpointRequest::builder().token_id(token_id).build();
+                    if client.midpoint(&request).await.is_ok() {
+                        info!(
+                            condition_id = %condition_id,
+                            token_id = %token_id,
+                            question = %market.question,
+                            "Found market with active orderbook"
+                        );
+
+                        return Ok((token_id, condition_id));
+                    }
+                }
+            }
+            Err(e) => {
+                error!(error = ?e, "Error fetching market");
+            }
+        }
+    }
+
+    Err(anyhow::anyhow!(
+        "No active markets with orderbooks found after searching all markets"
+    ))
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -56,39 +116,10 @@ async fn main() -> anyhow::Result<()> {
         Err(e) => error!(endpoint = "server_time", error = %e),
     }
 
-    // Fetch markets to discover real token IDs and condition IDs
-    let markets_result = client.markets(None).await;
-
-    let (token_id, condition_id) = match &markets_result {
-        Ok(page) => {
-            info!(
-                endpoint = "markets",
-                count = page.data.len(),
-                has_next = !page.next_cursor.is_empty()
-            );
-
-            // Find an active market with tokens and a valid condition_id
-            let active_market = page
-                .data
-                .iter()
-                .find(|m| m.active && !m.tokens.is_empty() && m.condition_id.is_some());
-
-            if let Some(market) = active_market {
-                let cid = market.condition_id.expect("checked above");
-                info!(
-                    endpoint = "markets",
-                    condition_id = %cid,
-                    question = %market.question,
-                    tokens = market.tokens.len()
-                );
-                (Some(market.tokens[0].token_id), Some(cid))
-            } else {
-                warn!(endpoint = "markets", "no active market with tokens found");
-                (None, None)
-            }
-        }
+    let (token_id, condition_id) = match find_market_with_orderbook(&client).await {
+        Ok((tid, cid)) => (Some(tid), Some(cid)),
         Err(e) => {
-            error!(endpoint = "markets", error = %e);
+            error!("Failed to find market with orderbook: {}", e);
             (None, None)
         }
     };
