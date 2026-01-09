@@ -154,7 +154,6 @@ pub struct OrderSummary {
 }
 
 #[non_exhaustive]
-#[serde_as]
 #[derive(Debug, Deserialize, Builder, PartialEq)]
 pub struct LastTradePriceResponse {
     pub price: Decimal,
@@ -162,7 +161,6 @@ pub struct LastTradePriceResponse {
 }
 
 #[non_exhaustive]
-#[serde_as]
 #[derive(Debug, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct LastTradesPricesResponse {
@@ -290,7 +288,6 @@ pub struct PostOrderResponse {
     pub taking_amount: Decimal,
     #[serde(rename = "orderID")]
     pub order_id: String,
-    #[serde_as(as = "crate::serde_helpers::WarnOnUnknown<OrderStatusType>")]
     pub status: OrderStatusType,
     pub success: bool,
     /// On-chain transaction hashes for the order execution.
@@ -324,7 +321,6 @@ where
 #[builder(on(String, into))]
 pub struct OpenOrderResponse {
     pub id: String,
-    #[serde_as(as = "crate::serde_helpers::WarnOnUnknown<OrderStatusType>")]
     pub status: OrderStatusType,
     pub owner: ApiKey,
     pub maker_address: Address,
@@ -343,7 +339,6 @@ pub struct OpenOrderResponse {
     pub created_at: DateTime<Utc>,
     #[serde_as(as = "TimestampSeconds<String>")]
     pub expiration: DateTime<Utc>,
-    #[serde_as(as = "crate::serde_helpers::WarnOnUnknown<OrderType>")]
     pub order_type: OrderType,
 }
 
@@ -377,7 +372,6 @@ pub struct TradeResponse {
     pub size: Decimal,
     pub fee_rate_bps: Decimal,
     pub price: Decimal,
-    #[serde_as(as = "crate::serde_helpers::WarnOnUnknown<OrderStatusType>")]
     pub status: OrderStatusType,
     #[serde_as(as = "TimestampSeconds<String>")]
     pub match_time: DateTime<Utc>,
@@ -392,7 +386,6 @@ pub struct TradeResponse {
     pub maker_orders: Vec<MakerOrder>,
     /// On-chain transaction hash.
     pub transaction_hash: B256,
-    #[serde_as(as = "crate::serde_helpers::WarnOnUnknown<TraderSide>")]
     pub trader_side: TraderSide,
     #[serde(default)]
     pub error_msg: Option<String>,
@@ -407,7 +400,6 @@ pub struct NotificationResponse {
 }
 
 #[non_exhaustive]
-#[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct NotificationPayload {
@@ -437,7 +429,6 @@ pub struct NotificationPayload {
     /// On-chain transaction hash.
     pub transaction_hash: B256,
     #[serde(alias = "type")]
-    #[serde_as(as = "crate::serde_helpers::WarnOnUnknown<OrderType>")]
     pub order_type: OrderType,
 }
 
@@ -467,7 +458,6 @@ pub struct OrderScoringResponse {
 pub type OrdersScoringResponse = HashMap<String, bool>;
 
 #[non_exhaustive]
-#[serde_as]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
 pub struct PriceSideResponse {
     pub side: Side,
@@ -517,7 +507,6 @@ pub struct UserInfo {
 }
 
 #[non_exhaustive]
-#[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct MakerOrder {
@@ -655,7 +644,6 @@ pub struct MarketRewardResponse {
 }
 
 #[non_exhaustive]
-#[serde_as]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct BuilderApiKeyResponse {
@@ -685,7 +673,6 @@ pub struct BuilderTradeResponse {
     pub size: Decimal,
     pub size_usdc: Decimal,
     pub price: Decimal,
-    #[serde_as(as = "crate::serde_helpers::WarnOnUnknown<OrderStatusType>")]
     pub status: OrderStatusType,
     pub outcome: String,
     pub outcome_index: u32,
@@ -774,7 +761,6 @@ pub struct ApproveRfqOrderResponse {
 /// An RFQ request in the system.
 #[cfg(feature = "rfq")]
 #[non_exhaustive]
-#[serde_as]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[serde(rename_all = "camelCase")]
 #[builder(on(String, into))]
@@ -806,7 +792,6 @@ pub struct RfqRequest {
 /// An RFQ quote in the system.
 #[cfg(feature = "rfq")]
 #[non_exhaustive]
-#[serde_as]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[serde(rename_all = "camelCase")]
 #[builder(on(String, into))]

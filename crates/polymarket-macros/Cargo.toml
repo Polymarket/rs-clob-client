@@ -1,0 +1,19 @@
+[package]
+name = "polymarket-macros"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88.0"
+description = "Proc macros for the Polymarket client SDK"
+license = "MIT"
+repository = "https://github.com/polymarket/rs-clob-client"
+readme = "README.md"
+keywords = ["polymarket", "macros", "proc-macro"]
+categories = ["development-tools::procedural-macro-helpers"]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2.0", features = ["full", "extra-traits"] }
+quote = "1.0"
+proc-macro2 = "1.0"

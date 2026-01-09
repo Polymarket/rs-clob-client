@@ -1,5 +1,8 @@
 #![cfg_attr(doc, doc = include_str!("../README.md"))]
 
+// Re-export the proc macro for unknown enum variant handling
+pub use polymarket_macros::unknown_enum_variant;
+
 pub mod auth;
 #[cfg(feature = "bridge")]
 pub mod bridge;

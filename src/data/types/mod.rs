@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as};
 
 use crate::types::{B256, Decimal};
+use crate::unknown_enum_variant;
 
 pub mod request;
 pub mod response;
@@ -12,6 +13,7 @@ pub mod response;
 /// The side of a trade (buy or sell).
 ///
 /// Used to indicate whether a trade was a purchase or sale of outcome tokens.
+#[unknown_enum_variant]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
 #[serde(rename_all = "UPPERCASE")]
 #[strum(serialize_all = "UPPERCASE")]
@@ -21,16 +23,12 @@ pub enum Side {
     Buy,
     /// Selling outcome tokens (going short or closing a long position).
     Sell,
-    /// Unknown side from the API (captures the raw value for debugging).
-    #[serde(untagged)]
-    Unknown(String),
 }
-
-crate::impl_unknown_enum_variant!(Side, "data::Side");
 
 /// The type of on-chain activity for a user.
 ///
 /// Activities represent various operations that users can perform on the Polymarket protocol.
+#[unknown_enum_variant]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
 #[serde(rename_all = "UPPERCASE")]
 #[strum(serialize_all = "UPPERCASE")]
@@ -52,12 +50,7 @@ pub enum ActivityType {
     Yield,
     /// Maker rebate (fee rebate for providing liquidity).
     MakerRebate,
-    /// Unknown activity type from the API (captures the raw value for debugging).
-    #[serde(untagged)]
-    Unknown(String),
 }
-
-crate::impl_unknown_enum_variant!(ActivityType, "ActivityType");
 
 /// Sort criteria for position queries.
 ///

@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::types::Decimal;
+use crate::unknown_enum_variant;
 
 /// Top-level RTDS message wrapper.
 ///
@@ -133,6 +134,7 @@ pub struct CommentProfile {
 }
 
 /// Comment message types.
+#[unknown_enum_variant]
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -145,12 +147,7 @@ pub enum CommentType {
     ReactionCreated,
     /// Reaction removed from a comment
     ReactionRemoved,
-    /// Unknown comment type from the API (captures the raw value for debugging).
-    #[serde(untagged)]
-    Unknown(String),
 }
-
-crate::impl_unknown_enum_variant!(CommentType, "CommentType");
 
 /// Deserialize messages from the byte slice.
 ///

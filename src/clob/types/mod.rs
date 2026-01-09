@@ -17,6 +17,7 @@ use crate::auth::ApiKey;
 use crate::clob::order_builder::{LOT_SIZE_SCALE, USDC_DECIMALS};
 use crate::error::Error;
 use crate::types::Decimal;
+use crate::unknown_enum_variant;
 
 pub mod request;
 pub mod response;
@@ -33,6 +34,7 @@ pub use response::{
     CreateRfqRequestResponse, RfqQuote, RfqRequest,
 };
 
+#[unknown_enum_variant]
 #[non_exhaustive]
 #[derive(
     Clone, Debug, Display, Default, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
@@ -54,12 +56,7 @@ pub enum OrderType {
     /// the order cannot be fully filled, the remaining quantity is cancelled.
     #[serde(alias = "fak")]
     FAK,
-    /// Unknown order type from the API (captures the raw value for debugging).
-    #[serde(untagged)]
-    Unknown(String),
 }
-
-crate::impl_unknown_enum_variant!(OrderType, "OrderType");
 
 #[non_exhaustive]
 #[derive(
@@ -286,6 +283,7 @@ pub enum RfqSortDir {
     Desc,
 }
 
+#[unknown_enum_variant]
 #[non_exhaustive]
 #[derive(Clone, Debug, Display, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
@@ -301,13 +299,9 @@ pub enum OrderStatusType {
     Delayed,
     #[serde(alias = "unmatched")]
     Unmatched,
-    /// Unknown order status type from the API (captures the raw value for debugging).
-    #[serde(untagged)]
-    Unknown(String),
 }
 
-crate::impl_unknown_enum_variant!(OrderStatusType, "OrderStatusType");
-
+#[unknown_enum_variant]
 #[non_exhaustive]
 #[derive(
     Clone, Debug, Default, Display, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
@@ -318,25 +312,16 @@ pub enum AssetType {
     #[default]
     Collateral,
     Conditional,
-    /// Unknown asset type from the API (captures the raw value for debugging).
-    #[serde(untagged)]
-    Unknown(String),
 }
 
-crate::impl_unknown_enum_variant!(AssetType, "AssetType");
-
+#[unknown_enum_variant]
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum TraderSide {
     Taker,
     Maker,
-    /// Unknown trader side from the API (captures the raw value for debugging).
-    #[serde(untagged)]
-    Unknown(String),
 }
-
-crate::impl_unknown_enum_variant!(TraderSide, "TraderSide");
 
 /// Represents the maximum number of decimal places for an order's price field
 #[non_exhaustive]

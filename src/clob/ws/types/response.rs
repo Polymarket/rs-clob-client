@@ -10,6 +10,7 @@ use crate::clob::types::{Side, TraderSide};
 use crate::clob::ws::interest::MessageInterest;
 use crate::error::Kind;
 use crate::types::{B256, Decimal};
+use crate::unknown_enum_variant;
 
 /// Top-level WebSocket message wrapper.
 ///
@@ -113,7 +114,6 @@ pub struct PriceChange {
 }
 
 #[non_exhaustive]
-#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 pub struct PriceChangeBatchEntry {
     /// Asset/token identifier
@@ -354,13 +354,11 @@ pub struct TradeMessage {
     pub transaction_hash: Option<B256>,
     /// Whether user was maker or taker
     #[serde(default)]
-    #[serde_as(as = "Option<crate::serde_helpers::WarnOnUnknown<TraderSide>>")]
     pub trader_side: Option<TraderSide>,
 }
 
 /// User order update message (authenticated channel only).
 #[non_exhaustive]
-#[serde_as]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct OrderMessage {
     /// Order identifier
@@ -400,6 +398,7 @@ pub struct OrderMessage {
 }
 
 /// Order status for WebSocket order messages.
+#[unknown_enum_variant]
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -418,12 +417,7 @@ pub enum OrderStatus {
     Update,
     /// Order cancellation in progress
     Cancellation,
-    /// Unknown order status from the API (captures the raw value for debugging).
-    #[serde(untagged)]
-    Unknown(String),
 }
-
-crate::impl_unknown_enum_variant!(OrderStatus, "ws::OrderStatus");
 
 /// Calculated midpoint update (derived from orderbook).
 #[non_exhaustive]

@@ -28,11 +28,14 @@
 //!     .build();
 //! ```
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
+
+use crate::unknown_enum_variant;
 
 pub mod request;
 pub mod response;
 
+#[unknown_enum_variant]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
@@ -41,13 +44,9 @@ pub enum RelatedTagsStatus {
     Active,
     Closed,
     All,
-    /// Unknown status from the API (captures the raw value for debugging).
-    #[serde(untagged)]
-    Unknown(String),
 }
 
-crate::impl_unknown_enum_variant!(RelatedTagsStatus, "RelatedTagsStatus");
-
+#[unknown_enum_variant]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
 #[non_exhaustive]
 pub enum ParentEntityType {
@@ -56,9 +55,4 @@ pub enum ParentEntityType {
     #[serde(rename = "market")]
     #[strum(serialize = "market")]
     Market,
-    /// Unknown entity type from the API (captures the raw value for debugging).
-    #[serde(untagged)]
-    Unknown(String),
 }
-
-crate::impl_unknown_enum_variant!(ParentEntityType, "ParentEntityType");

@@ -3374,6 +3374,7 @@ dependencies = [
  "httpmock",
  "once_cell",
  "phf",
+ "polymarket-macros",
  "rand 0.9.2",
  "reqwest 0.13.1",
  "rust_decimal",
@@ -3395,6 +3396,15 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "uuid",
+]
+
+[[package]]
+name = "polymarket-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.110",
 ]
 
 [[package]]
