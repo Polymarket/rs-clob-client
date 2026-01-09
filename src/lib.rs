@@ -213,7 +213,7 @@ pub trait ToQueryParams: Serialize {
                 #[cfg(feature = "tracing")]
                 tracing::error!("Unable to convert to URL-encoded string {e:?}");
                 #[cfg(not(feature = "tracing"))]
-                let _ = &e;
+                let _: &serde_html_form::ser::Error = e;
             })
             .unwrap_or_default();
 
