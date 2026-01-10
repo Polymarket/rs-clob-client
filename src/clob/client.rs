@@ -506,6 +506,66 @@ impl<S: State> Client<S> {
         self.inner.neg_risk.clear();
     }
 
+    /// Pre-populates the tick size cache for a token, avoiding the HTTP call.
+    ///
+    /// Use this when you already have the tick size data from another source
+    /// (e.g., cached locally or retrieved from a different API).
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use polymarket_client_sdk::clob::{Client, Config, types::TickSize};
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let client = Client::new("https://clob.polymarket.com", Config::default())?;
+    /// client.set_tick_size("token_id_here", TickSize::Hundredth);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn set_tick_size<T: Into<String>>(&self, token_id: T, tick_size: TickSize) {
+        self.inner.tick_sizes.insert(token_id.into(), tick_size);
+    }
+
+    /// Pre-populates the neg risk cache for a token, avoiding the HTTP call.
+    ///
+    /// Use this when you already have the neg risk data from another source
+    /// (e.g., cached locally or retrieved from a different API).
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use polymarket_client_sdk::clob::{Client, Config};
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let client = Client::new("https://clob.polymarket.com", Config::default())?;
+    /// client.set_neg_risk("token_id_here", true);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn set_neg_risk<T: Into<String>>(&self, token_id: T, neg_risk: bool) {
+        self.inner.neg_risk.insert(token_id.into(), neg_risk);
+    }
+
+    /// Pre-populates the fee rate cache for a token, avoiding the HTTP call.
+    ///
+    /// Use this when you already have the fee rate data from another source
+    /// (e.g., cached locally or retrieved from a different API). The fee rate
+    /// is specified in basis points (bps), where 100 bps = 1%.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use polymarket_client_sdk::clob::{Client, Config};
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let client = Client::new("https://clob.polymarket.com", Config::default())?;
+    /// client.set_fee_rate_bps("token_id_here", 10); // 0.10% fee
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn set_fee_rate_bps<T: Into<String>>(&self, token_id: T, fee_rate_bps: u32) {
+        self.inner
+            .fee_rate_bps
+            .insert(token_id.into(), fee_rate_bps);
+    }
+
     /// Checks if the CLOB API is healthy and operational.
     ///
     /// Returns "OK" if the API is functioning properly. This method is useful
