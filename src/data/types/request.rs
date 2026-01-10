@@ -66,6 +66,7 @@ fn validate_bound(
 ///     .sort_direction(SortDirection::Desc)
 ///     .build();
 /// ```
+#[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
@@ -73,6 +74,16 @@ pub struct PositionsRequest {
     /// User address (required).
     #[builder(into)]
     pub user: Address,
+    /// Comma-separated list of condition IDs. Mutually exclusive with eventId. 0x-prefixed 64-hex string
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator,B256>")]
+    #[builder(default)]
+    #[serde(rename = "market", skip_serializing_if = "Vec::is_empty")]
+    pub markets: Vec<B256>,
+    /// Comma-separated list of event IDs. Mutually exclusive with market. Required range: x >= 1
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator,i32>")]
+    #[builder(default)]
+    #[serde(rename = "eventId", skip_serializing_if = "Vec::is_empty")]
+    pub event_id: Vec<i32>,
     /// Filter by markets or events. Mutually exclusive options.
     #[serde(flatten, skip_serializing_if = "filter_is_none_or_empty")]
     pub filter: Option<MarketFilter>,
@@ -137,6 +148,7 @@ fn filter_is_none_or_empty(f: &Option<MarketFilter>) -> bool {
 ///     .trade_filter(TradeFilter::cash(dec!(100)).unwrap())
 ///     .build();
 /// ```
+#[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
 #[non_exhaustive]
@@ -161,6 +173,16 @@ pub struct TradesRequest {
     pub trade_filter: Option<TradeFilter>,
     /// Filter by trade side (BUY or SELL).
     pub side: Option<Side>,
+    /// Comma-separated list of condition IDs. Mutually exclusive with eventId. 0x-prefixed 64-hex string
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator,B256>")]
+    #[builder(default)]
+    #[serde(rename = "market", skip_serializing_if = "Vec::is_empty")]
+    pub markets: Vec<B256>,
+    /// Comma-separated list of event IDs. Mutually exclusive with market. Required range: x >= 1
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator,i32>")]
+    #[builder(default)]
+    #[serde(rename = "eventId", skip_serializing_if = "Vec::is_empty")]
+    pub event_id: Vec<i32>,
 }
 
 /// Request parameters for the `/activity` endpoint.
@@ -229,6 +251,16 @@ pub struct ActivityRequest {
     pub sort_direction: Option<SortDirection>,
     /// Filter by trade side (only applies to TRADE activities).
     pub side: Option<Side>,
+    /// Comma-separated list of condition IDs. Mutually exclusive with eventId. 0x-prefixed 64-hex string
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator,B256>")]
+    #[builder(default)]
+    #[serde(rename = "market", skip_serializing_if = "Vec::is_empty")]
+    pub markets: Vec<B256>,
+    /// Comma-separated list of event IDs. Mutually exclusive with market. Required range: x >= 1
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator,i32>")]
+    #[builder(default)]
+    #[serde(rename = "eventId", skip_serializing_if = "Vec::is_empty")]
+    pub event_id: Vec<i32>,
 }
 
 /// Request parameters for the `/holders` endpoint.
@@ -379,6 +411,7 @@ pub struct LiveVolumeRequest {
 ///     .sort_by(ClosedPositionSortBy::Timestamp)
 ///     .build();
 /// ```
+#[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
 #[non_exhaustive]
@@ -404,6 +437,16 @@ pub struct ClosedPositionsRequest {
     /// Sort direction (default: DESC).
     #[serde(rename = "sortDirection")]
     pub sort_direction: Option<SortDirection>,
+    /// Comma-separated list of condition IDs. Mutually exclusive with eventId. 0x-prefixed 64-hex string
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator,B256>")]
+    #[builder(default)]
+    #[serde(rename = "market", skip_serializing_if = "Vec::is_empty")]
+    pub markets: Vec<B256>,
+    /// Comma-separated list of event IDs. Mutually exclusive with market. Required range: x >= 1
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator,i32>")]
+    #[builder(default)]
+    #[serde(rename = "eventId", skip_serializing_if = "Vec::is_empty")]
+    pub event_id: Vec<i32>,
 }
 
 /// Request parameters for the `/v1/builders/leaderboard` endpoint.

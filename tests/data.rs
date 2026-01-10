@@ -42,6 +42,7 @@ mod health {
 }
 
 mod positions {
+    use alloy::primitives::b256;
     use httpmock::{Method::GET, MockServer};
     use polymarket_client_sdk::data::{Client, types::request::PositionsRequest};
     use reqwest::StatusCode;
@@ -126,6 +127,61 @@ mod positions {
             .limit(10)?
             .offset(5)?
             .redeemable(true)
+            .build();
+
+        let response = client.positions(&request).await?;
+
+        assert!(response.is_empty());
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn positions_with_markets_should_succeed() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = Client::new(&server.base_url())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(GET)
+                .path("/positions")
+                .query_param("user", "0x1234567890abcdef1234567890abcdef12345678")
+                .query_param("market", "0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917,0xaa22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917");
+            then.status(StatusCode::OK).json_body(json!([]));
+        });
+
+        let request = PositionsRequest::builder()
+            .user(test_user())
+            .markets(vec![
+                b256!("dd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917"),
+                b256!("aa22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917"),
+            ])
+            .build();
+
+        let response = client.positions(&request).await?;
+
+        assert!(response.is_empty());
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn positions_with_event_id_should_succeed() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = Client::new(&server.base_url())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(GET)
+                .path("/positions")
+                .query_param("user", "0x1234567890abcdef1234567890abcdef12345678")
+                .query_param("eventId", "1,2,3");
+            then.status(StatusCode::OK).json_body(json!([]));
+        });
+
+        let request = PositionsRequest::builder()
+            .user(test_user())
+            .event_id(vec![1, 2, 3])
             .build();
 
         let response = client.positions(&request).await?;
