@@ -516,13 +516,15 @@ impl<S: State> Client<S> {
     /// ```no_run
     /// # use polymarket_client_sdk::clob::{Client, Config, types::TickSize};
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use polymarket_client_sdk::types::U256;
+    ///
     /// let client = Client::new("https://clob.polymarket.com", Config::default())?;
-    /// client.set_tick_size("token_id_here", TickSize::Hundredth);
+    /// client.set_tick_size(U256::ZERO, TickSize::Hundredth);
     /// # Ok(())
     /// # }
     /// ```
-    pub fn set_tick_size<T: Into<String>>(&self, token_id: T, tick_size: TickSize) {
-        self.inner.tick_sizes.insert(token_id.into(), tick_size);
+    pub fn set_tick_size(&self, token_id: U256, tick_size: TickSize) {
+        self.inner.tick_sizes.insert(token_id, tick_size);
     }
 
     /// Pre-populates the neg risk cache for a token, avoiding the HTTP call.
@@ -535,13 +537,15 @@ impl<S: State> Client<S> {
     /// ```no_run
     /// # use polymarket_client_sdk::clob::{Client, Config};
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use polymarket_client_sdk::types::U256;
+    ///
     /// let client = Client::new("https://clob.polymarket.com", Config::default())?;
-    /// client.set_neg_risk("token_id_here", true);
+    /// client.set_neg_risk(U256::ZERO, true);
     /// # Ok(())
     /// # }
     /// ```
-    pub fn set_neg_risk<T: Into<String>>(&self, token_id: T, neg_risk: bool) {
-        self.inner.neg_risk.insert(token_id.into(), neg_risk);
+    pub fn set_neg_risk(&self, token_id: U256, neg_risk: bool) {
+        self.inner.neg_risk.insert(token_id, neg_risk);
     }
 
     /// Pre-populates the fee rate cache for a token, avoiding the HTTP call.
@@ -555,15 +559,15 @@ impl<S: State> Client<S> {
     /// ```no_run
     /// # use polymarket_client_sdk::clob::{Client, Config};
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use polymarket_client_sdk::types::U256;
+    ///
     /// let client = Client::new("https://clob.polymarket.com", Config::default())?;
-    /// client.set_fee_rate_bps("token_id_here", 10); // 0.10% fee
+    /// client.set_fee_rate_bps(U256::ZERO, 10); // 0.10% fee
     /// # Ok(())
     /// # }
     /// ```
-    pub fn set_fee_rate_bps<T: Into<String>>(&self, token_id: T, fee_rate_bps: u32) {
-        self.inner
-            .fee_rate_bps
-            .insert(token_id.into(), fee_rate_bps);
+    pub fn set_fee_rate_bps(&self, token_id: U256, fee_rate_bps: u32) {
+        self.inner.fee_rate_bps.insert(token_id, fee_rate_bps);
     }
 
     /// Checks if the CLOB API is healthy and operational.
