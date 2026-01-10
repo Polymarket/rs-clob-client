@@ -448,6 +448,122 @@ mod unauthenticated {
     }
 
     #[tokio::test]
+    async fn set_tick_size_should_prepopulate_cache() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = Client::new(&server.base_url(), Config::default())?;
+
+        // Pre-populate the cache - no HTTP call should be made
+        client.set_tick_size("token123", TickSize::Hundredth);
+
+        // This should return the cached value without making an HTTP request
+        let response = client.tick_size("token123").await?;
+
+        let expected = TickSizeResponse::builder()
+            .minimum_tick_size(TickSize::Hundredth)
+            .build();
+
+        assert_eq!(response, expected);
+        // No mock was set up, so if an HTTP call was made, this test would fail
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn set_neg_risk_should_prepopulate_cache() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = Client::new(&server.base_url(), Config::default())?;
+
+        // Pre-populate the cache
+        client.set_neg_risk("token456", true);
+
+        // This should return the cached value without making an HTTP request
+        let response = client.neg_risk("token456").await?;
+
+        let expected = NegRiskResponse::builder().neg_risk(true).build();
+
+        assert_eq!(response, expected);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn set_fee_rate_bps_should_prepopulate_cache() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = Client::new(&server.base_url(), Config::default())?;
+
+        // Pre-populate the cache with 50 basis points (0.50%)
+        client.set_fee_rate_bps("token789", 50);
+
+        // This should return the cached value without making an HTTP request
+        let response = client.fee_rate_bps("token789").await?;
+
+        let expected = FeeRateResponse::builder().base_fee(50).build();
+
+        assert_eq!(response, expected);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn invalidate_caches_should_clear_prepopulated_values() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = Client::new(&server.base_url(), Config::default())?;
+
+        // Pre-populate the cache
+        client.set_tick_size("token_inv", TickSize::Tenth);
+
+        // Verify the cache works
+        let response = client.tick_size("token_inv").await?;
+        assert_eq!(response.minimum_tick_size, TickSize::Tenth);
+
+        // Invalidate the cache
+        client.invalidate_internal_caches();
+
+        // Now set up a mock for the HTTP call that will be made after cache invalidation
+        let mock = server.mock(|when, then| {
+            when.method(httpmock::Method::GET)
+                .path("/tick-size")
+                .query_param("token_id", "token_inv");
+            then.status(StatusCode::OK)
+                .json_body(json!({ "minimum_tick_size": "0.001" }));
+        });
+
+        // After invalidation, this should make an HTTP call
+        let response = client.tick_size("token_inv").await?;
+
+        assert_eq!(response.minimum_tick_size, TickSize::Thousandth);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn set_cache_should_accept_string_types() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = Client::new(&server.base_url(), Config::default())?;
+
+        // Test with &str
+        client.set_tick_size("str_token", TickSize::Tenth);
+
+        // Test with String
+        client.set_neg_risk(String::from("string_token"), false);
+
+        // Test with &String
+        let token_id = String::from("ref_string_token");
+        client.set_fee_rate_bps(&token_id, 25);
+
+        // Verify all three work
+        assert_eq!(
+            client.tick_size("str_token").await?.minimum_tick_size,
+            TickSize::Tenth
+        );
+        assert!(!client.neg_risk("string_token").await?.neg_risk);
+        assert_eq!(client.fee_rate_bps("ref_string_token").await?.base_fee, 25);
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn order_book_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
