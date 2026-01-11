@@ -178,7 +178,7 @@ impl Serialize for Asset {
     {
         match self {
             Asset::Usdc => serializer.serialize_str("0"),
-            Asset::Asset(a) => a.serialize(serializer),
+            Asset::Asset(a) => serializer.collect_str(a),
         }
     }
 }
