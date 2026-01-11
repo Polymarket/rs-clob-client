@@ -1,9 +1,11 @@
 //! Example of subscribing to real-time orderbook updates via WebSocket.
 #![allow(clippy::print_stdout, reason = "Examples are okay to print to stdout")]
 #![allow(clippy::print_stderr, reason = "Examples are okay to print to stderr")]
+use std::str::FromStr as _;
 
 use futures::StreamExt as _;
 use polymarket_client_sdk::clob::ws::Client;
+use polymarket_client_sdk::types::U256;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -14,8 +16,12 @@ async fn main() -> anyhow::Result<()> {
 
     // Subscribe to orderbook updates
     let asset_ids = vec![
-        "92703761682322480664976766247614127878023988651992837287050266308961660624165".to_owned(),
-        "34551606549875928972193520396544368029176529083448203019529657908155427866742".to_owned(),
+        U256::from_str(
+            "92703761682322480664976766247614127878023988651992837287050266308961660624165",
+        )?,
+        U256::from_str(
+            "34551606549875928972193520396544368029176529083448203019529657908155427866742",
+        )?,
     ];
 
     let stream = client.subscribe_orderbook(asset_ids)?;
