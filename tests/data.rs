@@ -1,6 +1,6 @@
 #![cfg(feature = "data")]
 
-use polymarket_client_sdk::types::{Address, B256, address, b256};
+use polymarket_client_sdk::types::{Address, B256, U256, address, b256};
 
 const TEST_USER: Address = address!("1234567890abcdef1234567890abcdef12345678");
 const TEST_CONDITION_ID: B256 =
@@ -261,13 +261,15 @@ mod activity {
 }
 
 mod holders {
+    use std::str::FromStr as _;
+
     use httpmock::{Method::GET, MockServer};
     use polymarket_client_sdk::data::{Client, types::request::HoldersRequest};
     use reqwest::StatusCode;
     use rust_decimal_macros::dec;
     use serde_json::json;
 
-    use super::{address, test_condition_id, test_user};
+    use super::{U256, address, test_condition_id, test_user};
 
     #[tokio::test]
     async fn holders_should_succeed() -> anyhow::Result<()> {
@@ -318,7 +320,7 @@ mod holders {
         assert_eq!(response.len(), 1);
         assert_eq!(
             response[0].token,
-            "0x1111111111111111111111111111111111111111111111111111111111111111"
+            U256::from_str("0x1111111111111111111111111111111111111111111111111111111111111111")?
         );
         let holders = &response[0].holders;
         assert_eq!(holders.len(), 2);
@@ -407,7 +409,7 @@ mod closed_positions {
                     "outcomeIndex": 0,
                     "oppositeOutcome": "No",
                     "oppositeAsset": "0x1111111111111111111111111111111111111111111111111111111111111111",
-                    "endDate": "2025-12-31"
+                    "endDate": "2025-12-31T00:00:00Z",
                 }
             ]));
         });
@@ -477,11 +479,11 @@ mod leaderboard {
         let response = client.leaderboard(&request).await?;
 
         assert_eq!(response.len(), 2);
-        assert_eq!(response[0].rank, "1");
+        assert_eq!(response[0].rank, 1);
         assert_eq!(response[0].proxy_wallet, test_user());
         assert_eq!(response[0].pnl, dec!(150_000.0));
         assert_eq!(response[0].verified_badge, Some(true));
-        assert_eq!(response[1].rank, "2");
+        assert_eq!(response[1].rank, 2);
         assert_eq!(response[1].proxy_wallet, second_user);
         mock.assert();
 
@@ -732,7 +734,7 @@ mod builder_leaderboard {
         let response = client.builder_leaderboard(&request).await?;
 
         assert_eq!(response.len(), 2);
-        assert_eq!(response[0].rank, "1");
+        assert_eq!(response[0].rank, 1);
         assert_eq!(response[0].builder, "TopBuilder");
         assert_eq!(response[0].volume, dec!(5_000_000.0));
         assert_eq!(response[0].active_users, 1500);
@@ -770,6 +772,9 @@ mod builder_leaderboard {
 }
 
 mod builder_volume {
+    use std::str::FromStr as _;
+
+    use chrono::{DateTime, Utc};
     use httpmock::{Method::GET, MockServer};
     use polymarket_client_sdk::data::{
         Client, types::TimePeriod, types::request::BuilderVolumeRequest,
@@ -812,7 +817,10 @@ mod builder_volume {
         let response = client.builder_volume(&request).await?;
 
         assert_eq!(response.len(), 2);
-        assert_eq!(response[0].dt, "2025-01-15T00:00:00Z");
+        assert_eq!(
+            response[0].dt,
+            DateTime::<Utc>::from_str("2025-01-15T00:00:00Z")?
+        );
         assert_eq!(response[0].builder, "Builder1");
         assert_eq!(response[0].volume, dec!(100_000.0));
         assert!(response[0].verified);
