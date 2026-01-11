@@ -8,10 +8,12 @@
 #![allow(clippy::print_stderr, reason = "Examples are okay to print to stderr")]
 #![allow(clippy::unwrap_used, reason = "Examples use unwrap for brevity")]
 
+use std::str::FromStr as _;
 use std::time::Duration;
 
 use futures::StreamExt as _;
 use polymarket_client_sdk::clob::ws::Client;
+use polymarket_client_sdk::types::U256;
 use tokio::time::timeout;
 
 #[tokio::main]
@@ -32,9 +34,9 @@ async fn main() -> anyhow::Result<()> {
     println!("(Run with RUST_LOG=debug and --features tracing to see wire messages)\n");
 
     // Asset IDs to subscribe to
-    let asset_ids = vec![
-        "92703761682322480664976766247614127878023988651992837287050266308961660624165".to_owned(),
-    ];
+    let asset_ids = vec![U256::from_str(
+        "92703761682322480664976766247614127878023988651992837287050266308961660624165",
+    )?];
 
     // === FIRST SUBSCRIPTION ===
     println!("=== [1] First subscription ===");

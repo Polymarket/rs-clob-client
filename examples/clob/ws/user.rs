@@ -7,7 +7,7 @@ use std::str::FromStr as _;
 use futures::StreamExt as _;
 use polymarket_client_sdk::auth::Credentials;
 use polymarket_client_sdk::clob::ws::{Client, WsMessage};
-use polymarket_client_sdk::types::Address;
+use polymarket_client_sdk::types::{Address, B256};
 use uuid::Uuid;
 
 #[tokio::main]
@@ -26,7 +26,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Provide the specific market IDs you care about, or leave empty to receive all events.
     // let markets = vec!["0xe93c89c41d1bb08d3bb40066d8565df301a696563b2542256e6e8bbbb1ec490d".to_owned()];
-    let markets: Vec<String> = Vec::new();
+    let markets: Vec<B256> = Vec::new();
     let mut stream = std::pin::pin!(client.subscribe_user_events(markets)?);
 
     println!("Subscribed to user ws channel.");
@@ -50,7 +50,7 @@ async fn main() -> anyhow::Result<()> {
                 println!("\n--- Trade ---");
                 println!("Trade ID: {}", trade.id);
                 println!("Market: {}", trade.market);
-                println!("Status: {}", trade.status);
+                println!("Status: {:?}", trade.status);
                 println!(
                     "Side: {:?} Size: {} Price: {}",
                     trade.side, trade.size, trade.price
