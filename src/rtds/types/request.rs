@@ -6,7 +6,6 @@ use super::response::CommentType;
 use crate::auth::Credentials;
 
 /// RTDS subscription request message.
-#[non_exhaustive]
 #[derive(Clone, Debug, Serialize)]
 pub struct SubscriptionRequest {
     /// Action type ("subscribe" or "unsubscribe")
@@ -36,7 +35,6 @@ impl SubscriptionRequest {
 }
 
 /// Subscription action type.
-#[non_exhaustive]
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SubscriptionAction {
@@ -53,7 +51,6 @@ pub enum SubscriptionAction {
 /// When serialized, this struct exposes sensitive credentials (`clob_auth`) in plaintext.
 /// Ensure subscription requests are only sent over secure WebSocket connections (`wss://`)
 /// and never logged or exposed in error messages.
-#[non_exhaustive]
 #[derive(Clone, Debug)]
 pub struct Subscription {
     /// Topic name (e.g., `crypto_prices`, `comments`)

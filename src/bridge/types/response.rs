@@ -5,7 +5,6 @@ use serde_with::{DisplayFromStr, serde_as};
 use crate::types::{Address, ChainId, Decimal};
 
 /// Response containing deposit addresses for different blockchain networks.
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, PartialEq, Builder)]
 pub struct DepositResponse {
     /// Deposit addresses for different blockchain networks.
@@ -15,7 +14,6 @@ pub struct DepositResponse {
 }
 
 /// Deposit addresses for different blockchain networks.
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, PartialEq, Builder)]
 #[builder(on(String, into))]
 pub struct DepositAddresses {
@@ -28,7 +26,6 @@ pub struct DepositAddresses {
 }
 
 /// Response containing all supported assets for deposits.
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, PartialEq, Builder)]
 #[serde(rename_all = "camelCase")]
 pub struct SupportedAssetsResponse {
@@ -39,7 +36,6 @@ pub struct SupportedAssetsResponse {
 }
 
 /// A supported asset with chain and token information.
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, PartialEq, Builder)]
 #[builder(on(String, into))]
@@ -58,7 +54,6 @@ pub struct SupportedAsset {
 }
 
 /// Token information for a supported asset.
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, PartialEq, Builder)]
 #[builder(on(String, into))]
 pub struct Token {

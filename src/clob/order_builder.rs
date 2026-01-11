@@ -23,12 +23,10 @@ pub(crate) const USDC_DECIMALS: u32 = 6;
 pub(crate) const LOT_SIZE_SCALE: u32 = 2;
 
 /// Placeholder type for compile-time checks on limit order builders
-#[non_exhaustive]
 #[derive(Debug)]
 pub struct Limit;
 
 /// Placeholder type for compile-time checks on market order builders
-#[non_exhaustive]
 #[derive(Debug)]
 pub struct Market;
 
@@ -226,7 +224,7 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
                 (size * price).trunc_with_scale(decimals + LOT_SIZE_SCALE),
                 size,
             ),
-            side => return Err(Error::validation(format!("Invalid side: {side}"))),
+            side @ Side::Unknown => return Err(Error::validation(format!("Invalid side: {side}"))),
         };
 
         let salt = to_ieee_754_int((self.salt_generator)());
@@ -314,7 +312,7 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
                 }
             },
 
-            side => return Err(Error::validation(format!("Invalid side: {side}"))),
+            side @ Side::Unknown => return Err(Error::validation(format!("Invalid side: {side}"))),
         };
 
         let first = levels.first().ok_or(Error::validation(format!(

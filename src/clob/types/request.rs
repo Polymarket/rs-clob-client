@@ -20,7 +20,6 @@ use crate::types::U256;
 use crate::types::{Address, B256};
 
 #[serde_as]
-#[non_exhaustive]
 #[derive(Debug, Serialize, Builder)]
 #[builder(on(String, into))]
 pub struct MidpointRequest {
@@ -29,7 +28,6 @@ pub struct MidpointRequest {
 }
 
 #[serde_as]
-#[non_exhaustive]
 #[derive(Debug, Serialize, Builder)]
 #[builder(on(String, into))]
 pub struct PriceRequest {
@@ -38,7 +36,6 @@ pub struct PriceRequest {
     pub side: Side,
 }
 
-#[non_exhaustive]
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Builder)]
@@ -49,7 +46,6 @@ pub struct SpreadRequest {
     pub side: Option<Side>,
 }
 
-#[non_exhaustive]
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Builder)]
@@ -60,7 +56,6 @@ pub struct OrderBookSummaryRequest {
     pub side: Option<Side>,
 }
 
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Serialize, Builder)]
 #[builder(on(String, into))]
@@ -69,7 +64,6 @@ pub struct LastTradePriceRequest {
     pub token_id: U256,
 }
 
-#[non_exhaustive]
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Builder)]
 #[builder(on(String, into))]
@@ -86,7 +80,6 @@ pub struct PriceHistoryRequest {
     pub fidelity: Option<u32>,
 }
 
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Default, Serialize, Builder)]
 #[builder(on(String, into))]
@@ -97,7 +90,6 @@ pub struct CancelMarketOrderRequest {
     pub asset_id: Option<U256>,
 }
 
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Default, Clone, Builder, Serialize)]
 #[builder(on(String, into))]
@@ -115,7 +107,6 @@ pub struct TradesRequest {
     pub after: Option<i64>,
 }
 
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Default, Serialize, Builder)]
 #[builder(on(String, into))]
@@ -128,7 +119,6 @@ pub struct OrdersRequest {
     pub asset_id: Option<U256>,
 }
 
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Default, Serialize, Builder)]
 pub struct DeleteNotificationsRequest {
@@ -138,7 +128,6 @@ pub struct DeleteNotificationsRequest {
     pub notification_ids: Vec<String>,
 }
 
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Default, Clone, Builder, Serialize)]
 #[builder(on(String, into))]
@@ -151,7 +140,6 @@ pub struct BalanceAllowanceRequest {
 
 pub type UpdateBalanceAllowanceRequest = BalanceAllowanceRequest;
 
-#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Builder)]
 #[builder(on(String, into))]
 pub struct UserRewardsEarningRequest {
@@ -168,7 +156,6 @@ pub struct UserRewardsEarningRequest {
 ///
 /// Creates an RFQ Request to buy or sell outcome tokens.
 #[cfg(feature = "rfq")]
-#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[builder(on(String, into))]
@@ -187,7 +174,6 @@ pub struct CreateRfqRequestRequest {
 
 /// Request body for canceling an RFQ request.
 #[cfg(feature = "rfq")]
-#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[builder(on(String, into))]
@@ -198,7 +184,6 @@ pub struct CancelRfqRequestRequest {
 
 /// Query parameters for getting RFQ requests.
 #[cfg(feature = "rfq")]
-#[non_exhaustive]
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Builder)]
@@ -240,7 +225,6 @@ pub struct RfqRequestsRequest {
 
 /// Request body for creating an RFQ quote.
 #[cfg(feature = "rfq")]
-#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[builder(on(String, into))]
@@ -261,7 +245,6 @@ pub struct CreateRfqQuoteRequest {
 
 /// Request body for canceling an RFQ quote.
 #[cfg(feature = "rfq")]
-#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[builder(on(String, into))]
@@ -272,7 +255,6 @@ pub struct CancelRfqQuoteRequest {
 
 /// Query parameters for getting RFQ quotes.
 #[cfg(feature = "rfq")]
-#[non_exhaustive]
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Builder)]
@@ -320,7 +302,6 @@ pub struct RfqQuotesRequest {
 ///
 /// This creates an Order that the Requester must sign.
 #[cfg(feature = "rfq")]
-#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[builder(on(String, into))]
@@ -361,7 +342,6 @@ pub struct AcceptRfqQuoteRequest {
 ///
 /// Quoter approves an RFQ order during the last look window.
 #[cfg(feature = "rfq")]
-#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[builder(on(String, into))]

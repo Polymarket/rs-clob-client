@@ -3,7 +3,6 @@ use serde::Serialize;
 use crate::ws::WithCredentials;
 
 /// Subscription request message sent to the WebSocket server.
-#[non_exhaustive]
 #[derive(Clone, Debug, Serialize)]
 pub struct SubscriptionRequest {
     /// Subscription type ("market" or "user")

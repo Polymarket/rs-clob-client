@@ -19,7 +19,6 @@ use crate::auth::Credentials;
 use crate::ws::ConnectionManager;
 use crate::ws::connection::ConnectionState;
 
-#[non_exhaustive]
 #[derive(Clone)]
 pub struct SimpleParser;
 
@@ -30,7 +29,6 @@ impl crate::ws::traits::MessageParser<RtdsMessage> for SimpleParser {
 }
 
 /// Unique identifier for a topic/type subscription combination.
-#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TopicType {
     /// Topic name (e.g., `crypto_prices`, `comments`)
@@ -48,7 +46,6 @@ impl TopicType {
 }
 
 /// Information about an active subscription.
-#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct SubscriptionInfo {
     /// Topic and message type this subscription targets

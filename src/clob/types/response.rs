@@ -21,71 +21,60 @@ use crate::clob::types::{OrderStatusType, OrderType, Side, TickSize, TraderSide}
 use crate::serde_helpers::StringFromAny;
 use crate::types::{Address, B256, Decimal, U256};
 
-#[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
 pub struct MidpointResponse {
     pub mid: Decimal,
 }
 
-#[non_exhaustive]
 #[derive(Clone, Debug, Default, Deserialize, Builder, PartialEq)]
 #[serde(transparent)]
 pub struct MidpointsResponse {
     pub midpoints: HashMap<U256, Decimal>,
 }
 
-#[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
 pub struct PriceResponse {
     pub price: Decimal,
 }
 
-#[non_exhaustive]
 #[derive(Clone, Debug, Default, Deserialize, Builder, PartialEq)]
 #[serde(transparent)]
 pub struct PricesResponse {
     pub prices: Option<HashMap<U256, HashMap<Side, Decimal>>>,
 }
 
-#[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
 pub struct SpreadResponse {
     pub spread: Decimal,
 }
 
-#[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
 pub struct SpreadsResponse {
     pub spreads: Option<HashMap<U256, Decimal>>,
 }
 
-#[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
 pub struct PriceHistoryResponse {
     pub history: Vec<PricePoint>,
 }
 
-#[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
 pub struct PricePoint {
     pub t: i64,
     pub p: Decimal,
 }
 
-#[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
 #[builder(on(TickSize, into))]
 pub struct TickSizeResponse {
     pub minimum_tick_size: TickSize,
 }
 
-#[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
 pub struct NegRiskResponse {
     pub neg_risk: bool,
 }
 
-#[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
 pub struct FeeRateResponse {
     pub base_fee: u32,
@@ -95,7 +84,6 @@ pub struct FeeRateResponse {
 ///
 /// This indicates whether the requesting IP address is blocked from placing orders
 /// due to geographic restrictions.
-#[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
 pub struct GeoblockResponse {
     /// Whether the user is blocked from placing orders
@@ -108,7 +96,6 @@ pub struct GeoblockResponse {
     pub region: String,
 }
 
-#[non_exhaustive]
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
@@ -146,21 +133,18 @@ impl OrderBookSummaryResponse {
     }
 }
 
-#[non_exhaustive]
 #[derive(Clone, Debug, Serialize, Deserialize, Hash, Builder, PartialEq)]
 pub struct OrderSummary {
     pub price: Decimal,
     pub size: Decimal,
 }
 
-#[non_exhaustive]
 #[derive(Debug, Deserialize, Builder, PartialEq)]
 pub struct LastTradePriceResponse {
     pub price: Decimal,
     pub side: Side,
 }
 
-#[non_exhaustive]
 #[derive(Debug, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct LastTradesPricesResponse {
@@ -173,7 +157,6 @@ pub struct LastTradesPricesResponse {
     clippy::struct_excessive_bools,
     reason = "The current API has these fields, so we have to capture this"
 )]
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Deserialize, Clone, Builder, PartialEq)]
 #[builder(on(String, into))]
@@ -228,7 +211,6 @@ pub struct MarketResponse {
     pub tags: Vec<String>,
 }
 
-#[non_exhaustive]
 #[derive(Debug, Serialize, Deserialize, Clone, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct Token {
@@ -243,7 +225,6 @@ pub struct Token {
     clippy::struct_excessive_bools,
     reason = "The current API has these fields"
 )]
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Default, Deserialize, Clone, Builder, PartialEq)]
 #[builder(on(String, into))]
@@ -262,20 +243,17 @@ pub struct SimplifiedMarketResponse {
     pub accepting_orders: bool,
 }
 
-#[non_exhaustive]
 #[derive(Clone, Debug, Default, Deserialize, Builder, PartialEq)]
 pub struct ApiKeysResponse {
     #[serde(rename = "apiKeys")]
     keys: Option<Vec<ApiKey>>,
 }
 
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 pub struct BanStatusResponse {
     pub closed_only: bool,
 }
 
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -315,7 +293,6 @@ where
     }
 }
 
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
@@ -342,7 +319,6 @@ pub struct OpenOrderResponse {
     pub order_type: OrderType,
 }
 
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Default, Deserialize, Builder, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -358,7 +334,6 @@ pub struct CancelOrdersResponse {
     pub not_canceled: HashMap<String, String>,
 }
 
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
@@ -391,7 +366,6 @@ pub struct TradeResponse {
     pub error_msg: Option<String>,
 }
 
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 pub struct NotificationResponse {
     pub r#type: u32,
@@ -399,7 +373,6 @@ pub struct NotificationResponse {
     pub payload: NotificationPayload,
 }
 
-#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct NotificationPayload {
@@ -432,7 +405,6 @@ pub struct NotificationPayload {
     pub order_type: OrderType,
 }
 
-#[non_exhaustive]
 #[allow(
     clippy::allow_attributes,
     reason = "Bon will generate code that has an allow attribute for some reason on the `allowances` field"
@@ -449,7 +421,6 @@ pub struct BalanceAllowanceResponse {
     pub allowances: HashMap<Address, String>,
 }
 
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 pub struct OrderScoringResponse {
     pub scoring: bool,
@@ -457,21 +428,18 @@ pub struct OrderScoringResponse {
 
 pub type OrdersScoringResponse = HashMap<String, bool>;
 
-#[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
 pub struct PriceSideResponse {
     pub side: Side,
     pub price: Decimal,
 }
 
-#[non_exhaustive]
 #[derive(Debug, Serialize, Deserialize, Clone, Builder, PartialEq)]
 pub struct RewardRate {
     pub asset_address: Address,
     pub rewards_daily_rate: Decimal,
 }
 
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Default, Clone, Serialize, Deserialize, Builder, PartialEq)]
 pub struct Rewards {
@@ -483,7 +451,6 @@ pub struct Rewards {
     pub max_spread: Decimal,
 }
 
-#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct UserInfo {
@@ -494,7 +461,6 @@ pub struct UserInfo {
     pub pseudonym: String,
 }
 
-#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct MakerOrder {
@@ -509,7 +475,6 @@ pub struct MakerOrder {
     pub side: Side,
 }
 
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct UserEarningResponse {
@@ -522,7 +487,6 @@ pub struct UserEarningResponse {
     pub asset_rate: Decimal,
 }
 
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct TotalUserEarningResponse {
@@ -533,7 +497,6 @@ pub struct TotalUserEarningResponse {
     pub asset_rate: Decimal,
 }
 
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
@@ -560,7 +523,6 @@ pub struct UserRewardsEarningResponse {
     pub earnings: Vec<Earning>,
 }
 
-#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
 pub struct RewardsConfig {
     pub asset_address: Address,
@@ -570,7 +532,6 @@ pub struct RewardsConfig {
     pub total_rewards: Decimal,
 }
 
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
@@ -585,7 +546,6 @@ pub struct MarketRewardsConfig {
     pub total_days: Decimal,
 }
 
-#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize, Builder, PartialEq)]
 pub struct Earning {
     pub asset_address: Address,
@@ -595,7 +555,6 @@ pub struct Earning {
 
 pub type RewardsPercentagesResponse = HashMap<String, Decimal>;
 
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
@@ -609,7 +568,6 @@ pub struct CurrentRewardResponse {
     pub rewards_min_size: Decimal,
 }
 
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
@@ -631,7 +589,6 @@ pub struct MarketRewardResponse {
     pub rewards_config: Vec<MarketRewardsConfig>,
 }
 
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -643,7 +600,6 @@ pub struct BuilderApiKeyResponse {
     pub revoked_at: Option<DateTime<Utc>>,
 }
 
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -681,7 +637,6 @@ pub struct BuilderTradeResponse {
     pub updated_at: Option<DateTime<Utc>>,
 }
 
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct HeartbeatResponse {
@@ -691,7 +646,6 @@ pub struct HeartbeatResponse {
 
 /// Generic wrapper structure that holds inner `data` with metadata designating how to query for the
 /// next page.
-#[non_exhaustive]
 #[derive(Clone, Debug, Serialize, Deserialize, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct Page<T> {
@@ -706,7 +660,6 @@ pub struct Page<T> {
 
 /// Response from creating an RFQ request.
 #[cfg(feature = "rfq")]
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[serde(rename_all = "camelCase")]
 #[builder(on(String, into))]
@@ -719,7 +672,6 @@ pub struct CreateRfqRequestResponse {
 
 /// Response from creating an RFQ quote.
 #[cfg(feature = "rfq")]
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[serde(rename_all = "camelCase")]
 #[builder(on(String, into))]
@@ -732,13 +684,11 @@ pub struct CreateRfqQuoteResponse {
 ///
 /// Returns "OK" as text, represented as unit type for deserialization.
 #[cfg(feature = "rfq")]
-#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AcceptRfqQuoteResponse;
 
 /// Response from approving an RFQ order.
 #[cfg(feature = "rfq")]
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[serde(rename_all = "camelCase")]
 #[builder(on(String, into))]
@@ -749,7 +699,6 @@ pub struct ApproveRfqOrderResponse {
 
 /// An RFQ request in the system.
 #[cfg(feature = "rfq")]
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[serde(rename_all = "camelCase")]
 #[builder(on(String, into))]
@@ -780,7 +729,6 @@ pub struct RfqRequest {
 
 /// An RFQ quote in the system.
 #[cfg(feature = "rfq")]
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Builder, PartialEq)]
 #[serde(rename_all = "camelCase")]
 #[builder(on(String, into))]

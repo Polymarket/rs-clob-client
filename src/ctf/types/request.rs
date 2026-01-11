@@ -13,7 +13,6 @@ pub const BINARY_PARTITION: [u64; 2] = [1, 2];
 /// Request to calculate a condition ID.
 ///
 /// The condition ID is derived from the oracle address, question hash, and number of outcome slots.
-#[non_exhaustive]
 #[derive(Debug, Clone, Builder)]
 pub struct ConditionIdRequest {
     /// The oracle address that will report the outcome
@@ -27,7 +26,6 @@ pub struct ConditionIdRequest {
 /// Request to calculate a collection ID.
 ///
 /// Creates collection identifiers using parent collection, condition ID, and index set.
-#[non_exhaustive]
 #[derive(Debug, Clone, Builder)]
 pub struct CollectionIdRequest {
     /// Parent collection ID (typically zero for top-level positions)
@@ -41,7 +39,6 @@ pub struct CollectionIdRequest {
 /// Request to calculate a position ID.
 ///
 /// Generates final ERC1155 token IDs from collateral token and collection ID.
-#[non_exhaustive]
 #[derive(Debug, Clone, Builder)]
 pub struct PositionIdRequest {
     /// The collateral token address (e.g., USDC)
@@ -53,7 +50,6 @@ pub struct PositionIdRequest {
 /// Request to split collateral into outcome tokens.
 ///
 /// Converts USDC collateral into matched outcome token pairs (YES/NO).
-#[non_exhaustive]
 #[derive(Debug, Clone, Builder)]
 pub struct SplitPositionRequest {
     /// The collateral token address (e.g., USDC)
@@ -73,7 +69,6 @@ pub struct SplitPositionRequest {
 /// Request to merge outcome tokens back into collateral.
 ///
 /// Combines matched outcome token pairs back into USDC.
-#[non_exhaustive]
 #[derive(Debug, Clone, Builder)]
 pub struct MergePositionsRequest {
     /// The collateral token address (e.g., USDC)
@@ -93,7 +88,6 @@ pub struct MergePositionsRequest {
 /// Request to redeem winning outcome tokens for collateral.
 ///
 /// After a condition is resolved, burns winning tokens to recover USDC.
-#[non_exhaustive]
 #[derive(Debug, Clone, Builder)]
 pub struct RedeemPositionsRequest {
     /// The collateral token address (e.g., USDC)
@@ -111,7 +105,6 @@ pub struct RedeemPositionsRequest {
 ///
 /// This is used for negative risk markets where redemption requires specifying
 /// the amounts of each outcome token to redeem.
-#[non_exhaustive]
 #[derive(Debug, Clone, Builder)]
 pub struct RedeemNegRiskRequest {
     /// The condition ID to redeem

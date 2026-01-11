@@ -71,7 +71,6 @@ pub mod state {
     use crate::types::Address;
 
     /// The initial state of the client
-    #[non_exhaustive]
     #[derive(Clone, Debug)]
     pub struct Unauthenticated;
 
@@ -80,7 +79,6 @@ pub mod state {
     /// an authenticated clob via [`crate::clob::client::AuthenticationBuilder::authenticate`].
     ///
     /// See `examples/authenticated.rs` for more context.
-    #[non_exhaustive]
     #[derive(Clone, Debug)]
     #[cfg_attr(
         not(feature = "clob"),
@@ -122,7 +120,6 @@ pub trait Kind: sealed::Sealed + Clone + Send + Sync + 'static {
 }
 
 /// Non-special, generic authentication. Sometimes referred to as L2 authentication.
-#[non_exhaustive]
 #[derive(Clone, Debug)]
 pub struct Normal;
 
@@ -168,7 +165,6 @@ pub(crate) mod l1 {
     pub(crate) const POLY_TIMESTAMP: &str = "POLY_TIMESTAMP";
 
     sol! {
-        #[non_exhaustive]
         struct ClobAuth {
             address address;
             string  timestamp;
@@ -297,7 +293,6 @@ pub mod builder {
 
     /// Configuration used to authenticate as a [Builder](https://docs.polymarket.com/developers/builders/builder-intro). Can either be [`Config::local`]
     /// or [`Config::remote`]. Local uses locally accessible Builder credentials to generate builder headers. Remote obtains them from a signing server
-    #[non_exhaustive]
     #[derive(Clone, Debug)]
     pub enum Config {
         Local(Credentials),
@@ -317,7 +312,6 @@ pub mod builder {
     }
 
     /// Used to generate the Builder headers
-    #[non_exhaustive]
     #[derive(Clone, Debug)]
     pub struct Builder {
         pub(crate) config: Config,

@@ -6,7 +6,6 @@ use crate::types::Decimal;
 /// Top-level RTDS message wrapper.
 ///
 /// All messages received from the RTDS WebSocket connection are deserialized into this struct.
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize)]
 pub struct RtdsMessage {
     /// The subscription topic (e.g., `crypto_prices`, `comments`)
@@ -53,7 +52,6 @@ impl RtdsMessage {
 }
 
 /// Binance crypto price update payload.
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CryptoPrice {
     /// Trading pair symbol (lowercase concatenated, e.g., "solusdt", "btcusdt")
@@ -65,7 +63,6 @@ pub struct CryptoPrice {
 }
 
 /// Chainlink price feed update payload.
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ChainlinkPrice {
     /// Trading pair symbol (slash-separated, e.g., "eth/usd", "btc/usd")
@@ -77,7 +74,6 @@ pub struct ChainlinkPrice {
 }
 
 /// Comment event payload.
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Comment {
     /// Unique identifier for this comment
@@ -113,7 +109,6 @@ pub struct Comment {
 }
 
 /// Profile information for a comment author.
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CommentProfile {
     /// User profile address
@@ -133,7 +128,6 @@ pub struct CommentProfile {
 }
 
 /// Comment message types.
-#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CommentType {

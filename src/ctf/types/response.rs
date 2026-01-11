@@ -3,7 +3,6 @@
 use alloy::primitives::{B256, U256};
 
 /// Response from calculating a condition ID.
-#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct ConditionIdResponse {
     /// The calculated condition ID
@@ -11,7 +10,6 @@ pub struct ConditionIdResponse {
 }
 
 /// Response from calculating a collection ID.
-#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct CollectionIdResponse {
     /// The calculated collection ID
@@ -19,7 +17,6 @@ pub struct CollectionIdResponse {
 }
 
 /// Response from calculating a position ID.
-#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct PositionIdResponse {
     /// The calculated position ID (ERC1155 token ID)
@@ -27,7 +24,6 @@ pub struct PositionIdResponse {
 }
 
 /// Response from a split position transaction.
-#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct SplitPositionResponse {
     /// Transaction hash
@@ -37,7 +33,6 @@ pub struct SplitPositionResponse {
 }
 
 /// Response from a merge positions transaction.
-#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct MergePositionsResponse {
     /// Transaction hash
@@ -47,7 +42,6 @@ pub struct MergePositionsResponse {
 }
 
 /// Response from a redeem positions transaction.
-#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct RedeemPositionsResponse {
     /// Transaction hash
@@ -57,7 +51,6 @@ pub struct RedeemPositionsResponse {
 }
 
 /// Response from a `NegRisk` redeem transaction.
-#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct RedeemNegRiskResponse {
     /// Transaction hash

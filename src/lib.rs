@@ -109,7 +109,6 @@ const SAFE_INIT_CODE_HASH: B256 =
     b256!("0x2bce2127ff07fb632d16c8347c4ebf501f4841168bed00d9e6ef715ddb6fcecf");
 
 /// Helper struct to group the relevant deployed contract addresses
-#[non_exhaustive]
 #[derive(Debug)]
 pub struct ContractConfig {
     pub exchange: Address,
@@ -121,7 +120,6 @@ pub struct ContractConfig {
 }
 
 /// Wallet contract configuration for CREATE2 address derivation
-#[non_exhaustive]
 #[derive(Debug)]
 pub struct WalletContractConfig {
     /// Factory contract for Polymarket Proxy wallets (Magic/email wallets).

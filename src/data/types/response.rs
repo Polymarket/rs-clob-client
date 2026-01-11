@@ -29,7 +29,6 @@ where
 ///
 /// Returns "OK" when the API is healthy and operational.
 #[derive(Debug, Clone, Deserialize)]
-#[non_exhaustive]
 pub struct Health {
     /// Health status message (typically "OK").
     pub data: String,
@@ -39,7 +38,6 @@ pub struct Health {
 ///
 /// Contains an error message describing what went wrong.
 #[derive(Debug, Clone, Deserialize)]
-#[non_exhaustive]
 pub struct ApiError {
     /// Human-readable error message.
     pub error: String,
@@ -51,7 +49,6 @@ pub struct ApiError {
 /// with associated profit/loss calculations.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct Position {
     /// The user's proxy wallet address.
     pub proxy_wallet: Address,
@@ -113,7 +110,6 @@ pub struct Position {
 /// have been fully sold or redeemed, with final profit/loss figures.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct ClosedPosition {
     /// The user's proxy wallet address.
     pub proxy_wallet: Address,
@@ -157,7 +153,6 @@ pub struct ClosedPosition {
 /// outcome tokens were bought or sold.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct Trade {
     /// The trader's proxy wallet address.
     pub proxy_wallet: Address,
@@ -205,7 +200,6 @@ pub struct Trade {
 /// including trades, splits, merges, redemptions, rewards, and conversions.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct Activity {
     /// The user's proxy wallet address.
     pub proxy_wallet: Address,
@@ -258,7 +252,6 @@ pub struct Activity {
 /// Represents a user who holds a position in a specific outcome.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct Holder {
     /// The holder's proxy wallet address.
     pub proxy_wallet: Address,
@@ -288,7 +281,6 @@ pub struct Holder {
 ///
 /// Returned by the `/holders` endpoint. Groups holders by outcome token.
 #[derive(Debug, Clone, Deserialize)]
-#[non_exhaustive]
 pub struct MetaHolder {
     /// The outcome token identifier (decimal string from API).
     pub token: String,
@@ -300,7 +292,6 @@ pub struct MetaHolder {
 ///
 /// Returned by the `/traded` endpoint.
 #[derive(Debug, Clone, Deserialize)]
-#[non_exhaustive]
 pub struct Traded {
     /// The user's address.
     pub user: Address,
@@ -312,7 +303,6 @@ pub struct Traded {
 ///
 /// Returned by the `/value` endpoint.
 #[derive(Debug, Clone, Deserialize)]
-#[non_exhaustive]
 pub struct Value {
     /// The user's address.
     pub user: Address,
@@ -325,7 +315,6 @@ pub struct Value {
 /// Returned by the `/oi` endpoint. Open interest represents the total
 /// value of outstanding positions in a market.
 #[derive(Debug, Clone, Deserialize)]
-#[non_exhaustive]
 pub struct OpenInterest {
     /// The market condition ID (or "GLOBAL" for aggregate).
     pub market: String,
@@ -337,7 +326,6 @@ pub struct OpenInterest {
 ///
 /// Used within [`LiveVolume`] to show per-market volume breakdown.
 #[derive(Debug, Clone, Deserialize)]
-#[non_exhaustive]
 pub struct MarketVolume {
     /// The market condition ID (or "GLOBAL" for aggregate).
     pub market: String,
@@ -351,7 +339,6 @@ pub struct MarketVolume {
 /// and per-market breakdown.
 #[serde_as]
 #[derive(Debug, Clone, Deserialize)]
-#[non_exhaustive]
 pub struct LiveVolume {
     /// Total trading volume across all markets in the event.
     pub total: Decimal,
@@ -367,7 +354,6 @@ pub struct LiveVolume {
 /// applications that integrate with Polymarket.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct BuilderLeaderboardEntry {
     /// Rank position in the leaderboard.
     pub rank: String,
@@ -389,7 +375,6 @@ pub struct BuilderLeaderboardEntry {
 /// a single day's volume and activity for a builder.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct BuilderVolumeEntry {
     /// Timestamp for this entry in ISO 8601 format (e.g., "2025-11-15T00:00:00Z").
     pub dt: String,
@@ -413,7 +398,6 @@ pub struct BuilderVolumeEntry {
 /// by profit/loss or volume.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct TraderLeaderboardEntry {
     /// Rank position in the leaderboard.
     pub rank: String,

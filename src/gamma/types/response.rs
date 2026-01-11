@@ -14,7 +14,6 @@ use crate::types::{Address, B256, Decimal};
 /// Image optimization metadata.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct ImageOptimization {
     pub id: Option<String>,
     pub image_url_source: Option<String>,
@@ -32,7 +31,6 @@ pub struct ImageOptimization {
 /// Pagination information.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct Pagination {
     pub has_more: Option<bool>,
     pub total_results: Option<i32>,
@@ -44,7 +42,6 @@ pub type HealthResponse = String;
 /// A sports team.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct Team {
     pub id: i32,
     pub name: Option<String>,
@@ -62,7 +59,6 @@ pub struct Team {
 /// Sports metadata information.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct SportsMetadata {
     pub id: Option<i32>,
     pub sport: String,
@@ -77,7 +73,6 @@ pub struct SportsMetadata {
 /// Sports market types response.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct SportsMarketTypesResponse {
     pub market_types: Vec<String>,
 }
@@ -85,7 +80,6 @@ pub struct SportsMarketTypesResponse {
 /// A tag for categorizing content.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct Tag {
     pub id: String,
     pub label: Option<String>,
@@ -105,7 +99,6 @@ pub struct Tag {
 #[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct RelatedTag {
     #[serde_as(as = "StringFromAny")]
     pub id: String,
@@ -121,7 +114,6 @@ pub struct RelatedTag {
 /// A category for organizing content.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct Category {
     pub id: String,
     pub label: Option<String>,
@@ -137,7 +129,6 @@ pub struct Category {
 /// An event creator.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct EventCreator {
     pub id: String,
     pub creator_name: Option<String>,
@@ -151,7 +142,6 @@ pub struct EventCreator {
 /// A chat/live stream associated with an event.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct Chat {
     pub id: String,
     pub channel_id: Option<String>,
@@ -165,7 +155,6 @@ pub struct Chat {
 /// A template for creating events/markets.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct Template {
     pub id: String,
     pub event_title: Option<String>,
@@ -184,7 +173,6 @@ pub struct Template {
 /// A collection of events.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct Collection {
     pub id: String,
     pub ticker: Option<String>,
@@ -221,7 +209,6 @@ pub struct Collection {
 #[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct Event {
     pub id: String,
     pub ticker: Option<String>,
@@ -334,7 +321,6 @@ pub struct Event {
 #[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct Market {
     pub id: String,
     pub question: Option<String>,
@@ -509,7 +495,6 @@ pub struct Market {
 #[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct ClobReward {
     pub id: Option<String>,
     #[serde_as(as = "NoneAsEmptyString")]
@@ -527,7 +512,6 @@ pub struct ClobReward {
 /// A series of related events.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct Series {
     pub id: String,
     pub ticker: Option<String>,
@@ -575,7 +559,6 @@ pub struct Series {
 /// A comment position.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct CommentPosition {
     pub token_id: Option<String>,
     pub position_size: Option<String>,
@@ -585,7 +568,6 @@ pub struct CommentPosition {
 #[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct CommentProfile {
     pub name: Option<String>,
     pub pseudonym: Option<String>,
@@ -608,7 +590,6 @@ pub struct CommentProfile {
 #[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct Reaction {
     pub id: String,
     #[serde(rename = "commentID")]
@@ -626,7 +607,6 @@ pub struct Reaction {
 #[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct Comment {
     pub id: String,
     pub body: Option<String>,
@@ -651,7 +631,6 @@ pub struct Comment {
 
 /// A user associated with a public profile.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[non_exhaustive]
 pub struct PublicProfileUser {
     pub id: Option<String>,
     pub creator: Option<bool>,
@@ -663,7 +642,6 @@ pub struct PublicProfileUser {
 #[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct PublicProfile {
     pub created_at: Option<DateTime<Utc>>,
     #[serde_as(as = "NoneAsEmptyString")]
@@ -682,7 +660,6 @@ pub struct PublicProfile {
 /// A search tag result.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct SearchTag {
     pub id: Option<String>,
     pub label: Option<String>,
@@ -694,7 +671,6 @@ pub struct SearchTag {
 #[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct Profile {
     pub id: String,
     pub name: Option<String>,
@@ -725,7 +701,6 @@ pub struct Profile {
 
 /// Search results.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[non_exhaustive]
 pub struct SearchResults {
     pub events: Option<Vec<Event>>,
     pub tags: Option<Vec<SearchTag>>,

@@ -14,7 +14,6 @@ use crate::types::{B256, Decimal};
 /// Top-level WebSocket message wrapper.
 ///
 /// All messages received from the WebSocket connection are deserialized into this enum.
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "event_type")]
 pub enum WsMessage {
@@ -65,7 +64,6 @@ impl WsMessage {
 ///
 /// When first subscribing or when trades occur, this message contains the current
 /// state of the orderbook with bids and asks arrays.
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BookUpdate {
@@ -88,7 +86,6 @@ pub struct BookUpdate {
 }
 
 /// Individual price level in an orderbook.
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct OrderBookLevel {
     /// Price at this level
@@ -100,7 +97,6 @@ pub struct OrderBookLevel {
 /// Unified wire format for `price_change` events.
 ///
 /// The server sends either a single price change or a batch. This struct captures both shapes.
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 pub struct PriceChange {
@@ -111,8 +107,6 @@ pub struct PriceChange {
     #[serde(default)]
     pub price_changes: Vec<PriceChangeBatchEntry>,
 }
-
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize)]
 pub struct PriceChangeBatchEntry {
     /// Asset/token identifier
@@ -136,7 +130,6 @@ pub struct PriceChangeBatchEntry {
 }
 
 /// Tick size change event (triggered when price crosses thresholds).
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TickSizeChange {
@@ -154,7 +147,6 @@ pub struct TickSizeChange {
 }
 
 /// Last trade price update.
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LastTradePrice {
@@ -181,7 +173,6 @@ pub struct LastTradePrice {
 /// Best bid/ask update (requires `custom_feature_enabled` flag).
 ///
 /// Emitted when the best bid and ask prices for a market change.
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BestBidAsk {
@@ -203,7 +194,6 @@ pub struct BestBidAsk {
 /// New market created event (requires `custom_feature_enabled` flag).
 ///
 /// Emitted when a new market is created.
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct NewMarket {
@@ -233,7 +223,6 @@ pub struct NewMarket {
 /// Market resolved event (requires `custom_feature_enabled` flag).
 ///
 /// Emitted when a market is resolved.
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MarketResolved {
@@ -265,7 +254,6 @@ pub struct MarketResolved {
 }
 
 /// Event message object for market events.
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct EventMessage {
     /// Event message ID
@@ -281,7 +269,6 @@ pub struct EventMessage {
 }
 
 /// Maker order details within a trade message.
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MakerOrder {
     /// Asset/token identifier of the maker order
@@ -299,7 +286,6 @@ pub struct MakerOrder {
 }
 
 /// User trade execution message (authenticated channel only).
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TradeMessage {
@@ -357,7 +343,6 @@ pub struct TradeMessage {
 }
 
 /// User order update message (authenticated channel only).
-#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct OrderMessage {
     /// Order identifier
@@ -397,7 +382,6 @@ pub struct OrderMessage {
 }
 
 /// Order status for WebSocket order messages.
-#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum OrderStatus {
@@ -421,7 +405,6 @@ pub enum OrderStatus {
 }
 
 /// Calculated midpoint update (derived from orderbook).
-#[non_exhaustive]
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MidpointUpdate {
@@ -529,7 +512,6 @@ pub fn parse_if_interested(
         }
     }
 }
-
 #[cfg(test)]
 mod tests {
     use rust_decimal_macros::dec;
@@ -540,7 +522,6 @@ mod tests {
     // Test market condition ID
     const TEST_MARKET: B256 =
         b256!("0000000000000000000000000000000000000000000000000000000000000001");
-
     #[test]
     fn parse_book_message() {
         let json = r#"{
@@ -563,7 +544,6 @@ mod tests {
             _ => panic!("Expected Book message"),
         }
     }
-
     #[test]
     fn parse_price_change_message() {
         let json = r#"{
@@ -590,7 +570,6 @@ mod tests {
             _ => panic!("Expected PriceChange message"),
         }
     }
-
     #[test]
     fn parse_price_change_interest_message() {
         let json = r#"{
@@ -640,7 +619,6 @@ mod tests {
             _ => panic!("Expected first price change"),
         }
     }
-
     #[test]
     fn parse_batch_messages() {
         let json = r#"[
@@ -678,7 +656,6 @@ mod tests {
         assert!(matches!(&msgs[1], WsMessage::PriceChange(p) if p.market == TEST_MARKET));
         assert!(matches!(&msgs[2], WsMessage::LastTradePrice(l) if l.asset_id == "asset2"));
     }
-
     #[test]
     fn parse_batch_filters_by_interest() {
         let json = r#"[
@@ -716,7 +693,6 @@ mod tests {
         let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::ALL).unwrap();
         assert_eq!(msgs.len(), 2);
     }
-
     #[test]
     fn parse_best_bid_ask_message() {
         let json = r#"{
@@ -739,7 +715,6 @@ mod tests {
             _ => panic!("Expected BestBidAsk message"),
         }
     }
-
     #[test]
     fn parse_new_market_message() {
         let json = r#"{
@@ -782,7 +757,6 @@ mod tests {
             _ => panic!("Expected NewMarket message"),
         }
     }
-
     #[test]
     fn parse_market_resolved_message() {
         let json = r#"{
@@ -823,7 +797,6 @@ mod tests {
             _ => panic!("Expected MarketResolved message"),
         }
     }
-
     #[test]
     fn parse_last_trade_price_with_new_fields() {
         let json = r#"{
@@ -848,7 +821,6 @@ mod tests {
             _ => panic!("Expected LastTradePrice message"),
         }
     }
-
     #[test]
     fn parse_custom_feature_messages_filter_by_interest() {
         let json = r#"[
@@ -885,7 +857,6 @@ mod tests {
         let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::MARKET).unwrap();
         assert_eq!(msgs.len(), 2);
     }
-
     #[test]
     fn parse_new_market_without_event_message() {
         let json = r#"{
@@ -909,7 +880,6 @@ mod tests {
             _ => panic!("Expected NewMarket message"),
         }
     }
-
     #[test]
     fn parse_market_resolved_without_event_message() {
         let json = r#"{
@@ -936,7 +906,6 @@ mod tests {
             _ => panic!("Expected MarketResolved message"),
         }
     }
-
     #[test]
     fn parse_last_trade_price_without_optional_fields() {
         let json = r#"{
@@ -958,7 +927,6 @@ mod tests {
             _ => panic!("Expected LastTradePrice message"),
         }
     }
-
     #[test]
     fn matches_interest_custom_feature_messages() {
         let bba = WsMessage::BestBidAsk(BestBidAsk {

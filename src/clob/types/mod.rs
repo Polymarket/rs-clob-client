@@ -33,7 +33,6 @@ pub use response::{
     CreateRfqRequestResponse, RfqQuote, RfqRequest,
 };
 
-#[non_exhaustive]
 #[derive(
     Clone, Debug, Display, Default, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
 )]
@@ -59,7 +58,6 @@ pub enum OrderType {
     Unknown(String),
 }
 
-#[non_exhaustive]
 #[derive(
     Clone, Copy, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
 )]
@@ -90,7 +88,6 @@ impl TryFrom<u8> for Side {
 }
 
 /// Time interval for price history queries.
-#[non_exhaustive]
 #[derive(Clone, Copy, Debug, Display, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Interval {
     /// 1 minute
@@ -123,7 +120,6 @@ pub enum Interval {
 ///
 /// The CLOB API requires either an interval or explicit start/end timestamps.
 /// This enum enforces that requirement at compile time.
-#[non_exhaustive]
 #[derive(Clone, Copy, Debug, Serialize)]
 #[serde(untagged)]
 pub enum TimeRange {
@@ -220,7 +216,6 @@ impl Amount {
     }
 }
 
-#[non_exhaustive]
 #[derive(
     Clone,
     Copy,
@@ -244,7 +239,6 @@ pub enum SignatureType {
 
 /// RFQ state filter for queries.
 #[cfg(feature = "rfq")]
-#[non_exhaustive]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RfqState {
@@ -257,7 +251,6 @@ pub enum RfqState {
 
 /// Sort field for RFQ queries.
 #[cfg(feature = "rfq")]
-#[non_exhaustive]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RfqSortBy {
@@ -274,7 +267,6 @@ pub enum RfqSortBy {
 
 /// Sort direction for RFQ queries.
 #[cfg(feature = "rfq")]
-#[non_exhaustive]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RfqSortDir {
@@ -285,7 +277,6 @@ pub enum RfqSortDir {
     Desc,
 }
 
-#[non_exhaustive]
 #[derive(Clone, Debug, Display, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 #[strum(serialize_all = "UPPERCASE")]
@@ -305,7 +296,6 @@ pub enum OrderStatusType {
     Unknown(String),
 }
 
-#[non_exhaustive]
 #[derive(
     Clone, Debug, Default, Display, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
 )]
@@ -320,7 +310,6 @@ pub enum AssetType {
     Unknown(String),
 }
 
-#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum TraderSide {
@@ -332,7 +321,6 @@ pub enum TraderSide {
 }
 
 /// Represents the maximum number of decimal places for an order's price field
-#[non_exhaustive]
 #[derive(Debug, Clone, Copy)]
 pub enum TickSize {
     Tenth,
@@ -410,7 +398,6 @@ sol! {
     /// <!-- The CLOB expects all `uint256` types, [`U256`], excluding `salt`, to be presented as a
     /// string so we must serialize as Display, which for U256 is lower hex-encoded string.
     /// -->
-    #[non_exhaustive]
     #[serde_as]
     #[derive(Serialize, Debug, Default, PartialEq)]
     struct Order {
@@ -446,7 +433,6 @@ fn ser_salt<S: Serializer>(value: &U256, serializer: S) -> std::result::Result<S
     serializer.serialize_u64(v)
 }
 
-#[non_exhaustive]
 #[derive(Clone, Debug, Default, Serialize, Builder, PartialEq)]
 pub struct SignableOrder {
     pub order: Order,
@@ -455,7 +441,6 @@ pub struct SignableOrder {
     pub post_only: Option<bool>,
 }
 
-#[non_exhaustive]
 #[derive(Debug, Builder, PartialEq)]
 pub struct SignedOrder {
     pub order: Order,

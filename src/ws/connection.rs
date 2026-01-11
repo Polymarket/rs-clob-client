@@ -30,7 +30,6 @@ type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
 const BROADCAST_CAPACITY: usize = 1024;
 
 /// Connection state tracking.
-#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConnectionState {
     /// Not connected

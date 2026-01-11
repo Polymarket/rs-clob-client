@@ -14,7 +14,6 @@ const DEFAULT_MAX_BACKOFF_DURATION: Duration = Duration::from_secs(60);
 const DEFAULT_BACKOFF_MULTIPLIER: f64 = 2.0;
 
 /// Configuration for WebSocket client behavior.
-#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct Config {
     /// Interval for sending PING messages to keep connection alive
@@ -36,7 +35,6 @@ impl Default for Config {
 }
 
 /// Configuration for automatic reconnection behavior.
-#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct ReconnectConfig {
     /// Maximum number of reconnection attempts before giving up.

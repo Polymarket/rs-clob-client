@@ -7,7 +7,6 @@ use std::error::Error as StdError;
 use std::fmt;
 
 /// RTDS WebSocket error variants.
-#[non_exhaustive]
 #[derive(Debug)]
 pub enum RtdsError {
     /// Error connecting to or communicating with the WebSocket server

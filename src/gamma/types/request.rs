@@ -13,7 +13,6 @@ use crate::types::{Address, B256, Decimal};
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
-#[non_exhaustive]
 pub struct TeamsRequest {
     pub limit: Option<i32>,
     pub offset: Option<i32>,
@@ -32,7 +31,6 @@ pub struct TeamsRequest {
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
-#[non_exhaustive]
 pub struct TagsRequest {
     pub limit: Option<i32>,
     pub offset: Option<i32>,
@@ -44,7 +42,6 @@ pub struct TagsRequest {
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct TagByIdRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
@@ -54,7 +51,6 @@ pub struct TagByIdRequest {
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct TagBySlugRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
@@ -64,7 +60,6 @@ pub struct TagBySlugRequest {
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct RelatedTagsByIdRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
@@ -75,7 +70,6 @@ pub struct RelatedTagsByIdRequest {
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct RelatedTagsBySlugRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
@@ -86,7 +80,6 @@ pub struct RelatedTagsBySlugRequest {
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
-#[non_exhaustive]
 pub struct EventsRequest {
     pub limit: Option<i32>,
     pub offset: Option<i32>,
@@ -127,7 +120,6 @@ pub struct EventsRequest {
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct EventByIdRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
@@ -138,7 +130,6 @@ pub struct EventByIdRequest {
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct EventBySlugRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
@@ -148,7 +139,6 @@ pub struct EventBySlugRequest {
 }
 
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct EventTagsRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
@@ -157,7 +147,6 @@ pub struct EventTagsRequest {
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
-#[non_exhaustive]
 pub struct MarketsRequest {
     pub limit: Option<i32>,
     pub offset: Option<i32>,
@@ -205,7 +194,6 @@ pub struct MarketsRequest {
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct MarketByIdRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
@@ -215,7 +203,6 @@ pub struct MarketByIdRequest {
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct MarketBySlugRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
@@ -224,7 +211,6 @@ pub struct MarketBySlugRequest {
 }
 
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct MarketTagsRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
@@ -233,7 +219,6 @@ pub struct MarketTagsRequest {
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
-#[non_exhaustive]
 pub struct SeriesListRequest {
     pub limit: Option<i32>,
     pub offset: Option<i32>,
@@ -255,7 +240,6 @@ pub struct SeriesListRequest {
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct SeriesByIdRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
@@ -265,7 +249,6 @@ pub struct SeriesByIdRequest {
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct CommentsRequest {
     pub parent_entity_type: ParentEntityType,
     #[builder(into)]
@@ -280,7 +263,6 @@ pub struct CommentsRequest {
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct CommentsByIdRequest {
     #[serde(skip_serializing)]
     #[builder(into)]
@@ -290,7 +272,6 @@ pub struct CommentsByIdRequest {
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct CommentsByUserAddressRequest {
     #[serde(skip_serializing)]
     pub user_address: Address,
@@ -301,14 +282,12 @@ pub struct CommentsByUserAddressRequest {
 }
 
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct PublicProfileRequest {
     pub address: Address,
 }
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct SearchRequest {
     #[builder(into)]
     pub q: String,

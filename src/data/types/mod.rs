@@ -15,7 +15,6 @@ pub mod response;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
 #[serde(rename_all = "UPPERCASE")]
 #[strum(serialize_all = "UPPERCASE")]
-#[non_exhaustive]
 pub enum Side {
     /// Buying outcome tokens (going long on an outcome).
     Buy,
@@ -32,7 +31,6 @@ pub enum Side {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
 #[serde(rename_all = "UPPERCASE")]
 #[strum(serialize_all = "UPPERCASE")]
-#[non_exhaustive]
 pub enum ActivityType {
     /// A trade (buy or sell) of outcome tokens.
     Trade,
@@ -61,7 +59,6 @@ pub enum ActivityType {
 #[derive(
     Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display,
 )]
-#[non_exhaustive]
 pub enum PositionSortBy {
     /// Sort by current value of the position.
     #[serde(rename = "CURRENT")]
@@ -108,7 +105,6 @@ pub enum PositionSortBy {
 #[derive(
     Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display,
 )]
-#[non_exhaustive]
 pub enum ClosedPositionSortBy {
     /// Sort by realized profit and loss (default).
     #[default]
@@ -141,7 +137,6 @@ pub enum ClosedPositionSortBy {
 )]
 #[serde(rename_all = "UPPERCASE")]
 #[strum(serialize_all = "UPPERCASE")]
-#[non_exhaustive]
 pub enum ActivitySortBy {
     /// Sort by activity timestamp (default).
     #[default]
@@ -160,7 +155,6 @@ pub enum ActivitySortBy {
 )]
 #[serde(rename_all = "UPPERCASE")]
 #[strum(serialize_all = "UPPERCASE")]
-#[non_exhaustive]
 pub enum SortDirection {
     /// Ascending order (smallest/earliest first).
     Asc,
@@ -176,7 +170,6 @@ pub enum SortDirection {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum_macros::Display)]
 #[serde(rename_all = "UPPERCASE")]
 #[strum(serialize_all = "UPPERCASE")]
-#[non_exhaustive]
 pub enum FilterType {
     /// Filter by USDC cash value.
     Cash,
@@ -192,7 +185,6 @@ pub enum FilterType {
 )]
 #[serde(rename_all = "UPPERCASE")]
 #[strum(serialize_all = "UPPERCASE")]
-#[non_exhaustive]
 pub enum TimePeriod {
     /// Last 24 hours (default).
     #[default]
@@ -213,7 +205,6 @@ pub enum TimePeriod {
 )]
 #[serde(rename_all = "UPPERCASE")]
 #[strum(serialize_all = "UPPERCASE")]
-#[non_exhaustive]
 pub enum LeaderboardCategory {
     /// All categories combined (default).
     #[default]
@@ -246,7 +237,6 @@ pub enum LeaderboardCategory {
 )]
 #[serde(rename_all = "UPPERCASE")]
 #[strum(serialize_all = "UPPERCASE")]
-#[non_exhaustive]
 pub enum LeaderboardOrderBy {
     /// Order by profit and loss (default).
     #[default]
@@ -274,7 +264,6 @@ pub enum LeaderboardOrderBy {
 /// ```
 #[serde_as]
 #[derive(Debug, Clone, Serialize)]
-#[non_exhaustive]
 pub enum MarketFilter {
     /// Filter by condition IDs (market identifiers).
     #[serde(rename = "market")]
@@ -300,7 +289,6 @@ impl MarketFilter {
 
 /// Error type for bounded integer values that are out of range.
 #[derive(Debug)]
-#[non_exhaustive]
 pub struct BoundedIntError {
     /// The value that was out of range.
     pub value: i32,
@@ -356,7 +344,6 @@ impl StdError for BoundedIntError {}
 /// ```
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[non_exhaustive]
 pub struct TradeFilter {
     /// The type of filter (cash or tokens).
     pub filter_type: FilterType,
@@ -401,7 +388,6 @@ impl TradeFilter {
 
 /// Error type for invalid trade filter values.
 #[derive(Debug)]
-#[non_exhaustive]
 pub enum TradeFilterError {
     /// The filter amount was negative.
     NegativeAmount(Decimal),

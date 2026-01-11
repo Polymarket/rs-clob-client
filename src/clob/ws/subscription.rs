@@ -22,7 +22,6 @@ use crate::ws::WsError;
 use crate::ws::connection::ConnectionState;
 
 /// What a subscription is targeting.
-#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub enum SubscriptionTarget {
     /// Subscribed to market data for specific assets.
@@ -43,7 +42,6 @@ impl SubscriptionTarget {
 }
 
 /// Information about an active subscription.
-#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct SubscriptionInfo {
     /// What this subscription is targeting.
@@ -60,7 +58,6 @@ impl SubscriptionInfo {
     }
 }
 
-#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ChannelType {
     /// Public market data channel

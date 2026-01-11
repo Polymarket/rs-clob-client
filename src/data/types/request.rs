@@ -68,7 +68,6 @@ fn validate_bound(
 /// ```
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct PositionsRequest {
     /// User address (required).
     #[builder(into)]
@@ -139,7 +138,6 @@ fn filter_is_none_or_empty(f: &Option<MarketFilter>) -> bool {
 /// ```
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
-#[non_exhaustive]
 pub struct TradesRequest {
     /// Filter by user address.
     #[builder(into)]
@@ -198,7 +196,6 @@ pub struct TradesRequest {
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct ActivityRequest {
     /// User address (required).
     #[builder(into)]
@@ -258,7 +255,6 @@ pub struct ActivityRequest {
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct HoldersRequest {
     /// Condition IDs of markets to query (required).
     #[serde_as(as = "StringWithSeparator::<CommaSeparator, B256>")]
@@ -281,7 +277,6 @@ pub struct HoldersRequest {
 ///
 /// - `user`: The Ethereum address of the user to query.
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct TradedRequest {
     /// User address (required).
     #[builder(into)]
@@ -302,7 +297,6 @@ pub struct TradedRequest {
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct ValueRequest {
     /// User address (required).
     #[builder(into)]
@@ -326,7 +320,6 @@ pub struct ValueRequest {
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
-#[non_exhaustive]
 pub struct OpenInterestRequest {
     /// Optional list of condition IDs to filter by.
     #[serde_as(as = "StringWithSeparator::<CommaSeparator, B256>")]
@@ -344,7 +337,6 @@ pub struct OpenInterestRequest {
 ///
 /// - `id`: The event ID to query.
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct LiveVolumeRequest {
     /// Event ID (required).
     pub id: u64,
@@ -381,7 +373,6 @@ pub struct LiveVolumeRequest {
 /// ```
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Serialize)]
-#[non_exhaustive]
 pub struct ClosedPositionsRequest {
     /// User address (required).
     #[builder(into)]
@@ -429,7 +420,6 @@ pub struct ClosedPositionsRequest {
 /// ```
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
-#[non_exhaustive]
 pub struct BuilderLeaderboardRequest {
     /// Time period to aggregate results over (default: DAY).
     #[serde(rename = "timePeriod")]
@@ -462,7 +452,6 @@ pub struct BuilderLeaderboardRequest {
 /// ```
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
-#[non_exhaustive]
 pub struct BuilderVolumeRequest {
     /// Time period to fetch daily records for (default: DAY).
     #[serde(rename = "timePeriod")]
@@ -497,7 +486,6 @@ pub struct BuilderVolumeRequest {
 /// ```
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
-#[non_exhaustive]
 pub struct TraderLeaderboardRequest {
     /// Market category filter (default: OVERALL).
     pub category: Option<LeaderboardCategory>,

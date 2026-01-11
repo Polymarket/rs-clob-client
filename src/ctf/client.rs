@@ -127,7 +127,6 @@ sol! {
 /// Client for interacting with the Conditional Token Framework contract.
 ///
 /// The CTF contract handles tokenization of market outcomes as ERC1155 tokens.
-#[non_exhaustive]
 #[derive(Clone, Debug)]
 pub struct Client<P: Provider> {
     contract: IConditionalTokens::IConditionalTokensInstance<P>,
