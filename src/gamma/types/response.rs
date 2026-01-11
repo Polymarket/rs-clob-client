@@ -95,7 +95,6 @@ pub struct Tag {
     pub label: Option<String>,
     pub slug: Option<String>,
     pub force_show: Option<bool>,
-    // Older values do not conform to ISO-8601 so must keep as String
     pub published_at: Option<String>,
     pub created_by: Option<i32>,
     pub updated_by: Option<i32>,
@@ -132,7 +131,6 @@ pub struct Category {
     pub label: Option<String>,
     pub parent_category: Option<String>,
     pub slug: Option<String>,
-    // Older values do not conform to ISO-8601 so must keep as String
     pub published_at: Option<String>,
     pub created_by: Option<String>,
     pub updated_by: Option<String>,
@@ -256,7 +254,6 @@ pub struct Event {
     pub is_template: Option<bool>,
     pub template_variables: Option<String>,
     #[serde(alias = "published_at")]
-    // Older records do not have the proper formatting so must keep as String
     pub published_at: Option<String>,
     pub created_by: Option<String>,
     pub updated_by: Option<String>,
@@ -387,7 +384,6 @@ pub struct Market {
     pub updated_by: Option<i32>,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
-    // TODO: older serializer
     pub closed_time: Option<String>,
     pub wide_format: Option<bool>,
     pub new: Option<bool>,
@@ -564,7 +560,6 @@ pub struct Series {
     pub restricted: Option<bool>,
     pub is_template: Option<bool>,
     pub template_variables: Option<bool>,
-    // Older records do not have ISO-8601 so must keep as String
     pub published_at: Option<String>,
     pub created_by: Option<String>,
     pub updated_by: Option<String>,
