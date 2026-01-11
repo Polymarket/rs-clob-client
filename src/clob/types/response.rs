@@ -132,6 +132,8 @@ pub struct OrderBookSummaryResponse {
     pub neg_risk: bool,
     #[serde_as(as = "TryFromInto<Decimal>")]
     pub tick_size: TickSize,
+    #[serde(default)]
+    pub last_trade_price: Option<Decimal>,
 }
 
 impl OrderBookSummaryResponse {
