@@ -5,12 +5,12 @@
 //!
 //! Run with tracing enabled:
 //! ```sh
-//! RUST_LOG=info cargo run --example gamma-streaming --features gamma,tracing
+//! RUST_LOG=info cargo run --example gamma_streaming --features gamma,tracing
 //! ```
 //!
 //! Optionally log to a file:
 //! ```sh
-//! LOG_FILE=gamma_streaming.log RUST_LOG=info cargo run --example gamma-streaming --features gamma,tracing
+//! LOG_FILE=gamma_streaming.log RUST_LOG=info cargo run --example gamma_streaming --features gamma,tracing
 //! ```
 
 use std::fs::File;
