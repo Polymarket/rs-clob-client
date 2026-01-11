@@ -558,7 +558,9 @@ mod traded {
 
 mod open_interest {
     use httpmock::{Method::GET, MockServer};
+    use polymarket_client_sdk::data::types::response::Market;
     use polymarket_client_sdk::data::{Client, types::request::OpenInterestRequest};
+    use polymarket_client_sdk::types::b256;
     use reqwest::StatusCode;
     use rust_decimal_macros::dec;
     use serde_json::json;
@@ -580,6 +582,10 @@ mod open_interest {
                 {
                     "market": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
                     "value": 750_000.0
+                },
+                {
+                    "market": "GLOBAL",
+                    "value": 2_250_000.0
                 }
             ]));
         });
@@ -588,16 +594,21 @@ mod open_interest {
             .open_interest(&OpenInterestRequest::default())
             .await?;
 
-        assert_eq!(response.len(), 2);
+        assert_eq!(response.len(), 3);
         assert_eq!(
             response[0].market,
-            "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+            Market::Market(b256!(
+                "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+            ))
         );
         assert_eq!(response[0].value, dec!(1_500_000.0));
         assert_eq!(
             response[1].market,
-            "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            Market::Market(b256!(
+                "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            ))
         );
+        assert_eq!(response[2].market, Market::Global);
         mock.assert();
 
         Ok(())
@@ -630,7 +641,9 @@ mod open_interest {
         assert_eq!(response.len(), 1);
         assert_eq!(
             response[0].market,
-            "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+            Market::Market(b256!(
+                "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+            ))
         );
         mock.assert();
 
@@ -640,7 +653,9 @@ mod open_interest {
 
 mod live_volume {
     use httpmock::{Method::GET, MockServer};
+    use polymarket_client_sdk::data::types::response::Market;
     use polymarket_client_sdk::data::{Client, types::request::LiveVolumeRequest};
+    use polymarket_client_sdk::types::b256;
     use reqwest::StatusCode;
     use rust_decimal_macros::dec;
     use serde_json::json;
@@ -681,12 +696,16 @@ mod live_volume {
         assert_eq!(markets.len(), 2);
         assert_eq!(
             markets[0].market,
-            "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+            Market::Market(b256!(
+                "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+            ))
         );
         assert_eq!(markets[0].value, dec!(150_000.0));
         assert_eq!(
             markets[1].market,
-            "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            Market::Market(b256!(
+                "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            ))
         );
         mock.assert();
 

@@ -27,6 +27,17 @@ where
     }
 }
 
+#[non_exhaustive]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub enum Market {
+    /// All markets
+    #[serde(alias = "global", alias = "GLOBAL")]
+    Global,
+    /// Specific market condition ID
+    #[serde(untagged)]
+    Market(B256),
+}
+
 /// Response from the health check endpoint (`/`).
 ///
 /// Returns "OK" when the API is healthy and operational.
@@ -377,8 +388,8 @@ pub struct Value {
 #[derive(Debug, Clone, Deserialize, Builder)]
 #[non_exhaustive]
 pub struct OpenInterest {
-    /// The market condition ID (or "GLOBAL" for aggregate).
-    pub market: String,
+    /// The market condition ID
+    pub market: Market,
     /// Open interest value in USDC.
     pub value: Decimal,
 }
@@ -389,8 +400,8 @@ pub struct OpenInterest {
 #[derive(Debug, Clone, Deserialize, Builder)]
 #[non_exhaustive]
 pub struct MarketVolume {
-    /// The market condition ID (or "GLOBAL" for aggregate).
-    pub market: String,
+    /// The market condition ID
+    pub market: Market,
     /// Trading volume in USDC.
     pub value: Decimal,
 }
