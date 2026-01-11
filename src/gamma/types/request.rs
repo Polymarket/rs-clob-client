@@ -6,10 +6,10 @@
 use bon::Builder;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
-use serde_with::skip_serializing_none;
+use serde_with::{DisplayFromStr, serde_as, skip_serializing_none};
 
 use crate::gamma::types::{ParentEntityType, RelatedTagsStatus};
-use crate::types::{Address, B256, Decimal};
+use crate::types::{Address, B256, Decimal, U256};
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
@@ -155,6 +155,7 @@ pub struct EventTagsRequest {
     pub id: String,
 }
 
+#[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Builder, Default, Serialize)]
 #[non_exhaustive]
@@ -169,9 +170,10 @@ pub struct MarketsRequest {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub slug: Vec<String>,
+    #[serde_as(as = "Vec<DisplayFromStr>")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
-    pub clob_token_ids: Vec<String>,
+    pub clob_token_ids: Vec<U256>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[builder(default)]
     pub condition_ids: Vec<B256>,

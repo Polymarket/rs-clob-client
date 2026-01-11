@@ -68,7 +68,7 @@ serde_ignored = { version = "0.1", optional = true }
 serde_json = "1.0.148"
 serde_path_to_error = { version = "0.1", optional = true }
 serde_repr = "0.1.20"
-serde_with = { version = "3.16.1", features = ["chrono_0_4"] }
+serde_with = { version = "3.16.1", features = ["chrono_0_4", "json"] }
 sha2 = "0.10.9"
 strum_macros = "0.27.2"
 tokio = { version = "1.49.0", features = ["rt-multi-thread", "macros"], optional = true }
@@ -152,7 +152,12 @@ required-features = ["data", "tracing"]
 
 [[example]]
 name = "gamma"
-path = "examples/gamma.rs"
+path = "examples/gamma/client.rs"
+required-features = ["gamma", "tracing"]
+
+[[example]]
+name = "gamma_streaming"
+path = "examples/gamma/streaming.rs"
 required-features = ["gamma", "tracing"]
 
 [[example]]

@@ -28,6 +28,8 @@
 //! - `search`: Search across events, markets, and profiles
 //! - `health`: API health check
 
+pub mod common;
+
 mod sports {
     use httpmock::{Method::GET, MockServer};
     use polymarket_client_sdk::gamma::{Client, types::request::TeamsRequest};
@@ -451,6 +453,8 @@ mod markets {
     use reqwest::StatusCode;
     use serde_json::json;
 
+    use crate::common::{token_1, token_2};
+
     #[tokio::test]
     async fn markets_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
@@ -555,15 +559,15 @@ mod markets {
         let mock = server.mock(|when, then| {
             when.method(GET)
                 .path("/markets")
-                .query_param("clob_token_ids", "token1")
-                .query_param("clob_token_ids", "token2");
+                .query_param("clob_token_ids", token_1().to_string())
+                .query_param("clob_token_ids", token_2().to_string());
             then.status(StatusCode::OK).json_body(json!([
                 {"id": "1", "question": "Market 1?", "slug": "market-1"}
             ]));
         });
 
         let request = MarketsRequest::builder()
-            .clob_token_ids(vec!["token1".to_owned(), "token2".to_owned()])
+            .clob_token_ids(vec![token_1(), token_2()])
             .build();
         let response = client.markets(&request).await?;
 
@@ -583,8 +587,8 @@ mod markets {
             when.method(GET)
                 .path("/markets")
                 .query_param("limit", "50")
-                .query_param("clob_token_ids", "abc")
-                .query_param("clob_token_ids", "def");
+                .query_param("clob_token_ids", token_1().to_string())
+                .query_param("clob_token_ids", token_2().to_string());
             then.status(StatusCode::OK).json_body(json!([
                 {"id": "1", "question": "Market 1?", "slug": "market-1"},
                 {"id": "2", "question": "Market 2?", "slug": "market-2"}
@@ -593,7 +597,7 @@ mod markets {
 
         let request = MarketsRequest::builder()
             .limit(50)
-            .clob_token_ids(vec!["abc".to_owned(), "def".to_owned()])
+            .clob_token_ids(vec![token_1(), token_2()])
             .build();
         let response = client.markets(&request).await?;
 
@@ -1003,6 +1007,8 @@ mod query_string {
     use polymarket_client_sdk::types::{address, b256};
     use rust_decimal_macros::dec;
 
+    use crate::common::{token_1, token_2};
+
     #[test]
     fn teams_request_all_params() {
         let request = TeamsRequest::builder()
@@ -1248,7 +1254,7 @@ mod query_string {
             .ascending(false)
             .id(vec!["1".to_owned(), "2".to_owned()])
             .slug(vec!["market-1".to_owned()])
-            .clob_token_ids(vec!["token1".to_owned(), "token2".to_owned()])
+            .clob_token_ids(vec![token_1(), token_2()])
             .condition_ids(vec![b256!(
                 "0x0000000000000000000000000000000000000000000000000000000000000001"
             )])
@@ -1286,8 +1292,8 @@ mod query_string {
         assert!(qs.contains("id=2"));
         assert!(qs.contains("slug=market-1"));
         // clob_token_ids is now handled with repeated params like all other arrays
-        assert!(qs.contains("clob_token_ids=token1"));
-        assert!(qs.contains("clob_token_ids=token2"));
+        assert!(qs.contains(&format!("clob_token_ids={}", token_1())));
+        assert!(qs.contains(&format!("clob_token_ids={}", token_2())));
         // B256 and Address serialize to lowercase hex via serde (repeated params)
         assert!(qs.contains(
             "condition_ids=0x0000000000000000000000000000000000000000000000000000000000000001"

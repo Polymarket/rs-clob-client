@@ -25,12 +25,18 @@
 //! # }
 //! ```
 
+use std::future::Future;
+
+use async_stream::try_stream;
+use futures::Stream;
 use reqwest::{
     Client as ReqwestClient, Method,
     header::{HeaderMap, HeaderValue},
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+#[cfg(feature = "tracing")]
+use tracing::warn;
 use url::Url;
 
 use super::types::request::{
@@ -46,6 +52,8 @@ use super::types::response::{
 };
 use crate::error::Error;
 use crate::{Result, ToQueryParams as _};
+
+const MAX_LIMIT: i32 = 500;
 
 /// HTTP client for the Polymarket Gamma API.
 ///
@@ -486,5 +494,103 @@ impl Client {
     /// Returns an error if the request fails or the search query is invalid.
     pub async fn search(&self, request: &SearchRequest) -> Result<SearchResults> {
         self.get("public-search", request).await
+    }
+
+    /// Returns a stream of results using offset-based pagination.
+    ///
+    /// This method repeatedly invokes the provided closure `call`, which takes the
+    /// client and pagination parameters (limit and offset) to fetch data. Each page
+    /// of results is flattened into individual items in the stream.
+    ///
+    /// The stream continues fetching pages until:
+    /// - An empty page is returned, or
+    /// - A page with fewer items than the requested limit is returned (indicating the last page)
+    ///
+    /// # Arguments
+    ///
+    /// * `call` - A closure that takes `&Client`, `limit: i32`, and `offset: i32`,
+    ///   returning a future that resolves to a `Result<Vec<Data>>`
+    /// * `limit` - The number of items to fetch per page (default: 100)
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use futures::StreamExt;
+    /// use polymarket_client_sdk::gamma::{Client, types::request::EventsRequest};
+    /// use tokio::pin;
+    ///
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let client = Client::default();
+    ///
+    /// // Stream all active events
+    /// let mut stream = client.stream_data(
+    ///     |client, limit, offset| {
+    ///         let request = EventsRequest::builder()
+    ///             .active(true)
+    ///             .limit(limit)
+    ///             .offset(offset)
+    ///             .build();
+    ///         async move { client.events(&request).await }
+    ///     },
+    ///     100, // page size
+    /// );
+    ///
+    /// pin!(stream);
+    ///
+    /// while let Some(result) = stream.next().await {
+    ///     match result {
+    ///         Ok(event) => println!("Event: {}", event.id),
+    ///         Err(e) => eprintln!("Error: {}", e),
+    ///     }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn stream_data<'client, Call, Fut, Data>(
+        &'client self,
+        call: Call,
+        limit: i32,
+    ) -> impl Stream<Item = Result<Data>> + 'client
+    where
+        Call: Fn(&'client Client, i32, i32) -> Fut + 'client,
+        Fut: Future<Output = Result<Vec<Data>>> + 'client,
+        Data: 'client,
+    {
+        let limit = if limit > MAX_LIMIT {
+            #[cfg(feature = "tracing")]
+            warn!(
+                "Supplied {limit} limit, Gamma only allows for maximum {MAX_LIMIT} responses per call, defaulting to {MAX_LIMIT}"
+            );
+
+            MAX_LIMIT
+        } else {
+            limit
+        };
+
+        try_stream! {
+            let mut offset = 0;
+
+            loop {
+                let data = call(self, limit, offset).await?;
+
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_possible_wrap,
+                    reason = "We shouldn't ever truncate/wrap since we'll never return that many records in one call")
+                ]
+                let count = data.len() as i32;
+
+                for item in data {
+                    yield item;
+                }
+
+                // Stop if we received fewer items than requested (last page)
+                if count < limit {
+                    break;
+                }
+
+                offset += count;
+            }
+        }
     }
 }

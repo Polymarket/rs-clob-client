@@ -41,8 +41,11 @@ jobs:
         # Run nightly formatting to allow group imports
         run: cargo +nightly-2025-11-24 fmt --all -- --check
 
-      - name: Clippy
+      - name: Clippy (All features)
         run: cargo +1.88 clippy --all-targets --all-features -- -D warnings
+
+      - name: Clippy
+        run: cargo +1.88 clippy --all-targets -- -D warnings
 
   cargo-sort:
     runs-on: ubuntu-latest

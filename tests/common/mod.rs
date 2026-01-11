@@ -1,6 +1,7 @@
 #![cfg(feature = "clob")]
 #![allow(
     clippy::unwrap_used,
+    clippy::missing_panics_doc,
     reason = "Do not need additional syntax for setting up tests, and https://github.com/rust-lang/rust-clippy/issues/13981"
 )]
 #![allow(
@@ -54,11 +55,13 @@ pub const USDC_DECIMALS: u32 = 6;
 
 pub type TestClient = Client<Authenticated<Normal>>;
 
+#[must_use]
 pub fn token_1() -> U256 {
     U256::from_str("15871154585880608648532107628464183779895785213830018178010423617714102767076")
         .unwrap()
 }
 
+#[must_use]
 pub fn token_2() -> U256 {
     U256::from_str("99920934651435586775038877380223724073374199451810545861447160390199026872860")
         .unwrap()
@@ -121,6 +124,7 @@ pub fn ensure_requirements(server: &MockServer, token_id: U256, tick_size: TickS
     });
 }
 
+#[must_use]
 pub fn to_decimal(value: U256) -> Decimal {
     Decimal::from_str_exact(&value.to_string()).unwrap()
 }

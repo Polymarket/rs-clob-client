@@ -431,7 +431,7 @@ async fn main() -> anyhow::Result<()> {
 }
 ```
 
-See [`examples/gamma.rs`](examples/gamma.rs) for tags, series, comments, and sports endpoints.
+See [`examples/gamma.rs`](examples/gamma/client.rs) for tags, series, comments, and sports endpoints.
 
 #### Bridge API
 Cross-chain deposits from EVM chains, Solana, and Bitcoin. Requires the `bridge` feature.

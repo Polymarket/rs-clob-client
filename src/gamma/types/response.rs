@@ -4,13 +4,14 @@
 )]
 
 use bon::Builder;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::NoneAsEmptyString;
-use serde_with::serde_as;
+use serde_with::json::JsonString;
+use serde_with::{DisplayFromStr, StringWithSeparator, formats::CommaSeparator, serde_as};
 
 use crate::serde_helpers::StringFromAny;
-use crate::types::{Address, B256, Decimal};
+use crate::types::{Address, B256, Decimal, U256};
 
 /// Image optimization metadata.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
@@ -61,6 +62,7 @@ pub struct Team {
 }
 
 /// Sports metadata information.
+#[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
@@ -70,7 +72,8 @@ pub struct SportsMetadata {
     pub image: String,
     pub resolution: String,
     pub ordering: String,
-    pub tags: String,
+    #[serde_as(as = "StringWithSeparator::<CommaSeparator, String>")]
+    pub tags: Vec<String>,
     pub series: String,
     pub created_at: Option<DateTime<Utc>>,
 }
@@ -92,6 +95,7 @@ pub struct Tag {
     pub label: Option<String>,
     pub slug: Option<String>,
     pub force_show: Option<bool>,
+    // Older values do not conform to ISO-8601 so must keep as String
     pub published_at: Option<String>,
     pub created_by: Option<i32>,
     pub updated_by: Option<i32>,
@@ -128,6 +132,7 @@ pub struct Category {
     pub label: Option<String>,
     pub parent_category: Option<String>,
     pub slug: Option<String>,
+    // Older values do not conform to ISO-8601 so must keep as String
     pub published_at: Option<String>,
     pub created_by: Option<String>,
     pub updated_by: Option<String>,
@@ -251,6 +256,7 @@ pub struct Event {
     pub is_template: Option<bool>,
     pub template_variables: Option<String>,
     #[serde(alias = "published_at")]
+    // Older records do not have the proper formatting so must keep as String
     pub published_at: Option<String>,
     pub created_by: Option<String>,
     pub updated_by: Option<String>,
@@ -295,7 +301,7 @@ pub struct Event {
     pub automatically_resolved: Option<bool>,
     pub enable_neg_risk: Option<bool>,
     pub automatically_active: Option<bool>,
-    pub event_date: Option<String>,
+    pub event_date: Option<NaiveDate>,
     pub start_time: Option<DateTime<Utc>>,
     pub event_week: Option<i32>,
     pub series_slug: Option<String>,
@@ -329,6 +335,8 @@ pub struct Event {
     pub country_name: Option<String>,
     pub color: Option<String>,
     pub cumulative_markets: Option<bool>,
+    pub away_team_name: Option<String>,
+    pub home_team_name: Option<String>,
 }
 
 /// A prediction market.
@@ -348,27 +356,29 @@ pub struct Market {
     pub end_date: Option<DateTime<Utc>>,
     pub category: Option<String>,
     pub amm_type: Option<String>,
-    pub liquidity: Option<String>,
+    pub liquidity: Option<Decimal>,
     pub sponsor_name: Option<String>,
     pub sponsor_image: Option<String>,
     pub start_date: Option<DateTime<Utc>>,
     pub x_axis_value: Option<String>,
     pub y_axis_value: Option<String>,
-    pub denomination_token: Option<String>,
-    pub fee: Option<String>,
+    pub denomination_token: Option<U256>,
+    pub fee: Option<Decimal>,
     pub image: Option<String>,
     pub icon: Option<String>,
     pub lower_bound: Option<String>,
     pub upper_bound: Option<String>,
     pub description: Option<String>,
-    pub outcomes: Option<String>,
-    pub outcome_prices: Option<String>,
-    pub volume: Option<String>,
+    #[serde_as(as = "Option<JsonString>")]
+    pub outcomes: Option<Vec<String>>,
+    #[serde_as(as = "Option<JsonString>")]
+    pub outcome_prices: Option<Vec<Decimal>>,
+    pub volume: Option<Decimal>,
     pub active: Option<bool>,
     pub market_type: Option<String>,
     pub format_type: Option<String>,
-    pub lower_bound_date: Option<String>,
-    pub upper_bound_date: Option<String>,
+    pub lower_bound_date: Option<NaiveDate>,
+    pub upper_bound_date: Option<NaiveDate>,
     pub closed: Option<bool>,
     #[serde_as(as = "NoneAsEmptyString")]
     #[serde(default)]
@@ -377,6 +387,7 @@ pub struct Market {
     pub updated_by: Option<i32>,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
+    // TODO: older serializer
     pub closed_time: Option<String>,
     pub wide_format: Option<bool>,
     pub new: Option<bool>,
@@ -399,9 +410,9 @@ pub struct Market {
     pub curation_order: Option<i32>,
     pub volume_num: Option<Decimal>,
     pub liquidity_num: Option<Decimal>,
-    pub end_date_iso: Option<String>,
-    pub start_date_iso: Option<String>,
-    pub uma_end_date_iso: Option<String>,
+    pub end_date_iso: Option<NaiveDate>,
+    pub start_date_iso: Option<NaiveDate>,
+    pub uma_end_date_iso: Option<NaiveDate>,
     pub has_reviewed_dates: Option<bool>,
     pub ready_for_cron: Option<bool>,
     pub comments_enabled: Option<bool>,
@@ -411,7 +422,8 @@ pub struct Market {
     pub volume_1yr: Option<Decimal>,
     pub game_start_time: Option<String>,
     pub seconds_delay: Option<i32>,
-    pub clob_token_ids: Option<String>,
+    #[serde_as(as = "Option<JsonString>")]
+    pub clob_token_ids: Option<Vec<U256>>,
     pub disqus_thread: Option<String>,
     pub short_outcomes: Option<String>,
     #[serde(rename = "teamAID")]
@@ -419,7 +431,7 @@ pub struct Market {
     #[serde(rename = "teamBID")]
     pub team_b_id: Option<String>,
     pub uma_bond: Option<String>,
-    pub uma_reward: Option<String>,
+    pub uma_reward: Option<Decimal>,
     pub fpmm_live: Option<bool>,
     pub volume_24hr_amm: Option<Decimal>,
     pub volume_1wk_amm: Option<Decimal>,
@@ -500,10 +512,13 @@ pub struct Market {
     #[serde(default, rename = "negRiskMarketID")]
     pub neg_risk_market_id: Option<B256>,
     pub sent_discord: Option<bool>,
-    pub twitter_card_last_refreshed: Option<String>,
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub twitter_card_last_refreshed: Option<i64>,
     pub twitter_card_location: Option<String>,
     pub twitter_card_last_validated: Option<String>,
     pub clob_rewards: Option<Vec<ClobReward>>,
+    pub category_mailchimp_tag: Option<String>,
+    pub subcategory: Option<String>,
 }
 
 /// CLOB rewards configuration for a market.
@@ -519,8 +534,8 @@ pub struct ClobReward {
     #[serde_as(as = "NoneAsEmptyString")]
     #[serde(default)]
     pub condition_id: Option<B256>,
-    pub start_date: Option<String>,
-    pub end_date: Option<String>,
+    pub start_date: Option<NaiveDate>,
+    pub end_date: Option<NaiveDate>,
     pub rewards_amount: Option<Decimal>,
     pub rewards_daily_rate: Option<Decimal>,
 }
@@ -549,13 +564,14 @@ pub struct Series {
     pub restricted: Option<bool>,
     pub is_template: Option<bool>,
     pub template_variables: Option<bool>,
+    // Older records do not have ISO-8601 so must keep as String
     pub published_at: Option<String>,
     pub created_by: Option<String>,
     pub updated_by: Option<String>,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
     pub comments_enabled: Option<bool>,
-    pub competitive: Option<String>,
+    pub competitive: Option<Decimal>,
     pub volume_24hr: Option<Decimal>,
     pub volume: Option<Decimal>,
     pub liquidity: Option<Decimal>,
@@ -578,8 +594,8 @@ pub struct Series {
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct CommentPosition {
-    pub token_id: Option<String>,
-    pub position_size: Option<String>,
+    pub token_id: Option<U256>,
+    pub position_size: Option<Decimal>,
 }
 
 /// A comment profile.

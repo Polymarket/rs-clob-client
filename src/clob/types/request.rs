@@ -339,6 +339,7 @@ pub struct RfqQuotesRequest {
 /// This creates an Order that the Requester must sign.
 #[cfg(feature = "rfq")]
 #[non_exhaustive]
+#[serde_as]
 #[derive(Debug, Clone, Serialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[builder(on(String, into))]
@@ -352,6 +353,7 @@ pub struct AcceptRfqQuoteRequest {
     /// Taker's amount in base units.
     pub taker_amount: Decimal,
     /// Outcome token ID.
+    #[serde_as(as = "DisplayFromStr")]
     pub token_id: U256,
     /// Maker's address.
     pub maker: Address,
@@ -394,6 +396,7 @@ pub struct ApproveRfqOrderRequest {
     /// Taker's amount in base units.
     pub taker_amount: Decimal,
     /// Outcome token ID.
+    #[serde_as(as = "DisplayFromStr")]
     pub token_id: U256,
     /// Maker's address.
     pub maker: Address,
