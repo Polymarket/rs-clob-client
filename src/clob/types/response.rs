@@ -435,9 +435,6 @@ pub struct NotificationPayload {
 #[non_exhaustive]
 #[allow(
     clippy::allow_attributes,
-    reason = "Bon will generate code that has an allow attribute for some reason on the `allowances` field"
-)]
-#[allow(
     clippy::allow_attributes_without_reason,
     reason = "Bon will generate code that has an allow attribute for some reason on the `allowances` field"
 )]
@@ -763,9 +760,9 @@ pub struct RfqRequest {
     /// Market condition ID.
     pub market: B256,
     /// Token ID for the outcome token.
-    pub token: String,
+    pub token: U256,
     /// Complement token ID.
-    pub complement: String,
+    pub complement: U256,
     /// Order side (BUY or SELL).
     pub side: Side,
     /// Size of tokens to receive.
@@ -796,9 +793,9 @@ pub struct RfqQuote {
     /// Market condition ID.
     pub market: B256,
     /// Token ID for the outcome token.
-    pub token: String,
+    pub token: U256,
     /// Complement token ID.
-    pub complement: String,
+    pub complement: U256,
     /// Order side (BUY or SELL).
     pub side: Side,
     /// Size of tokens to receive.

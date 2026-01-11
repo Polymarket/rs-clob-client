@@ -21,6 +21,11 @@ use uuid::Uuid;
 use crate::common::{POLY_ADDRESS, create_authenticated};
 
 mod request {
+    use std::str::FromStr as _;
+
+    use polymarket_client_sdk::clob::types::request::Asset;
+    use polymarket_client_sdk::types::U256;
+
     use super::*;
 
     #[tokio::test]
@@ -46,8 +51,8 @@ mod request {
         });
 
         let request = CreateRfqRequestRequest::builder()
-            .asset_in("12345")
-            .asset_out("0")
+            .asset_in(Asset::Asset(U256::from_str("12345")?))
+            .asset_out(Asset::Usdc)
             .amount_in(dec!(50000000))
             .amount_out(dec!(3000000))
             .user_type(SignatureType::Eoa)
@@ -159,6 +164,11 @@ mod request {
 }
 
 mod quote {
+    use std::str::FromStr as _;
+
+    use polymarket_client_sdk::clob::types::request::Asset;
+    use polymarket_client_sdk::types::U256;
+
     use super::*;
 
     #[tokio::test]
@@ -185,8 +195,8 @@ mod quote {
 
         let request = CreateRfqQuoteRequest::builder()
             .request_id("01968f1e-1182-71c4-9d40-172db9be82af")
-            .asset_in("0")
-            .asset_out("12345")
+            .asset_in(Asset::Usdc)
+            .asset_out(Asset::Asset(U256::from_str("12345")?))
             .amount_in(dec!(3000000))
             .amount_out(dec!(50000000))
             .user_type(SignatureType::Eoa)
@@ -296,10 +306,10 @@ mod execution {
             .maker(maker)
             .signer(maker)
             .taker(Address::ZERO)
-            .nonce("0")
+            .nonce(0)
             .expiration(0)
             .side(Side::Buy)
-            .fee_rate_bps("0")
+            .fee_rate_bps(0)
             .signature("0x1234")
             .salt("123")
             .owner(Uuid::nil())
@@ -336,10 +346,10 @@ mod execution {
             .maker(maker)
             .signer(maker)
             .taker(Address::ZERO)
-            .nonce("0")
+            .nonce(0)
             .expiration(0)
             .side(Side::Buy)
-            .fee_rate_bps("0")
+            .fee_rate_bps(0)
             .signature("0x1234")
             .salt("123")
             .owner(Uuid::nil())
@@ -359,7 +369,11 @@ mod execution {
 }
 
 mod error_handling {
+    use std::str::FromStr as _;
+
+    use polymarket_client_sdk::clob::types::request::Asset;
     use polymarket_client_sdk::error::Kind;
+    use polymarket_client_sdk::types::U256;
 
     use super::*;
 
@@ -375,8 +389,8 @@ mod error_handling {
         });
 
         let request = CreateRfqRequestRequest::builder()
-            .asset_in("12345")
-            .asset_out("0")
+            .asset_in(Asset::Asset(U256::from_str("12345")?))
+            .asset_out(Asset::Usdc)
             .amount_in(dec!(50000000))
             .amount_out(dec!(3000000))
             .user_type(SignatureType::Eoa)

@@ -5,7 +5,7 @@
 
 use bon::Builder;
 use chrono::NaiveDate;
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use serde_with::{
     DisplayFromStr, StringWithSeparator, formats::CommaSeparator, serde_as, skip_serializing_none,
 };
@@ -164,6 +164,25 @@ pub struct UserRewardsEarningRequest {
     pub no_competition: bool,
 }
 
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq)]
+pub enum Asset {
+    Usdc,
+    Asset(U256),
+}
+
+impl Serialize for Asset {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Asset::Usdc => serializer.serialize_str("0"),
+            Asset::Asset(a) => a.serialize(serializer),
+        }
+    }
+}
+
 /// Request body for creating an RFQ request.
 ///
 /// Creates an RFQ Request to buy or sell outcome tokens.
@@ -171,12 +190,11 @@ pub struct UserRewardsEarningRequest {
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Builder)]
 #[serde(rename_all = "camelCase")]
-#[builder(on(String, into))]
 pub struct CreateRfqRequestRequest {
     /// Token ID the Requester wants to receive. "0" indicates USDC.
-    pub asset_in: String,
+    pub asset_in: Asset,
     /// Token ID the Requester wants to give. "0" indicates USDC.
-    pub asset_out: String,
+    pub asset_out: Asset,
     /// Amount of asset to receive (in base units).
     pub amount_in: Decimal,
     /// Amount of asset to give (in base units).
@@ -248,9 +266,9 @@ pub struct CreateRfqQuoteRequest {
     /// ID of the Request to quote.
     pub request_id: String,
     /// Token ID the Quoter wants to receive. "0" indicates USDC.
-    pub asset_in: String,
+    pub asset_in: Asset,
     /// Token ID the Quoter wants to give. "0" indicates USDC.
-    pub asset_out: String,
+    pub asset_out: Asset,
     /// Amount of asset to receive (in base units).
     pub amount_in: Decimal,
     /// Amount of asset to give (in base units).
@@ -342,13 +360,13 @@ pub struct AcceptRfqQuoteRequest {
     /// Taker's address.
     pub taker: Address,
     /// Order nonce.
-    pub nonce: String,
+    pub nonce: u64,
     /// Unix timestamp for order expiration.
     pub expiration: i64,
     /// Order side (BUY or SELL).
     pub side: Side,
     /// Fee rate in basis points.
-    pub fee_rate_bps: String,
+    pub fee_rate_bps: u64,
     /// EIP-712 signature.
     pub signature: String,
     /// Random salt for order uniqueness.
@@ -362,6 +380,7 @@ pub struct AcceptRfqQuoteRequest {
 /// Quoter approves an RFQ order during the last look window.
 #[cfg(feature = "rfq")]
 #[non_exhaustive]
+#[serde_as]
 #[derive(Debug, Clone, Serialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[builder(on(String, into))]
@@ -383,13 +402,13 @@ pub struct ApproveRfqOrderRequest {
     /// Taker's address.
     pub taker: Address,
     /// Order nonce.
-    pub nonce: String,
+    pub nonce: u64,
     /// Unix timestamp for order expiration.
     pub expiration: Timestamp,
     /// Order side (BUY or SELL).
     pub side: Side,
     /// Fee rate in basis points.
-    pub fee_rate_bps: String,
+    pub fee_rate_bps: u64,
     /// EIP-712 signature.
     pub signature: String,
     /// Random salt for order uniqueness.
