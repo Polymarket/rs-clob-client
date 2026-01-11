@@ -26,6 +26,7 @@ pub enum Kind {
     /// Error related to geographic restrictions blocking access
     Geoblock,
 }
+
 #[derive(Debug)]
 pub struct Error {
     kind: Kind,
@@ -41,25 +42,31 @@ impl Error {
             backtrace: Backtrace::capture(),
         }
     }
+
     pub fn kind(&self) -> Kind {
         self.kind
     }
+
     pub fn backtrace(&self) -> &Backtrace {
         &self.backtrace
     }
+
     pub fn inner(&self) -> Option<&(dyn StdError + Send + Sync + 'static)> {
         self.source.as_deref()
     }
+
     pub fn downcast_ref<E: StdError + 'static>(&self) -> Option<&E> {
         let e = self.source.as_deref()?;
         e.downcast_ref::<E>()
     }
+
     pub fn validation<S: Into<String>>(message: S) -> Self {
         Validation {
             reason: message.into(),
         }
         .into()
     }
+
     pub fn status<S: Into<String>>(
         status_code: StatusCode,
         method: Method,
@@ -74,6 +81,7 @@ impl Error {
         }
         .into()
     }
+
     #[must_use]
     pub fn missing_contract_config(chain_id: ChainId, neg_risk: bool) -> Self {
         MissingContractConfig { chain_id, neg_risk }.into()
@@ -96,6 +104,7 @@ impl StdError for Error {
             .map(|e| e as &(dyn StdError + 'static))
     }
 }
+
 #[derive(Debug)]
 pub struct Status {
     pub status_code: StatusCode,
@@ -115,6 +124,7 @@ impl fmt::Display for Status {
 }
 
 impl StdError for Status {}
+
 #[derive(Debug)]
 pub struct Validation {
     pub reason: String,
@@ -127,6 +137,7 @@ impl fmt::Display for Validation {
 }
 
 impl StdError for Validation {}
+
 #[derive(Debug)]
 pub struct Synchronization;
 
@@ -140,6 +151,7 @@ impl fmt::Display for Synchronization {
 }
 
 impl StdError for Synchronization {}
+
 #[derive(Debug, Clone, Copy)]
 pub struct MissingContractConfig {
     pub chain_id: ChainId,
@@ -261,9 +273,11 @@ impl From<Synchronization> for Error {
         Error::with_source(Kind::Synchronization, err)
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn geoblock_display_should_succeed() {
         let geoblock = Geoblock {
@@ -277,6 +291,7 @@ mod tests {
             "access blocked from country: US, region: NY, ip: 192.168.1.1"
         );
     }
+
     #[test]
     fn geoblock_into_error_should_succeed() {
         let geoblock = Geoblock {

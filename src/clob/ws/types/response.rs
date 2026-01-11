@@ -107,6 +107,7 @@ pub struct PriceChange {
     #[serde(default)]
     pub price_changes: Vec<PriceChangeBatchEntry>,
 }
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct PriceChangeBatchEntry {
     /// Asset/token identifier
@@ -512,6 +513,7 @@ pub fn parse_if_interested(
         }
     }
 }
+
 #[cfg(test)]
 mod tests {
     use rust_decimal_macros::dec;
@@ -522,6 +524,7 @@ mod tests {
     // Test market condition ID
     const TEST_MARKET: B256 =
         b256!("0000000000000000000000000000000000000000000000000000000000000001");
+
     #[test]
     fn parse_book_message() {
         let json = r#"{
@@ -544,6 +547,7 @@ mod tests {
             _ => panic!("Expected Book message"),
         }
     }
+
     #[test]
     fn parse_price_change_message() {
         let json = r#"{
@@ -570,6 +574,7 @@ mod tests {
             _ => panic!("Expected PriceChange message"),
         }
     }
+
     #[test]
     fn parse_price_change_interest_message() {
         let json = r#"{
@@ -619,6 +624,7 @@ mod tests {
             _ => panic!("Expected first price change"),
         }
     }
+
     #[test]
     fn parse_batch_messages() {
         let json = r#"[
@@ -656,6 +662,7 @@ mod tests {
         assert!(matches!(&msgs[1], WsMessage::PriceChange(p) if p.market == TEST_MARKET));
         assert!(matches!(&msgs[2], WsMessage::LastTradePrice(l) if l.asset_id == "asset2"));
     }
+
     #[test]
     fn parse_batch_filters_by_interest() {
         let json = r#"[
@@ -693,6 +700,7 @@ mod tests {
         let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::ALL).unwrap();
         assert_eq!(msgs.len(), 2);
     }
+
     #[test]
     fn parse_best_bid_ask_message() {
         let json = r#"{
@@ -715,6 +723,7 @@ mod tests {
             _ => panic!("Expected BestBidAsk message"),
         }
     }
+
     #[test]
     fn parse_new_market_message() {
         let json = r#"{
@@ -757,6 +766,7 @@ mod tests {
             _ => panic!("Expected NewMarket message"),
         }
     }
+
     #[test]
     fn parse_market_resolved_message() {
         let json = r#"{
@@ -797,6 +807,7 @@ mod tests {
             _ => panic!("Expected MarketResolved message"),
         }
     }
+
     #[test]
     fn parse_last_trade_price_with_new_fields() {
         let json = r#"{
@@ -821,6 +832,7 @@ mod tests {
             _ => panic!("Expected LastTradePrice message"),
         }
     }
+
     #[test]
     fn parse_custom_feature_messages_filter_by_interest() {
         let json = r#"[
@@ -857,6 +869,7 @@ mod tests {
         let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::MARKET).unwrap();
         assert_eq!(msgs.len(), 2);
     }
+
     #[test]
     fn parse_new_market_without_event_message() {
         let json = r#"{
@@ -880,6 +893,7 @@ mod tests {
             _ => panic!("Expected NewMarket message"),
         }
     }
+
     #[test]
     fn parse_market_resolved_without_event_message() {
         let json = r#"{
@@ -906,6 +920,7 @@ mod tests {
             _ => panic!("Expected MarketResolved message"),
         }
     }
+
     #[test]
     fn parse_last_trade_price_without_optional_fields() {
         let json = r#"{
@@ -927,6 +942,7 @@ mod tests {
             _ => panic!("Expected LastTradePrice message"),
         }
     }
+
     #[test]
     fn matches_interest_custom_feature_messages() {
         let bba = WsMessage::BestBidAsk(BestBidAsk {
