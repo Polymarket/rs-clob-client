@@ -150,3 +150,4 @@ pub mod types;
 pub mod ws;
 
 pub use client::{Client, Config};
+pub use order_builder::RoundingStrategy;
