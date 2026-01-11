@@ -94,14 +94,14 @@ mod request {
 
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::GET)
-                .path("/rfq/request")
+                .path("/rfq/data/requests")
                 .header_exists(POLY_ADDRESS);
             then.status(StatusCode::OK).json_body(json!({
                 "data": [{
                     "requestId": "01968f1e-1182-71c4-9d40-172db9be82af",
-                    "user": "0x6e0c80c90ea6c15917308f820eac91ce2724b5b5",
-                    "proxy": "0x6e0c80c90ea6c15917308f820eac91ce2724b5b5",
-                    "market": "0x37a6a2dd9f3469495d9ec2467b0a764c5905371a294ce544bc3b2c944eb3e84a",
+                    "userAddress": "0x6e0c80c90ea6c15917308f820eac91ce2724b5b5",
+                    "proxyAddress": "0x6e0c80c90ea6c15917308f820eac91ce2724b5b5",
+                    "condition": "0x37a6a2dd9f3469495d9ec2467b0a764c5905371a294ce544bc3b2c944eb3e84a",
                     "token": "34097058504275310827233323421517291090691602969494795225921954353603704046623",
                     "complement": "32868290514114487320702931554221558599637733115139769311383916145370132125101",
                     "side": "BUY",
@@ -137,7 +137,7 @@ mod request {
 
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::GET)
-                .path("/rfq/request")
+                .path("/rfq/data/requests")
                 .query_param("next_cursor", "abc123")
                 .header_exists(POLY_ADDRESS);
             then.status(StatusCode::OK).json_body(json!({
@@ -232,15 +232,15 @@ mod quote {
 
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::GET)
-                .path("/rfq/quote")
+                .path("/rfq/data/quotes")
                 .header_exists(POLY_ADDRESS);
             then.status(StatusCode::OK).json_body(json!({
                 "data": [{
                     "quoteId": "0196f484-9fbd-74c1-bfc1-75ac21c1cf84",
                     "requestId": "01968f1e-1182-71c4-9d40-172db9be82af",
-                    "user": "0x6e0c80c90ea6c15917308f820eac91ce2724b5b5",
-                    "proxy": "0x6e0c80c90ea6c15917308f820eac91ce2724b5b5",
-                    "market": "0x37a6a2dd9f3469495d9ec2467b0a764c5905371a294ce544bc3b2c944eb3e84a",
+                    "userAddress": "0x6e0c80c90ea6c15917308f820eac91ce2724b5b5",
+                    "proxyAddress": "0x6e0c80c90ea6c15917308f820eac91ce2724b5b5",
+                    "condition": "0x37a6a2dd9f3469495d9ec2467b0a764c5905371a294ce544bc3b2c944eb3e84a",
                     "token": "34097058504275310827233323421517291090691602969494795225921954353603704046623",
                     "complement": "32868290514114487320702931554221558599637733115139769311383916145370132125101",
                     "side": "BUY",

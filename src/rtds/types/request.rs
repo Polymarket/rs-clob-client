@@ -1,3 +1,4 @@
+use bon::Builder;
 use secrecy::ExposeSecret as _;
 use serde::Serialize;
 use serde_json::Value;
@@ -7,7 +8,7 @@ use crate::auth::Credentials;
 
 /// RTDS subscription request message.
 #[non_exhaustive]
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Builder)]
 pub struct SubscriptionRequest {
     /// Action type ("subscribe" or "unsubscribe")
     pub action: SubscriptionAction,
@@ -54,7 +55,7 @@ pub enum SubscriptionAction {
 /// Ensure subscription requests are only sent over secure WebSocket connections (`wss://`)
 /// and never logged or exposed in error messages.
 #[non_exhaustive]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Builder)]
 pub struct Subscription {
     /// Topic name (e.g., `crypto_prices`, `comments`)
     pub topic: String,
