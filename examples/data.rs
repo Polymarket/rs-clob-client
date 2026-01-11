@@ -256,7 +256,7 @@ async fn main() -> anyhow::Result<()> {
             if let Some(oi) = oi_list.first() {
                 info!(
                     endpoint = "open_interest",
-                    market = %oi.market,
+                    market = ?oi.market,
                     value = %oi.value
                 );
             }
