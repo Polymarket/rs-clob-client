@@ -2,7 +2,7 @@ use std::fmt;
 
 use bon::Builder;
 use serde::de::{IgnoredAny, MapAccess, SeqAccess, Visitor};
-use serde::{Deserialize, Deserializer as _, Serialize};
+use serde::{Deserialize, Deserializer as _};
 use serde_json::Deserializer;
 use serde_with::{DisplayFromStr, NoneAsEmptyString, serde_as};
 
@@ -10,7 +10,7 @@ use crate::auth::ApiKey;
 use crate::clob::types::{Side, TraderSide};
 use crate::clob::ws::interest::MessageInterest;
 use crate::error::Kind;
-use crate::types::{B256, Decimal};
+use crate::types::{B256, Decimal, U256};
 
 /// Top-level WebSocket message wrapper.
 ///
@@ -68,10 +68,10 @@ impl WsMessage {
 /// state of the orderbook with bids and asks arrays.
 #[non_exhaustive]
 #[serde_as]
-#[derive(Debug, Clone, Deserialize, Serialize, Builder)]
+#[derive(Debug, Clone, Deserialize, Builder)]
 pub struct BookUpdate {
     /// Asset/token identifier
-    pub asset_id: String,
+    pub asset_id: U256,
     /// Market condition ID
     pub market: B256,
     /// Unix timestamp in milliseconds
@@ -84,13 +84,12 @@ pub struct BookUpdate {
     #[serde(default)]
     pub asks: Vec<OrderBookLevel>,
     /// Hash for orderbook validation
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub hash: Option<String>,
 }
 
 /// Individual price level in an orderbook.
 #[non_exhaustive]
-#[derive(Debug, Clone, Deserialize, Serialize, Builder)]
+#[derive(Debug, Clone, Deserialize, Builder)]
 pub struct OrderBookLevel {
     /// Price at this level
     pub price: Decimal,
@@ -117,7 +116,7 @@ pub struct PriceChange {
 #[derive(Debug, Clone, Deserialize)]
 pub struct PriceChangeBatchEntry {
     /// Asset/token identifier
-    pub asset_id: String,
+    pub asset_id: U256,
     /// New price
     pub price: Decimal,
     /// Total size affected by this price change (if provided)
@@ -139,10 +138,10 @@ pub struct PriceChangeBatchEntry {
 /// Tick size change event (triggered when price crosses thresholds).
 #[non_exhaustive]
 #[serde_as]
-#[derive(Debug, Clone, Deserialize, Serialize, Builder)]
+#[derive(Debug, Clone, Deserialize, Builder)]
 pub struct TickSizeChange {
     /// Asset/token identifier
-    pub asset_id: String,
+    pub asset_id: U256,
     /// Market condition ID
     pub market: B256,
     /// Previous tick size
@@ -157,23 +156,20 @@ pub struct TickSizeChange {
 /// Last trade price update.
 #[non_exhaustive]
 #[serde_as]
-#[derive(Debug, Clone, Deserialize, Serialize, Builder)]
+#[derive(Debug, Clone, Deserialize, Builder)]
 pub struct LastTradePrice {
     /// Asset/token identifier
-    pub asset_id: String,
+    pub asset_id: U256,
     /// Market condition ID
     pub market: B256,
     /// Last trade price
     pub price: Decimal,
     /// Side of the last trade
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub side: Option<Side>,
     /// Size of the last trade
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub size: Option<Decimal>,
     /// Fee rate in basis points
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub fee_rate_bps: Option<String>,
+    pub fee_rate_bps: Option<Decimal>,
     /// Unix timestamp in milliseconds
     #[serde_as(as = "DisplayFromStr")]
     pub timestamp: i64,
@@ -184,12 +180,12 @@ pub struct LastTradePrice {
 /// Emitted when the best bid and ask prices for a market change.
 #[non_exhaustive]
 #[serde_as]
-#[derive(Debug, Clone, Deserialize, Serialize, Builder)]
+#[derive(Debug, Clone, Deserialize, Builder)]
 pub struct BestBidAsk {
     /// Market condition ID
     pub market: B256,
     /// Asset/token identifier
-    pub asset_id: String,
+    pub asset_id: U256,
     /// Current best bid price
     pub best_bid: Decimal,
     /// Current best ask price
@@ -206,7 +202,7 @@ pub struct BestBidAsk {
 /// Emitted when a new market is created.
 #[non_exhaustive]
 #[serde_as]
-#[derive(Debug, Clone, Deserialize, Serialize, Builder)]
+#[derive(Debug, Clone, Deserialize, Builder)]
 pub struct NewMarket {
     /// Market ID
     pub id: String,
@@ -220,7 +216,7 @@ pub struct NewMarket {
     pub description: String,
     /// List of asset IDs
     #[serde(rename = "assets_ids")]
-    pub asset_ids: Vec<String>,
+    pub asset_ids: Vec<U256>,
     /// List of outcomes (e.g., `["Yes", "No"]`)
     pub outcomes: Vec<String>,
     /// Event message object
@@ -236,7 +232,7 @@ pub struct NewMarket {
 /// Emitted when a market is resolved.
 #[non_exhaustive]
 #[serde_as]
-#[derive(Debug, Clone, Deserialize, Serialize, Builder)]
+#[derive(Debug, Clone, Deserialize, Builder)]
 pub struct MarketResolved {
     /// Market ID
     pub id: String,
@@ -250,11 +246,11 @@ pub struct MarketResolved {
     pub description: String,
     /// List of asset IDs
     #[serde(rename = "assets_ids")]
-    pub asset_ids: Vec<String>,
+    pub asset_ids: Vec<U256>,
     /// List of outcomes (e.g., `["Yes", "No"]`)
     pub outcomes: Vec<String>,
     /// Winning asset ID
-    pub winning_asset_id: String,
+    pub winning_asset_id: U256,
     /// Winning outcome (e.g., "Yes" or "No")
     pub winning_outcome: String,
     /// Event message object
@@ -267,7 +263,7 @@ pub struct MarketResolved {
 
 /// Event message object for market events.
 #[non_exhaustive]
-#[derive(Debug, Clone, Deserialize, Serialize, Builder)]
+#[derive(Debug, Clone, Deserialize, Builder)]
 pub struct EventMessage {
     /// Event message ID
     pub id: String,
@@ -283,10 +279,10 @@ pub struct EventMessage {
 
 /// Maker order details within a trade message.
 #[non_exhaustive]
-#[derive(Debug, Clone, Deserialize, Serialize, Builder)]
+#[derive(Debug, Clone, Deserialize, Builder)]
 pub struct MakerOrder {
     /// Asset/token identifier of the maker order
-    pub asset_id: String,
+    pub asset_id: U256,
     /// Amount of maker order matched in trade
     pub matched_amount: Decimal,
     /// Maker order ID
@@ -299,37 +295,60 @@ pub struct MakerOrder {
     pub price: Decimal,
 }
 
+#[non_exhaustive]
+#[derive(Debug, Clone, Deserialize)]
+pub enum TradeMessageType {
+    #[serde(alias = "trade", alias = "TRADE")]
+    Trade,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub enum TradeMessageStatus {
+    #[serde(alias = "matched", alias = "MATCHED")]
+    Matched,
+    #[serde(alias = "mined", alias = "MINED")]
+    Mined,
+    #[serde(alias = "confirmed", alias = "CONFIRMED")]
+    Confirmed,
+    #[serde(untagged)]
+    Unknown(String),
+}
+
 /// User trade execution message (authenticated channel only).
 #[non_exhaustive]
 #[serde_as]
-#[derive(Debug, Clone, Deserialize, Serialize, Builder)]
+#[derive(Debug, Clone, Deserialize, Builder)]
 pub struct TradeMessage {
     /// Trade identifier
     pub id: String,
     /// Market condition ID
     pub market: B256,
     /// Asset/token identifier
-    pub asset_id: String,
-    /// Side of the trade (BUY or SELL)
+    pub asset_id: U256,
+    /// Side of the trade
     pub side: Side,
     /// Size of the trade
     pub size: Decimal,
     /// Execution price
     pub price: Decimal,
-    /// Trade status (MATCHED, MINED, CONFIRMED, etc.)
-    pub status: String,
-    /// Message type (always "TRADE")
+    /// Trade status
+    pub status: TradeMessageStatus,
+    /// Message type
     #[serde(rename = "type", default)]
-    pub msg_type: Option<String>,
+    pub msg_type: Option<TradeMessageType>,
     /// Timestamp of last trade modification
     #[serde(default)]
-    pub last_update: Option<String>,
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub last_update: Option<i64>,
     /// Time trade was matched
     #[serde(default)]
-    pub matchtime: Option<String>,
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub matchtime: Option<i64>,
     /// Unix timestamp of event
     #[serde(default)]
-    pub timestamp: Option<String>,
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub timestamp: Option<i64>,
     /// Outcome (Yes/No)
     #[serde(default)]
     pub outcome: Option<String>,
@@ -347,7 +366,7 @@ pub struct TradeMessage {
     pub maker_orders: Vec<MakerOrder>,
     /// Fee rate in basis points (string in API response)
     #[serde(default)]
-    pub fee_rate_bps: Option<String>,
+    pub fee_rate_bps: Option<Decimal>,
     /// On-chain transaction hash
     #[serde_as(as = "NoneAsEmptyString")]
     #[serde(default)]
@@ -357,23 +376,37 @@ pub struct TradeMessage {
     pub trader_side: Option<TraderSide>,
 }
 
+#[non_exhaustive]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub enum OrderMessageType {
+    #[serde(alias = "placement", alias = "PLACEMENT")]
+    Placement,
+    #[serde(alias = "update", alias = "UPDATE")]
+    Update,
+    #[serde(alias = "cancellation", alias = "CANCELLATION")]
+    Cancellation,
+    #[serde(untagged)]
+    Unknown(String),
+}
+
 /// User order update message (authenticated channel only).
 #[non_exhaustive]
-#[derive(Debug, Clone, Deserialize, Serialize, Builder)]
+#[serde_as]
+#[derive(Debug, Clone, Deserialize, Builder)]
 pub struct OrderMessage {
     /// Order identifier
     pub id: String,
     /// Market condition ID
     pub market: B256,
     /// Asset/token identifier
-    pub asset_id: String,
+    pub asset_id: U256,
     /// Side of the order (BUY or SELL)
     pub side: Side,
     /// Order price
     pub price: Decimal,
-    /// Message type (PLACEMENT, UPDATE, or CANCELLATION)
+    /// Message type
     #[serde(rename = "type", default)]
-    pub msg_type: Option<String>,
+    pub msg_type: Option<OrderMessageType>,
     /// Outcome (Yes/No)
     #[serde(default)]
     pub outcome: Option<String>,
@@ -391,7 +424,8 @@ pub struct OrderMessage {
     pub size_matched: Option<Decimal>,
     /// Unix timestamp of event
     #[serde(default)]
-    pub timestamp: Option<String>,
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub timestamp: Option<i64>,
     /// Associated trade IDs
     #[serde(default)]
     pub associate_trades: Option<Vec<String>>,
@@ -399,7 +433,7 @@ pub struct OrderMessage {
 
 /// Order status for WebSocket order messages.
 #[non_exhaustive]
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum OrderStatus {
     /// Order is open and active
@@ -424,10 +458,10 @@ pub enum OrderStatus {
 /// Calculated midpoint update (derived from orderbook).
 #[non_exhaustive]
 #[serde_as]
-#[derive(Debug, Clone, Deserialize, Serialize, Builder)]
+#[derive(Debug, Clone, Deserialize, Builder)]
 pub struct MidpointUpdate {
     /// Asset/token identifier
-    pub asset_id: String,
+    pub asset_id: U256,
     /// Market condition ID
     pub market: B256,
     /// Calculated midpoint price
@@ -533,6 +567,8 @@ pub fn parse_if_interested(
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr as _;
+
     use rust_decimal_macros::dec;
 
     use super::*;
@@ -546,7 +582,7 @@ mod tests {
     fn parse_book_message() {
         let json = r#"{
             "event_type": "book",
-            "asset_id": "123",
+            "asset_id": "106585164761922456203746651621390029417453862034640469075081961934906147433548",
             "market": "0x0000000000000000000000000000000000000000000000000000000000000001",
             "timestamp": "1234567890",
             "bids": [{"price": "0.5", "size": "100"}],
@@ -556,7 +592,7 @@ mod tests {
         let msg: WsMessage = serde_json::from_str(json).unwrap();
         match msg {
             WsMessage::Book(book) => {
-                assert_eq!(book.asset_id, "123");
+                assert_eq!(book.asset_id, U256::from_str("106585164761922456203746651621390029417453862034640469075081961934906147433548").unwrap());
                 assert_eq!(book.market, TEST_MARKET);
                 assert_eq!(book.bids.len(), 1);
                 assert_eq!(book.asks.len(), 1);
@@ -572,7 +608,7 @@ mod tests {
             "market": "0x0000000000000000000000000000000000000000000000000000000000000002",
             "timestamp": "1234567890",
             "price_changes": [{
-                "asset_id": "456",
+                "asset_id": "106585164761922456203746651621390029417453862034640469075081961934906147433548",
                 "price": "0.52",
                 "size": "10",
                 "side": "BUY"
@@ -584,7 +620,7 @@ mod tests {
             WsMessage::PriceChange(price) => {
                 let changes = &price.price_changes[0];
 
-                assert_eq!(changes.asset_id, "456");
+                assert_eq!(changes.asset_id, U256::from_str("106585164761922456203746651621390029417453862034640469075081961934906147433548").unwrap());
                 assert_eq!(changes.side, Side::Buy);
                 assert_eq!(changes.size.unwrap(), Decimal::TEN);
             }
@@ -600,7 +636,7 @@ mod tests {
             "timestamp": "1234567890",
             "price_changes": [
                 {
-                    "asset_id": "asset_a",
+                    "asset_id": "106585164761922456203746651621390029417453862034640469075081961934906147433548",
                     "price": "0.10",
                     "side": "BUY",
                     "hash": "abc",
@@ -608,7 +644,7 @@ mod tests {
                     "best_ask": "0.12"
                 },
                 {
-                    "asset_id": "asset_b",
+                    "asset_id": "106585164761922456203746651621390029417453862034640469075081961934906147433548",
                     "price": "0.90",
                     "size": "5",
                     "side": "SELL"
@@ -628,12 +664,12 @@ mod tests {
                 let changes = &price.price_changes;
                 assert_eq!(changes.len(), 2);
 
-                assert_eq!(changes[0].asset_id, "asset_a");
+                assert_eq!(changes[0].asset_id, U256::from_str("106585164761922456203746651621390029417453862034640469075081961934906147433548").unwrap());
                 assert_eq!(changes[0].best_bid, Some(dec!(0.11)));
                 assert_eq!(changes[0].price, dec!(0.10));
                 assert!(changes[0].size.is_none());
 
-                assert_eq!(changes[1].asset_id, "asset_b");
+                assert_eq!(changes[1].asset_id, U256::from_str("106585164761922456203746651621390029417453862034640469075081961934906147433548").unwrap());
                 assert_eq!(changes[1].best_bid, None);
                 assert_eq!(changes[1].size, Some(dec!(5)));
                 assert_eq!(changes[1].price, dec!(0.90));
@@ -647,7 +683,7 @@ mod tests {
         let json = r#"[
             {
                 "event_type": "book",
-                "asset_id": "asset1",
+                "asset_id": "106585164761922456203746651621390029417453862034640469075081961934906147433548",
                 "market": "0x0000000000000000000000000000000000000000000000000000000000000001",
                 "timestamp": "1234567890",
                 "bids": [{"price": "0.5", "size": "100"}],
@@ -658,14 +694,14 @@ mod tests {
                 "market": "0x0000000000000000000000000000000000000000000000000000000000000001",
                 "timestamp": "1234567891",
                 "price_changes": [{
-                    "asset_id": "asset1",
+                    "asset_id": "106585164761922456203746651621390029417453862034640469075081961934906147433548",
                     "price": "0.51",
                     "side": "BUY"
                 }]
             },
             {
                 "event_type": "last_trade_price",
-                "asset_id": "asset2",
+                "asset_id": "106585164761922456203746651621390029417453862034640469075081961934906147433548",
                 "market": "0x0000000000000000000000000000000000000000000000000000000000000001",
                 "price": "0.6",
                 "timestamp": "1234567892"
@@ -675,9 +711,13 @@ mod tests {
         let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::ALL).unwrap();
         assert_eq!(msgs.len(), 3);
 
-        assert!(matches!(&msgs[0], WsMessage::Book(b) if b.asset_id == "asset1"));
+        assert!(
+            matches!(&msgs[0], WsMessage::Book(b) if b.asset_id == U256::from_str("106585164761922456203746651621390029417453862034640469075081961934906147433548").unwrap())
+        );
         assert!(matches!(&msgs[1], WsMessage::PriceChange(p) if p.market == TEST_MARKET));
-        assert!(matches!(&msgs[2], WsMessage::LastTradePrice(l) if l.asset_id == "asset2"));
+        assert!(
+            matches!(&msgs[2], WsMessage::LastTradePrice(l) if l.asset_id == U256::from_str("106585164761922456203746651621390029417453862034640469075081961934906147433548").unwrap())
+        );
     }
 
     #[test]
@@ -685,7 +725,7 @@ mod tests {
         let json = r#"[
             {
                 "event_type": "book",
-                "asset_id": "asset1",
+                "asset_id": "106585164761922456203746651621390029417453862034640469075081961934906147433548",
                 "market": "0x0000000000000000000000000000000000000000000000000000000000000001",
                 "timestamp": "1234567890",
                 "bids": [],
@@ -695,7 +735,7 @@ mod tests {
                 "event_type": "trade",
                 "id": "trade1",
                 "market": "0x0000000000000000000000000000000000000000000000000000000000000001",
-                "asset_id": "asset1",
+                "asset_id": "106585164761922456203746651621390029417453862034640469075081961934906147433548",
                 "side": "BUY",
                 "size": "10",
                 "price": "0.5",
@@ -817,7 +857,7 @@ mod tests {
                 assert_eq!(mr.winning_outcome, "Yes");
                 assert_eq!(
                     mr.winning_asset_id,
-                    "76043073756653678226373981964075571318267289248134717369284518995922789326425"
+                    U256::from_str("76043073756653678226373981964075571318267289248134717369284518995922789326425").unwrap()
                 );
                 assert_eq!(mr.asset_ids.len(), 2);
             }
@@ -843,7 +883,7 @@ mod tests {
             WsMessage::LastTradePrice(ltp) => {
                 assert_eq!(ltp.price, dec!(0.456));
                 assert_eq!(ltp.size, Some(dec!(219.217767)));
-                assert_eq!(ltp.fee_rate_bps, Some("0".to_owned()));
+                assert_eq!(ltp.fee_rate_bps, Some(Decimal::ZERO));
                 assert_eq!(ltp.side, Some(Side::Buy));
             }
             _ => panic!("Expected LastTradePrice message"),
@@ -856,7 +896,7 @@ mod tests {
             {
                 "event_type": "best_bid_ask",
                 "market": "0x0000000000000000000000000000000000000000000000000000000000000001",
-                "asset_id": "asset1",
+                "asset_id": "106585164761922456203746651621390029417453862034640469075081961934906147433548",
                 "best_bid": "0.5",
                 "best_ask": "0.6",
                 "spread": "0.1",
@@ -864,7 +904,7 @@ mod tests {
             },
             {
                 "event_type": "book",
-                "asset_id": "asset1",
+                "asset_id": "106585164761922456203746651621390029417453862034640469075081961934906147433548",
                 "market": "0x0000000000000000000000000000000000000000000000000000000000000001",
                 "timestamp": "1234567890",
                 "bids": [],
@@ -895,7 +935,7 @@ mod tests {
             "market": "0x311d0c4b6671ab54af4970c06fcf58662516f5168997bdda209ec3db5aa6b0c1",
             "slug": "nvda-above-240-on-january-30-2026",
             "description": "This market will resolve to Yes or No.",
-            "assets_ids": ["asset1", "asset2"],
+            "assets_ids": ["106585164761922456203746651621390029417453862034640469075081961934906147433548", "106585164761922456203746651621390029417453862034640469075081961934906147433548"],
             "outcomes": ["Yes", "No"],
             "timestamp": "1766790415550",
             "event_type": "new_market"
@@ -919,9 +959,9 @@ mod tests {
             "market": "0x311d0c4b6671ab54af4970c06fcf58662516f5168997bdda209ec3db5aa6b0c1",
             "slug": "nvda-above-240-on-january-30-2026",
             "description": "This market will resolve to Yes or No.",
-            "assets_ids": ["asset1", "asset2"],
+            "assets_ids": ["106585164761922456203746651621390029417453862034640469075081961934906147433548", "106585164761922456203746651621390029417453862034640469075081961934906147433548"],
             "outcomes": ["Yes", "No"],
-            "winning_asset_id": "asset1",
+            "winning_asset_id": "106585164761922456203746651621390029417453862034640469075081961934906147433548",
             "winning_outcome": "Yes",
             "timestamp": "1766790415550",
             "event_type": "market_resolved"
@@ -941,7 +981,7 @@ mod tests {
     #[test]
     fn parse_last_trade_price_without_optional_fields() {
         let json = r#"{
-            "asset_id": "asset123",
+            "asset_id": "106585164761922456203746651621390029417453862034640469075081961934906147433548",
             "event_type": "last_trade_price",
             "market": "0x0000000000000000000000000000000000000000000000000000000000000123",
             "price": "0.5",
@@ -964,7 +1004,10 @@ mod tests {
     fn matches_interest_custom_feature_messages() {
         let bba = WsMessage::BestBidAsk(BestBidAsk {
             market: TEST_MARKET,
-            asset_id: "a".to_owned(),
+            asset_id: U256::from_str(
+                "106585164761922456203746651621390029417453862034640469075081961934906147433548",
+            )
+            .unwrap(),
             best_bid: dec!(0.5),
             best_ask: dec!(0.6),
             spread: dec!(0.1),
@@ -996,7 +1039,10 @@ mod tests {
             description: "d".to_owned(),
             asset_ids: vec![],
             outcomes: vec![],
-            winning_asset_id: "w".to_owned(),
+            winning_asset_id: U256::from_str(
+                "106585164761922456203746651621390029417453862034640469075081961934906147433548",
+            )
+            .unwrap(),
             winning_outcome: "Yes".to_owned(),
             event_message: None,
             timestamp: 0,
