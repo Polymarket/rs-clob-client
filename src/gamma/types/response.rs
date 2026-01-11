@@ -3,6 +3,7 @@
     reason = "Response suffix is intentional for clarity"
 )]
 
+use bon::Builder;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::NoneAsEmptyString;
@@ -12,7 +13,7 @@ use crate::serde_helpers::StringFromAny;
 use crate::types::{Address, B256, Decimal};
 
 /// Image optimization metadata.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct ImageOptimization {
@@ -30,7 +31,7 @@ pub struct ImageOptimization {
 }
 
 /// Pagination information.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct Pagination {
@@ -42,7 +43,7 @@ pub struct Pagination {
 pub type HealthResponse = String;
 
 /// A sports team.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct Team {
@@ -60,7 +61,7 @@ pub struct Team {
 }
 
 /// Sports metadata information.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct SportsMetadata {
@@ -75,7 +76,7 @@ pub struct SportsMetadata {
 }
 
 /// Sports market types response.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct SportsMarketTypesResponse {
@@ -83,7 +84,7 @@ pub struct SportsMarketTypesResponse {
 }
 
 /// A tag for categorizing content.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct Tag {
@@ -103,7 +104,7 @@ pub struct Tag {
 
 /// A relationship between tags.
 #[serde_as]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct RelatedTag {
@@ -119,7 +120,7 @@ pub struct RelatedTag {
 }
 
 /// A category for organizing content.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct Category {
@@ -135,7 +136,7 @@ pub struct Category {
 }
 
 /// An event creator.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct EventCreator {
@@ -149,7 +150,7 @@ pub struct EventCreator {
 }
 
 /// A chat/live stream associated with an event.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct Chat {
@@ -163,7 +164,7 @@ pub struct Chat {
 }
 
 /// A template for creating events/markets.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct Template {
@@ -182,7 +183,7 @@ pub struct Template {
 }
 
 /// A collection of events.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct Collection {
@@ -219,7 +220,7 @@ pub struct Collection {
 
 /// A prediction market event.
 #[serde_as]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct Event {
@@ -332,7 +333,7 @@ pub struct Event {
 
 /// A prediction market.
 #[serde_as]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct Market {
@@ -507,7 +508,7 @@ pub struct Market {
 
 /// CLOB rewards configuration for a market.
 #[serde_as]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct ClobReward {
@@ -525,7 +526,7 @@ pub struct ClobReward {
 }
 
 /// A series of related events.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct Series {
@@ -573,7 +574,7 @@ pub struct Series {
 }
 
 /// A comment position.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct CommentPosition {
@@ -583,7 +584,7 @@ pub struct CommentPosition {
 
 /// A comment profile.
 #[serde_as]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct CommentProfile {
@@ -606,7 +607,7 @@ pub struct CommentProfile {
 
 /// A reaction to a comment.
 #[serde_as]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct Reaction {
@@ -624,7 +625,7 @@ pub struct Reaction {
 
 /// A comment on an event, series, or market.
 #[serde_as]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct Comment {
@@ -650,7 +651,7 @@ pub struct Comment {
 }
 
 /// A user associated with a public profile.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[non_exhaustive]
 pub struct PublicProfileUser {
     pub id: Option<String>,
@@ -661,7 +662,7 @@ pub struct PublicProfileUser {
 
 /// Public profile response.
 #[serde_as]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct PublicProfile {
@@ -680,7 +681,7 @@ pub struct PublicProfile {
 }
 
 /// A search tag result.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct SearchTag {
@@ -692,7 +693,7 @@ pub struct SearchTag {
 
 /// A profile in search results.
 #[serde_as]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct Profile {
@@ -724,7 +725,7 @@ pub struct Profile {
 }
 
 /// Search results.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[non_exhaustive]
 pub struct SearchResults {
     pub events: Option<Vec<Event>>,

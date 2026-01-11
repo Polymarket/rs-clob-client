@@ -1,3 +1,4 @@
+use bon::Builder;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -7,7 +8,7 @@ use crate::types::Decimal;
 ///
 /// All messages received from the RTDS WebSocket connection are deserialized into this struct.
 #[non_exhaustive]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Builder)]
 pub struct RtdsMessage {
     /// The subscription topic (e.g., `crypto_prices`, `comments`)
     pub topic: String,
@@ -54,7 +55,7 @@ impl RtdsMessage {
 
 /// Binance crypto price update payload.
 #[non_exhaustive]
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Builder)]
 pub struct CryptoPrice {
     /// Trading pair symbol (lowercase concatenated, e.g., "solusdt", "btcusdt")
     pub symbol: String,
@@ -66,7 +67,7 @@ pub struct CryptoPrice {
 
 /// Chainlink price feed update payload.
 #[non_exhaustive]
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Builder)]
 pub struct ChainlinkPrice {
     /// Trading pair symbol (slash-separated, e.g., "eth/usd", "btc/usd")
     pub symbol: String,
@@ -78,7 +79,7 @@ pub struct ChainlinkPrice {
 
 /// Comment event payload.
 #[non_exhaustive]
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Builder)]
 pub struct Comment {
     /// Unique identifier for this comment
     pub id: String,
@@ -114,7 +115,7 @@ pub struct Comment {
 
 /// Profile information for a comment author.
 #[non_exhaustive]
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Builder)]
 pub struct CommentProfile {
     /// User profile address
     #[serde(rename = "baseAddress")]
