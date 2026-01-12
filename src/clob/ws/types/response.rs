@@ -1,9 +1,6 @@
-use std::fmt;
-
 use bon::Builder;
-use serde::de::{IgnoredAny, MapAccess, SeqAccess, Visitor};
-use serde::{Deserialize, Deserializer as _};
-use serde_json::Deserializer;
+use serde::Deserialize;
+use serde_json::Value;
 use serde_with::{DisplayFromStr, NoneAsEmptyString, serde_as};
 
 use crate::auth::ApiKey;
@@ -471,55 +468,6 @@ pub struct MidpointUpdate {
     pub timestamp: i64,
 }
 
-/// Result of peeking at the message structure without full deserialization.
-enum MessageShape {
-    /// Single object with the given `event_type` (if present).
-    Single(Option<String>),
-    /// Array of messages requiring full deserialization.
-    Array,
-}
-
-/// Peeks at the JSON structure to determine if it's a single object or array,
-/// and extracts the `event_type` for single objects without full deserialization.
-fn peek_message_shape(bytes: &[u8]) -> Result<MessageShape, serde_json::Error> {
-    struct ShapePeeker;
-
-    impl<'de> Visitor<'de> for ShapePeeker {
-        type Value = MessageShape;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("a JSON object or array")
-        }
-
-        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-        where
-            A: SeqAccess<'de>,
-        {
-            // Consume the entire sequence to avoid "trailing characters" error
-            while seq.next_element::<IgnoredAny>()?.is_some() {}
-            Ok(MessageShape::Array)
-        }
-
-        fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-        where
-            A: MapAccess<'de>,
-        {
-            let mut event_type: Option<String> = None;
-            while let Some(key) = map.next_key::<&str>()? {
-                if key == "event_type" {
-                    event_type = Some(map.next_value::<String>()?);
-                } else {
-                    map.next_value::<IgnoredAny>()?;
-                }
-            }
-            Ok(MessageShape::Single(event_type))
-        }
-    }
-
-    let mut de = Deserializer::from_slice(bytes);
-    de.deserialize_any(ShapePeeker)
-}
-
 /// Check if a message matches the interest filter.
 fn matches_interest(msg: &WsMessage, interest: MessageInterest) -> bool {
     match msg {
@@ -537,31 +485,43 @@ fn matches_interest(msg: &WsMessage, interest: MessageInterest) -> bool {
 
 /// Deserialize messages from the byte slice, filtering by interest.
 ///
-/// For single objects, the `event_type` is extracted first to skip uninteresting messages
-/// without full deserialization. For arrays, all messages are deserialized and filtered.
+/// For single objects, the JSON is parsed once into a `Value`, then the `event_type` is
+/// extracted to check interest before final deserialization via `from_value()`.
+/// This avoids re-parsing the JSON text twice.
+///
+/// For arrays, all messages are deserialized and filtered.
 pub fn parse_if_interested(
     bytes: &[u8],
     interest: &MessageInterest,
 ) -> crate::Result<Vec<WsMessage>> {
-    let shape = peek_message_shape(bytes)
-        .map_err(|e| crate::error::Error::with_source(Kind::Internal, Box::new(e)))?;
+    // Parse JSON once into Value
+    let value: Value = serde_json::from_slice(bytes)
+        .map_err(|err| crate::error::Error::with_source(Kind::Internal, Box::new(err)))?;
 
-    match shape {
-        MessageShape::Single(None) => Ok(vec![]),
-        MessageShape::Single(Some(event_type)) => {
-            if !interest.is_interested_in_event(&event_type) {
-                return Ok(vec![]);
+    match &value {
+        Value::Object(map) => {
+            // Single message: check event_type before full deserialization
+            let event_type = map.get("event_type").and_then(Value::as_str);
+
+            match event_type {
+                None => Ok(vec![]),
+                Some(event_type) if !interest.is_interested_in_event(event_type) => Ok(vec![]),
+                Some(_) => {
+                    // Interested: deserialize from cached Value (no re-parsing)
+                    let msg: WsMessage = serde_json::from_value(value)?;
+                    Ok(vec![msg])
+                }
             }
-            let msg: WsMessage = serde_json::from_slice(bytes)?;
-            Ok(vec![msg])
         }
-        MessageShape::Array => {
-            let messages: Vec<WsMessage> = serde_json::from_slice(bytes)?;
+        Value::Array(_) => {
+            // Array: deserialize all and filter
+            let messages: Vec<WsMessage> = serde_json::from_value(value)?;
             Ok(messages
                 .into_iter()
                 .filter(|msg| matches_interest(msg, *interest))
                 .collect())
         }
+        _ => Ok(vec![]),
     }
 }
 
@@ -1049,5 +1009,29 @@ mod tests {
         });
         assert!(matches_interest(&mr, MessageInterest::MARKET_RESOLVED));
         assert!(matches_interest(&mr, MessageInterest::MARKET));
+    }
+
+    #[test]
+    fn parse_if_interested_returns_empty_for_missing_event_type() {
+        // Object without event_type field
+        let json = r#"{"some_field": "value"}"#;
+        let msgs = parse_if_interested(json.as_bytes(), &MessageInterest::ALL).unwrap();
+        assert!(msgs.is_empty());
+    }
+
+    #[test]
+    fn parse_if_interested_returns_empty_for_primitive_json() {
+        // JSON primitives (not object or array) should return empty
+        let msgs = parse_if_interested(b"null", &MessageInterest::ALL).unwrap();
+        assert!(msgs.is_empty());
+
+        let msgs = parse_if_interested(b"42", &MessageInterest::ALL).unwrap();
+        assert!(msgs.is_empty());
+
+        let msgs = parse_if_interested(b"\"string\"", &MessageInterest::ALL).unwrap();
+        assert!(msgs.is_empty());
+
+        let msgs = parse_if_interested(b"true", &MessageInterest::ALL).unwrap();
+        assert!(msgs.is_empty());
     }
 }
