@@ -75,8 +75,8 @@ async fn main() -> anyhow::Result<()> {
             );
         }
         Ok(Some(Err(e))) => error!(step = 1, error = %e),
-        Ok(None) => debug!(step = 1, "stream ended"),
-        Err(_) => debug!(step = 1, "timeout"),
+        Ok(None) => error!(step = 1, "stream ended"),
+        Err(_) => error!(step = 1, "timeout"),
     }
 
     // === SECOND SUBSCRIPTION (same asset - should multiplex) ===
@@ -98,8 +98,8 @@ async fn main() -> anyhow::Result<()> {
             );
         }
         Ok(Some(Err(e))) => error!(step = 2, error = %e),
-        Ok(None) => debug!(step = 2, "stream ended"),
-        Err(_) => debug!(step = 2, "timeout"),
+        Ok(None) => error!(step = 2, "stream ended"),
+        Err(_) => error!(step = 2, "timeout"),
     }
 
     // === FIRST UNSUBSCRIBE ===
@@ -123,8 +123,8 @@ async fn main() -> anyhow::Result<()> {
             );
         }
         Ok(Some(Err(e))) => error!(step = 3, error = %e),
-        Ok(None) => debug!(step = 3, "stream ended"),
-        Err(_) => debug!(step = 3, "timeout"),
+        Ok(None) => error!(step = 3, "stream ended"),
+        Err(_) => error!(step = 3, "timeout"),
     }
 
     // === SECOND UNSUBSCRIBE ===
@@ -155,8 +155,8 @@ async fn main() -> anyhow::Result<()> {
             );
         }
         Ok(Some(Err(e))) => error!(step = 5, error = %e),
-        Ok(None) => debug!(step = 5, "stream ended"),
-        Err(_) => debug!(step = 5, "timeout"),
+        Ok(None) => error!(step = 5, "stream ended"),
+        Err(_) => error!(step = 5, "timeout"),
     }
 
     info!("example complete");
