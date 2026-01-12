@@ -27,7 +27,7 @@ use alloy::signers::local::LocalSigner;
 use polymarket_client_sdk::clob::types::{RfqRequestsRequest, RfqSortBy, RfqSortDir, RfqState};
 use polymarket_client_sdk::clob::{Client, Config};
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
@@ -76,7 +76,7 @@ async fn main() -> anyhow::Result<()> {
                 debug!(endpoint = "requests", request = ?req);
             }
         }
-        Err(e) => debug!(endpoint = "requests", error = %e),
+        Err(e) => error!(endpoint = "requests", error = %e),
     }
 
     Ok(())
