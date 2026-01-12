@@ -7,7 +7,8 @@
     feature = "bridge",
     feature = "clob",
     feature = "data",
-    feature = "gamma"
+    feature = "gamma",
+    feature = "rtds",
 ))]
 use {serde::de::DeserializeOwned, serde_json::Value};
 
