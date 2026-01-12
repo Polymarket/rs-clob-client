@@ -34,7 +34,7 @@ use polymarket_client_sdk::clob::{Client, Config};
 use polymarket_client_sdk::types::{Decimal, U256};
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 use rust_decimal_macros::dec;
-use tracing::{debug, info};
+use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
@@ -70,7 +70,7 @@ async fn main() -> anyhow::Result<()> {
 
     match client.api_keys().await {
         Ok(keys) => info!(endpoint = "api_keys", result = ?keys),
-        Err(e) => debug!(endpoint = "api_keys", error = %e),
+        Err(e) => error!(endpoint = "api_keys", error = %e),
     }
 
     match client.closed_only_mode().await {
@@ -78,7 +78,7 @@ async fn main() -> anyhow::Result<()> {
             endpoint = "closed_only_mode",
             closed_only = status.closed_only
         ),
-        Err(e) => debug!(endpoint = "closed_only_mode", error = %e),
+        Err(e) => error!(endpoint = "closed_only_mode", error = %e),
     }
 
     // Market order
@@ -94,7 +94,7 @@ async fn main() -> anyhow::Result<()> {
         Ok(r) => {
             info!(endpoint = "post_order", order_type = "market", order_id = %r.order_id, success = r.success);
         }
-        Err(e) => debug!(endpoint = "post_order", order_type = "market", error = %e),
+        Err(e) => error!(endpoint = "post_order", order_type = "market", error = %e),
     }
 
     // Limit order
@@ -113,12 +113,12 @@ async fn main() -> anyhow::Result<()> {
         Ok(r) => {
             info!(endpoint = "post_order", order_type = "limit", order_id = %r.order_id, success = r.success);
         }
-        Err(e) => debug!(endpoint = "post_order", order_type = "limit", error = %e),
+        Err(e) => error!(endpoint = "post_order", order_type = "limit", error = %e),
     }
 
     match client.notifications().await {
         Ok(n) => info!(endpoint = "notifications", count = n.len()),
-        Err(e) => debug!(endpoint = "notifications", error = %e),
+        Err(e) => error!(endpoint = "notifications", error = %e),
     }
 
     match client
@@ -126,7 +126,7 @@ async fn main() -> anyhow::Result<()> {
         .await
     {
         Ok(b) => info!(endpoint = "balance_allowance", result = ?b),
-        Err(e) => debug!(endpoint = "balance_allowance", error = %e),
+        Err(e) => error!(endpoint = "balance_allowance", error = %e),
     }
 
     match client
@@ -134,33 +134,33 @@ async fn main() -> anyhow::Result<()> {
         .await
     {
         Ok(b) => info!(endpoint = "update_balance_allowance", result = ?b),
-        Err(e) => debug!(endpoint = "update_balance_allowance", error = %e),
+        Err(e) => error!(endpoint = "update_balance_allowance", error = %e),
     }
 
     let order_id = "0xa1449ec0831c7d62f887c4653d0917f2445783ff30f0ca713d99c667fef17f2c";
     match client.order(order_id).await {
         Ok(o) => info!(endpoint = "order", order_id = %order_id, status = ?o.status),
-        Err(e) => debug!(endpoint = "order", order_id = %order_id, error = %e),
+        Err(e) => error!(endpoint = "order", order_id = %order_id, error = %e),
     }
 
     match client.orders(&OrdersRequest::default(), None).await {
         Ok(orders) => info!(endpoint = "orders", count = orders.data.len()),
-        Err(e) => debug!(endpoint = "orders", error = %e),
+        Err(e) => error!(endpoint = "orders", error = %e),
     }
 
     match client.cancel_order(order_id).await {
         Ok(r) => info!(endpoint = "cancel_order", order_id = %order_id, result = ?r),
-        Err(e) => debug!(endpoint = "cancel_order", order_id = %order_id, error = %e),
+        Err(e) => error!(endpoint = "cancel_order", order_id = %order_id, error = %e),
     }
 
     match client.cancel_orders(&[order_id]).await {
         Ok(r) => info!(endpoint = "cancel_orders", result = ?r),
-        Err(e) => debug!(endpoint = "cancel_orders", error = %e),
+        Err(e) => error!(endpoint = "cancel_orders", error = %e),
     }
 
     match client.cancel_all_orders().await {
         Ok(r) => info!(endpoint = "cancel_all_orders", result = ?r),
-        Err(e) => debug!(endpoint = "cancel_all_orders", error = %e),
+        Err(e) => error!(endpoint = "cancel_all_orders", error = %e),
     }
 
     match client.orders(&OrdersRequest::default(), None).await {
@@ -169,12 +169,12 @@ async fn main() -> anyhow::Result<()> {
             after_cancel = true,
             count = orders.data.len()
         ),
-        Err(e) => debug!(endpoint = "orders", after_cancel = true, error = %e),
+        Err(e) => error!(endpoint = "orders", after_cancel = true, error = %e),
     }
 
     match client.trades(&TradesRequest::default(), None).await {
         Ok(trades) => info!(endpoint = "trades", count = trades.data.len()),
-        Err(e) => debug!(endpoint = "trades", error = %e),
+        Err(e) => error!(endpoint = "trades", error = %e),
     }
 
     match client
@@ -182,7 +182,7 @@ async fn main() -> anyhow::Result<()> {
         .await
     {
         Ok(e) => info!(endpoint = "earnings_for_user_for_day", result = ?e),
-        Err(e) => debug!(endpoint = "earnings_for_user_for_day", error = %e),
+        Err(e) => error!(endpoint = "earnings_for_user_for_day", error = %e),
     }
 
     let request = UserRewardsEarningRequest::builder()
@@ -193,23 +193,23 @@ async fn main() -> anyhow::Result<()> {
         .await
     {
         Ok(e) => info!(endpoint = "user_earnings_and_markets_config", result = ?e),
-        Err(e) => debug!(endpoint = "user_earnings_and_markets_config", error = %e),
+        Err(e) => error!(endpoint = "user_earnings_and_markets_config", error = %e),
     }
 
     match client.reward_percentages().await {
         Ok(r) => info!(endpoint = "reward_percentages", result = ?r),
-        Err(e) => debug!(endpoint = "reward_percentages", error = %e),
+        Err(e) => error!(endpoint = "reward_percentages", error = %e),
     }
 
     match client.current_rewards(None).await {
         Ok(r) => info!(endpoint = "current_rewards", result = ?r),
-        Err(e) => debug!(endpoint = "current_rewards", error = %e),
+        Err(e) => error!(endpoint = "current_rewards", error = %e),
     }
 
     let market_id = "0x5f65177b394277fd294cd75650044e32ba009a95022d88a0c1d565897d72f8f1";
     match client.raw_rewards_for_market(market_id, None).await {
         Ok(r) => info!(endpoint = "raw_rewards_for_market", market_id = %market_id, result = ?r),
-        Err(e) => debug!(endpoint = "raw_rewards_for_market", market_id = %market_id, error = %e),
+        Err(e) => error!(endpoint = "raw_rewards_for_market", market_id = %market_id, error = %e),
     }
 
     Ok(())

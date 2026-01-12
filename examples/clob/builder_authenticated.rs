@@ -28,7 +28,7 @@ use polymarket_client_sdk::clob::types::request::TradesRequest;
 use polymarket_client_sdk::clob::{Client, Config};
 use polymarket_client_sdk::types::U256;
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
-use tracing::{debug, info};
+use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
@@ -73,7 +73,7 @@ async fn main() -> anyhow::Result<()> {
 
     match client.builder_api_keys().await {
         Ok(keys) => info!(endpoint = "builder_api_keys", count = keys.len()),
-        Err(e) => debug!(endpoint = "builder_api_keys", error = %e),
+        Err(e) => error!(endpoint = "builder_api_keys", error = %e),
     }
 
     let token_id = U256::from_str(
@@ -85,7 +85,7 @@ async fn main() -> anyhow::Result<()> {
         Ok(trades) => {
             info!(endpoint = "builder_trades", token_id = %token_id, count = trades.data.len());
         }
-        Err(e) => debug!(endpoint = "builder_trades", token_id = %token_id, error = %e),
+        Err(e) => error!(endpoint = "builder_trades", token_id = %token_id, error = %e),
     }
 
     Ok(())

@@ -26,7 +26,7 @@ use polymarket_client_sdk::clob::{Client, Config};
 use polymarket_client_sdk::types::U256;
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 use tokio::join;
-use tracing::{debug, info};
+use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
@@ -69,17 +69,17 @@ async fn unauthenticated() -> anyhow::Result<()> {
 
         match ok_result {
             Ok(s) => info!(endpoint = "ok", thread = true, result = %s),
-            Err(e) => debug!(endpoint = "ok", thread = true, error = %e),
+            Err(e) => error!(endpoint = "ok", thread = true, error = %e),
         }
 
         match tick_result {
             Ok(t) => info!(endpoint = "tick_size", thread = true, tick_size = ?t.minimum_tick_size),
-            Err(e) => debug!(endpoint = "tick_size", thread = true, error = %e),
+            Err(e) => error!(endpoint = "tick_size", thread = true, error = %e),
         }
 
         match neg_risk_result {
             Ok(n) => info!(endpoint = "neg_risk", thread = true, neg_risk = n.neg_risk),
-            Err(e) => debug!(endpoint = "neg_risk", thread = true, error = %e),
+            Err(e) => error!(endpoint = "neg_risk", thread = true, error = %e),
         }
 
         anyhow::Ok(())
@@ -87,19 +87,19 @@ async fn unauthenticated() -> anyhow::Result<()> {
 
     match client.ok().await {
         Ok(s) => info!(endpoint = "ok", result = %s),
-        Err(e) => debug!(endpoint = "ok", error = %e),
+        Err(e) => error!(endpoint = "ok", error = %e),
     }
 
     match client.tick_size(token_id).await {
         Ok(t) => {
             info!(endpoint = "tick_size", token_id = %token_id, tick_size = ?t.minimum_tick_size);
         }
-        Err(e) => debug!(endpoint = "tick_size", token_id = %token_id, error = %e),
+        Err(e) => error!(endpoint = "tick_size", token_id = %token_id, error = %e),
     }
 
     match client.neg_risk(token_id).await {
         Ok(n) => info!(endpoint = "neg_risk", token_id = %token_id, neg_risk = n.neg_risk),
-        Err(e) => debug!(endpoint = "neg_risk", token_id = %token_id, error = %e),
+        Err(e) => error!(endpoint = "neg_risk", token_id = %token_id, error = %e),
     }
 
     thread.await?
@@ -107,7 +107,7 @@ async fn unauthenticated() -> anyhow::Result<()> {
 
 async fn authenticated() -> anyhow::Result<()> {
     let Ok(private_key) = std::env::var(PRIVATE_KEY_VAR) else {
-        debug!(
+        info!(
             endpoint = "authenticated",
             "skipped - POLY_PRIVATE_KEY not set"
         );
@@ -126,12 +126,12 @@ async fn authenticated() -> anyhow::Result<()> {
 
         match ok_result {
             Ok(s) => info!(endpoint = "ok", thread = true, authenticated = true, result = %s),
-            Err(e) => debug!(endpoint = "ok", thread = true, authenticated = true, error = %e),
+            Err(e) => error!(endpoint = "ok", thread = true, authenticated = true, error = %e),
         }
 
         match api_keys_result {
             Ok(keys) => info!(endpoint = "api_keys", thread = true, result = ?keys),
-            Err(e) => debug!(endpoint = "api_keys", thread = true, error = %e),
+            Err(e) => error!(endpoint = "api_keys", thread = true, error = %e),
         }
 
         anyhow::Ok(())
@@ -139,12 +139,12 @@ async fn authenticated() -> anyhow::Result<()> {
 
     match client.ok().await {
         Ok(s) => info!(endpoint = "ok", authenticated = true, result = %s),
-        Err(e) => debug!(endpoint = "ok", authenticated = true, error = %e),
+        Err(e) => error!(endpoint = "ok", authenticated = true, error = %e),
     }
 
     match client.api_keys().await {
         Ok(keys) => info!(endpoint = "api_keys", result = ?keys),
-        Err(e) => debug!(endpoint = "api_keys", error = %e),
+        Err(e) => error!(endpoint = "api_keys", error = %e),
     }
 
     thread.await?

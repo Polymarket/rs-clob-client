@@ -24,7 +24,7 @@ use alloy::signers::aws::AwsSigner;
 use aws_config::BehaviorVersion;
 use polymarket_client_sdk::POLYGON;
 use polymarket_client_sdk::clob::{Client, Config};
-use tracing::{debug, info};
+use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
@@ -62,7 +62,7 @@ async fn main() -> anyhow::Result<()> {
 
     match client.api_keys().await {
         Ok(keys) => info!(endpoint = "api_keys", result = ?keys),
-        Err(e) => debug!(endpoint = "api_keys", error = %e),
+        Err(e) => error!(endpoint = "api_keys", error = %e),
     }
 
     Ok(())
