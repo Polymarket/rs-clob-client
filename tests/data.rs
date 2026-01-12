@@ -250,7 +250,7 @@ mod activity {
 
         assert_eq!(response.len(), 2);
         assert_eq!(response[0].proxy_wallet, test_user());
-        assert_eq!(response[0].condition_id, test_condition_id());
+        assert_eq!(response[0].condition_id, Some(test_condition_id()));
         assert_eq!(response[0].activity_type, ActivityType::Trade);
         assert_eq!(response[0].side, Some(Side::Buy));
         assert_eq!(response[1].activity_type, ActivityType::Redeem);
