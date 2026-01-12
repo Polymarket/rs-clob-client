@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0](https://github.com/Polymarket/rs-clob-client/compare/v0.3.3...v0.4.0) - 2026-01-12
+
+### Added
+
+- *(clob)* add cache setter methods to prewarm market data ([#153](https://github.com/Polymarket/rs-clob-client/pull/153))
+- *(bridge)* improve bridge type safety ([#151](https://github.com/Polymarket/rs-clob-client/pull/151))
+- *(gamma)* convert neg_risk_market_id and neg_risk_request_id to B256 ([#143](https://github.com/Polymarket/rs-clob-client/pull/143))
+- *(gamma)* convert question_id fields to B256 type ([#142](https://github.com/Polymarket/rs-clob-client/pull/142))
+- *(clob)* clob typed b256 address ([#139](https://github.com/Polymarket/rs-clob-client/pull/139))
+- *(clob)* add clob feature flag for optional CLOB compilation ([#135](https://github.com/Polymarket/rs-clob-client/pull/135))
+- *(tracing)* add serde_path_to_error for detailed deserialization on errors ([#140](https://github.com/Polymarket/rs-clob-client/pull/140))
+- *(data)* use typed Address and B256 for hex string fields, update data example ([#132](https://github.com/Polymarket/rs-clob-client/pull/132))
+- *(gamma)* use typed Address and B256 for hex string fields ([#126](https://github.com/Polymarket/rs-clob-client/pull/126))
+- *(ctf)* add CTF client/operations ([#82](https://github.com/Polymarket/rs-clob-client/pull/82))
+- add Unknown(String) variant to all enums for forward compatibility ([#124](https://github.com/Polymarket/rs-clob-client/pull/124))
+- add subscribe_last_trade_price websocket method ([#121](https://github.com/Polymarket/rs-clob-client/pull/121))
+- support post-only orders ([#115](https://github.com/Polymarket/rs-clob-client/pull/115))
+- *(heartbeats)* [**breaking**] add heartbeats ([#113](https://github.com/Polymarket/rs-clob-client/pull/113))
+
+### Fixed
+
+- *(rfq)* url path fixes ([#162](https://github.com/Polymarket/rs-clob-client/pull/162))
+- *(gamma)* use repeated query params for array fields ([#148](https://github.com/Polymarket/rs-clob-client/pull/148))
+- *(rtds)* serialize Chainlink filters as JSON string ([#136](https://github.com/Polymarket/rs-clob-client/pull/136)) ([#137](https://github.com/Polymarket/rs-clob-client/pull/137))
+- add missing makerRebatesFeeShareBps field to Market struct ([#130](https://github.com/Polymarket/rs-clob-client/pull/130))
+- add MakerRebate enum option to ActivityType ([#127](https://github.com/Polymarket/rs-clob-client/pull/127))
+- suppress unused variable warnings in tracing cfg blocks ([#125](https://github.com/Polymarket/rs-clob-client/pull/125))
+- add Yield enum option to ActivityType ([#122](https://github.com/Polymarket/rs-clob-client/pull/122))
+
+### Other
+
+- *(rtds)* [**breaking**] well-type RTDS structs ([#167](https://github.com/Polymarket/rs-clob-client/pull/167))
+- *(gamma)* [**breaking**] well-type structs ([#166](https://github.com/Polymarket/rs-clob-client/pull/166))
+- *(clob/rfq)* well-type structs ([#163](https://github.com/Polymarket/rs-clob-client/pull/163))
+- *(data)* well-type data types ([#159](https://github.com/Polymarket/rs-clob-client/pull/159))
+- *(gamma,rtds)* add Builder to non_exhaustive structs ([#160](https://github.com/Polymarket/rs-clob-client/pull/160))
+- *(ctf)* add Builder to non_exhaustive response structs ([#161](https://github.com/Polymarket/rs-clob-client/pull/161))
+- *(ws)* [**breaking**] well-type ws structs ([#156](https://github.com/Polymarket/rs-clob-client/pull/156))
+- add benchmarks for CLOB and WebSocket types/operations ([#155](https://github.com/Polymarket/rs-clob-client/pull/155))
+- *(clob)* [**breaking**] well-type requests/responses with U256 ([#150](https://github.com/Polymarket/rs-clob-client/pull/150))
+- update rustdocs ([#134](https://github.com/Polymarket/rs-clob-client/pull/134))
+- *(ws)* extract WsError to shared ws module ([#131](https://github.com/Polymarket/rs-clob-client/pull/131))
+- update license ([#128](https://github.com/Polymarket/rs-clob-client/pull/128))
+- update builder method doc comment ([#129](https://github.com/Polymarket/rs-clob-client/pull/129))
+
 ## [0.3.3](https://github.com/Polymarket/rs-clob-client/compare/v0.3.2...v0.3.3) - 2026-01-06
 
 ### Added
