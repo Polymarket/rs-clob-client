@@ -1,69 +1,116 @@
-//! Subscribe to authenticated (user) WebSocket channels.
-#![allow(clippy::print_stdout, reason = "Examples are okay to print to stdout")]
-#![allow(clippy::print_stderr, reason = "Examples are okay to print to stderr")]
+//! Demonstrates subscribing to authenticated user WebSocket channels.
+//!
+//! This example shows how to:
+//! 1. Build credentials for authenticated WebSocket access
+//! 2. Subscribe to user-specific order and trade events
+//! 3. Process real-time order updates and trade notifications
+//!
+//! Run with tracing enabled:
+//! ```sh
+//! RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example websocket_user --features ws,tracing
+//! ```
+//!
+//! Optionally log to a file:
+//! ```sh
+//! LOG_FILE=websocket_user.log RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example websocket_user --features ws,tracing
+//! ```
+//!
+//! Requires the following environment variables:
+//! - `POLYMARKET_API_KEY`
+//! - `POLYMARKET_API_SECRET`
+//! - `POLYMARKET_API_PASSPHRASE`
+//! - `POLYMARKET_ADDRESS`
 
+use std::fs::File;
 use std::str::FromStr as _;
 
 use futures::StreamExt as _;
 use polymarket_client_sdk::auth::Credentials;
 use polymarket_client_sdk::clob::ws::{Client, WsMessage};
 use polymarket_client_sdk::types::{Address, B256};
+use tracing::{debug, info};
+use tracing_subscriber::EnvFilter;
+use tracing_subscriber::layer::SubscriberExt as _;
+use tracing_subscriber::util::SubscriberInitExt as _;
 use uuid::Uuid;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    if let Ok(path) = std::env::var("LOG_FILE") {
+        let file = File::create(path)?;
+        tracing_subscriber::registry()
+            .with(EnvFilter::from_default_env())
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .with_writer(file)
+                    .with_ansi(false),
+            )
+            .init();
+    } else {
+        tracing_subscriber::fmt::init();
+    }
+
     let api_key = Uuid::parse_str(&std::env::var("POLYMARKET_API_KEY")?)?;
     let api_secret = std::env::var("POLYMARKET_API_SECRET")?;
     let api_passphrase = std::env::var("POLYMARKET_API_PASSPHRASE")?;
     let address = Address::from_str(&std::env::var("POLYMARKET_ADDRESS")?)?;
 
-    // Build credentials for the authenticated ws channel.
     let credentials = Credentials::new(api_key, api_secret, api_passphrase);
 
-    // Connect using the base WebSocket endpoint and authenticate.
     let client = Client::default().authenticate(credentials, address)?;
-    println!("Authenticated ws client created.");
+    info!(
+        endpoint = "websocket",
+        authenticated = true,
+        "connected to authenticated WebSocket"
+    );
 
-    // Provide the specific market IDs you care about, or leave empty to receive all events.
-    // let markets = vec!["0xe93c89c41d1bb08d3bb40066d8565df301a696563b2542256e6e8bbbb1ec490d".to_owned()];
+    // Provide specific market IDs, or leave empty for all events
     let markets: Vec<B256> = Vec::new();
     let mut stream = std::pin::pin!(client.subscribe_user_events(markets)?);
-
-    println!("Subscribed to user ws channel.");
+    info!(
+        endpoint = "subscribe_user_events",
+        "subscribed to user events"
+    );
 
     while let Some(event) = stream.next().await {
         match event {
             Ok(WsMessage::Order(order)) => {
-                println!("\n--- Order Update ---");
-                println!("Order ID: {}", order.id);
-                println!("Market: {}", order.market);
-                println!("Type: {:?}", order.msg_type);
-                println!("Side: {:?} Price: {}", order.side, order.price);
+                info!(
+                    endpoint = "user_events",
+                    event_type = "order",
+                    order_id = %order.id,
+                    market = %order.market,
+                    msg_type = ?order.msg_type,
+                    side = ?order.side,
+                    price = %order.price
+                );
                 if let Some(size) = &order.original_size {
-                    println!("Original Size: {size}");
+                    debug!(endpoint = "user_events", original_size = %size);
                 }
                 if let Some(matched) = &order.size_matched {
-                    println!("Size Matched: {matched}");
+                    debug!(endpoint = "user_events", size_matched = %matched);
                 }
             }
             Ok(WsMessage::Trade(trade)) => {
-                println!("\n--- Trade ---");
-                println!("Trade ID: {}", trade.id);
-                println!("Market: {}", trade.market);
-                println!("Status: {:?}", trade.status);
-                println!(
-                    "Side: {:?} Size: {} Price: {}",
-                    trade.side, trade.size, trade.price
+                info!(
+                    endpoint = "user_events",
+                    event_type = "trade",
+                    trade_id = %trade.id,
+                    market = %trade.market,
+                    status = ?trade.status,
+                    side = ?trade.side,
+                    size = %trade.size,
+                    price = %trade.price
                 );
                 if let Some(trader_side) = &trade.trader_side {
-                    println!("Trader Side: {trader_side:?}");
+                    debug!(endpoint = "user_events", trader_side = ?trader_side);
                 }
             }
             Ok(other) => {
-                println!("Other event: {other:?}");
+                debug!(endpoint = "user_events", event = ?other);
             }
             Err(e) => {
-                eprintln!("Stream error: {e}");
+                debug!(endpoint = "user_events", error = %e);
                 break;
             }
         }

@@ -1,13 +1,26 @@
-//! Example demonstrating WebSocket subscribe/unsubscribe functionality.
+//! Demonstrates WebSocket subscribe/unsubscribe and multiplexing behavior.
 //!
-//! Run with tracing enabled to see subscribe/unsubscribe messages:
+//! This example shows how to:
+//! 1. Subscribe multiple streams to the same asset (multiplexing)
+//! 2. Unsubscribe streams while others remain active
+//! 3. Verify reference counting works correctly
+//!
+//! Run with tracing enabled:
+//! ```sh
+//! RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example websocket_unsubscribe --features ws,tracing
 //! ```
-//! RUST_LOG=debug cargo run --example websocket_unsubscribe --features ws,tracing
+//!
+//! Optionally log to a file:
+//! ```sh
+//! LOG_FILE=websocket_unsubscribe.log RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example websocket_unsubscribe --features ws,tracing
 //! ```
-#![allow(clippy::print_stdout, reason = "Examples are okay to print to stdout")]
-#![allow(clippy::print_stderr, reason = "Examples are okay to print to stderr")]
-#![allow(clippy::unwrap_used, reason = "Examples use unwrap for brevity")]
+//!
+//! With debug level, you can see subscribe/unsubscribe wire messages:
+//! ```sh
+//! RUST_LOG=debug,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example websocket_unsubscribe --features ws,tracing
+//! ```
 
+use std::fs::File;
 use std::str::FromStr as _;
 use std::time::Duration;
 
@@ -15,124 +28,141 @@ use futures::StreamExt as _;
 use polymarket_client_sdk::clob::ws::Client;
 use polymarket_client_sdk::types::U256;
 use tokio::time::timeout;
+use tracing::{debug, info};
+use tracing_subscriber::EnvFilter;
+use tracing_subscriber::layer::SubscriberExt as _;
+use tracing_subscriber::util::SubscriberInitExt as _;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Initialize tracing subscriber if tracing feature is enabled
-    #[cfg(feature = "tracing")]
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive("polymarket_client_sdk=debug".parse().unwrap()),
-        )
-        .init();
+    if let Ok(path) = std::env::var("LOG_FILE") {
+        let file = File::create(path)?;
+        tracing_subscriber::registry()
+            .with(EnvFilter::from_default_env())
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .with_writer(file)
+                    .with_ansi(false),
+            )
+            .init();
+    } else {
+        tracing_subscriber::fmt::init();
+    }
 
-    // Create WebSocket client for CLOB endpoint
     let client = Client::default();
+    info!(endpoint = "websocket", "connected to CLOB WebSocket API");
 
-    println!("Connected to CLOB WebSocket API");
-    println!("(Run with RUST_LOG=debug and --features tracing to see wire messages)\n");
-
-    // Asset IDs to subscribe to
     let asset_ids = vec![U256::from_str(
         "92703761682322480664976766247614127878023988651992837287050266308961660624165",
     )?];
 
     // === FIRST SUBSCRIPTION ===
-    println!("=== [1] First subscription ===");
-    println!("Subscribing to asset (should send 'subscribe' to server)...");
+    info!(
+        step = 1,
+        "first subscription - should send 'subscribe' to server"
+    );
     let stream1 = client.subscribe_orderbook(asset_ids.clone())?;
     let mut stream1 = Box::pin(stream1);
 
-    // Wait for one update
     match timeout(Duration::from_secs(10), stream1.next()).await {
         Ok(Some(Ok(book))) => {
-            println!(
-                "Got orderbook update: {} bids, {} asks",
-                book.bids.len(),
-                book.asks.len()
+            info!(
+                step = 1,
+                endpoint = "orderbook",
+                bids = book.bids.len(),
+                asks = book.asks.len(),
+                "received update on stream1"
             );
         }
-        Ok(Some(Err(e))) => eprintln!("Error: {e}"),
-        Ok(None) => println!("Stream ended"),
-        Err(_) => println!("Timeout"),
+        Ok(Some(Err(e))) => debug!(step = 1, error = %e),
+        Ok(None) => debug!(step = 1, "stream ended"),
+        Err(_) => debug!(step = 1, "timeout"),
     }
 
     // === SECOND SUBSCRIPTION (same asset - should multiplex) ===
-    println!("\n=== [2] Second subscription (same asset) ===");
-    println!("Subscribing again (should NOT send message - multiplexing)...");
+    info!(
+        step = 2,
+        "second subscription (same asset) - should NOT send message (multiplexing)"
+    );
     let stream2 = client.subscribe_orderbook(asset_ids.clone())?;
     let mut stream2 = Box::pin(stream2);
 
-    // Wait for one update on stream2
     match timeout(Duration::from_secs(10), stream2.next()).await {
         Ok(Some(Ok(book))) => {
-            println!(
-                "Stream2 got orderbook update: {} bids, {} asks",
-                book.bids.len(),
-                book.asks.len()
+            info!(
+                step = 2,
+                endpoint = "orderbook",
+                bids = book.bids.len(),
+                asks = book.asks.len(),
+                "received update on stream2"
             );
         }
-        Ok(Some(Err(e))) => eprintln!("Error: {e}"),
-        Ok(None) => println!("Stream ended"),
-        Err(_) => println!("Timeout"),
+        Ok(Some(Err(e))) => debug!(step = 2, error = %e),
+        Ok(None) => debug!(step = 2, "stream ended"),
+        Err(_) => debug!(step = 2, "timeout"),
     }
 
     // === FIRST UNSUBSCRIBE ===
-    println!("\n=== [3] First unsubscribe ===");
-    println!("Unsubscribing stream1 (should NOT send message - refcount still 1)...");
+    info!(
+        step = 3,
+        "first unsubscribe - should NOT send message (refcount still 1)"
+    );
     client.unsubscribe_orderbook(&asset_ids)?;
     drop(stream1);
-    println!("Stream1 unsubscribed and dropped");
+    info!(step = 3, "stream1 unsubscribed and dropped");
 
     // stream2 should still work
-    println!("Stream2 should still receive updates...");
     match timeout(Duration::from_secs(10), stream2.next()).await {
         Ok(Some(Ok(book))) => {
-            println!(
-                "Stream2 still works: {} bids, {} asks",
-                book.bids.len(),
-                book.asks.len()
+            info!(
+                step = 3,
+                endpoint = "orderbook",
+                bids = book.bids.len(),
+                asks = book.asks.len(),
+                "stream2 still receiving updates"
             );
         }
-        Ok(Some(Err(e))) => eprintln!("Error: {e}"),
-        Ok(None) => println!("Stream ended"),
-        Err(_) => println!("Timeout"),
+        Ok(Some(Err(e))) => debug!(step = 3, error = %e),
+        Ok(None) => debug!(step = 3, "stream ended"),
+        Err(_) => debug!(step = 3, "timeout"),
     }
 
     // === SECOND UNSUBSCRIBE ===
-    println!("\n=== [4] Second unsubscribe ===");
-    println!("Unsubscribing stream2 (should send 'unsubscribe' - refcount now 0)...");
+    info!(
+        step = 4,
+        "second unsubscribe - should send 'unsubscribe' (refcount now 0)"
+    );
     client.unsubscribe_orderbook(&asset_ids)?;
     drop(stream2);
-    println!("Stream2 unsubscribed and dropped");
+    info!(step = 4, "stream2 unsubscribed and dropped");
 
     // === RE-SUBSCRIBE (proves unsubscribe worked) ===
-    println!("\n=== [5] Re-subscribe (proves unsubscribe worked) ===");
-    println!("Subscribing again (should send 'subscribe' since we fully unsubscribed)...");
+    info!(
+        step = 5,
+        "re-subscribe - should send 'subscribe' (proves unsubscribe worked)"
+    );
     let stream3 = client.subscribe_orderbook(asset_ids)?;
     let mut stream3 = Box::pin(stream3);
 
     match timeout(Duration::from_secs(10), stream3.next()).await {
         Ok(Some(Ok(book))) => {
-            println!(
-                "Stream3 works: {} bids, {} asks",
-                book.bids.len(),
-                book.asks.len()
+            info!(
+                step = 5,
+                endpoint = "orderbook",
+                bids = book.bids.len(),
+                asks = book.asks.len(),
+                "stream3 receiving updates"
             );
         }
-        Ok(Some(Err(e))) => eprintln!("Error: {e}"),
-        Ok(None) => println!("Stream ended"),
-        Err(_) => println!("Timeout"),
+        Ok(Some(Err(e))) => debug!(step = 5, error = %e),
+        Ok(None) => debug!(step = 5, "stream ended"),
+        Err(_) => debug!(step = 5, "timeout"),
     }
 
-    println!("\n=== Example complete ===");
-    println!("With tracing enabled, you should see:");
-    println!("  [1] -> 'Subscribing to new market assets'");
-    println!("  [2] -> 'All requested assets already subscribed, multiplexing'");
-    println!("  [3] -> (no unsubscribe message - refcount > 0)");
-    println!("  [4] -> 'Unsubscribing from market assets'");
-    println!("  [5] -> 'Subscribing to new market assets'");
+    info!("example complete");
+    debug!(
+        "with debug logging, you should see subscribe/unsubscribe wire messages at steps 1, 4, and 5"
+    );
 
     Ok(())
 }
