@@ -28,7 +28,7 @@ use futures::StreamExt as _;
 use polymarket_client_sdk::clob::ws::Client;
 use polymarket_client_sdk::types::U256;
 use tokio::time::timeout;
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
@@ -74,7 +74,7 @@ async fn main() -> anyhow::Result<()> {
                 "received update on stream1"
             );
         }
-        Ok(Some(Err(e))) => debug!(step = 1, error = %e),
+        Ok(Some(Err(e))) => error!(step = 1, error = %e),
         Ok(None) => debug!(step = 1, "stream ended"),
         Err(_) => debug!(step = 1, "timeout"),
     }
@@ -97,7 +97,7 @@ async fn main() -> anyhow::Result<()> {
                 "received update on stream2"
             );
         }
-        Ok(Some(Err(e))) => debug!(step = 2, error = %e),
+        Ok(Some(Err(e))) => error!(step = 2, error = %e),
         Ok(None) => debug!(step = 2, "stream ended"),
         Err(_) => debug!(step = 2, "timeout"),
     }
@@ -122,7 +122,7 @@ async fn main() -> anyhow::Result<()> {
                 "stream2 still receiving updates"
             );
         }
-        Ok(Some(Err(e))) => debug!(step = 3, error = %e),
+        Ok(Some(Err(e))) => error!(step = 3, error = %e),
         Ok(None) => debug!(step = 3, "stream ended"),
         Err(_) => debug!(step = 3, "timeout"),
     }
@@ -154,7 +154,7 @@ async fn main() -> anyhow::Result<()> {
                 "stream3 receiving updates"
             );
         }
-        Ok(Some(Err(e))) => debug!(step = 5, error = %e),
+        Ok(Some(Err(e))) => error!(step = 5, error = %e),
         Ok(None) => debug!(step = 5, "stream ended"),
         Err(_) => debug!(step = 5, "timeout"),
     }

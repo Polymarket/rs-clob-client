@@ -28,7 +28,7 @@ use futures::StreamExt as _;
 use polymarket_client_sdk::auth::Credentials;
 use polymarket_client_sdk::clob::ws::{Client, WsMessage};
 use polymarket_client_sdk::types::{Address, B256};
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
@@ -110,7 +110,7 @@ async fn main() -> anyhow::Result<()> {
                 debug!(endpoint = "user_events", event = ?other);
             }
             Err(e) => {
-                debug!(endpoint = "user_events", error = %e);
+                error!(endpoint = "user_events", error = %e);
                 break;
             }
         }

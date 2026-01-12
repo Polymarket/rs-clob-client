@@ -21,7 +21,7 @@ use std::str::FromStr as _;
 use futures::StreamExt as _;
 use polymarket_client_sdk::clob::ws::Client;
 use polymarket_client_sdk::types::U256;
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
@@ -98,7 +98,7 @@ async fn main() -> anyhow::Result<()> {
                     debug!(endpoint = "orderbook", hash = %hash);
                 }
             }
-            Err(e) => debug!(endpoint = "orderbook", error = %e),
+            Err(e) => error!(endpoint = "orderbook", error = %e),
         }
     }
 
