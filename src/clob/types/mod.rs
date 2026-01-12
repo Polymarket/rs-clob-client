@@ -3,11 +3,9 @@ use std::fmt;
 use alloy::core::sol;
 use alloy::primitives::{Signature, U256};
 use bon::Builder;
-use rust_decimal::prelude::ToPrimitive as _;
 use rust_decimal_macros::dec;
 use serde::ser::{Error as _, SerializeStruct as _};
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
-use serde_json::Value;
 use serde_repr::Serialize_repr;
 use serde_with::{DisplayFromStr, serde_as};
 use strum_macros::Display;
@@ -465,33 +463,67 @@ pub struct SignedOrder {
     pub post_only: Option<bool>,
 }
 
+/// Helper struct for serializing Order with signature injected.
+/// This avoids the overhead of `serde_json::to_value()` followed by mutation.
+#[serde_as]
+#[derive(Serialize)]
+struct OrderWithSignature<'order> {
+    #[serde(serialize_with = "ser_salt")]
+    salt: &'order U256,
+    maker: &'order alloy::primitives::Address,
+    signer: &'order alloy::primitives::Address,
+    taker: &'order alloy::primitives::Address,
+    #[serde_as(as = "DisplayFromStr")]
+    #[serde(rename = "tokenId")]
+    token_id: &'order U256,
+    #[serde_as(as = "DisplayFromStr")]
+    #[serde(rename = "makerAmount")]
+    maker_amount: &'order U256,
+    #[serde_as(as = "DisplayFromStr")]
+    #[serde(rename = "takerAmount")]
+    taker_amount: &'order U256,
+    #[serde_as(as = "DisplayFromStr")]
+    expiration: &'order U256,
+    #[serde_as(as = "DisplayFromStr")]
+    nonce: &'order U256,
+    #[serde_as(as = "DisplayFromStr")]
+    #[serde(rename = "feeRateBps")]
+    fee_rate_bps: &'order U256,
+    /// Side serialized as "BUY"/"SELL" string (CLOB API requirement)
+    side: Side,
+    #[serde(rename = "signatureType")]
+    signature_type: u8,
+    /// Signature injected into the order object
+    signature: String,
+}
+
 // CLOB expects a struct that has the `signature` "folded" into the `order` key
 impl Serialize for SignedOrder {
     fn serialize<S: Serializer>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> {
         let len = if self.post_only.is_some() { 4 } else { 3 };
         let mut st = serializer.serialize_struct("SignedOrder", len)?;
 
-        let mut order = serde_json::to_value(&self.order).map_err(serde::ser::Error::custom)?;
+        // Convert numeric side to Side enum for string serialization
+        let side = Side::try_from(self.order.side).map_err(S::Error::custom)?;
 
-        // inject signature into order object
-        if let Value::Object(ref mut map) = order {
-            map.insert(
-                "signature".to_owned(),
-                Value::String(self.signature.to_string()),
-            );
-        }
+        // Serialize order directly with signature injected, avoiding intermediate JSON tree
+        let order_with_sig = OrderWithSignature {
+            salt: &self.order.salt,
+            maker: &self.order.maker,
+            signer: &self.order.signer,
+            taker: &self.order.taker,
+            token_id: &self.order.tokenId,
+            maker_amount: &self.order.makerAmount,
+            taker_amount: &self.order.takerAmount,
+            expiration: &self.order.expiration,
+            nonce: &self.order.nonce,
+            fee_rate_bps: &self.order.feeRateBps,
+            side,
+            signature_type: self.order.signatureType,
+            signature: self.signature.to_string(),
+        };
 
-        // Side has to be serialized as "BUY" or "SELL" when hitting the CLOB, but the actual
-        // signature for a SignedOrder has to be done on the integer representation.
-        if let Some(value) = order.get_mut("side")
-            && let Some(side_numeric) = value.as_u64()
-            && let Some(side_numeric) = side_numeric.to_u8()
-            && let Ok(side) = Side::try_from(side_numeric)
-        {
-            *value = Value::String(side.to_string());
-        }
-
-        st.serialize_field("order", &order)?;
+        st.serialize_field("order", &order_with_sig)?;
         st.serialize_field("orderType", &self.order_type)?;
         st.serialize_field("owner", &self.owner)?;
         if let Some(post_only) = self.post_only {
