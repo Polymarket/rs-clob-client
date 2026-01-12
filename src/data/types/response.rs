@@ -240,7 +240,10 @@ pub struct Activity {
     /// Unix timestamp when the activity occurred.
     pub timestamp: i64,
     /// The market condition ID (unique market identifier).
-    pub condition_id: B256,
+    /// Can be empty for some activity types (e.g., rewards, conversions).
+    #[serde(default)]
+    #[serde_as(as = "NoneAsEmptyString")]
+    pub condition_id: Option<B256>,
     /// Type of activity (TRADE, SPLIT, MERGE, REDEEM, REWARD, CONVERSION).
     #[serde(rename = "type")]
     pub activity_type: ActivityType,
