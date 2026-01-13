@@ -271,3 +271,7 @@ unneeded_field_pattern = "warn"
 unseparated_literal_suffix = "warn"
 unused_trait_names = "warn"
 unwrap_used = "warn"
+
+[profile.bench]
+lto = "thin"        # Link-Time Optimization: enables cross-crate inlining
+codegen-units = 1   # Single codegen unit allows more aggressive optimizations
