@@ -273,14 +273,6 @@ unseparated_literal_suffix = "warn"
 unused_trait_names = "warn"
 unwrap_used = "warn"
 
-# Release profile optimizations for better benchmark and production performance.
-# These settings only affect `cargo build --release` and `cargo bench`.
-# Dev builds (`cargo build`, `cargo test`) are unaffected.
-[profile.release]
+[profile.bench]
 lto = "thin"        # Link-Time Optimization: enables cross-crate inlining
 codegen-units = 1   # Single codegen unit allows more aggressive optimizations
-
-# Ensure benchmarks use the same optimizations as release builds
-[profile.bench]
-lto = "thin"
-codegen-units = 1
