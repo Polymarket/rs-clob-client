@@ -214,10 +214,12 @@ impl<S: State> Client<S> {
         let resources = self.inner.get_or_create_channel(ChannelType::Market)?;
         let stream = resources.subscriptions.subscribe_market(asset_ids)?;
 
-        Ok(stream.filter_map(async |msg_result| match msg_result {
-            Ok(WsMessage::PriceChange(price)) => Some(Ok(price)),
-            Err(e) => Some(Err(e)),
-            _ => None,
+        Ok(stream.filter_map(|msg_result| async move {
+            match msg_result {
+                Ok(WsMessage::PriceChange(price)) => Some(Ok(price)),
+                Err(e) => Some(Err(e)),
+                _ => None,
+            }
         }))
     }
 
@@ -272,10 +274,12 @@ impl<S: State> Client<S> {
             .subscriptions
             .subscribe_market_with_options(asset_ids, true)?;
 
-        Ok(stream.filter_map(async |msg_result| match msg_result {
-            Ok(WsMessage::BestBidAsk(bba)) => Some(Ok(bba)),
-            Err(e) => Some(Err(e)),
-            _ => None,
+        Ok(stream.filter_map(|msg_result| async move {
+            match msg_result {
+                Ok(WsMessage::BestBidAsk(bba)) => Some(Ok(bba)),
+                Err(e) => Some(Err(e)),
+                _ => None,
+            }
         }))
     }
 
@@ -292,10 +296,12 @@ impl<S: State> Client<S> {
             .subscriptions
             .subscribe_market_with_options(asset_ids, true)?;
 
-        Ok(stream.filter_map(async |msg_result| match msg_result {
-            Ok(WsMessage::NewMarket(nm)) => Some(Ok(nm)),
-            Err(e) => Some(Err(e)),
-            _ => None,
+        Ok(stream.filter_map(|msg_result| async move {
+            match msg_result {
+                Ok(WsMessage::NewMarket(nm)) => Some(Ok(nm)),
+                Err(e) => Some(Err(e)),
+                _ => None,
+            }
         }))
     }
 
