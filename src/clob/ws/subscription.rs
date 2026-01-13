@@ -199,7 +199,7 @@ impl SubscriptionManager {
     pub fn subscribe_market(
         &self,
         asset_ids: Vec<U256>,
-    ) -> Result<impl Stream<Item = Result<WsMessage>>> {
+    ) -> Result<impl Stream<Item = Result<WsMessage>> + use<>> {
         self.subscribe_market_with_options(asset_ids, false)
     }
 
@@ -213,7 +213,7 @@ impl SubscriptionManager {
         &self,
         asset_ids: Vec<U256>,
         custom_features: bool,
-    ) -> Result<impl Stream<Item = Result<WsMessage>>> {
+    ) -> Result<impl Stream<Item = Result<WsMessage>> + use<>> {
         if asset_ids.is_empty() {
             return Err(WsError::SubscriptionFailed(
                 "asset_ids cannot be empty: at least one asset ID must be provided for subscription"
@@ -331,7 +331,7 @@ impl SubscriptionManager {
         &self,
         markets: Vec<B256>,
         auth: &Credentials,
-    ) -> Result<impl Stream<Item = Result<WsMessage>>> {
+    ) -> Result<impl Stream<Item = Result<WsMessage>> + use<>> {
         self.interest.add(MessageInterest::USER);
 
         // Store auth for re-subscription on reconnect.
@@ -429,6 +429,15 @@ impl SubscriptionManager {
     #[must_use]
     pub fn subscription_count(&self) -> usize {
         self.active_subs.len()
+    }
+
+    /// Check if there are any subscriptions for a specific channel type.
+    #[must_use]
+    pub fn has_subscriptions(&self, channel: ChannelType) -> bool {
+        match channel {
+            ChannelType::Market => !self.subscribed_assets.is_empty(),
+            ChannelType::User => !self.subscribed_markets.is_empty(),
+        }
     }
 
     /// Unsubscribe from market data for specific assets.
