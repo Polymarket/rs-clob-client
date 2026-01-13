@@ -1798,7 +1798,7 @@ impl<K: Kind> Client<Authenticated<K>> {
         date: NaiveDate,
         next_cursor: Option<String>,
     ) -> Result<Page<UserEarningResponse>> {
-        let cursor = next_cursor.map_or(String::new(), |c| format!("&next_cursor={c}"));
+        let cursor = next_cursor.map_or(String::new(), |c| format!("?next_cursor={c}"));
         let request = self
             .client()
             .request(Method::GET, format!("{}rewards/user{cursor}", self.host()))
@@ -1911,7 +1911,7 @@ impl<K: Kind> Client<Authenticated<K>> {
         &self,
         next_cursor: Option<String>,
     ) -> Result<Page<CurrentRewardResponse>> {
-        let cursor = next_cursor.map_or(String::new(), |c| format!("&next_cursor={c}"));
+        let cursor = next_cursor.map_or(String::new(), |c| format!("?next_cursor={c}"));
         let request = self
             .client()
             .request(
