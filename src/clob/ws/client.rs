@@ -154,8 +154,8 @@ impl<S: State> Client<S> {
         &self,
         asset_ids: Vec<U256>,
     ) -> Result<impl Stream<Item = Result<BookUpdate>>> {
-        let subscriptions = self.inner.get_or_create_channel(ChannelType::Market)?;
-        let stream = subscriptions.subscriptions.subscribe_market(asset_ids)?;
+        let resources = self.inner.get_or_create_channel(ChannelType::Market)?;
+        let stream = resources.subscriptions.subscribe_market(asset_ids)?;
 
         Ok(stream.filter_map(|msg_result| async move {
             match msg_result {
@@ -266,8 +266,9 @@ impl<S: State> Client<S> {
         &self,
         asset_ids: Vec<U256>,
     ) -> Result<impl Stream<Item = Result<BestBidAsk>>> {
-        let resources = self.inner.get_or_create_channel(ChannelType::Market)?;
-        let stream = resources
+        let stream = self
+            .inner
+            .get_or_create_channel(ChannelType::Market)?
             .subscriptions
             .subscribe_market_with_options(asset_ids, true)?;
 
@@ -285,8 +286,9 @@ impl<S: State> Client<S> {
         &self,
         asset_ids: Vec<U256>,
     ) -> Result<impl Stream<Item = Result<NewMarket>>> {
-        let resources = self.inner.get_or_create_channel(ChannelType::Market)?;
-        let stream = resources
+        let stream = self
+            .inner
+            .get_or_create_channel(ChannelType::Market)?
             .subscriptions
             .subscribe_market_with_options(asset_ids, true)?;
 
@@ -304,8 +306,9 @@ impl<S: State> Client<S> {
         &self,
         asset_ids: Vec<U256>,
     ) -> Result<impl Stream<Item = Result<MarketResolved>>> {
-        let resources = self.inner.get_or_create_channel(ChannelType::Market)?;
-        let stream = resources
+        let stream = self
+            .inner
+            .get_or_create_channel(ChannelType::Market)?
             .subscriptions
             .subscribe_market_with_options(asset_ids, true)?;
 
