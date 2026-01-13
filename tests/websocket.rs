@@ -891,6 +891,119 @@ mod reconnection {
             "Re-subscription should contain all tracked assets, got: {resub_str}"
         );
     }
+
+    #[tokio::test]
+    async fn preserves_custom_features_after_reconnect() {
+        let mut server = ReconnectableMockServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, config()).unwrap();
+
+        let asset_id = payloads::asset_id();
+
+        // Subscribe with custom features enabled (e.g., best_bid_ask)
+        let _stream = client.subscribe_best_bid_ask(vec![asset_id]).unwrap();
+
+        // Verify initial subscription has custom_feature_enabled
+        let sub_request = server.recv_subscription().await.unwrap();
+        assert!(
+            sub_request.contains("\"custom_feature_enabled\":true"),
+            "Initial subscription should have custom_feature_enabled, got: {sub_request}"
+        );
+
+        // Disconnect and reconnect
+        server.disconnect_all();
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        server.allow_reconnect();
+
+        // Verify re-subscription ALSO has custom_feature_enabled
+        let resub = server.recv_subscription().await;
+        assert!(resub.is_some(), "Should receive re-subscription");
+        let resub_str = resub.unwrap();
+        assert!(
+            resub_str.contains("\"custom_feature_enabled\":true"),
+            "Re-subscription should preserve custom_feature_enabled, got: {resub_str}"
+        );
+    }
+
+    /// Test that mirrors the exact usage pattern from GitHub issue #185.
+    /// <https://github.com/Polymarket/rs-clob-client/issues/185>
+    #[tokio::test]
+    async fn best_bid_ask_stream_continues_after_reconnect() {
+        let mut server = ReconnectableMockServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, config()).unwrap();
+
+        let asset_id = payloads::asset_id();
+
+        // Exact pattern from issue #185:
+        // let stream = client.subscribe_best_bid_ask(asset_ids)?;
+        // let mut stream = Box::pin(stream);
+        let stream = client.subscribe_best_bid_ask(vec![asset_id]).unwrap();
+        let mut stream = Box::pin(stream);
+
+        // Consume initial subscription request
+        let _: Option<String> = server.recv_subscription().await;
+
+        // Send best_bid_ask message before disconnect
+        let best_bid_ask_msg = serde_json::json!({
+            "event_type": "best_bid_ask",
+            "market": payloads::MARKET_STR,
+            "asset_id": asset_id.to_string(),
+            "best_bid": "0.48",
+            "best_ask": "0.52",
+            "spread": "0.04",
+            "timestamp": "1234567890000"
+        });
+        server.send(&best_bid_ask_msg.to_string());
+
+        // Verify we receive message before disconnect (mirrors the issue's loop pattern)
+        let msg1 = timeout(Duration::from_secs(2), stream.next()).await;
+        assert!(
+            msg1.is_ok() && msg1.unwrap().is_some(),
+            "Should receive best_bid_ask message before disconnect"
+        );
+
+        // Simulate disconnect (what the user experienced)
+        server.disconnect_all();
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        // Allow reconnection
+        server.allow_reconnect();
+
+        // Wait for re-subscription (proves reconnection happened)
+        let resub = server.recv_subscription().await;
+        assert!(
+            resub.is_some(),
+            "Should receive re-subscription after reconnect"
+        );
+        assert!(
+            resub.unwrap().contains("\"custom_feature_enabled\":true"),
+            "Re-subscription must include custom_feature_enabled for best_bid_ask to work"
+        );
+
+        // Send best_bid_ask message AFTER reconnection
+        let best_bid_ask_msg2 = serde_json::json!({
+            "event_type": "best_bid_ask",
+            "market": payloads::MARKET_STR,
+            "asset_id": asset_id.to_string(),
+            "best_bid": "0.50",
+            "best_ask": "0.54",
+            "spread": "0.04",
+            "timestamp": "1234567891000"
+        });
+        server.send(&best_bid_ask_msg2.to_string());
+
+        // THE FIX: This should now work - stream should receive message after reconnection
+        // Before the fix, this would hang forever because the server wasn't sending
+        // best_bid_ask messages (custom_feature_enabled was not included in re-subscription)
+        let msg2 = timeout(Duration::from_secs(2), stream.next()).await;
+        assert!(
+            msg2.is_ok() && msg2.unwrap().is_some(),
+            "Should receive best_bid_ask message after reconnection - this was the bug in issue #185"
+        );
+    }
 }
 
 mod unsubscribe {

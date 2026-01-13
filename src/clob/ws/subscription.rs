@@ -4,6 +4,7 @@
 )]
 
 use std::collections::{HashMap, HashSet};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, PoisonError, RwLock};
 use std::time::Instant;
 
@@ -80,6 +81,9 @@ pub struct SubscriptionManager {
     /// Subscribed markets with reference counts (for multiplexing)
     subscribed_markets: DashMap<B256, usize>,
     last_auth: Arc<RwLock<Option<Credentials>>>,
+    /// Track if custom features were enabled for any market subscription
+    /// (enables `best_bid_ask`, `new_market`, `market_resolved` messages)
+    custom_features_enabled: AtomicBool,
 }
 
 impl SubscriptionManager {
@@ -96,6 +100,7 @@ impl SubscriptionManager {
             subscribed_assets: DashMap::new(),
             subscribed_markets: DashMap::new(),
             last_auth: Arc::new(RwLock::new(None)),
+            custom_features_enabled: AtomicBool::new(false),
         }
     }
 
@@ -144,9 +149,17 @@ impl SubscriptionManager {
         let assets: Vec<U256> = self.subscribed_assets.iter().map(|r| *r.key()).collect();
 
         if !assets.is_empty() {
+            let custom_features = self.custom_features_enabled.load(Ordering::Relaxed);
             #[cfg(feature = "tracing")]
-            tracing::debug!(count = assets.len(), "Re-subscribing to market assets");
-            let request = SubscriptionRequest::market(assets);
+            tracing::debug!(
+                count = assets.len(),
+                custom_features,
+                "Re-subscribing to market assets"
+            );
+            let mut request = SubscriptionRequest::market(assets);
+            if custom_features {
+                request = request.with_custom_features(true);
+            }
             if let Err(e) = self.connection.send(&request) {
                 #[cfg(feature = "tracing")]
                 tracing::warn!(%e, "Failed to re-subscribe to market channel");
@@ -210,6 +223,11 @@ impl SubscriptionManager {
         }
 
         self.interest.add(MessageInterest::MARKET);
+
+        // Track if custom features are enabled (for re-subscription on reconnect)
+        if custom_features {
+            self.custom_features_enabled.store(true, Ordering::Relaxed);
+        }
 
         // Increment refcounts and determine which assets are truly new
         let new_assets: Vec<U256> = asset_ids
