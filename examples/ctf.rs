@@ -1,6 +1,5 @@
 #![allow(clippy::exhaustive_enums, reason = "Fine for examples")]
 #![allow(clippy::exhaustive_structs, reason = "Fine for examples")]
-#![allow(clippy::unwrap_used, reason = "Fine for examples")]
 
 //! CTF (Conditional Token Framework) example.
 //!
