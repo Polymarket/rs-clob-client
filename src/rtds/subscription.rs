@@ -187,11 +187,10 @@ impl SubscriptionManager {
                 .unwrap_or_else(PoisonError::into_inner) = Some(auth.clone());
         }
 
-        // Check if we need to send a new subscription request
-        let is_new = !self.subscribed_topics.contains(&topic_type);
+        // Atomically check if topic is new and insert if so
+        // DashSet::insert returns true if the value was newly inserted
+        let is_new = self.subscribed_topics.insert(topic_type.clone());
         if is_new {
-            self.subscribed_topics.insert(topic_type.clone());
-
             #[cfg(feature = "tracing")]
             tracing::debug!(
                 topic = %subscription.topic,
