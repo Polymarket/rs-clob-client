@@ -335,6 +335,37 @@ mod market_channel {
     }
 
     #[tokio::test]
+    async fn subscribe_tick_size_change_receives_updates() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let config = Config::default();
+        let client = Client::new(&endpoint, config).unwrap();
+
+        let stream = client
+            .subscribe_tick_size_change(vec![payloads::asset_id()])
+            .unwrap();
+        let mut stream = Box::pin(stream);
+
+        // Verify subscription request was sent
+        let sub_request = server.recv_subscription().await.unwrap();
+        assert!(sub_request.contains("\"type\":\"market\""));
+        assert!(sub_request.contains(&payloads::asset_id().to_string()));
+
+        // Send tick size change event
+        server.send(&payloads::tick_size_change().to_string());
+
+        let result = timeout(Duration::from_secs(2), stream.next()).await;
+        let tsc = result.unwrap().unwrap().unwrap();
+
+        assert_eq!(tsc.asset_id, payloads::asset_id());
+        assert_eq!(tsc.market, payloads::MARKET);
+        assert_eq!(tsc.old_tick_size, dec!(0.01));
+        assert_eq!(tsc.new_tick_size, dec!(0.001));
+        assert_eq!(tsc.timestamp, 100_000_000);
+    }
+
+    #[tokio::test]
     async fn filters_messages_by_asset_id() {
         let mut server = MockWsServer::start().await;
         let endpoint = server.ws_url("/ws/market");
@@ -1337,6 +1368,27 @@ mod unsubscribe_variants {
 
         // Unsubscribe via prices
         client.unsubscribe_prices(&[asset_id]).unwrap();
+
+        let unsub = server.recv_subscription().await.unwrap();
+        assert!(unsub.contains("\"operation\":\"unsubscribe\""));
+        assert!(unsub.contains(&asset_id.to_string()));
+    }
+
+    #[tokio::test]
+    async fn unsubscribe_tick_size_change_sends_request() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        let asset_id = payloads::asset_id();
+
+        // Subscribe via tick size changes
+        let _stream = client.subscribe_tick_size_change(vec![asset_id]).unwrap();
+        let _: Option<String> = server.recv_subscription().await;
+
+        // Unsubscribe via tick size changes
+        client.unsubscribe_tick_size_change(&[asset_id]).unwrap();
 
         let unsub = server.recv_subscription().await.unwrap();
         assert!(unsub.contains("\"operation\":\"unsubscribe\""));

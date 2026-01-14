@@ -10,7 +10,7 @@ use super::interest::InterestTracker;
 use super::subscription::{ChannelType, SubscriptionManager};
 use super::types::response::{
     BestBidAsk, BookUpdate, LastTradePrice, MarketResolved, MidpointUpdate, NewMarket,
-    OrderMessage, PriceChange, TradeMessage, WsMessage,
+    OrderMessage, PriceChange, TickSizeChange, TradeMessage, WsMessage,
 };
 use crate::Result;
 use crate::auth::state::{Authenticated, State, Unauthenticated};
@@ -225,6 +225,35 @@ impl<S: State> Client<S> {
         }))
     }
 
+    /// Subscribes to real-time tick size change events for specified assets.
+    ///
+    /// Returns a stream of tick size change when the backend adjusts the minimum
+    /// price increment for an asset.
+    ///
+    /// # Arguments
+    ///
+    /// * `asset_ids` - List of asset/token IDs to monitor
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the subscription cannot be created or the WebSocket
+    /// connection is not established.
+    pub fn subscribe_tick_size_change(
+        &self,
+        asset_ids: Vec<U256>,
+    ) -> Result<impl Stream<Item = Result<TickSizeChange>>> {
+        let resources = self.inner.get_or_create_channel(ChannelType::Market)?;
+        let stream = resources.subscriptions.subscribe_market(asset_ids)?;
+
+        Ok(stream.filter_map(|msg_result| async move {
+            match msg_result {
+                Ok(WsMessage::TickSizeChange(tsc)) => Some(Ok(tsc)),
+                Err(e) => Some(Err(e)),
+                _ => None,
+            }
+        }))
+    }
+
     /// Subscribes to real-time midpoint price updates for specified assets.
     ///
     /// Returns a stream of midpoint prices calculated as the average of the best
@@ -375,6 +404,14 @@ impl<S: State> Client<S> {
     /// This decrements the reference count for each asset. The server unsubscribe
     /// is only sent when no other subscriptions are using those assets.
     pub fn unsubscribe_prices(&self, asset_ids: &[U256]) -> Result<()> {
+        self.unsubscribe_orderbook(asset_ids)
+    }
+
+    /// Unsubscribe from tick size change updates for specific assets.
+    ///
+    /// This decrements the reference count for each asset. The server unsubscribe
+    /// is only sent when no other subscriptions are using those assets.
+    pub fn unsubscribe_tick_size_change(&self, asset_ids: &[U256]) -> Result<()> {
         self.unsubscribe_orderbook(asset_ids)
     }
 
