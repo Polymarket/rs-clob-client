@@ -339,7 +339,7 @@ pub struct TradeMessage {
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub last_update: Option<i64>,
     /// Time trade was matched
-    #[serde(default)]
+    #[serde(default, alias = "match_time")]
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub matchtime: Option<i64>,
     /// Unix timestamp of event
