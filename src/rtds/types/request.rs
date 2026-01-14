@@ -256,4 +256,68 @@ mod tests {
             "Binance filters should be raw JSON array, got: {json}"
         );
     }
+
+    #[test]
+    fn serialize_unsubscribe_request() {
+        let sub = Subscription::crypto_prices(Some(vec!["btcusdt".to_owned()]));
+        let request = SubscriptionRequest::unsubscribe(vec![sub]);
+
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(
+            json.contains("\"action\":\"unsubscribe\""),
+            "Action should be 'unsubscribe', got: {json}"
+        );
+        assert!(json.contains("\"topic\":\"crypto_prices\""));
+        assert!(json.contains("\"type\":\"update\""));
+    }
+
+    #[test]
+    fn serialize_unsubscribe_without_filters() {
+        let sub = Subscription::crypto_prices(None);
+        let request = SubscriptionRequest::unsubscribe(vec![sub]);
+
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(json.contains("\"action\":\"unsubscribe\""));
+        assert!(json.contains("\"topic\":\"crypto_prices\""));
+        assert!(
+            !json.contains("\"filters\""),
+            "Should have no filters field"
+        );
+    }
+
+    #[test]
+    fn serialize_unsubscribe_chainlink() {
+        let sub = Subscription::chainlink_prices(Some("btc/usd".to_owned()));
+        let request = SubscriptionRequest::unsubscribe(vec![sub]);
+
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(json.contains("\"action\":\"unsubscribe\""));
+        assert!(json.contains("\"topic\":\"crypto_prices_chainlink\""));
+        assert!(json.contains("\"type\":\"*\""));
+    }
+
+    #[test]
+    fn serialize_unsubscribe_comments() {
+        let sub = Subscription::comments(Some(CommentType::CommentCreated));
+        let request = SubscriptionRequest::unsubscribe(vec![sub]);
+
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(json.contains("\"action\":\"unsubscribe\""));
+        assert!(json.contains("\"topic\":\"comments\""));
+        assert!(json.contains("\"type\":\"comment_created\""));
+    }
+
+    #[test]
+    fn serialize_unsubscribe_multiple_topics() {
+        let crypto = Subscription::crypto_prices(None);
+        let chainlink = Subscription::chainlink_prices(None);
+        let comments = Subscription::comments(None);
+        let request = SubscriptionRequest::unsubscribe(vec![crypto, chainlink, comments]);
+
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(json.contains("\"action\":\"unsubscribe\""));
+        assert!(json.contains("\"topic\":\"crypto_prices\""));
+        assert!(json.contains("\"topic\":\"crypto_prices_chainlink\""));
+        assert!(json.contains("\"topic\":\"comments\""));
+    }
 }

@@ -8,7 +8,6 @@
     feature = "clob",
     feature = "data",
     feature = "gamma",
-    feature = "rtds",
 ))]
 use {serde::de::DeserializeOwned, serde_json::Value};
 

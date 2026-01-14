@@ -7,7 +7,7 @@ use std::sync::{Arc, PoisonError, RwLock};
 use std::time::Instant;
 
 use async_stream::try_stream;
-use dashmap::{DashMap, DashSet};
+use dashmap::{DashMap, Entry};
 use futures::Stream;
 use tokio::sync::broadcast::error::RecvError;
 
@@ -65,7 +65,8 @@ pub struct SubscriptionInfo {
 pub struct SubscriptionManager {
     connection: ConnectionManager<RtdsMessage, SimpleParser>,
     active_subs: DashMap<String, SubscriptionInfo>,
-    subscribed_topics: DashSet<TopicType>,
+    /// Subscribed topics with reference counts (for multiplexing)
+    subscribed_topics: DashMap<TopicType, usize>,
     last_auth: RwLock<Option<Credentials>>,
 }
 
@@ -76,7 +77,7 @@ impl SubscriptionManager {
         Self {
             connection,
             active_subs: DashMap::new(),
-            subscribed_topics: DashSet::new(),
+            subscribed_topics: DashMap::new(),
             last_auth: RwLock::new(None),
         }
     }
@@ -187,9 +188,19 @@ impl SubscriptionManager {
                 .unwrap_or_else(PoisonError::into_inner) = Some(auth.clone());
         }
 
-        // Atomically check if topic is new and insert if so
-        // DashSet::insert returns true if the value was newly inserted
-        let is_new = self.subscribed_topics.insert(topic_type.clone());
+        // Increment refcount or insert new topic with refcount=1
+        // Using Entry API to atomically check and update
+        let is_new = match self.subscribed_topics.entry(topic_type.clone()) {
+            Entry::Occupied(mut entry) => {
+                *entry.get_mut() += 1;
+                false
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(1);
+                true
+            }
+        };
+
         if is_new {
             #[cfg(feature = "tracing")]
             tracing::debug!(
@@ -264,5 +275,64 @@ impl SubscriptionManager {
     #[must_use]
     pub fn subscription_count(&self) -> usize {
         self.active_subs.len()
+    }
+
+    /// Unsubscribe from topics.
+    ///
+    /// This decrements the reference count for each topic. Only sends an unsubscribe
+    /// request to the server when the reference count reaches zero (no other streams
+    /// are using that topic).
+    pub fn unsubscribe(&self, topic_types: &[TopicType]) -> Result<()> {
+        if topic_types.is_empty() {
+            return Err(RtdsError::SubscriptionFailed(
+                "topic_types cannot be empty: at least one topic must be provided for unsubscription"
+                    .to_owned(),
+            )
+            .into());
+        }
+
+        let mut to_unsubscribe = Vec::new();
+
+        // Atomically decrement refcounts and remove topics that reach zero
+        // Using Entry API to prevent TOCTOU race between decrement and removal
+        for topic_type in topic_types {
+            if let Entry::Occupied(mut entry) = self.subscribed_topics.entry(topic_type.clone()) {
+                let refcount = entry.get_mut();
+                *refcount = refcount.saturating_sub(1);
+                if *refcount == 0 {
+                    entry.remove();
+                    to_unsubscribe.push(topic_type.clone());
+                }
+            }
+        }
+
+        // Send unsubscribe only for zero-refcount topics
+        if !to_unsubscribe.is_empty() {
+            #[cfg(feature = "tracing")]
+            tracing::debug!(
+                count = to_unsubscribe.len(),
+                ?to_unsubscribe,
+                "Unsubscribing from RTDS topics"
+            );
+
+            let subscriptions: Vec<Subscription> = to_unsubscribe
+                .iter()
+                .map(|tt| Subscription {
+                    topic: tt.topic.clone(),
+                    msg_type: tt.msg_type.clone(),
+                    filters: None,
+                    clob_auth: None,
+                })
+                .collect();
+
+            let request = SubscriptionRequest::unsubscribe(subscriptions);
+            self.connection.send(&request)?;
+        }
+
+        // Remove active_subs entries where all topics are now unsubscribed
+        self.active_subs
+            .retain(|_, info| self.subscribed_topics.contains_key(&info.topic_type));
+
+        Ok(())
     }
 }
