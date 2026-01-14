@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1](https://github.com/Polymarket/rs-clob-client/compare/v0.4.0...v0.4.1) - 2026-01-14
+
+### Added
+
+- *(clob)* add last_trade_price field to OrderBookSummaryResponse ([#174](https://github.com/Polymarket/rs-clob-client/pull/174))
+
+### Fixed
+
+- *(ws)* prevent TOCTOU race in subscription unsubscribe ([#190](https://github.com/Polymarket/rs-clob-client/pull/190))
+- *(rtds)* prevent race condition in subscription check ([#191](https://github.com/Polymarket/rs-clob-client/pull/191))
+- *(ws)* preserve custom_feature_enabled flag on reconnect ([#186](https://github.com/Polymarket/rs-clob-client/pull/186))
+- *(clob)* usage of ampersand before and without question mark ([#189](https://github.com/Polymarket/rs-clob-client/pull/189))
+- *(data)* make Activity.condition_id optional ([#173](https://github.com/Polymarket/rs-clob-client/pull/173))
+
+### Other
+
+- *(ws)* eliminate double JSON parsing in parse_if_interested ([#182](https://github.com/Polymarket/rs-clob-client/pull/182))
+- *(clob/ws)* use channel map for laziness instead of once_cell ([#183](https://github.com/Polymarket/rs-clob-client/pull/183))
+- *(cargo)* add release profile optimizations ([#180](https://github.com/Polymarket/rs-clob-client/pull/180))
+- *(clob)* optimize SignedOrder serialization ([#181](https://github.com/Polymarket/rs-clob-client/pull/181))
+- *(cargo)* bump alloy from 1.3.0 to 1.4.0 ([#178](https://github.com/Polymarket/rs-clob-client/pull/178))
+- *(cargo)* bump bon from 3.8.1 to 3.8.2 ([#177](https://github.com/Polymarket/rs-clob-client/pull/177))
+- *(cargo)* bump serde_json from 1.0.148 to 1.0.149 ([#179](https://github.com/Polymarket/rs-clob-client/pull/179))
+- *(cargo)* bump url from 2.5.7 to 2.5.8 ([#176](https://github.com/Polymarket/rs-clob-client/pull/176))
+- *(examples)* update WebSocket examples to use tracing ([#170](https://github.com/Polymarket/rs-clob-client/pull/170))
+- *(examples)* update RFQ examples to use tracing ([#169](https://github.com/Polymarket/rs-clob-client/pull/169))
+- *(examples)* update CLOB examples to use tracing ([#168](https://github.com/Polymarket/rs-clob-client/pull/168))
+
 ## [0.4.0](https://github.com/Polymarket/rs-clob-client/compare/v0.3.3...v0.4.0) - 2026-01-12
 
 ### Added
