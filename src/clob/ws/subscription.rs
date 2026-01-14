@@ -456,19 +456,17 @@ impl SubscriptionManager {
 
         let mut to_unsubscribe = Vec::new();
 
-        // Decrement refcounts and collect assets that reach zero
+        // Atomically decrement refcounts and remove assets that reach zero
+        // Using Entry API to prevent TOCTOU race between decrement and removal
         for id in asset_ids {
-            if let Some(mut refcount) = self.subscribed_assets.get_mut(id) {
+            if let Entry::Occupied(mut entry) = self.subscribed_assets.entry(*id) {
+                let refcount = entry.get_mut();
                 *refcount = refcount.saturating_sub(1);
                 if *refcount == 0 {
+                    entry.remove();
                     to_unsubscribe.push(*id);
                 }
             }
-        }
-
-        // Clean up tracking structures for zero-refcount assets
-        for id in &to_unsubscribe {
-            self.subscribed_assets.remove(id);
         }
 
         // Send unsubscribe only for zero-refcount assets
@@ -514,19 +512,17 @@ impl SubscriptionManager {
 
         let mut to_unsubscribe = Vec::new();
 
-        // Decrement refcounts and collect markets that reach zero
+        // Atomically decrement refcounts and remove markets that reach zero
+        // Using Entry API to prevent TOCTOU race between decrement and removal
         for m in markets {
-            if let Some(mut refcount) = self.subscribed_markets.get_mut(m) {
+            if let Entry::Occupied(mut entry) = self.subscribed_markets.entry(*m) {
+                let refcount = entry.get_mut();
                 *refcount = refcount.saturating_sub(1);
                 if *refcount == 0 {
+                    entry.remove();
                     to_unsubscribe.push(*m);
                 }
             }
-        }
-
-        // Clean up tracking structures for zero-refcount markets
-        for m in &to_unsubscribe {
-            self.subscribed_markets.remove(m);
         }
 
         // Send unsubscribe only for zero-refcount markets

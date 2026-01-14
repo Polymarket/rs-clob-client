@@ -1185,6 +1185,59 @@ mod unsubscribe {
             "Should receive subscribe, not unsubscribe for non-existent sub. Got: {next_msg}"
         );
     }
+
+    /// Stress test for concurrent subscribe/unsubscribe operations.
+    ///
+    /// This test verifies that the atomic reference counting in
+    /// `SubscriptionManager` prevents race conditions when multiple
+    /// tasks subscribe and unsubscribe to the same asset concurrently.
+    ///
+    /// The test creates N concurrent tasks that each subscribe and
+    /// unsubscribe in a loop, then verifies that the final state is
+    /// consistent (either fully subscribed or fully unsubscribed).
+    #[tokio::test]
+    async fn concurrent_subscribe_unsubscribe_maintains_consistency() {
+        const NUM_TASKS: usize = 10;
+        const ITERATIONS: usize = 50;
+
+        let server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Arc::new(Client::new(&endpoint, Config::default()).unwrap());
+        let asset_id = payloads::asset_id();
+
+        // Spawn multiple tasks that race to subscribe and unsubscribe
+        let mut handles = Vec::with_capacity(NUM_TASKS);
+        for _ in 0..NUM_TASKS {
+            let client = Arc::clone(&client);
+            let handle = tokio::spawn(async move {
+                for _ in 0..ITERATIONS {
+                    // Subscribe
+                    let _stream = client.subscribe_orderbook(vec![asset_id]).unwrap();
+
+                    // Small yield to increase interleaving
+                    tokio::task::yield_now().await;
+
+                    // Unsubscribe
+                    client.unsubscribe_orderbook(&[asset_id]).unwrap();
+                }
+            });
+            handles.push(handle);
+        }
+
+        // Wait for all tasks to complete
+        for handle in handles {
+            handle.await.expect("task should not panic");
+        }
+
+        // Final verification: after all tasks complete, subscription count should be 0
+        // This verifies no reference count corruption occurred during concurrent operations
+        assert_eq!(
+            client.subscription_count(),
+            0,
+            "All subscriptions should be cleaned up after concurrent operations"
+        );
+    }
 }
 
 mod client_state {
