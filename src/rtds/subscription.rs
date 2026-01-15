@@ -189,35 +189,33 @@ impl SubscriptionManager {
         }
 
         // Increment refcount or insert new topic with refcount=1
-        // Using Entry API to atomically check and update
-        let is_new = match self.subscribed_topics.entry(topic_type.clone()) {
+        // Using Entry API to atomically check and update, with send inside the guard
+        // to prevent TOCTOU race between refcount check and network send
+        match self.subscribed_topics.entry(topic_type.clone()) {
             Entry::Occupied(mut entry) => {
                 *entry.get_mut() += 1;
-                false
+                #[cfg(feature = "tracing")]
+                tracing::debug!(
+                    topic = %subscription.topic,
+                    msg_type = %subscription.msg_type,
+                    "RTDS topic already subscribed, multiplexing"
+                );
             }
             Entry::Vacant(entry) => {
+                #[cfg(feature = "tracing")]
+                tracing::debug!(
+                    topic = %subscription.topic,
+                    msg_type = %subscription.msg_type,
+                    "Subscribing to RTDS topic"
+                );
+
+                // Send subscribe request while holding the entry lock to prevent
+                // a concurrent unsubscribe from racing with us
+                let request = SubscriptionRequest::subscribe(vec![subscription.clone()]);
+                self.connection.send(&request)?;
+                // Only insert after successful send
                 entry.insert(1);
-                true
             }
-        };
-
-        if is_new {
-            #[cfg(feature = "tracing")]
-            tracing::debug!(
-                topic = %subscription.topic,
-                msg_type = %subscription.msg_type,
-                "Subscribing to RTDS topic"
-            );
-
-            let request = SubscriptionRequest::subscribe(vec![subscription.clone()]);
-            self.connection.send(&request)?;
-        } else {
-            #[cfg(feature = "tracing")]
-            tracing::debug!(
-                topic = %subscription.topic,
-                msg_type = %subscription.msg_type,
-                "RTDS topic already subscribed, multiplexing"
-            );
         }
 
         // Register subscription info
@@ -291,42 +289,32 @@ impl SubscriptionManager {
             .into());
         }
 
-        let mut to_unsubscribe = Vec::new();
-
-        // Atomically decrement refcounts and remove topics that reach zero
-        // Using Entry API to prevent TOCTOU race between decrement and removal
+        // Atomically decrement refcounts and send unsubscribe while holding the entry lock
+        // to prevent TOCTOU race between refcount check and network send
         for topic_type in topic_types {
             if let Entry::Occupied(mut entry) = self.subscribed_topics.entry(topic_type.clone()) {
                 let refcount = entry.get_mut();
                 *refcount = refcount.saturating_sub(1);
                 if *refcount == 0 {
+                    #[cfg(feature = "tracing")]
+                    tracing::debug!(
+                        topic = %topic_type.topic,
+                        msg_type = %topic_type.msg_type,
+                        "Unsubscribing from RTDS topic"
+                    );
+
+                    // Send unsubscribe while holding the entry lock to prevent
+                    // a concurrent subscribe from racing with us
+                    let request = SubscriptionRequest::unsubscribe(vec![Subscription {
+                        topic: topic_type.topic.clone(),
+                        msg_type: topic_type.msg_type.clone(),
+                        filters: None,
+                        clob_auth: None,
+                    }]);
+                    self.connection.send(&request)?;
                     entry.remove();
-                    to_unsubscribe.push(topic_type.clone());
                 }
             }
-        }
-
-        // Send unsubscribe only for zero-refcount topics
-        if !to_unsubscribe.is_empty() {
-            #[cfg(feature = "tracing")]
-            tracing::debug!(
-                count = to_unsubscribe.len(),
-                ?to_unsubscribe,
-                "Unsubscribing from RTDS topics"
-            );
-
-            let subscriptions: Vec<Subscription> = to_unsubscribe
-                .iter()
-                .map(|tt| Subscription {
-                    topic: tt.topic.clone(),
-                    msg_type: tt.msg_type.clone(),
-                    filters: None,
-                    clob_auth: None,
-                })
-                .collect();
-
-            let request = SubscriptionRequest::unsubscribe(subscriptions);
-            self.connection.send(&request)?;
         }
 
         // Remove active_subs entries where all topics are now unsubscribed
