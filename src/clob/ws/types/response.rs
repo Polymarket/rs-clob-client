@@ -2,15 +2,14 @@ use bon::Builder;
 use serde::Deserialize;
 use serde_json::Value;
 use serde_with::{DisplayFromStr, NoneAsEmptyString, serde_as};
+#[cfg(feature = "tracing")]
+use tracing::warn;
 
 use crate::auth::ApiKey;
 use crate::clob::types::{Side, TraderSide};
 use crate::clob::ws::interest::MessageInterest;
 use crate::error::Kind;
 use crate::types::{B256, Decimal, U256};
-
-#[cfg(feature = "tracing")]
-use tracing::warn;
 
 /// Top-level WebSocket message wrapper.
 ///
