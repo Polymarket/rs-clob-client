@@ -144,7 +144,7 @@ async fn main() -> anyhow::Result<()> {
 
 #### Authenticated client
 
-Set `POLYMARKET_PRIVATE_KEY` as an environment variable with your private key.
+Set `POLY_PRIVATE_KEY` as an environment variable with your private key.
 
 ##### [EOA](https://www.binance.com/en/academy/glossary/externally-owned-account-eoa) wallets
 If using MetaMask or hardware wallet, you must first set token allowances. See [Token Allowances](#token-allowances) section below.

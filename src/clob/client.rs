@@ -2241,6 +2241,24 @@ impl Client<Authenticated<Builder>> {
 
 #[cfg(feature = "rfq")]
 impl<K: Kind> Client<Authenticated<K>> {
+    /// Fetches the RFQ configuration.
+    ///
+    /// This endpoint is not currently modeled as a typed struct in the SDK, so this method
+    /// returns a `serde_json::Value`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the HTTP request fails or the response cannot be parsed.
+    pub async fn rfq_config(&self) -> Result<serde_json::Value> {
+        let http_request = self
+            .client()
+            .request(Method::GET, format!("{}rfq/config", self.host()))
+            .build()?;
+        let headers = self.create_headers(&http_request).await?;
+
+        crate::request(&self.inner.client, http_request, Some(headers)).await
+    }
+
     /// Creates an RFQ Request to buy or sell outcome tokens.
     ///
     /// This initiates the RFQ flow where market makers can provide quotes.
@@ -2341,15 +2359,14 @@ impl<K: Kind> Client<Authenticated<K>> {
         self.rfq_request_text(http_request, headers).await
     }
 
-    /// Gets RFQ quotes.
+    /// Gets RFQ quotes from the requester view.
     ///
-    /// Requesters can view quotes for their requests.
-    /// Quoters can view all quotes.
+    /// This endpoint returns quotes on RFQ requests created by the authenticated user.
     ///
     /// # Errors
     ///
     /// Returns an error if the HTTP request fails or the response cannot be parsed.
-    pub async fn quotes(
+    pub async fn requester_quotes(
         &self,
         request: &RfqQuotesRequest,
         next_cursor: Option<&str>,
@@ -2359,8 +2376,49 @@ impl<K: Kind> Client<Authenticated<K>> {
             .client()
             .request(
                 Method::GET,
-                format!("{}rfq/data/quotes{params}", self.host()),
+                format!("{}rfq/data/requester/quotes{params}", self.host()),
             )
+            .build()?;
+        let headers = self.create_headers(&http_request).await?;
+
+        crate::request(&self.inner.client, http_request, Some(headers)).await
+    }
+
+    /// Gets RFQ quotes from the quoter view.
+    ///
+    /// This endpoint returns quotes created by the authenticated user.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the HTTP request fails or the response cannot be parsed.
+    pub async fn quoter_quotes(
+        &self,
+        request: &RfqQuotesRequest,
+        next_cursor: Option<&str>,
+    ) -> Result<Page<RfqQuote>> {
+        let params = request.query_params(next_cursor);
+        let http_request = self
+            .client()
+            .request(
+                Method::GET,
+                format!("{}rfq/data/quoter/quotes{params}", self.host()),
+            )
+            .build()?;
+        let headers = self.create_headers(&http_request).await?;
+
+        crate::request(&self.inner.client, http_request, Some(headers)).await
+    }
+
+    /// Gets the best (most competitive) quote for a given RFQ request.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the HTTP request fails or the response cannot be parsed.
+    pub async fn best_quote(&self, request_id: &str) -> Result<RfqQuote> {
+        let http_request = self
+            .client()
+            .request(Method::GET, format!("{}rfq/data/best-quote", self.host()))
+            .query(&[("requestId", request_id)])
             .build()?;
         let headers = self.create_headers(&http_request).await?;
 

@@ -113,6 +113,7 @@ mod request {
                     "sizeIn": 100,
                     "sizeOut": 50,
                     "price": 0.5,
+                    "state": "STATE_ACCEPTING_QUOTES",
                     "expiry": 1_746_159_634
                 }],
                 "next_cursor": "LTE=",
@@ -236,13 +237,13 @@ mod quote {
     }
 
     #[tokio::test]
-    async fn rfq_quotes_should_succeed() -> anyhow::Result<()> {
+    async fn rfq_quoter_quotes_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = create_authenticated(&server).await?;
 
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::GET)
-                .path("/rfq/data/quotes")
+                .path("/rfq/data/quoter/quotes")
                 .header_exists(POLY_ADDRESS);
             then.status(StatusCode::OK).json_body(json!({
                 "data": [{
@@ -256,7 +257,9 @@ mod quote {
                     "side": "BUY",
                     "sizeIn": 100,
                     "sizeOut": 50,
-                    "price": 0.5
+                    "price": 0.5,
+                    "matchType": "COMPLEMENTARY",
+                    "state": "STATE_REQUEST_QUOTED"
                 }],
                 "next_cursor": "LTE=",
                 "limit": 100,
@@ -265,7 +268,7 @@ mod quote {
         });
 
         let request = RfqQuotesRequest::default();
-        let response = client.quotes(&request, None).await?;
+        let response = client.quoter_quotes(&request, None).await?;
 
         assert_eq!(response.count, 1);
         assert_eq!(response.data.len(), 1);
@@ -289,11 +292,30 @@ mod execution {
         let client = create_authenticated(&server).await?;
 
         let maker: Address = "0x6e0c80c90ea6c15917308f820eac91ce2724b5b5".parse()?;
+        let maker_str = maker.to_string().to_lowercase();
 
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::POST)
                 .path("/rfq/request/accept")
-                .header_exists(POLY_ADDRESS);
+                .header_exists(POLY_ADDRESS)
+                .json_body(json!({
+                    "requestId": "01968f1e-1182-71c4-9d40-172db9be82af",
+                    "quoteId": "0196f484-9fbd-74c1-bfc1-75ac21c1cf84",
+                    "makerAmount": "50000000",
+                    "takerAmount": "3000000",
+                    "tokenId": token_1().to_string(),
+                    "maker": maker_str,
+                    "signer": maker_str,
+                    "taker": "0x0000000000000000000000000000000000000000",
+                    "nonce": "0",
+                    "expiration": 0,
+                    "side": "BUY",
+                    "feeRateBps": "0",
+                    "signatureType": 0,
+                    "signature": "0x1234",
+                    "salt": 123,
+                    "owner": Uuid::nil()
+                }));
             then.status(StatusCode::OK).body("OK");
         });
 
@@ -310,8 +332,9 @@ mod execution {
             .expiration(0)
             .side(Side::Buy)
             .fee_rate_bps(0)
+            .signature_type(SignatureType::Eoa)
             .signature("0x1234")
-            .salt("123")
+            .salt(123)
             .owner(Uuid::nil())
             .build();
 
@@ -327,11 +350,30 @@ mod execution {
         let client = create_authenticated(&server).await?;
 
         let maker: Address = "0x6e0c80c90ea6c15917308f820eac91ce2724b5b5".parse()?;
+        let maker_str = maker.to_string().to_lowercase();
 
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::POST)
                 .path("/rfq/quote/approve")
-                .header_exists(POLY_ADDRESS);
+                .header_exists(POLY_ADDRESS)
+                .json_body(json!({
+                    "requestId": "01968f1e-1182-71c4-9d40-172db9be82af",
+                    "quoteId": "0196f484-9fbd-74c1-bfc1-75ac21c1cf84",
+                    "makerAmount": "50000000",
+                    "takerAmount": "3000000",
+                    "tokenId": token_1().to_string(),
+                    "maker": maker_str,
+                    "signer": maker_str,
+                    "taker": "0x0000000000000000000000000000000000000000",
+                    "nonce": "0",
+                    "expiration": 0,
+                    "side": "BUY",
+                    "feeRateBps": "0",
+                    "signatureType": 0,
+                    "signature": "0x1234",
+                    "salt": 123,
+                    "owner": Uuid::nil()
+                }));
             then.status(StatusCode::OK).json_body(json!({
                 "tradeIds": ["019af0f7-eb77-764f-b40f-6de8a3562e12"]
             }));
@@ -350,8 +392,9 @@ mod execution {
             .expiration(0)
             .side(Side::Buy)
             .fee_rate_bps(0)
+            .signature_type(SignatureType::Eoa)
             .signature("0x1234")
-            .salt("123")
+            .salt(123)
             .owner(Uuid::nil())
             .build();
 

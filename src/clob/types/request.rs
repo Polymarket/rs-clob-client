@@ -362,17 +362,21 @@ pub struct AcceptRfqQuoteRequest {
     /// Taker's address.
     pub taker: Address,
     /// Order nonce.
+    #[serde_as(as = "DisplayFromStr")]
     pub nonce: u64,
     /// Unix timestamp for order expiration.
     pub expiration: i64,
     /// Order side (BUY or SELL).
     pub side: Side,
     /// Fee rate in basis points.
+    #[serde_as(as = "DisplayFromStr")]
     pub fee_rate_bps: u64,
+    /// Signature type (`0` = EOA, `1` = `POLY_PROXY`, `2` = `POLY_GNOSIS_SAFE`).
+    pub signature_type: SignatureType,
     /// EIP-712 signature.
     pub signature: String,
     /// Random salt for order uniqueness.
-    pub salt: String,
+    pub salt: u64,
     /// Owner identifier.
     pub owner: ApiKey,
 }
@@ -405,17 +409,21 @@ pub struct ApproveRfqOrderRequest {
     /// Taker's address.
     pub taker: Address,
     /// Order nonce.
+    #[serde_as(as = "DisplayFromStr")]
     pub nonce: u64,
     /// Unix timestamp for order expiration.
     pub expiration: Timestamp,
     /// Order side (BUY or SELL).
     pub side: Side,
     /// Fee rate in basis points.
+    #[serde_as(as = "DisplayFromStr")]
     pub fee_rate_bps: u64,
+    /// Signature type (`0` = EOA, `1` = `POLY_PROXY`, `2` = `POLY_GNOSIS_SAFE`).
+    pub signature_type: SignatureType,
     /// EIP-712 signature.
     pub signature: String,
     /// Random salt for order uniqueness.
-    pub salt: String,
+    pub salt: u64,
     /// Owner identifier.
     pub owner: ApiKey,
 }

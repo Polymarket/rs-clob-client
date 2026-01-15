@@ -283,6 +283,69 @@ pub enum RfqSortDir {
     Desc,
 }
 
+/// RFQ match type for quote selection / execution behavior.
+#[cfg(feature = "rfq")]
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum RfqMatchType {
+    #[serde(rename = "COMPLEMENTARY")]
+    Complementary,
+    #[serde(rename = "MINT")]
+    Mint,
+    #[serde(rename = "MERGE")]
+    Merge,
+}
+
+/// RFQ request state returned by the RFQ API.
+#[cfg(feature = "rfq")]
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum RfqRequestState {
+    #[serde(rename = "STATE_ACCEPTING_QUOTES")]
+    AcceptingQuotes,
+    #[serde(rename = "STATE_QUOTE_ACCEPTED")]
+    QuoteAccepted,
+    #[serde(rename = "STATE_MAKER_ORDER_APPROVED")]
+    MakerOrderApproved,
+    #[serde(rename = "STATE_COMPLETED")]
+    Completed,
+    #[serde(rename = "STATE_USER_CANCELED")]
+    UserCanceled,
+    #[serde(rename = "STATE_INTERNAL_CANCELED")]
+    InternalCanceled,
+    #[serde(rename = "STATE_REQUEST_EXPIRED")]
+    RequestExpired,
+    #[serde(rename = "STATE_REQUEST_EXECUTION_FAILED")]
+    RequestExecutionFailed,
+}
+
+/// RFQ quote state returned by the RFQ API.
+#[cfg(feature = "rfq")]
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum RfqQuoteState {
+    #[serde(rename = "STATE_REQUEST_QUOTED")]
+    RequestQuoted,
+    #[serde(rename = "STATE_REQUEST_ACCEPTED_QUOTE")]
+    RequestAcceptedQuote,
+    #[serde(rename = "STATE_MAKER_APPROVED")]
+    MakerApproved,
+    #[serde(rename = "STATE_COMPLETED")]
+    Completed,
+    #[serde(rename = "STATE_MAKER_CANCELED")]
+    MakerCanceled,
+    #[serde(rename = "STATE_REQUEST_CANCELED")]
+    RequestCanceled,
+    #[serde(rename = "STATE_REQUEST_EXPIRED")]
+    RequestExpired,
+    #[serde(rename = "STATE_EXECUTION_FAILED")]
+    ExecutionFailed,
+    #[serde(rename = "STATE_MAKER_REJECTED_CANCELED")]
+    MakerRejectedCanceled,
+    #[serde(rename = "STATE_MAKER_REJECTED_EXPIRED")]
+    MakerRejectedExpired,
+}
+
 #[non_exhaustive]
 #[derive(Clone, Debug, Display, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]

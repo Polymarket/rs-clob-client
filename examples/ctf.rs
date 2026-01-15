@@ -18,7 +18,7 @@
 //!
 //! For write operations (split, merge, redeem), you need a private key:
 //! ```sh
-//! export POLYMARKET_PRIVATE_KEY="your_private_key"
+//! export POLY_PRIVATE_KEY="your_private_key"
 //! cargo run --example ctf --features ctf -- --write
 //! ```
 
@@ -215,7 +215,7 @@ async fn main() -> Result<()> {
     } else {
         info!("--- Write Operations ---");
         info!("To test write operations (split, merge, redeem), run with --write flag:");
-        info!("  export POLYMARKET_PRIVATE_KEY=\"your_private_key\"");
+        info!("  export POLY_PRIVATE_KEY=\"your_private_key\"");
         info!("  cargo run --example ctf --features ctf -- --write");
     }
 

@@ -51,7 +51,10 @@ pub const POLYGON: ChainId = 137;
 /// [`ChainId`] for Polygon testnet <https://polygon.technology/blog/introducing-the-amoy-testnet-for-polygon-pos>
 pub const AMOY: ChainId = 80002;
 
-pub const PRIVATE_KEY_VAR: &str = "POLYMARKET_PRIVATE_KEY";
+/// Environment variable name for the user's private key.
+///
+/// Convention: `POLY_*` across the repo/tooling.
+pub const PRIVATE_KEY_VAR: &str = "POLY_PRIVATE_KEY";
 
 /// Timestamp in seconds since [`std::time::UNIX_EPOCH`]
 pub(crate) type Timestamp = i64;
