@@ -472,21 +472,6 @@ pub struct MidpointUpdate {
     pub timestamp: i64,
 }
 
-/// Check if a message matches the interest filter.
-fn matches_interest(msg: &WsMessage, interest: MessageInterest) -> bool {
-    match msg {
-        WsMessage::Book(_) => interest.contains(MessageInterest::BOOK),
-        WsMessage::PriceChange(_) => interest.contains(MessageInterest::PRICE_CHANGE),
-        WsMessage::TickSizeChange(_) => interest.contains(MessageInterest::TICK_SIZE),
-        WsMessage::LastTradePrice(_) => interest.contains(MessageInterest::LAST_TRADE_PRICE),
-        WsMessage::BestBidAsk(_) => interest.contains(MessageInterest::BEST_BID_ASK),
-        WsMessage::NewMarket(_) => interest.contains(MessageInterest::NEW_MARKET),
-        WsMessage::MarketResolved(_) => interest.contains(MessageInterest::MARKET_RESOLVED),
-        WsMessage::Trade(_) => interest.contains(MessageInterest::TRADE),
-        WsMessage::Order(_) => interest.contains(MessageInterest::ORDER),
-    }
-}
-
 /// Deserialize messages from the byte slice, filtering by interest.
 ///
 /// For single objects, the JSON is parsed once into a `Value`, then the `event_type` is
@@ -576,6 +561,20 @@ mod tests {
     // Test market condition ID
     const TEST_MARKET: B256 =
         b256!("0000000000000000000000000000000000000000000000000000000000000001");
+
+    fn matches_interest(msg: &WsMessage, interest: MessageInterest) -> bool {
+        match msg {
+            WsMessage::Book(_) => interest.contains(MessageInterest::BOOK),
+            WsMessage::PriceChange(_) => interest.contains(MessageInterest::PRICE_CHANGE),
+            WsMessage::TickSizeChange(_) => interest.contains(MessageInterest::TICK_SIZE),
+            WsMessage::LastTradePrice(_) => interest.contains(MessageInterest::LAST_TRADE_PRICE),
+            WsMessage::BestBidAsk(_) => interest.contains(MessageInterest::BEST_BID_ASK),
+            WsMessage::NewMarket(_) => interest.contains(MessageInterest::NEW_MARKET),
+            WsMessage::MarketResolved(_) => interest.contains(MessageInterest::MARKET_RESOLVED),
+            WsMessage::Trade(_) => interest.contains(MessageInterest::TRADE),
+            WsMessage::Order(_) => interest.contains(MessageInterest::ORDER),
+        }
+    }
 
     #[test]
     fn parse_book_message() {
@@ -1120,7 +1119,7 @@ mod tests {
                 assert_eq!(trade.id, "trade123");
                 assert_eq!(
                     trade.msg_type,
-                    Some(TradeMessageType::Unknown("NEW_TYPE".to_string()))
+                    Some(TradeMessageType::Unknown("NEW_TYPE".to_owned()))
                 );
             }
             _ => panic!("Expected Trade message"),
