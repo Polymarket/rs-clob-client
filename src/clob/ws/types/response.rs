@@ -504,7 +504,7 @@ pub fn parse_if_interested(
             }
         }
         Value::Array(arr) => Ok(arr
-            .into_iter()
+            .iter()
             .filter_map(|elem| {
                 let obj = elem.as_object()?;
                 let event_type = obj.get("event_type").and_then(Value::as_str)?;
