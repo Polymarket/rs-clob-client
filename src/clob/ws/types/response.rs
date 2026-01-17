@@ -503,48 +503,28 @@ pub fn parse_if_interested(
                 }
             }
         }
-        Value::Array(arr) => {
-            // Tolerant batch parsing: process each element individually
-            let mut results = Vec::new();
+        Value::Array(arr) => Ok(arr
+            .into_iter()
+            .filter_map(|elem| {
+                let obj = elem.as_object()?;
+                let event_type = obj.get("event_type").and_then(Value::as_str)?;
 
-            for elem in arr {
-                // Skip non-object elements
-                let Some(obj) = elem.as_object() else {
-                    #[cfg(feature = "tracing")]
-                    warn!("Skipping non-object element in WS batch");
-                    continue;
-                };
-
-                // Extract event_type
-                let event_type = obj.get("event_type").and_then(Value::as_str);
-
-                let Some(event_type) = event_type else {
-                    #[cfg(feature = "tracing")]
-                    warn!("Skipping WS message without event_type in batch");
-                    continue;
-                };
-
-                // Skip if not interested
                 if !interest.is_interested_in_event(event_type) {
-                    continue;
+                    return None;
                 }
 
-                // Try to deserialize this element
-                match serde_json::from_value::<WsMessage>(elem.clone()) {
-                    Ok(msg) => results.push(msg),
-                    Err(err) => {
+                serde_json::from_value(elem.clone())
+                    .inspect_err(|err| {
                         #[cfg(feature = "tracing")]
                         warn!(
                             event_type = %event_type,
                             error = %err,
                             "Skipping unknown/invalid WS event in batch"
                         );
-                    }
-                }
-            }
-
-            Ok(results)
-        }
+                    })
+                    .ok()
+            })
+            .collect()),
         _ => Ok(vec![]),
     }
 }
