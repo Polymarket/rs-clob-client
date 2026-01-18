@@ -3,7 +3,7 @@ use std::sync::Arc;
 use futures::Stream;
 use futures::StreamExt as _;
 
-use super::subscription::{SimpleParser, SubscriptionManager};
+use super::subscription::{SimpleParser, SubscriptionManager, TopicType};
 use super::types::request::Subscription;
 use super::types::response::{ChainlinkPrice, Comment, CommentType, CryptoPrice, RtdsMessage};
 use crate::Result;
@@ -231,6 +231,62 @@ impl<S: State> Client<S> {
     #[must_use]
     pub fn subscription_count(&self) -> usize {
         self.inner.subscriptions.subscription_count()
+    }
+
+    /// Unsubscribe from Binance crypto price updates.
+    ///
+    /// This decrements the reference count for the `crypto_prices` topic. Only sends
+    /// an unsubscribe request to the server when no other streams are using this topic.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the unsubscribe request fails.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use polymarket_client_sdk::rtds::Client;
+    ///
+    /// # fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let client = Client::default();
+    /// let _stream = client.subscribe_crypto_prices(None)?;
+    /// // Later...
+    /// client.unsubscribe_crypto_prices()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn unsubscribe_crypto_prices(&self) -> Result<()> {
+        let topic = TopicType::new("crypto_prices".to_owned(), "update".to_owned());
+        self.inner.subscriptions.unsubscribe(&[topic])
+    }
+
+    /// Unsubscribe from Chainlink price feed updates.
+    ///
+    /// This decrements the reference count for the chainlink topic. Only sends
+    /// an unsubscribe request to the server when no other streams are using this topic.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the unsubscribe request fails.
+    pub fn unsubscribe_chainlink_prices(&self) -> Result<()> {
+        let topic = TopicType::new("crypto_prices_chainlink".to_owned(), "*".to_owned());
+        self.inner.subscriptions.unsubscribe(&[topic])
+    }
+
+    /// Unsubscribe from comment events.
+    ///
+    /// # Arguments
+    ///
+    /// * `comment_type` - The comment type to unsubscribe from. Use `None` for wildcard (`*`).
+    pub fn unsubscribe_comments(&self, comment_type: Option<CommentType>) -> Result<()> {
+        let msg_type = comment_type.map_or("*".to_owned(), |t| {
+            serde_json::to_string(&t)
+                .ok()
+                .and_then(|s| s.trim_matches('"').to_owned().into())
+                .unwrap_or_else(|| "*".to_owned())
+        });
+        let topic = TopicType::new("comments".to_owned(), msg_type);
+        self.inner.subscriptions.unsubscribe(&[topic])
     }
 }
 

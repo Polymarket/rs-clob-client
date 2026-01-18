@@ -4,7 +4,8 @@
 //! 1. Subscribing to Binance crypto prices (all symbols and filtered)
 //! 2. Subscribing to Chainlink price feeds
 //! 3. Subscribing to comment events
-//! 4. Showing connection state and subscription count
+//! 4. Demonstrating unsubscribe functionality
+//! 5. Showing connection state and subscription count
 //!
 //! Run with tracing enabled:
 //! ```sh
@@ -17,7 +18,7 @@ use futures::StreamExt as _;
 use polymarket_client_sdk::rtds::Client;
 use polymarket_client_sdk::rtds::types::response::CommentType;
 use tokio::time::timeout;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -201,9 +202,45 @@ async fn main() -> anyhow::Result<()> {
         Err(e) => debug!(stream = "comments_created", error = %e),
     }
 
-    // Show final subscription count
+    // Show subscription count before unsubscribe
     let sub_count = client.subscription_count();
-    info!(endpoint = "subscription_count", count = sub_count);
+    info!(
+        endpoint = "subscription_count",
+        count = sub_count,
+        "Before unsubscribe"
+    );
+
+    // Demonstrate unsubscribe functionality
+    info!("=== Demonstrating unsubscribe ===");
+
+    // Unsubscribe from crypto_prices (Binance)
+    info!("Unsubscribing from Binance crypto prices");
+    match client.unsubscribe_crypto_prices() {
+        Ok(()) => info!("Successfully unsubscribed from crypto_prices"),
+        Err(e) => warn!(error = %e, "Failed to unsubscribe from crypto_prices"),
+    }
+
+    // Unsubscribe from chainlink prices
+    info!("Unsubscribing from Chainlink prices");
+    match client.unsubscribe_chainlink_prices() {
+        Ok(()) => info!("Successfully unsubscribed from chainlink_prices"),
+        Err(e) => warn!(error = %e, "Failed to unsubscribe from chainlink_prices"),
+    }
+
+    // Unsubscribe from comments (wildcard)
+    info!("Unsubscribing from comments");
+    match client.unsubscribe_comments(None) {
+        Ok(()) => info!("Successfully unsubscribed from comments"),
+        Err(e) => warn!(error = %e, "Failed to unsubscribe from comments"),
+    }
+
+    // Show final subscription count after unsubscribe
+    let sub_count = client.subscription_count();
+    info!(
+        endpoint = "subscription_count",
+        count = sub_count,
+        "After unsubscribe"
+    );
 
     Ok(())
 }

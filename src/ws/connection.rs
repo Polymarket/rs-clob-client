@@ -194,7 +194,7 @@ where
                         #[cfg(feature = "tracing")]
                         tracing::error!("Error handling connection: {e:?}");
                         #[cfg(not(feature = "tracing"))]
-                        let _ = &e;
+                        let _: &_ = &e;
                     }
                 }
                 Err(e) => {
@@ -202,7 +202,7 @@ where
                     #[cfg(feature = "tracing")]
                     tracing::warn!("Unable to connect: {error:?}");
                     #[cfg(not(feature = "tracing"))]
-                    let _ = &error;
+                    let _: &_ = &error;
                     attempt = attempt.saturating_add(1);
                 }
             }
@@ -268,7 +268,7 @@ where
                                     #[cfg(feature = "tracing")]
                                     tracing::warn!(%text, error = %e, "Failed to parse WebSocket message");
                                     #[cfg(not(feature = "tracing"))]
-                                    let _ = (&text, &e);
+                                    let _: (&_, &_) = (&text, &e);
                                 }
                             }
                         }
