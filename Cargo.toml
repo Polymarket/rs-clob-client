@@ -87,7 +87,7 @@ alloy = { version = "1.4.3", default-features = false, features = [
 ] }
 anyhow = "1.0.100"
 aws-config = "1.8.12"
-aws-sdk-kms = "1.97.0"
+aws-sdk-kms = "1.98.0"
 criterion = { version = "0.8.1", features = ["html_reports"] }
 futures-util = "0.3.31"
 httpmock = "0.8.2"
