@@ -241,14 +241,17 @@ pub struct MarketResolved {
     /// Market condition ID
     pub market: B256,
     /// Market slug
-    pub slug: String,
+    #[serde(default)]
+    pub slug: Option<String>,
     /// Market description
-    pub description: String,
+    #[serde(default)]
+    pub description: Option<String>,
     /// List of asset IDs
     #[serde(rename = "assets_ids", alias = "asset_ids")]
     pub asset_ids: Vec<U256>,
     /// List of outcomes (e.g., `["Yes", "No"]`)
-    pub outcomes: Vec<String>,
+    #[serde(default)]
+    pub outcomes: Option<Vec<String>>,
     /// Winning asset ID
     pub winning_asset_id: U256,
     /// Winning outcome (e.g., "Yes" or "No")
