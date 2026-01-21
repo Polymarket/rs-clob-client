@@ -236,7 +236,8 @@ pub struct MarketResolved {
     /// Market ID
     pub id: String,
     /// Market question
-    pub question: String,
+    #[serde(default)]
+    pub question: Option<String>,
     /// Market condition ID
     pub market: B256,
     /// Market slug
