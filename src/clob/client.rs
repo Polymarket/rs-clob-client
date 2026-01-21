@@ -1348,6 +1348,15 @@ impl<K: Kind> Client<Authenticated<K>> {
         self.state().address
     }
 
+    /// Returns the credentials associated with this authenticated client.
+    ///
+    /// These credentials are required to authorize interactions with the CLOB
+    /// and authenticate the WebSocket user channel connection.
+    #[must_use]
+    pub fn credentials(&self) -> &Credentials {
+        &self.state().credentials
+    }
+
     /// Return all API keys associated with the address corresponding to the inner signer in
     /// [`Authenticated<K>`].
     pub async fn api_keys(&self) -> Result<ApiKeysResponse> {
