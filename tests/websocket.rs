@@ -1547,9 +1547,9 @@ mod custom_features {
         let mr = result.unwrap().unwrap().unwrap();
 
         assert_eq!(mr.id, "12345");
-        assert_eq!(mr.question, "Will it rain tomorrow?");
+        assert_eq!(mr.question, Some("Will it rain tomorrow?".to_owned()));
         assert_eq!(mr.market, payloads::MARKET);
-        assert_eq!(mr.slug, "will-it-rain-tomorrow");
+        assert_eq!(mr.slug, Some("will-it-rain-tomorrow".to_owned()));
         assert_eq!(mr.asset_ids, vec![payloads::asset_id()]);
     }
 

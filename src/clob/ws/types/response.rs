@@ -1015,12 +1015,12 @@ mod tests {
 
         let mr = WsMessage::MarketResolved(MarketResolved {
             id: "1".to_owned(),
-            question: "q".to_owned(),
+            question: Some("q".to_owned()),
             market: TEST_MARKET,
-            slug: "s".to_owned(),
-            description: "d".to_owned(),
+            slug: Some("s".to_owned()),
+            description: Some("d".to_owned()),
             asset_ids: vec![],
-            outcomes: vec![],
+            outcomes: Some(vec![]),
             winning_asset_id: U256::from_str(
                 "106585164761922456203746651621390029417453862034640469075081961934906147433548",
             )
