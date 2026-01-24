@@ -178,7 +178,7 @@ pub struct LastTradesPricesResponse {
 )]
 #[non_exhaustive]
 #[serde_as]
-#[derive(Debug, Deserialize, Clone, Builder, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct MarketResponse {
     pub enable_order_book: bool,
@@ -248,7 +248,7 @@ pub struct Token {
 )]
 #[non_exhaustive]
 #[serde_as]
-#[derive(Debug, Default, Deserialize, Clone, Builder, PartialEq)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, Builder, PartialEq)]
 #[builder(on(String, into))]
 pub struct SimplifiedMarketResponse {
     /// The market condition ID (unique market identifier).
