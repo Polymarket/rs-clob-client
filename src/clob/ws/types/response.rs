@@ -1,7 +1,7 @@
 use bon::Builder;
 use serde::Deserialize;
 use serde_json::Value;
-use serde_with::{DisplayFromStr, NoneAsEmptyString, serde_as};
+use serde_with::{DefaultOnNull, DisplayFromStr, NoneAsEmptyString, serde_as};
 #[cfg(feature = "tracing")]
 use tracing::warn;
 
@@ -251,7 +251,8 @@ pub struct MarketResolved {
     pub asset_ids: Vec<U256>,
     /// List of outcomes (e.g., `["Yes", "No"]`)
     #[serde(default)]
-    pub outcomes: Option<Vec<String>>,
+    #[serde_as(deserialize_as = "DefaultOnNull")]
+    pub outcomes: Vec<String>,
     /// Winning asset ID
     pub winning_asset_id: U256,
     /// Winning outcome (e.g., "Yes" or "No")
@@ -1020,7 +1021,7 @@ mod tests {
             slug: Some("s".to_owned()),
             description: Some("d".to_owned()),
             asset_ids: vec![],
-            outcomes: Some(vec![]),
+            outcomes: vec![],
             winning_asset_id: U256::from_str(
                 "106585164761922456203746651621390029417453862034640469075081961934906147433548",
             )
