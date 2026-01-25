@@ -249,3 +249,17 @@ fn credentials_passphrase_accessor_should_return_passphrase() {
     let credentials = Credentials::new(API_KEY, SECRET.to_owned(), PASSPHRASE.to_owned());
     assert_eq!(credentials.passphrase().expose_secret(), PASSPHRASE);
 }
+
+#[tokio::test]
+async fn authenticated_client_should_expose_credentials() -> anyhow::Result<()> {
+    let server = MockServer::start();
+    let client = create_authenticated(&server).await?;
+
+    let credentials = client.credentials();
+
+    assert_eq!(credentials.key(), API_KEY);
+    assert_eq!(credentials.secret().expose_secret(), SECRET);
+    assert_eq!(credentials.passphrase().expose_secret(), PASSPHRASE);
+
+    Ok(())
+}
