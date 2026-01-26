@@ -27,6 +27,6 @@ jobs:
           toolchain: '1.88'
 
       - name: Run release-plz
-        uses: MarcoIeni/release-plz-action@5ab144c9d67d4346240190d0f95ed08668677928 # v0.5.121
+        uses: MarcoIeni/release-plz-action@e592230ad39e3ec735402572601fc621aa24355c # v0.5.124
         env:
           GITHUB_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
