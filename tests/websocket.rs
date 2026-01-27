@@ -255,6 +255,7 @@ pub mod payloads {
             "price": "0.57",
             "side": "SELL",
             "size_matched": "0",
+            "status": "LIVE",
             "timestamp": "1672290687",
             "type": "PLACEMENT"
         })

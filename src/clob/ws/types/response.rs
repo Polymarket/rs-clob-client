@@ -6,7 +6,7 @@ use serde_with::{DefaultOnNull, DisplayFromStr, NoneAsEmptyString, serde_as};
 use tracing::warn;
 
 use crate::auth::ApiKey;
-use crate::clob::types::{Side, TraderSide};
+use crate::clob::types::{OrderStatusType, Side, TraderSide};
 use crate::clob::ws::interest::MessageInterest;
 use crate::error::Kind;
 use crate::types::{B256, Decimal, U256};
@@ -435,6 +435,9 @@ pub struct OrderMessage {
     /// Associated trade IDs
     #[serde(default)]
     pub associate_trades: Option<Vec<String>>,
+    /// Order status
+    #[serde(default)]
+    pub status: Option<OrderStatusType>,
 }
 
 /// Order status for WebSocket order messages.
