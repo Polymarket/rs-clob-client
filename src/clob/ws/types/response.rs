@@ -1,7 +1,7 @@
 use bon::Builder;
 use serde::Deserialize;
 use serde_json::Value;
-use serde_with::{DisplayFromStr, NoneAsEmptyString, serde_as};
+use serde_with::{DefaultOnNull, DisplayFromStr, NoneAsEmptyString, serde_as};
 #[cfg(feature = "tracing")]
 use tracing::warn;
 
@@ -236,17 +236,22 @@ pub struct MarketResolved {
     /// Market ID
     pub id: String,
     /// Market question
-    pub question: String,
+    #[serde(default)]
+    pub question: Option<String>,
     /// Market condition ID
     pub market: B256,
     /// Market slug
-    pub slug: String,
+    #[serde(default)]
+    pub slug: Option<String>,
     /// Market description
-    pub description: String,
+    #[serde(default)]
+    pub description: Option<String>,
     /// List of asset IDs
     #[serde(rename = "assets_ids", alias = "asset_ids")]
     pub asset_ids: Vec<U256>,
     /// List of outcomes (e.g., `["Yes", "No"]`)
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnNull")]
     pub outcomes: Vec<String>,
     /// Winning asset ID
     pub winning_asset_id: U256,
@@ -1011,10 +1016,10 @@ mod tests {
 
         let mr = WsMessage::MarketResolved(MarketResolved {
             id: "1".to_owned(),
-            question: "q".to_owned(),
+            question: Some("q".to_owned()),
             market: TEST_MARKET,
-            slug: "s".to_owned(),
-            description: "d".to_owned(),
+            slug: Some("s".to_owned()),
+            description: Some("d".to_owned()),
             asset_ids: vec![],
             outcomes: vec![],
             winning_asset_id: U256::from_str(
