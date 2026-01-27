@@ -431,7 +431,8 @@ pub struct OrderMessage {
     #[serde(default)]
     pub associate_trades: Option<Vec<String>>,
     /// Order status
-    pub status: OrderStatusType,
+    #[serde(default)]
+    pub status: Option<OrderStatusType>,
 }
 
 /// Order status for WebSocket order messages.
