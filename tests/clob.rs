@@ -243,14 +243,11 @@ mod unauthenticated {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
-        let test_market = b256!("0000000000000000000000000000000000000000000000000000000000000123");
+        let test_market = U256::from(0x123);
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::GET)
                 .path("/prices-history")
-                .query_param(
-                    "market",
-                    "0x0000000000000000000000000000000000000000000000000000000000000123",
-                )
+                .query_param("market", "291")
                 .query_param("interval", "1h")
                 .query_param("fidelity", "10");
             then.status(StatusCode::OK).json_body(json!({
@@ -288,14 +285,11 @@ mod unauthenticated {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
 
-        let test_market = b256!("0000000000000000000000000000000000000000000000000000000000000123");
+        let test_market = U256::from(0x123);
         let mock = server.mock(|when, then| {
             when.method(httpmock::Method::GET)
                 .path("/prices-history")
-                .query_param(
-                    "market",
-                    "0x0000000000000000000000000000000000000000000000000000000000000123",
-                )
+                .query_param("market", "291")
                 .query_param("startTs", "1000")
                 .query_param("endTs", "2000");
             then.status(StatusCode::OK).json_body(json!({
