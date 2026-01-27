@@ -6,7 +6,7 @@ use serde_with::{DisplayFromStr, NoneAsEmptyString, serde_as};
 use tracing::warn;
 
 use crate::auth::ApiKey;
-use crate::clob::types::{Side, TraderSide, OrderStatusType};
+use crate::clob::types::{OrderStatusType, Side, TraderSide};
 use crate::clob::ws::interest::MessageInterest;
 use crate::error::Kind;
 use crate::types::{B256, Decimal, U256};
