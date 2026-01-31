@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2](https://github.com/Polymarket/rs-clob-client/compare/v0.4.1...v0.4.2) - 2026-01-31
+
+### Added
+
+- *(clob)* add status to ws OrderMessage ([#219](https://github.com/Polymarket/rs-clob-client/pull/219))
+- add Serialize for MarketResponse and SimplifiedMarketResponse ([#217](https://github.com/Polymarket/rs-clob-client/pull/217))
+- expose API credentials ([#213](https://github.com/Polymarket/rs-clob-client/pull/213))
+- add dedicated types for trades function ([#203](https://github.com/Polymarket/rs-clob-client/pull/203))
+- *(rtds)* add unsubscribe support with reference counting ([#192](https://github.com/Polymarket/rs-clob-client/pull/192))
+- *(Bridge)* add status endpoint ([#198](https://github.com/Polymarket/rs-clob-client/pull/198))
+- *(ws)* add TickSizeChange typed stream + unsubscribe ([#195](https://github.com/Polymarket/rs-clob-client/pull/195))
+
+### Fixed
+
+- *(clob)* serialize PriceHistoryRequest market as decimal token_id ([#224](https://github.com/Polymarket/rs-clob-client/pull/224))
+- MarketResolved event ([#212](https://github.com/Polymarket/rs-clob-client/pull/212))
+- *(ws)* tolerant batch parsing and forward-compatible message types ([#200](https://github.com/Polymarket/rs-clob-client/pull/200))
+- *(clob)* propagate non-HTTP errors in create_or_derive_api_key ([#193](https://github.com/Polymarket/rs-clob-client/pull/193))
+- *(ws)* add alias for matchtime field deserialization ([#196](https://github.com/Polymarket/rs-clob-client/pull/196))
+
+### Other
+
+- *(cargo)* bump alloy from 1.4.3 to 1.5.2 ([#222](https://github.com/Polymarket/rs-clob-client/pull/222))
+- *(cargo)* bump uuid from 1.19.0 to 1.20.0 ([#221](https://github.com/Polymarket/rs-clob-client/pull/221))
+- *(gha)* bump MarcoIeni/release-plz-action from 0.5.121 to 0.5.124 ([#220](https://github.com/Polymarket/rs-clob-client/pull/220))
+- *(cargo)* bump rust_decimal_macros from 1.39.0 to 1.40.0 ([#208](https://github.com/Polymarket/rs-clob-client/pull/208))
+- *(cargo)* bump rust_decimal from 1.39.0 to 1.40.0 ([#206](https://github.com/Polymarket/rs-clob-client/pull/206))
+- *(cargo)* bump chrono from 0.4.42 to 0.4.43 ([#209](https://github.com/Polymarket/rs-clob-client/pull/209))
+- *(cargo)* bump aws-sdk-kms from 1.97.0 to 1.98.0 ([#207](https://github.com/Polymarket/rs-clob-client/pull/207))
+- *(cargo)* bump alloy from 1.4.0 to 1.4.3 ([#205](https://github.com/Polymarket/rs-clob-client/pull/205))
+- *(gha)* bump MarcoIeni/release-plz-action from 0.5.120 to 0.5.121 ([#204](https://github.com/Polymarket/rs-clob-client/pull/204))
+- *(ws)* use `rustls` instead of `native-tls` ([#194](https://github.com/Polymarket/rs-clob-client/pull/194))
+
 ## [0.4.1](https://github.com/Polymarket/rs-clob-client/compare/v0.4.0...v0.4.1) - 2026-01-14
 
 ### Added
