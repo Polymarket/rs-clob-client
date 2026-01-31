@@ -9,7 +9,7 @@
 //!
 //! Run with tracing enabled:
 //! ```sh
-//! RUST_LOG=info cargo run --example rtds_crypto_prices --features rtds,tracing
+//! RUST_LOG=info cargo run --example rtds_crypto_prices --features rtds,tracing,clob
 //! ```
 
 use std::time::Duration;
@@ -22,6 +22,13 @@ use tracing::{debug, info, warn};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Install the aws-lc-rs crypto provider for rustls.
+    // This is required because both 'aws-lc-rs' and 'ring' features are enabled
+    // in the dependency tree, preventing rustls from auto-selecting a provider.
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
+
     tracing_subscriber::fmt::init();
 
     let client = Client::default();

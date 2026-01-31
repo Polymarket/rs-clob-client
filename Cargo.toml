@@ -91,6 +91,7 @@ aws-sdk-kms = "1.98.0"
 criterion = { version = "0.8.1", features = ["html_reports"] }
 futures-util = "0.3.31"
 httpmock = "0.8.2"
+rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs"] }
 tokio = { version = "1.49.0", features = ["rt-multi-thread", "macros"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 

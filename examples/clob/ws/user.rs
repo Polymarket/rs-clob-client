@@ -7,12 +7,12 @@
 //!
 //! Run with tracing enabled:
 //! ```sh
-//! RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example websocket_user --features ws,tracing
+//! RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example websocket_user --features ws,tracing,clob
 //! ```
 //!
 //! Optionally log to a file:
 //! ```sh
-//! LOG_FILE=websocket_user.log RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example websocket_user --features ws,tracing
+//! LOG_FILE=websocket_user.log RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example websocket_user --features ws,tracing,clob
 //! ```
 //!
 //! Requires the following environment variables:
@@ -36,6 +36,13 @@ use uuid::Uuid;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Install the aws-lc-rs crypto provider for rustls.
+    // This is required because both 'aws-lc-rs' and 'ring' features are enabled
+    // in the dependency tree, preventing rustls from auto-selecting a provider.
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
+
     if let Ok(path) = std::env::var("LOG_FILE") {
         let file = File::create(path)?;
         tracing_subscriber::registry()
