@@ -4,6 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use alloy::primitives::U256;
 use chrono::{DateTime, Utc};
 use rand::Rng as _;
+use rust_decimal::RoundingStrategy as RustDecimalRoundingStrategy;
 use rust_decimal::prelude::ToPrimitive as _;
 
 use crate::Result;
@@ -22,6 +23,14 @@ pub(crate) const USDC_DECIMALS: u32 = 6;
 /// Maximum number of decimal places for `size`
 pub(crate) const LOT_SIZE_SCALE: u32 = 2;
 
+/// Maximum number of decimal places for maker amounts in market orders.
+/// Backend constraint: "maker amount supports a max accuracy of 2 decimals"
+pub(crate) const MAKER_AMOUNT_DECIMALS: u32 = 2;
+
+/// Maximum number of decimal places for taker amounts in market orders.
+/// Backend constraint: "taker amount a max of 4 decimals"
+pub(crate) const TAKER_AMOUNT_DECIMALS: u32 = 4;
+
 /// Placeholder type for compile-time checks on limit order builders
 #[non_exhaustive]
 #[derive(Debug)]
@@ -31,6 +40,38 @@ pub struct Limit;
 #[non_exhaustive]
 #[derive(Debug)]
 pub struct Market;
+
+/// Rounding strategy for market order amount calculations.
+///
+/// The backend requires maker amounts to have at most 2 decimal places and taker amounts
+/// to have at most 4 decimal places. This enum controls how amounts are rounded to meet
+/// these precision constraints.
+///
+/// # Example
+/// ```ignore
+/// client
+///     .market_order()
+///     .token_id(token)
+///     .side(Side::Buy)
+///     .amount(Amount::usdc(dec!(100)))
+///     .rounding_strategy(RoundingStrategy::Down) // Use round-down (default)
+///     .build()
+///     .await?;
+/// ```
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum RoundingStrategy {
+    /// Round towards zero (truncate). This is the safest option to avoid overspending.
+    /// For example, 10.1234 becomes 10.12 when rounding to 2 decimals.
+    #[default]
+    Down,
+    /// Round half away from zero (standard rounding).
+    /// For example, 10.125 becomes 10.13 when rounding to 2 decimals.
+    HalfUp,
+    /// Round away from zero.
+    /// For example, 10.121 becomes 10.13 when rounding to 2 decimals.
+    Up,
+}
 
 /// Used to create an order iteratively and ensure validity with respect to its order kind.
 #[derive(Debug)]
@@ -50,6 +91,7 @@ pub struct OrderBuilder<OrderKind, K: AuthKind> {
     pub(crate) order_type: Option<OrderType>,
     pub(crate) post_only: Option<bool>,
     pub(crate) funder: Option<Address>,
+    pub(crate) rounding_strategy: Option<RoundingStrategy>,
     pub(crate) _kind: PhantomData<OrderKind>,
 }
 
@@ -274,6 +316,21 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         self
     }
 
+    /// Sets the rounding strategy for market order amount calculations.
+    ///
+    /// The backend requires:
+    /// - Maker amounts: max 2 decimal places
+    /// - Taker amounts: max 4 decimal places
+    ///
+    /// This strategy controls how amounts are rounded to meet these constraints.
+    /// Default is [`RoundingStrategy::Down`] (truncate towards zero), which is the safest
+    /// option to avoid overspending or overselling.
+    #[must_use]
+    pub fn rounding_strategy(mut self, strategy: RoundingStrategy) -> Self {
+        self.rounding_strategy = Some(strategy);
+        self
+    }
+
     // Attempts to calculate the market price from the top of the book for the particular token.
     // - Uses an orderbook depth search to find the cutoff price:
     //   - BUY + USDC: walk asks until notional >= USDC
@@ -387,20 +444,26 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
 
         let decimals = minimum_tick_size.scale();
 
-        // Ensure that the market price returned internally is truncated to our tick size
-        let price = price.trunc_with_scale(decimals);
+        // Get the rounding strategy (default: Down/truncate for safety)
+        let strategy = self.rounding_strategy.unwrap_or_default();
+
+        // Ensure that the market price is rounded to our tick size using the configured strategy
+        let price = apply_rounding(price, decimals, strategy);
         if price < minimum_tick_size || price > Decimal::ONE - minimum_tick_size {
             return Err(Error::validation(format!(
                 "Price {price} is too small or too large for the minimum tick size {minimum_tick_size}"
             )));
         }
 
-        // When buying `YES` tokens, the user will "make" `USDC` dollars and "take"
-        // `USDC` / `price` `YES` tokens. When selling `YES` tokens, the user will "make" `YES`
-        // token shares, and "take" `YES` shares * `price`. We have to truncate the notional values
-        // to the combined precision of the tick size _and_ the lot size. This is to ensure that
-        // this order will "snap" to the precision of resting orders on the book. The returned
-        // values are quantized to `USDC_DECIMALS`.
+        // Calculate maker and taker amounts with context-aware rounding.
+        //
+        // Backend precision requirements:
+        // - Maker amounts: max 2 decimal places (MAKER_AMOUNT_DECIMALS)
+        // - Taker amounts: max 4 decimal places (TAKER_AMOUNT_DECIMALS)
+        //
+        // Context mapping:
+        // - BUY:  Maker = USDC (what user gives), Taker = shares (what user receives)
+        // - SELL: Maker = shares (what user gives), Taker = USDC (what user receives)
         //
         // e.g. User submits a market order to buy $100 worth of `YES` tokens at
         // the current `market_price` of $0.34. This means they will take/receive (100/0.34)
@@ -415,21 +478,27 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
 
         let (taker_amount, maker_amount) = match (side, amount.0) {
             // Spend USDC to buy shares
+            // Maker = USDC (2 decimals), Taker = shares (4 decimals)
             (Side::Buy, AmountInner::Usdc(_)) => {
-                let shares = (raw_amount / price).trunc_with_scale(decimals + LOT_SIZE_SCALE);
-                (shares, raw_amount)
+                let shares = apply_rounding(raw_amount / price, TAKER_AMOUNT_DECIMALS, strategy);
+                let usdc = apply_rounding(raw_amount, MAKER_AMOUNT_DECIMALS, strategy);
+                (shares, usdc)
             }
 
             // Buy N shares: use cutoff `price` derived from ask depth
+            // Maker = USDC (2 decimals), Taker = shares (4 decimals)
             (Side::Buy, AmountInner::Shares(_)) => {
-                let usdc = (raw_amount * price).trunc_with_scale(decimals + LOT_SIZE_SCALE);
-                (raw_amount, usdc)
+                let usdc = apply_rounding(raw_amount * price, MAKER_AMOUNT_DECIMALS, strategy);
+                let shares = apply_rounding(raw_amount, TAKER_AMOUNT_DECIMALS, strategy);
+                (shares, usdc)
             }
 
             // Sell N shares for USDC
+            // Maker = shares (2 decimals), Taker = USDC (4 decimals)
             (Side::Sell, AmountInner::Shares(_)) => {
-                let usdc = (raw_amount * price).trunc_with_scale(decimals + LOT_SIZE_SCALE);
-                (usdc, raw_amount)
+                let usdc = apply_rounding(raw_amount * price, TAKER_AMOUNT_DECIMALS, strategy);
+                let shares = apply_rounding(raw_amount, MAKER_AMOUNT_DECIMALS, strategy);
+                (usdc, shares)
             }
 
             (Side::Sell, AmountInner::Usdc(_)) => {
@@ -440,6 +509,18 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
 
             (side, _) => return Err(Error::validation(format!("Invalid side: {side}"))),
         };
+
+        // Validate that rounded amounts are not zero
+        if maker_amount.is_zero() {
+            return Err(Error::validation(
+                "Amount too small: maker amount rounded to zero. Increase the order amount.",
+            ));
+        }
+        if taker_amount.is_zero() {
+            return Err(Error::validation(
+                "Amount too small: taker amount rounded to zero. Increase the order amount.",
+            ));
+        }
 
         let salt = to_ieee_754_int((self.salt_generator)());
 
@@ -482,6 +563,19 @@ fn to_fixed_u128(d: Decimal) -> u128 {
 /// Mask the salt to be <= 2^53 - 1, as the backend parses as an IEEE 754.
 fn to_ieee_754_int(salt: u64) -> u64 {
     salt & ((1 << 53) - 1)
+}
+
+/// Apply rounding strategy to a decimal value with specified scale.
+///
+/// Maps our [`RoundingStrategy`] enum to the underlying `rust_decimal::RoundingStrategy`
+/// and applies the rounding to the given decimal value.
+fn apply_rounding(value: Decimal, decimals: u32, strategy: RoundingStrategy) -> Decimal {
+    let rs = match strategy {
+        RoundingStrategy::Down => RustDecimalRoundingStrategy::ToZero,
+        RoundingStrategy::HalfUp => RustDecimalRoundingStrategy::MidpointAwayFromZero,
+        RoundingStrategy::Up => RustDecimalRoundingStrategy::AwayFromZero,
+    };
+    value.round_dp_with_strategy(decimals, rs)
 }
 
 #[must_use]
@@ -534,5 +628,108 @@ mod tests {
         let masked_salt = to_ieee_754_int(raw_salt);
 
         assert!(masked_salt < (1 << 53));
+    }
+
+    #[test]
+    fn rounding_strategy_default_is_down() {
+        assert_eq!(RoundingStrategy::default(), RoundingStrategy::Down);
+    }
+
+    #[test]
+    fn apply_rounding_down_should_truncate() {
+        // Round down (towards zero) - truncates
+        assert_eq!(
+            apply_rounding(dec!(10.1234), 2, RoundingStrategy::Down),
+            dec!(10.12)
+        );
+        assert_eq!(
+            apply_rounding(dec!(10.1299), 2, RoundingStrategy::Down),
+            dec!(10.12)
+        );
+        assert_eq!(
+            apply_rounding(dec!(10.125), 2, RoundingStrategy::Down),
+            dec!(10.12)
+        );
+        assert_eq!(
+            apply_rounding(dec!(10.1256), 4, RoundingStrategy::Down),
+            dec!(10.1256)
+        );
+        assert_eq!(
+            apply_rounding(dec!(10.12569), 4, RoundingStrategy::Down),
+            dec!(10.1256)
+        );
+    }
+
+    #[test]
+    fn apply_rounding_half_up_should_round_standard() {
+        // Round half up (standard rounding)
+        assert_eq!(
+            apply_rounding(dec!(10.125), 2, RoundingStrategy::HalfUp),
+            dec!(10.13)
+        );
+        assert_eq!(
+            apply_rounding(dec!(10.124), 2, RoundingStrategy::HalfUp),
+            dec!(10.12)
+        );
+        assert_eq!(
+            apply_rounding(dec!(10.126), 2, RoundingStrategy::HalfUp),
+            dec!(10.13)
+        );
+        assert_eq!(
+            apply_rounding(dec!(10.12345), 4, RoundingStrategy::HalfUp),
+            dec!(10.1235)
+        );
+        assert_eq!(
+            apply_rounding(dec!(10.12344), 4, RoundingStrategy::HalfUp),
+            dec!(10.1234)
+        );
+    }
+
+    #[test]
+    fn apply_rounding_up_should_round_away_from_zero() {
+        // Round up (away from zero)
+        assert_eq!(
+            apply_rounding(dec!(10.121), 2, RoundingStrategy::Up),
+            dec!(10.13)
+        );
+        assert_eq!(
+            apply_rounding(dec!(10.120), 2, RoundingStrategy::Up),
+            dec!(10.12)
+        );
+        assert_eq!(
+            apply_rounding(dec!(10.1201), 4, RoundingStrategy::Up),
+            dec!(10.1201)
+        );
+        assert_eq!(
+            apply_rounding(dec!(10.12011), 4, RoundingStrategy::Up),
+            dec!(10.1202)
+        );
+    }
+
+    #[test]
+    fn apply_rounding_preserves_precision_when_within_limit() {
+        // When value is already within precision, no change should occur
+        assert_eq!(
+            apply_rounding(dec!(10.12), 2, RoundingStrategy::Down),
+            dec!(10.12)
+        );
+        assert_eq!(
+            apply_rounding(dec!(10.12), 4, RoundingStrategy::Down),
+            dec!(10.12)
+        );
+        assert_eq!(
+            apply_rounding(dec!(10.1234), 4, RoundingStrategy::Down),
+            dec!(10.1234)
+        );
+    }
+
+    #[test]
+    fn maker_amount_decimals_is_two() {
+        assert_eq!(MAKER_AMOUNT_DECIMALS, 2);
+    }
+
+    #[test]
+    fn taker_amount_decimals_is_four() {
+        assert_eq!(TAKER_AMOUNT_DECIMALS, 4);
     }
 }
