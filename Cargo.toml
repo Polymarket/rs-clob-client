@@ -36,7 +36,7 @@ rtds = ["dep:backoff", "dep:tokio", "dep:tokio-tungstenite"]
 heartbeats = ["dep:tokio", "dep:tokio-util"]
 
 [dependencies]
-alloy = { version = "1.5.2", default-features = false, features = [
+alloy = { version = "1.6.3", default-features = false, features = [
     "dyn-abi",
     "reqwest",
     "reqwest-rustls-tls",
@@ -78,7 +78,7 @@ url = "2.5.8"
 uuid = { version = "1.20.0", features = ["serde", "v4", "v7"] }
 
 [dev-dependencies]
-alloy = { version = "1.5.2", default-features = false, features = [
+alloy = { version = "1.6.3", default-features = false, features = [
     "contract",
     "providers",
     "reqwest",
