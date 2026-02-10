@@ -3,7 +3,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use alloy::primitives::U256;
 use chrono::{DateTime, Utc};
-use rand::Rng as _;
+use rand::RngExt as _;
 use rust_decimal::prelude::ToPrimitive as _;
 
 use crate::Result;
