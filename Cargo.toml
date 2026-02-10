@@ -90,7 +90,7 @@ aws-config = "1.8.13"
 aws-sdk-kms = "1.99.0"
 criterion = { version = "0.8.2", features = ["html_reports"] }
 futures-util = "0.3.31"
-httpmock = "0.8.2"
+httpmock = "0.8.3"
 tokio = { version = "1.49.0", features = ["rt-multi-thread", "macros"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
