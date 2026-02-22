@@ -1,0 +1,6 @@
+{
+    "rust-analyzer.cargo.features": "all",
+    "[rust]": {
+        "editor.formatOnSave": true
+    }
+}
