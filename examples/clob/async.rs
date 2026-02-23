@@ -109,7 +109,7 @@ async fn authenticated() -> anyhow::Result<()> {
     let Ok(private_key) = std::env::var(PRIVATE_KEY_VAR) else {
         info!(
             endpoint = "authenticated",
-            "skipped - POLY_PRIVATE_KEY not set"
+            "skipped - POLYMARKET_PRIVATE_KEY not set"
         );
         return Ok(());
     };

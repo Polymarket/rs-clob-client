@@ -49,7 +49,7 @@ async fn main() -> anyhow::Result<()> {
         tracing_subscriber::fmt::init();
     }
 
-    let private_key = std::env::var(PRIVATE_KEY_VAR).expect("Need POLY_PRIVATE_KEY");
+    let private_key = std::env::var(PRIVATE_KEY_VAR).expect("Need POLYMARKET_PRIVATE_KEY");
     let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(POLYGON));
 
     let client = Client::new("https://clob.polymarket.com", Config::default())?
