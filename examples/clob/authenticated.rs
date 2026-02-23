@@ -17,7 +17,7 @@
 //! LOG_FILE=authenticated.log RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example authenticated --features clob,tracing
 //! ```
 //!
-//! Requires `POLY_PRIVATE_KEY` environment variable to be set.
+//! Requires `POLYMARKET_PRIVATE_KEY` environment variable to be set.
 
 use std::fs::File;
 use std::str::FromStr as _;

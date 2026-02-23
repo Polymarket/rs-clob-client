@@ -15,7 +15,7 @@
 //! LOG_FILE=async.log RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example async --features clob,tracing
 //! ```
 //!
-//! For authenticated endpoints, set the `POLY_PRIVATE_KEY` environment variable.
+//! For authenticated endpoints, set the `POLYMARKET_PRIVATE_KEY` environment variable.
 
 use std::fs::File;
 use std::str::FromStr as _;

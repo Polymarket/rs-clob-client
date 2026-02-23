@@ -15,7 +15,7 @@
 //! LOG_FILE=rfq_quotes.log RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example rfq_quotes --features clob,rfq,tracing
 //! ```
 //!
-//! Requires `POLY_PRIVATE_KEY` environment variable to be set.
+//! Requires `POLYMARKET_PRIVATE_KEY` environment variable to be set.
 
 #![cfg(feature = "rfq")]
 
