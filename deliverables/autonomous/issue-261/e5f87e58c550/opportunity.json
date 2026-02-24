@@ -1,0 +1,18 @@
+{
+  "headline": "GitHub[Polymarket/rs-clob-client]: Too many decimal places when building market order",
+  "url": "https://github.com/Polymarket/rs-clob-client/issues/261",
+  "expected_usd": 100.0,
+  "strategy": "锁定明码 bounty；交付代码+run_log+sample_data，并准备自动交割链接。",
+  "raw_expected": "100.00 USD",
+  "bounty_literal": "$100",
+  "source_line": "## 🚨 发现新商机：GitHub[Polymarket/rs-clob-client]: Too many decimal places when building market order",
+  "kind": "generic_automation",
+  "difficulty": 1.0,
+  "score": 100.0,
+  "oid": "28e60afc66f911a1314eba16c38c1e3d4fad49fabead9cd189563e34aa38b890",
+  "payout": {
+    "asset": "USDT",
+    "chain": "EVM",
+    "wallet": "0xF57503F99fA20b912200ed90D26d945093136ef5"
+  }
+}
