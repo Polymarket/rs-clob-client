@@ -10,17 +10,17 @@
 //!
 //! Run with tracing enabled:
 //! ```sh
-//! RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example check_approvals --features tracing -- <WALLET_ADDRESS>
+//! RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example check_approvals --all-features -- <WALLET_ADDRESS>
 //! ```
 //!
 //! Optionally log to a file:
 //! ```sh
-//! LOG_FILE=check_approvals.log RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example check_approvals --features tracing -- <WALLET_ADDRESS>
+//! LOG_FILE=check_approvals.log RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example check_approvals --all-features -- <WALLET_ADDRESS>
 //! ```
 //!
 //! Example:
 //! ```sh
-//! RUST_LOG=info cargo run --example check_approvals --features tracing -- 0x1234...abcd
+//! RUST_LOG=info cargo run --example check_approvals --all-features -- 0x1234...abcd
 //! ```
 
 use std::env;
