@@ -19,17 +19,17 @@
 //!
 //! Run with tracing enabled:
 //! ```sh
-//! RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example approvals --features tracing
+//! RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example approvals --all-features
 //! ```
 //!
 //! Dry run (no transactions executed):
 //! ```sh
-//! RUST_LOG=info cargo run --example approvals --features tracing -- --dry-run
+//! RUST_LOG=info cargo run --example approvals --all-features -- --dry-run
 //! ```
 //!
 //! Optionally log to a file:
 //! ```sh
-//! LOG_FILE=approvals.log RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example approvals --features tracing
+//! LOG_FILE=approvals.log RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example approvals --all-features
 //! ```
 
 use std::env;

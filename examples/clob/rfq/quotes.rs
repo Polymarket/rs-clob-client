@@ -15,7 +15,7 @@
 //! LOG_FILE=rfq_quotes.log RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example rfq_quotes --features clob,rfq,tracing
 //! ```
 //!
-//! Requires `POLY_PRIVATE_KEY` environment variable to be set.
+//! Requires `POLYMARKET_PRIVATE_KEY` environment variable to be set.
 
 #![cfg(feature = "rfq")]
 
@@ -48,7 +48,7 @@ async fn main() -> anyhow::Result<()> {
         tracing_subscriber::fmt::init();
     }
 
-    let private_key = std::env::var(PRIVATE_KEY_VAR).expect("Need POLY_PRIVATE_KEY");
+    let private_key = std::env::var(PRIVATE_KEY_VAR).expect("Need POLYMARKET_PRIVATE_KEY");
     let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(POLYGON));
 
     let client = Client::new("https://clob.polymarket.com", Config::default())?
