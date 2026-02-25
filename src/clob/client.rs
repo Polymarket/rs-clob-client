@@ -691,14 +691,14 @@ impl<S: State> Client<S> {
         crate::request(&self.inner.client, request, None).await
     }
 
-    /// Retrieves historical price data for a market.
+    /// Retrieves historical price data for a market outcome token.
     ///
     /// Returns time-series price data over a specified time range or interval.
     /// The `fidelity` parameter controls the granularity of data points returned.
     ///
     /// # Errors
     ///
-    /// Returns an error if the request fails or the market ID is invalid.
+    /// Returns an error if the request fails or the token ID is invalid.
     pub async fn price_history(
         &self,
         request: &PriceHistoryRequest,

@@ -40,7 +40,7 @@
 //! | `/sampling-markets` | Sampling program markets |
 //! | `/simplified-markets` | Markets with reduced detail |
 //! | `/sampling-simplified-markets` | Simplified sampling markets |
-//! | `/data/price-history` | Historical price data |
+//! | `/prices-history` | Historical price data |
 //! | `/geoblock` | Geographic restriction check |
 //!
 //! ## Authenticated Endpoints
