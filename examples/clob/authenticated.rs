@@ -17,7 +17,7 @@
 //! LOG_FILE=authenticated.log RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example authenticated --features clob,tracing
 //! ```
 //!
-//! Requires `POLY_PRIVATE_KEY` environment variable to be set.
+//! Requires `POLYMARKET_PRIVATE_KEY` environment variable to be set.
 
 use std::fs::File;
 use std::str::FromStr as _;
@@ -59,7 +59,7 @@ async fn main() -> anyhow::Result<()> {
         "15871154585880608648532107628464183779895785213830018178010423617714102767076",
     )?;
 
-    let private_key = std::env::var(PRIVATE_KEY_VAR).expect("Need POLY_PRIVATE_KEY");
+    let private_key = std::env::var(PRIVATE_KEY_VAR).expect("Need POLYMARKET_PRIVATE_KEY");
     let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(POLYGON));
 
     let config = Config::builder().use_server_time(true).build();

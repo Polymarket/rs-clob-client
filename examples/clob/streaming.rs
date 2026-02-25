@@ -14,9 +14,9 @@
 //! LOG_FILE=streaming.log RUST_LOG=info,hyper_util=off,hyper=off,reqwest=off,h2=off,rustls=off cargo run --example streaming --features tracing
 //! ```
 //!
-//! For authenticated streaming, set the `POLY_PRIVATE_KEY` environment variable:
+//! For authenticated streaming, set the `POLYMARKET_PRIVATE_KEY` environment variable:
 //! ```sh
-//! POLY_PRIVATE_KEY=0x... RUST_LOG=info cargo run --example streaming --features tracing
+//! POLYMARKET_PRIVATE_KEY=0x... RUST_LOG=info cargo run --example streaming --features tracing
 //! ```
 
 use std::fs::File;
