@@ -122,3 +122,77 @@ pub enum DepositTransactionStatus {
     Completed,
     Failed,
 }
+
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Clone, Deserialize, PartialEq, Builder)]
+#[builder(on(String, into))]
+#[serde(rename_all = "camelCase")]
+pub struct QuoteResponse {
+    /// Estimated time to complete the checkout in milliseconds
+    pub est_checkout_time_ms: u64,
+    /// Breakdown of the estimated fees
+    pub est_fee_breakdown: EstimatedFeeBreakdown,
+    /// Estimated token amount received in USD
+    pub est_input_usd: f64,
+    /// Estimated token amount sent in USD
+    pub est_output_usd: f64,
+    /// Estimated token amount received
+    #[serde_as(as = "DisplayFromStr")]
+    pub est_to_token_base_unit: U256,
+    /// Unique quote id of the request
+    pub quote_id: String,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, Deserialize, PartialEq, Builder)]
+#[builder(on(String, into))]
+#[serde(rename_all = "camelCase")]
+pub struct EstimatedFeeBreakdown {
+    /// Label of the app fee
+    pub app_fee_label: String,
+    /// App fees as a percentage of the total amount sent
+    pub app_fee_percent: f64,
+    /// App fees in USD
+    pub app_fee_usd: f64,
+    /// Fill cost percentage of the total amount sent
+    pub fill_cost_percent: f64,
+    /// Fill cost in USD
+    pub fill_cost_usd: f64,
+    /// Gas fee in USD
+    pub gas_usd: f64,
+    /// Maximum potential slippage as a percentage
+    pub max_slippage: f64,
+    /// Amount after factoring slippage
+    pub min_received: f64,
+    /// Swap impact as a percentage of the total amount sent
+    pub swap_impact: f64,
+    /// Swap impact of the transaction in USD
+    pub swap_impact_usd: f64,
+    /// Total impact as a percentage of the total amount sent
+    pub total_impact: f64,
+    /// Impact cost of the transaction
+    pub total_impact_usd: f64,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, Deserialize, PartialEq, Builder)]
+#[builder(on(String, into))]
+pub struct WithdrawResponse {
+    /// Deposit addresses for different blockchain networks
+    pub address: WithdrawalAddresses,
+    /// Additional information about the deposit addresses
+    pub note: String,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone, Deserialize, PartialEq, Builder)]
+#[builder(on(String, into))]
+pub struct WithdrawalAddresses {
+    /// EVM-compatible deposit address (Ethereum, Polygon, Arbitrum, Base, etc.).
+    pub evm: Address,
+    /// Solana Virtual Machine deposit address.
+    pub svm: String,
+    /// Bitcoin deposit address.
+    pub btc: String,
+}

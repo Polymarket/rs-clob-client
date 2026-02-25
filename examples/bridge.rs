@@ -12,8 +12,11 @@
 
 use std::fs::File;
 
+use alloy::primitives::U256;
 use polymarket_client_sdk::bridge::Client;
-use polymarket_client_sdk::bridge::types::{DepositRequest, StatusRequest};
+use polymarket_client_sdk::bridge::types::{
+    DepositRequest, QuoteRequest, StatusRequest, WithdrawRequest,
+};
 use polymarket_client_sdk::types::address;
 use tracing::{debug, info};
 use tracing_subscriber::EnvFilter;
@@ -84,6 +87,48 @@ async fn main() -> anyhow::Result<()> {
             info!(endpoint = "status", count = response.transactions.len());
         }
         Err(e) => debug!(endpoint = "status", error = %e),
+    }
+
+    let quote_request = QuoteRequest::builder()
+        .from_amount_base_unit(U256::from(100_000_000))
+        .from_chain_id(1)
+        .from_token_address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")
+        .recipient_address("0x0000000000000000000000000000000000000000")
+        .to_chain_id(10)
+        .to_token_address("0x7F5c764cBc14f9669B88837ca1490cCa17c31607")
+        .build();
+
+    match client.quote(&quote_request).await {
+        Ok(response) => {
+            info!(
+                endpoint = "quote",
+                quote_id = %response.quote_id,
+                input_usd = response.est_input_usd,
+                output_usd = response.est_output_usd,
+                checkout_time_ms = response.est_checkout_time_ms,
+            );
+        }
+        Err(e) => debug!(endpoint = "quote", error = %e),
+    }
+
+    let withdraw_request = WithdrawRequest::builder()
+        .address(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
+        .to_chain_id(1)
+        .to_token_address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")
+        .recipient_addr("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045")
+        .build();
+
+    match client.withdraw(&withdraw_request).await {
+        Ok(response) => {
+            info!(
+                endpoint = "withdraw",
+                evm = %response.address.evm,
+                svm = %response.address.svm,
+                btc = %response.address.btc,
+                note = %response.note,
+            );
+        }
+        Err(e) => debug!(endpoint = "withdraw", error = %e),
     }
 
     Ok(())

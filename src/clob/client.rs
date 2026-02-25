@@ -123,15 +123,11 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
 
     /// Attempt to elevate the inner `client` to [`Client<Authenticated<K>>`] using the optional
     /// fields supplied in the builder.
-    #[expect(
-        clippy::missing_panics_doc,
-        reason = "chain_id panic is guarded by prior validation"
-    )]
     pub async fn authenticate(self) -> Result<Client<Authenticated<K>>> {
         let inner = Arc::into_inner(self.client.inner).ok_or(Synchronization)?;
 
-        match self.signer.chain_id() {
-            Some(chain) if chain == POLYGON || chain == AMOY => {}
+        let chain_id = match self.signer.chain_id() {
+            Some(chain) if chain == POLYGON || chain == AMOY => chain,
             Some(chain) => {
                 return Err(Error::validation(format!(
                     "Only Polygon and AMOY are supported, got {chain}"
@@ -142,10 +138,7 @@ impl<S: Signer, K: Kind> AuthenticationBuilder<'_, S, K> {
                     "Chain id not set, be sure to provide one on the signer",
                 ));
             }
-        }
-
-        // SAFETY: chain_id is validated above to be either POLYGON or AMOY
-        let chain_id = self.signer.chain_id().expect("validated above");
+        };
 
         // Auto-derive funder from signer using CREATE2 when using proxy signature types
         // without explicit funder. This computes the deterministic wallet address that

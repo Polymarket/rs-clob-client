@@ -1,5 +1,7 @@
+use alloy::primitives::{ChainId, U256};
 use bon::Builder;
 use serde::Serialize;
+use serde_with::{DisplayFromStr, serde_as};
 
 use crate::types::Address;
 
@@ -38,4 +40,44 @@ pub struct DepositRequest {
 #[builder(on(String, into))]
 pub struct StatusRequest {
     pub address: String,
+}
+
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Clone, Serialize, Builder)]
+#[builder(on(String, into))]
+#[serde(rename_all = "camelCase")]
+pub struct QuoteRequest {
+    /// Amount of tokens to send
+    #[serde_as(as = "DisplayFromStr")]
+    pub from_amount_base_unit: U256,
+    /// Source Chain ID
+    #[serde_as(as = "DisplayFromStr")]
+    pub from_chain_id: ChainId,
+    /// Source token address
+    pub from_token_address: String,
+    /// Address of the recipient
+    pub recipient_address: String,
+    /// Destination Chain ID
+    #[serde_as(as = "DisplayFromStr")]
+    pub to_chain_id: ChainId,
+    /// Destination token address
+    pub to_token_address: String,
+}
+
+#[non_exhaustive]
+#[serde_as]
+#[derive(Debug, Clone, Serialize, Builder)]
+#[builder(on(String, into))]
+#[serde(rename_all = "camelCase")]
+pub struct WithdrawRequest {
+    /// Source Polymarket wallet address on Polygon
+    pub address: Address,
+    /// Destination chain ID (e.g., "1" for Ethereum, "8453" for Base, "1151111081099710" for Solana)
+    #[serde_as(as = "DisplayFromStr")]
+    pub to_chain_id: ChainId,
+    /// Destination token contract address
+    pub to_token_address: String,
+    /// Destination wallet address where funds will be sent
+    pub recipient_addr: String,
 }

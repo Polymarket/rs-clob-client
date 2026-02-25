@@ -317,6 +317,160 @@ mod deposit_status {
     }
 }
 
+mod quote {
+    use alloy::primitives::U256;
+    use httpmock::{Method::POST, MockServer};
+    use polymarket_client_sdk::bridge::{
+        Client,
+        types::{EstimatedFeeBreakdown, QuoteRequest, QuoteResponse},
+    };
+    use reqwest::StatusCode;
+    use serde_json::json;
+
+    #[tokio::test]
+    async fn quote_should_succeed() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = Client::new(&server.base_url())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(POST)
+                .path("/quote")
+                .header("Content-Type", "application/json")
+                .json_body(json!({
+                    "fromAmountBaseUnit": "100000000",
+                    "fromChainId": "1",
+                    "fromTokenAddress": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                    "recipientAddress": "0x0000000000000000000000000000000000000000",
+                    "toChainId": "10",
+                    "toTokenAddress": "0x7F5c764cBc14f9669B88837ca1490cCa17c31607"
+                }));
+            then.status(StatusCode::OK).json_body(json!({
+                "estCheckoutTimeMs": 30000,
+                "estFeeBreakdown": {
+                    "appFeeLabel": "Fun.xyz fee",
+                    "appFeePercent": 0.01,
+                    "appFeeUsd": 1.0,
+                    "fillCostPercent": 0.005,
+                    "fillCostUsd": 0.5,
+                    "gasUsd": 0.25,
+                    "maxSlippage": 0.01,
+                    "minReceived": 98.24,
+                    "swapImpact": 0.002,
+                    "swapImpactUsd": 0.2,
+                    "totalImpact": 0.017,
+                    "totalImpactUsd": 1.75
+                },
+                "estInputUsd": 14.488_305,
+                "estOutputUsd": 14.488_305,
+                "estToTokenBaseUnit": "14491203",
+                "quoteId": "0x00c34ba467184b0146406d62b0e60aaa24ed52460bd456222b6155a0d9de0ad5"
+            }));
+        });
+
+        let request = QuoteRequest::builder()
+            .from_amount_base_unit(U256::from(100_000_000))
+            .from_chain_id(1)
+            .from_token_address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")
+            .recipient_address("0x0000000000000000000000000000000000000000")
+            .to_chain_id(10)
+            .to_token_address("0x7F5c764cBc14f9669B88837ca1490cCa17c31607")
+            .build();
+
+        let response = client.quote(&request).await?;
+
+        let expected = QuoteResponse::builder()
+            .est_checkout_time_ms(30000)
+            .est_fee_breakdown(
+                EstimatedFeeBreakdown::builder()
+                    .app_fee_label("Fun.xyz fee")
+                    .app_fee_percent(0.01)
+                    .app_fee_usd(1.0)
+                    .fill_cost_percent(0.005)
+                    .fill_cost_usd(0.5)
+                    .gas_usd(0.25)
+                    .max_slippage(0.01)
+                    .min_received(98.24)
+                    .swap_impact(0.002)
+                    .swap_impact_usd(0.2)
+                    .total_impact(0.017)
+                    .total_impact_usd(1.75)
+                    .build(),
+            )
+            .est_input_usd(14.488_305)
+            .est_output_usd(14.488_305)
+            .est_to_token_base_unit(U256::from(14_491_203))
+            .quote_id("0x00c34ba467184b0146406d62b0e60aaa24ed52460bd456222b6155a0d9de0ad5")
+            .build();
+
+        assert_eq!(response, expected);
+        mock.assert();
+
+        Ok(())
+    }
+}
+
+mod withdraw {
+    use httpmock::{Method::POST, MockServer};
+    use polymarket_client_sdk::bridge::{
+        Client,
+        types::{WithdrawRequest, WithdrawResponse, WithdrawalAddresses},
+    };
+    use polymarket_client_sdk::types::address;
+    use reqwest::StatusCode;
+    use serde_json::json;
+
+    #[tokio::test]
+    async fn withdraw_should_succeed() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = Client::new(&server.base_url())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(POST)
+                .path("/withdraw")
+                .header("Content-Type", "application/json")
+                .json_body(json!({
+                    "address": "0x56687bf447db6ffa42ffe2204a05edaa20f55839",
+                    "toChainId": "1",
+                    "toTokenAddress": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                    "recipientAddr": "0x0000000000000000000000000000000000000000"
+                }));
+            then.status(StatusCode::OK).json_body(json!({
+                "address": {
+                    "evm": "0x23566f8b2E82aDfCf01846E54899d110e97AC053",
+                    "svm": "CrvTBvzryYxBHbWu2TiQpcqD5M7Le7iBKzVmEj3f36Jb",
+                    "btc": "bc1q8eau83qffxcj8ht4hsjdza3lha9r3egfqysj3g"
+                },
+                "note": "Send funds to these addresses to bridge to your destination chain and token."
+            }));
+        });
+
+        let request = WithdrawRequest::builder()
+            .address(address!("56687bf447db6ffa42ffe2204a05edaa20f55839"))
+            .to_chain_id(1)
+            .to_token_address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")
+            .recipient_addr("0x0000000000000000000000000000000000000000")
+            .build();
+
+        let response = client.withdraw(&request).await?;
+
+        let expected = WithdrawResponse::builder()
+            .address(
+                WithdrawalAddresses::builder()
+                    .evm(address!("23566f8b2E82aDfCf01846E54899d110e97AC053"))
+                    .svm("CrvTBvzryYxBHbWu2TiQpcqD5M7Le7iBKzVmEj3f36Jb")
+                    .btc("bc1q8eau83qffxcj8ht4hsjdza3lha9r3egfqysj3g")
+                    .build(),
+            )
+            .note("Send funds to these addresses to bridge to your destination chain and token.")
+            .build();
+
+        assert_eq!(response, expected);
+        mock.assert();
+
+        Ok(())
+    }
+}
+
 mod client {
     use polymarket_client_sdk::bridge::Client;
 

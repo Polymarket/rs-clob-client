@@ -18,6 +18,9 @@
 //! |----------|--------|-------------|
 //! | `/deposit` | POST | Create deposit addresses for a wallet |
 //! | `/supported-assets` | GET | Get supported chains and tokens |
+//! | `/withdraw` | POST | Create withdrawal addresses |
+//! | `/status` | GET | Get transaction status for deposits and withdrawals |
+//! | `/quote` | POST | Get an estimated quote for a deposit or withdrawal |
 //!
 //! # Example
 //!
