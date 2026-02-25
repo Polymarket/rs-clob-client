@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3](https://github.com/Polymarket/rs-clob-client/compare/v0.4.2...v0.4.3) - 2026-02-25
+
+### Added
+
+- *(Bridge)* add withdraw and quote endpoints ([#243](https://github.com/Polymarket/rs-clob-client/pull/243))
+
+### Fixed
+
+- Use idiomatic Rust for unpacking/validating enum ([#258](https://github.com/Polymarket/rs-clob-client/pull/258))
+- *(ws)* fix implicitly captured `self` lifetime for subscription RPIT ([#254](https://github.com/Polymarket/rs-clob-client/pull/254))
+
+### Other
+
+- *(clob)* fix price-history endpoint and clarify token ID wording ([#268](https://github.com/Polymarket/rs-clob-client/pull/268))
+- *(cargo)* bump strum_macros from 0.27.2 to 0.28.0 ([#265](https://github.com/Polymarket/rs-clob-client/pull/265))
+- *(cargo)* bump anyhow from 1.0.101 to 1.0.102 ([#264](https://github.com/Polymarket/rs-clob-client/pull/264))
+- *(cargo)* bump chrono from 0.4.43 to 0.4.44 ([#263](https://github.com/Polymarket/rs-clob-client/pull/263))
+- enable correct feature settings for rust-analyzer ([#259](https://github.com/Polymarket/rs-clob-client/pull/259))
+- Fix feature list of approvals examples ([#256](https://github.com/Polymarket/rs-clob-client/pull/256))
+- *(cargo)* bump uuid from 1.20.0 to 1.21.0 ([#250](https://github.com/Polymarket/rs-clob-client/pull/250))
+- *(cargo)* bump bon from 3.8.2 to 3.9.0 ([#249](https://github.com/Polymarket/rs-clob-client/pull/249))
+- *(cargo)* bump bitflags from 2.10.0 to 2.11.0 ([#248](https://github.com/Polymarket/rs-clob-client/pull/248))
+- *(cargo)* bump futures from 0.3.31 to 0.3.32 ([#246](https://github.com/Polymarket/rs-clob-client/pull/246))
+- Update authenticated.rs ([#241](https://github.com/Polymarket/rs-clob-client/pull/241))
+- *(gha)* bump MarcoIeni/release-plz-action from 0.5.124 to 0.5.127 ([#245](https://github.com/Polymarket/rs-clob-client/pull/245))
+- *(gha)* bump dtolnay/rust-toolchain from f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561 to efa25f7f19611383d5b0ccf2d1c8914531636bf9 ([#244](https://github.com/Polymarket/rs-clob-client/pull/244))
+- *(cargo)* bump rand from 0.9.2 to 0.10.0 ([#232](https://github.com/Polymarket/rs-clob-client/pull/232))
+- *(cargo)* bump httpmock from 0.8.2 to 0.8.3 ([#237](https://github.com/Polymarket/rs-clob-client/pull/237))
+- *(cargo)* bump reqwest from 0.13.1 to 0.13.2 ([#236](https://github.com/Polymarket/rs-clob-client/pull/236))
+- *(cargo)* bump aws-sdk-kms from 1.98.0 to 1.99.0 ([#235](https://github.com/Polymarket/rs-clob-client/pull/235))
+- *(cargo)* bump criterion from 0.8.1 to 0.8.2 ([#234](https://github.com/Polymarket/rs-clob-client/pull/234))
+- *(cargo)* bump alloy from 1.5.2 to 1.6.3 ([#233](https://github.com/Polymarket/rs-clob-client/pull/233))
+- *(cargo)* bump aws-config from 1.8.12 to 1.8.13 ([#231](https://github.com/Polymarket/rs-clob-client/pull/231))
+- *(cargo)* bump anyhow from 1.0.100 to 1.0.101 ([#230](https://github.com/Polymarket/rs-clob-client/pull/230))
+
 ## [0.4.2](https://github.com/Polymarket/rs-clob-client/compare/v0.4.1...v0.4.2) - 2026-01-31
 
 ### Added
