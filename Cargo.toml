@@ -75,7 +75,7 @@ tokio-tungstenite = { version = "0.28.0", features = ["rustls-tls-native-roots"]
 tokio-util = { version = "0.7.18", optional = true }
 tracing = { version = "0.1", optional = true }
 url = "2.5.8"
-uuid = { version = "1.20.0", features = ["serde", "v4", "v7"] }
+uuid = { version = "1.21.0", features = ["serde", "v4", "v7"] }
 
 [dev-dependencies]
 alloy = { version = "1.6.3", default-features = false, features = [
