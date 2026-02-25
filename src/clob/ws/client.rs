@@ -153,7 +153,7 @@ impl<S: State> Client<S> {
     pub fn subscribe_orderbook(
         &self,
         asset_ids: Vec<U256>,
-    ) -> Result<impl Stream<Item = Result<BookUpdate>>> {
+    ) -> Result<impl Stream<Item = Result<BookUpdate>> + use<S>> {
         let resources = self.inner.get_or_create_channel(ChannelType::Market)?;
         let stream = resources.subscriptions.subscribe_market(asset_ids)?;
 
@@ -182,7 +182,7 @@ impl<S: State> Client<S> {
     pub fn subscribe_last_trade_price(
         &self,
         asset_ids: Vec<U256>,
-    ) -> Result<impl Stream<Item = Result<LastTradePrice>>> {
+    ) -> Result<impl Stream<Item = Result<LastTradePrice>> + use<S>> {
         let resources = self.inner.get_or_create_channel(ChannelType::Market)?;
         let stream = resources.subscriptions.subscribe_market(asset_ids)?;
 
@@ -212,7 +212,7 @@ impl<S: State> Client<S> {
     pub fn subscribe_prices(
         &self,
         asset_ids: Vec<U256>,
-    ) -> Result<impl Stream<Item = Result<PriceChange>>> {
+    ) -> Result<impl Stream<Item = Result<PriceChange>> + use<S>> {
         let resources = self.inner.get_or_create_channel(ChannelType::Market)?;
         let stream = resources.subscriptions.subscribe_market(asset_ids)?;
 
@@ -241,7 +241,7 @@ impl<S: State> Client<S> {
     pub fn subscribe_tick_size_change(
         &self,
         asset_ids: Vec<U256>,
-    ) -> Result<impl Stream<Item = Result<TickSizeChange>>> {
+    ) -> Result<impl Stream<Item = Result<TickSizeChange>> + use<S>> {
         let resources = self.inner.get_or_create_channel(ChannelType::Market)?;
         let stream = resources.subscriptions.subscribe_market(asset_ids)?;
 
@@ -271,7 +271,7 @@ impl<S: State> Client<S> {
     pub fn subscribe_midpoints(
         &self,
         asset_ids: Vec<U256>,
-    ) -> Result<impl Stream<Item = Result<MidpointUpdate>>> {
+    ) -> Result<impl Stream<Item = Result<MidpointUpdate>> + use<S>> {
         let stream = self.subscribe_orderbook(asset_ids)?;
 
         Ok(try_stream! {
@@ -298,7 +298,7 @@ impl<S: State> Client<S> {
     pub fn subscribe_best_bid_ask(
         &self,
         asset_ids: Vec<U256>,
-    ) -> Result<impl Stream<Item = Result<BestBidAsk>>> {
+    ) -> Result<impl Stream<Item = Result<BestBidAsk>> + use<S>> {
         let stream = self
             .inner
             .get_or_create_channel(ChannelType::Market)?
@@ -320,7 +320,7 @@ impl<S: State> Client<S> {
     pub fn subscribe_new_markets(
         &self,
         asset_ids: Vec<U256>,
-    ) -> Result<impl Stream<Item = Result<NewMarket>>> {
+    ) -> Result<impl Stream<Item = Result<NewMarket>> + use<S>> {
         let stream = self
             .inner
             .get_or_create_channel(ChannelType::Market)?
@@ -342,7 +342,7 @@ impl<S: State> Client<S> {
     pub fn subscribe_market_resolutions(
         &self,
         asset_ids: Vec<U256>,
-    ) -> Result<impl Stream<Item = Result<MarketResolved>>> {
+    ) -> Result<impl Stream<Item = Result<MarketResolved>> + use<S>> {
         let stream = self
             .inner
             .get_or_create_channel(ChannelType::Market)?
@@ -447,7 +447,7 @@ impl<K: AuthKind> Client<Authenticated<K>> {
     pub fn subscribe_user_events(
         &self,
         markets: Vec<B256>,
-    ) -> Result<impl Stream<Item = Result<WsMessage>>> {
+    ) -> Result<impl Stream<Item = Result<WsMessage>> + use<K>> {
         let resources = self.inner.get_or_create_channel(ChannelType::User)?;
 
         resources
@@ -475,7 +475,7 @@ impl<K: AuthKind> Client<Authenticated<K>> {
     pub fn subscribe_orders(
         &self,
         markets: Vec<B256>,
-    ) -> Result<impl Stream<Item = Result<OrderMessage>>> {
+    ) -> Result<impl Stream<Item = Result<OrderMessage>> + use<K>> {
         let stream = self.subscribe_user_events(markets)?;
 
         Ok(stream.filter_map(|msg_result| async move {
@@ -508,7 +508,7 @@ impl<K: AuthKind> Client<Authenticated<K>> {
     pub fn subscribe_trades(
         &self,
         markets: Vec<B256>,
-    ) -> Result<impl Stream<Item = Result<TradeMessage>>> {
+    ) -> Result<impl Stream<Item = Result<TradeMessage>> + use<K>> {
         let stream = self.subscribe_user_events(markets)?;
 
         Ok(stream.filter_map(|msg_result| async move {
