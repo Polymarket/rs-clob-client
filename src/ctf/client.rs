@@ -31,18 +31,23 @@
     reason = "Alloy sol! macro generates code that triggers these lints"
 )]
 
-use alloy::primitives::ChainId;
-use alloy::providers::Provider;
+use std::marker::PhantomData;
+
+use alloy::contract::CallBuilder;
+use alloy::network::Ethereum;
+use alloy::primitives::{ChainId, U256};
+use alloy::providers::{MulticallItem as _, PendingTransactionBuilder, Provider};
 use alloy::sol;
+use alloy::sol_types::SolCall;
 
 use super::error::CtfError;
 use super::types::{
     CollectionIdRequest, CollectionIdResponse, ConditionIdRequest, ConditionIdResponse,
     MergePositionsRequest, MergePositionsResponse, PositionIdRequest, PositionIdResponse,
     RedeemNegRiskRequest, RedeemNegRiskResponse, RedeemPositionsRequest, RedeemPositionsResponse,
-    SplitPositionRequest, SplitPositionResponse,
+    SplitPositionRequest, SplitPositionResponse, WalletType,
 };
-use crate::{Result, contract_config};
+use crate::{Result, contract_config, wallet_contract_config};
 
 // CTF (Conditional Token Framework) contract interface
 //
@@ -122,6 +127,27 @@ sol! {
             uint256[] calldata amounts
         ) external;
     }
+
+    #[sol(rpc)]
+    interface IProxyFactory {
+        /// Routes a CTF contract call through the proxy contract
+        function proxy(ProxyCall[] memory calls) public payable returns (bytes[] memory returnValues);
+    }
+
+    /// Type of call passed to proxy contract
+    enum CallType {
+        INVALID,
+        CALL,
+        DELEGATECALL
+    }
+
+    /// Represents a CTF contract call routed via the proxy contract
+    struct ProxyCall {
+        CallType typeCode;
+        address payable to;
+        uint256 value;
+        bytes data;
+    }
 }
 
 /// Client for interacting with the Conditional Token Framework contract.
@@ -132,7 +158,9 @@ sol! {
 pub struct Client<P: Provider> {
     contract: IConditionalTokens::IConditionalTokensInstance<P>,
     neg_risk_adapter: Option<INegRiskAdapter::INegRiskAdapterInstance<P>>,
+    proxy_factory: Option<IProxyFactory::IProxyFactoryInstance<P>>,
     provider: P,
+    wallet_type: WalletType,
 }
 
 impl<P: Provider + Clone> Client<P> {
@@ -152,14 +180,31 @@ impl<P: Provider + Clone> Client<P> {
                 "CTF contract configuration not found for chain ID {chain_id}"
             ))
         })?;
+        let wallet_contract_config = wallet_contract_config(chain_id);
 
         let contract = IConditionalTokens::new(config.conditional_tokens, provider.clone());
+        let proxy_factory = wallet_contract_config.and_then(|cfg| {
+            cfg.proxy_factory
+                .map(|address| IProxyFactory::new(address, provider.clone()))
+        });
 
         Ok(Self {
             contract,
             neg_risk_adapter: None,
+            proxy_factory,
             provider,
+            wallet_type: WalletType::default(),
         })
+    }
+
+    /// Use a different [`WalleType`] to the default type (EOA).
+    ///
+    /// Different wallet types use different methods to execute functions
+    /// on the CTF contract.
+    #[must_use = "Returns client, doesn't modify in place"]
+    pub fn with_wallet_type(mut self, wallet_type: WalletType) -> Self {
+        self.wallet_type = wallet_type;
+        self
     }
 
     /// Creates a new CTF client with `NegRisk` adapter support.
@@ -181,17 +226,24 @@ impl<P: Provider + Clone> Client<P> {
                 "NegRisk contract configuration not found for chain ID {chain_id}"
             ))
         })?;
+        let wallet_contract_config = wallet_contract_config(chain_id);
 
         let contract = IConditionalTokens::new(config.conditional_tokens, provider.clone());
 
         let neg_risk_adapter = config
             .neg_risk_adapter
             .map(|addr| INegRiskAdapter::new(addr, provider.clone()));
+        let proxy_factory = wallet_contract_config.and_then(|cfg| {
+            cfg.proxy_factory
+                .map(|address| IProxyFactory::new(address, provider.clone()))
+        });
 
         Ok(Self {
             contract,
             neg_risk_adapter,
+            proxy_factory,
             provider,
+            wallet_type: WalletType::default(),
         })
     }
 
@@ -306,20 +358,16 @@ impl<P: Provider + Clone> Client<P> {
         &self,
         request: &SplitPositionRequest,
     ) -> Result<SplitPositionResponse> {
-        let pending_tx = self
-            .contract
-            .splitPosition(
-                request.collateral_token,
-                request.parent_collection_id,
-                request.condition_id,
-                request.partition.clone(),
-                request.amount,
-            )
-            .send()
-            .await
-            .map_err(|e| {
-                CtfError::ContractCall(format!("Failed to send split transaction: {e}"))
-            })?;
+        let call = self.contract.splitPosition(
+            request.collateral_token,
+            request.parent_collection_id,
+            request.condition_id,
+            request.partition.clone(),
+            request.amount,
+        );
+        let pending_tx = self.send_call(call).await.map_err(|e| {
+            CtfError::ContractCall(format!("Failed to send split transaction: {e}"))
+        })?;
 
         let transaction_hash = *pending_tx.tx_hash();
 
@@ -358,20 +406,16 @@ impl<P: Provider + Clone> Client<P> {
         &self,
         request: &MergePositionsRequest,
     ) -> Result<MergePositionsResponse> {
-        let pending_tx = self
-            .contract
-            .mergePositions(
-                request.collateral_token,
-                request.parent_collection_id,
-                request.condition_id,
-                request.partition.clone(),
-                request.amount,
-            )
-            .send()
-            .await
-            .map_err(|e| {
-                CtfError::ContractCall(format!("Failed to send merge transaction: {e}"))
-            })?;
+        let call = self.contract.mergePositions(
+            request.collateral_token,
+            request.parent_collection_id,
+            request.condition_id,
+            request.partition.clone(),
+            request.amount,
+        );
+        let pending_tx = self.send_call(call).await.map_err(|e| {
+            CtfError::ContractCall(format!("Failed to send merge transaction: {e}"))
+        })?;
 
         let transaction_hash = *pending_tx.tx_hash();
 
@@ -410,19 +454,15 @@ impl<P: Provider + Clone> Client<P> {
         &self,
         request: &RedeemPositionsRequest,
     ) -> Result<RedeemPositionsResponse> {
-        let pending_tx = self
-            .contract
-            .redeemPositions(
-                request.collateral_token,
-                request.parent_collection_id,
-                request.condition_id,
-                request.index_sets.clone(),
-            )
-            .send()
-            .await
-            .map_err(|e| {
-                CtfError::ContractCall(format!("Failed to send redeem transaction: {e}"))
-            })?;
+        let call = self.contract.redeemPositions(
+            request.collateral_token,
+            request.parent_collection_id,
+            request.condition_id,
+            request.index_sets.clone(),
+        );
+        let pending_tx = self.send_call(call).await.map_err(|e| {
+            CtfError::ContractCall(format!("Failed to send redeem transaction: {e}"))
+        })?;
 
         let transaction_hash = *pending_tx.tx_hash();
 
@@ -470,13 +510,10 @@ impl<P: Provider + Clone> Client<P> {
             )
         })?;
 
-        let pending_tx = adapter
-            .redeemPositions(request.condition_id, request.amounts.clone())
-            .send()
-            .await
-            .map_err(|e| {
-                CtfError::ContractCall(format!("Failed to send NegRisk redeem transaction: {e}"))
-            })?;
+        let call = adapter.redeemPositions(request.condition_id, request.amounts.clone());
+        let pending_tx = self.send_call(call).await.map_err(|e| {
+            CtfError::ContractCall(format!("Failed to send NegRisk redeem transaction: {e}"))
+        })?;
 
         let transaction_hash = *pending_tx.tx_hash();
 
@@ -496,5 +533,37 @@ impl<P: Provider + Clone> Client<P> {
     #[must_use]
     pub const fn provider(&self) -> &P {
         &self.provider
+    }
+
+    /// Sends call via method corresponding to `WalletType`. Only required for
+    /// write functions.
+    #[inline]
+    async fn send_call<Pr, D>(
+        &self,
+        call: CallBuilder<Pr, PhantomData<D>, Ethereum>,
+    ) -> alloy::contract::Result<PendingTransactionBuilder<Ethereum>, String>
+    where
+        D: SolCall,
+        Pr: Provider<Ethereum>,
+    {
+        match self.wallet_type {
+            WalletType::EOA => call.send().await.map_err(|e| e.to_string()),
+            WalletType::Proxy => {
+                let proxy_transaction = ProxyCall {
+                    typeCode: CallType::CALL,
+                    to: call.target(),
+                    value: U256::from(0),
+                    data: call.calldata().clone(),
+                };
+                let proxy_contract = self.proxy_factory.as_ref().ok_or_else(|| {
+                    "ProxyFactory contract does not exist on this chain".to_owned()
+                })?;
+                proxy_contract
+                    .proxy(vec![proxy_transaction])
+                    .send()
+                    .await
+                    .map_err(|e| e.to_string())
+            }
+        }
     }
 }
