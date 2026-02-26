@@ -334,6 +334,7 @@ pub struct Event {
     pub cumulative_markets: Option<bool>,
     pub away_team_name: Option<String>,
     pub home_team_name: Option<String>,
+    pub event_metadata: Option<serde_json::Value>,
 }
 
 /// A prediction market.
@@ -498,6 +499,7 @@ pub struct Market {
     pub pager_duty_notification_enabled: Option<bool>,
     pub approved: Option<bool>,
     pub cyom: Option<bool>,
+    pub fee_type: Option<String>,
     pub fees_enabled: Option<bool>,
     pub holding_rewards_enabled: Option<bool>,
     pub neg_risk: Option<bool>,
