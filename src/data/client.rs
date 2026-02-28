@@ -98,6 +98,10 @@ impl Client {
             .tcp_nodelay(true)
             .pool_idle_timeout(std::time::Duration::from_secs(90))
             .tcp_keepalive(std::time::Duration::from_secs(30))
+            .http2_keep_alive_interval(std::time::Duration::from_secs(10))
+            .http2_keep_alive_timeout(std::time::Duration::from_secs(5))
+            .http2_adaptive_window(true)
+            .connect_timeout(std::time::Duration::from_secs(5))
             .build()?;
 
         Ok(Self {
