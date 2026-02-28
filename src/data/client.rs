@@ -93,7 +93,12 @@ impl Client {
         headers.insert("Accept", HeaderValue::from_static("*/*"));
         headers.insert("Connection", HeaderValue::from_static("keep-alive"));
         headers.insert("Content-Type", HeaderValue::from_static("application/json"));
-        let client = ReqwestClient::builder().default_headers(headers).build()?;
+        let client = ReqwestClient::builder()
+            .default_headers(headers)
+            .tcp_nodelay(true)
+            .pool_idle_timeout(std::time::Duration::from_secs(90))
+            .tcp_keepalive(std::time::Duration::from_secs(30))
+            .build()?;
 
         Ok(Self {
             host: Url::parse(host)?,
