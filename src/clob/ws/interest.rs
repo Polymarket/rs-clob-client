@@ -31,13 +31,13 @@ bitflags! {
         /// Interest in order updates.
         const ORDER = 1 << 5;
 
-        /// Interest in best bid/ask updates (requires `custom_feature_enabled`).
+        /// Interest in best bid/ask updates (requires `custom_features_enabled`).
         const BEST_BID_ASK = 1 << 6;
 
-        /// Interest in new market events (requires `custom_feature_enabled`).
+        /// Interest in new market events (requires `custom_features_enabled`).
         const NEW_MARKET = 1 << 7;
 
-        /// Interest in market resolved events (requires `custom_feature_enabled`).
+        /// Interest in market resolved events (requires `custom_features_enabled`).
         const MARKET_RESOLVED = 1 << 8;
 
         /// Interest in all market data messages (including custom feature messages).
