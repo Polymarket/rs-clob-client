@@ -24,11 +24,6 @@ pub enum RtdsError {
     Timeout,
     /// Received an invalid or unexpected message
     InvalidMessage(String),
-    /// Subscription stream lagged and missed messages
-    Lagged {
-        /// Number of messages that were missed
-        count: u64,
-    },
 }
 
 impl fmt::Display for RtdsError {
@@ -41,9 +36,6 @@ impl fmt::Display for RtdsError {
             Self::ConnectionClosed => write!(f, "RTDS WebSocket connection closed"),
             Self::Timeout => write!(f, "RTDS WebSocket operation timed out"),
             Self::InvalidMessage(msg) => write!(f, "Invalid RTDS message: {msg}"),
-            Self::Lagged { count } => {
-                write!(f, "RTDS subscription lagged, missed {count} messages")
-            }
         }
     }
 }

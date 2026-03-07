@@ -248,9 +248,10 @@ impl SubscriptionManager {
                         }
                     }
                     Err(RecvError::Lagged(n)) => {
+                        #[cfg(not(feature = "tracing"))]
+                        let _ = n;
                         #[cfg(feature = "tracing")]
-                        tracing::warn!("RTDS subscription lagged, missed {n} messages");
-                        Err(RtdsError::Lagged { count: n })?;
+                        tracing::warn!("RTDS subscription lagged, missed {n} messages — continuing");
                     }
                     Err(RecvError::Closed) => {
                         break;
