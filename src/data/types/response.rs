@@ -117,8 +117,10 @@ pub struct Position {
     pub opposite_outcome: String,
     /// Asset identifier of the opposite outcome.
     pub opposite_asset: U256,
-    /// Market end/resolution date.
-    pub end_date: NaiveDate,
+    /// Market end/resolution date (if set).
+    #[serde(default)]
+    #[serde_as(as = "NoneAsEmptyString")]
+    pub end_date: Option<NaiveDate>,
     /// Whether this is a negative risk market.
     pub negative_risk: bool,
 }
