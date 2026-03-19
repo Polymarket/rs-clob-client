@@ -358,6 +358,21 @@ impl<S: State> Client<S> {
         }))
     }
 
+    /// Subscribe to ALL market events on a single stream with custom features enabled.
+    ///
+    /// Returns every [`WsMessage`] variant (Book, PriceChange, LastTradePrice,
+    /// TickSizeChange, BestBidAsk, NewMarket, MarketResolved) filtered by asset.
+    /// Uses a single broadcast receiver — no per-event-type fan-out.
+    pub fn subscribe_all_market(
+        &self,
+        asset_ids: Vec<U256>,
+    ) -> Result<impl Stream<Item = Result<WsMessage>> + use<S>> {
+        self.inner
+            .get_or_create_channel(ChannelType::Market)?
+            .subscriptions
+            .subscribe_market_with_options(asset_ids, true)
+    }
+
     /// Get the current connection state for a specific channel.
     ///
     /// Returns [`ConnectionState::Disconnected`] if the channel has not been
