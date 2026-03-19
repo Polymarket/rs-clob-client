@@ -358,11 +358,9 @@ impl<S: State> Client<S> {
         }))
     }
 
-    /// Subscribe to ALL market events on a single stream with custom features enabled.
+    /// All market events on a single stream (`custom_feature_enabled`).
     ///
-    /// Returns every [`WsMessage`] variant (Book, PriceChange, LastTradePrice,
-    /// TickSizeChange, BestBidAsk, NewMarket, MarketResolved) filtered by asset.
-    /// Uses a single broadcast receiver — no per-event-type fan-out.
+    /// Single broadcast receiver for all [`WsMessage`] variants.
     pub fn subscribe_all_market(
         &self,
         asset_ids: Vec<U256>,

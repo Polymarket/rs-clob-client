@@ -1466,6 +1466,38 @@ mod custom_features {
     }
 
     #[tokio::test]
+    async fn subscribe_all_market_receives_book_and_bba() {
+        let mut server = MockWsServer::start().await;
+        let endpoint = server.ws_url("/ws/market");
+
+        let client = Client::new(&endpoint, Config::default()).unwrap();
+
+        let stream = client
+            .subscribe_all_market(vec![payloads::asset_id()])
+            .unwrap();
+        let mut stream = Box::pin(stream);
+
+        let sub_request = server.recv_subscription().await.unwrap();
+        assert!(sub_request.contains("\"custom_feature_enabled\":true"));
+
+        server.send(&book_snapshot().to_string());
+        let msg = timeout(Duration::from_secs(2), stream.next())
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
+        assert!(matches!(msg, WsMessage::Book(_)));
+
+        server.send(&best_bid_ask().to_string());
+        let msg = timeout(Duration::from_secs(2), stream.next())
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
+        assert!(matches!(msg, WsMessage::BestBidAsk(_)));
+    }
+
+    #[tokio::test]
     async fn subscribe_best_bid_ask_receives_updates() {
         let mut server = MockWsServer::start().await;
         let endpoint = server.ws_url("/ws/market");
