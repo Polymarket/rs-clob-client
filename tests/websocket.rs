@@ -1480,7 +1480,7 @@ mod custom_features {
         let sub_request = server.recv_subscription().await.unwrap();
         assert!(sub_request.contains("\"custom_feature_enabled\":true"));
 
-        server.send(&book_snapshot().to_string());
+        server.send(&payloads::book().to_string());
         let msg = timeout(Duration::from_secs(2), stream.next())
             .await
             .unwrap()
