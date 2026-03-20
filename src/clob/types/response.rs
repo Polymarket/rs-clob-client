@@ -655,8 +655,8 @@ pub struct BuilderTradeResponse {
     #[serde(default)]
     #[builder(default)]
     pub taker_order_hash: Option<B256>,
-    /// Address of the builder.
-    pub builder: Address,
+    /// Builder API key ID (UUID, not an Ethereum address).
+    pub builder: ApiKey,
     /// The market condition ID (optional — may be empty in some API responses).
     #[serde(default)]
     #[builder(default)]
