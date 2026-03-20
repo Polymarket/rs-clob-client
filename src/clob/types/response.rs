@@ -653,13 +653,11 @@ pub struct BuilderTradeResponse {
     pub trade_type: String,
     /// Hash of the taker order (optional — may be empty for pending trades).
     #[serde(default)]
-    #[builder(default)]
     pub taker_order_hash: Option<B256>,
     /// Builder API key ID (UUID, not an Ethereum address).
     pub builder: ApiKey,
     /// The market condition ID (optional — may be empty in some API responses).
     #[serde(default)]
-    #[builder(default)]
     pub market: Option<B256>,
     pub asset_id: U256,
     pub side: Side,
@@ -674,7 +672,6 @@ pub struct BuilderTradeResponse {
     pub maker: Address,
     /// On-chain transaction hash (optional — empty for unfilled/pending trades).
     #[serde(default)]
-    #[builder(default)]
     pub transaction_hash: Option<B256>,
     #[serde_as(as = "TimestampSeconds<String>")]
     pub match_time: DateTime<Utc>,
