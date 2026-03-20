@@ -177,7 +177,10 @@ impl SubscriptionManager {
         &self,
         subscription: Subscription,
     ) -> Result<impl Stream<Item = Result<RtdsMessage>>> {
-        let topic_type = TopicType::new(subscription.topic.clone(), subscription.msg_type.clone());
+        let topic_type = TopicType {
+            topic: subscription.topic.clone(),
+            msg_type: subscription.msg_type.clone(),
+        };
 
         // Store auth for re-subscription on reconnect.
         // We can recover from poisoned lock because Option<Credentials> has no inconsistent intermediate state.

@@ -89,7 +89,7 @@ async fn main() -> anyhow::Result<()> {
     let tag_id = match &tag_result {
         Ok(tag) => {
             info!(endpoint = "tag_by_slug", slug = tag_slug, id = %tag.id);
-            Some(tag.id.clone())
+            Some(tag.id)
         }
         Err(e) => {
             debug!(endpoint = "tag_by_slug", slug = tag_slug, error = %e);
@@ -165,8 +165,8 @@ async fn main() -> anyhow::Result<()> {
             let with_comments = events
                 .iter()
                 .find(|e| e.comment_count.unwrap_or(0) > 0)
-                .map(|e| (e.id.clone(), e.slug.clone(), e.comment_count.unwrap_or(0)));
-            let any = events.first().map(|e| (e.id.clone(), e.slug.clone()));
+                .map(|e| (e.id, e.slug.clone(), e.comment_count.unwrap_or(0)));
+            let any = events.first().map(|e| (e.id, e.slug.clone()));
             (with_comments, any)
         }
         Err(e) => {
@@ -212,7 +212,7 @@ async fn main() -> anyhow::Result<()> {
             info!(endpoint = "markets", count = markets.len());
             markets
                 .first()
-                .map_or((None, None), |m| (Some(m.id.clone()), m.slug.clone()))
+                .map_or((None, None), |m| (Some(m.id), m.slug.clone()))
         }
         Err(e) => {
             debug!(endpoint = "markets", error = %e);
@@ -285,7 +285,7 @@ async fn main() -> anyhow::Result<()> {
     let series_id = match &series_result {
         Ok(series) => {
             info!(endpoint = "series", count = series.len());
-            series.first().map(|s| s.id.clone())
+            series.first().map(|s| s.id)
         }
         Err(e) => {
             debug!(endpoint = "series", error = %e);
@@ -321,7 +321,7 @@ async fn main() -> anyhow::Result<()> {
                 info!(endpoint = "comments", event_id = %event_id, expected = comment_count, count = comments.len());
                 comments
                     .first()
-                    .map_or((None, None), |c| (Some(c.id.clone()), c.user_address))
+                    .map_or((None, None), |c| (Some(c.id), c.user_address))
             }
             Err(e) => {
                 debug!(endpoint = "comments", event_id = %event_id, error = %e);
