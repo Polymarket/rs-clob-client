@@ -317,6 +317,10 @@ pub enum TradeMessageStatus {
     Mined,
     #[serde(alias = "confirmed", alias = "CONFIRMED")]
     Confirmed,
+    #[serde(alias = "retrying", alias = "RETRYING")]
+    Retrying,
+    #[serde(alias = "failed", alias = "FAILED")]
+    Failed,
     #[serde(untagged)]
     Unknown(String),
 }
@@ -1109,6 +1113,54 @@ mod tests {
                     trade.msg_type,
                     Some(TradeMessageType::Unknown("NEW_TYPE".to_owned()))
                 );
+            }
+            _ => panic!("Expected Trade message"),
+        }
+    }
+
+    #[test]
+    fn parse_trade_message_with_retrying_status() {
+        let json = r#"{
+            "event_type": "trade",
+            "id": "trade123",
+            "market": "0x0000000000000000000000000000000000000000000000000000000000000001",
+            "asset_id": "106585164761922456203746651621390029417453862034640469075081961934906147433548",
+            "side": "BUY",
+            "size": "10",
+            "price": "0.5",
+            "status": "RETRYING",
+            "type": "TRADE"
+        }"#;
+
+        let msg: WsMessage = serde_json::from_str(json).unwrap();
+        match msg {
+            WsMessage::Trade(trade) => {
+                assert_eq!(trade.id, "trade123");
+                assert_eq!(trade.status, TradeMessageStatus::Retrying);
+            }
+            _ => panic!("Expected Trade message"),
+        }
+    }
+
+    #[test]
+    fn parse_trade_message_with_failed_status() {
+        let json = r#"{
+            "event_type": "trade",
+            "id": "trade123",
+            "market": "0x0000000000000000000000000000000000000000000000000000000000000001",
+            "asset_id": "106585164761922456203746651621390029417453862034640469075081961934906147433548",
+            "side": "BUY",
+            "size": "10",
+            "price": "0.5",
+            "status": "FAILED",
+            "type": "TRADE"
+        }"#;
+
+        let msg: WsMessage = serde_json::from_str(json).unwrap();
+        match msg {
+            WsMessage::Trade(trade) => {
+                assert_eq!(trade.id, "trade123");
+                assert_eq!(trade.status, TradeMessageStatus::Failed);
             }
             _ => panic!("Expected Trade message"),
         }
