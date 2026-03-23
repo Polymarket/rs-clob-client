@@ -294,7 +294,7 @@ impl<S: State> Client<S> {
 
     /// Subscribe to best bid/ask updates with custom features enabled.
     ///
-    /// Requires `custom_feature_enabled` flag on the server side.
+    /// Requires `custom_features_enabled` flag on the server side.
     pub fn subscribe_best_bid_ask(
         &self,
         asset_ids: Vec<U256>,
@@ -316,7 +316,7 @@ impl<S: State> Client<S> {
 
     /// Subscribe to new market events with custom features enabled.
     ///
-    /// Requires `custom_feature_enabled` flag on the server side.
+    /// Requires `custom_features_enabled` flag on the server side.
     pub fn subscribe_new_markets(
         &self,
         asset_ids: Vec<U256>,
@@ -338,7 +338,7 @@ impl<S: State> Client<S> {
 
     /// Subscribe to market resolved events with custom features enabled.
     ///
-    /// Requires `custom_feature_enabled` flag on the server side.
+    /// Requires `custom_features_enabled` flag on the server side.
     pub fn subscribe_market_resolutions(
         &self,
         asset_ids: Vec<U256>,
