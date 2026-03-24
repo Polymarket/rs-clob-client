@@ -274,7 +274,7 @@ async fn request<Response: DeserializeOwned>(
         let message = response.text().await.unwrap_or_default();
 
         #[cfg(feature = "tracing")]
-        tracing::warn!(
+        tracing::debug!(
             status = %status_code,
             method = %method,
             path = %path,
