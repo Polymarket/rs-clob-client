@@ -10,13 +10,13 @@
 
 use bon::Builder;
 use serde::Serialize;
-use serde_with::{formats::CommaSeparator, serde_as, skip_serializing_none, StringWithSeparator};
+use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as, skip_serializing_none};
 
 use super::{
     ActivitySortBy, ActivityType, BoundedIntError, ClosedPositionSortBy, LeaderboardCategory,
     LeaderboardOrderBy, MarketFilter, PositionSortBy, Side, SortDirection, TimePeriod, TradeFilter,
 };
-use crate::types::{Address, Decimal, B256};
+use crate::types::{Address, B256, Decimal};
 
 /// Validates that an i32 value is within the specified bounds.
 fn validate_bound(
