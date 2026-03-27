@@ -258,6 +258,76 @@ mod activity {
 
         Ok(())
     }
+
+    #[tokio::test]
+    async fn activity_unknown_side_should_be_preserved() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = Client::new(&server.base_url())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(GET)
+                .path("/activity")
+                .query_param("user", "0x1234567890abcdef1234567890abcdef12345678");
+            then.status(StatusCode::OK).json_body(json!([
+                {
+                    "proxyWallet": "0x1234567890abcdef1234567890abcdef12345678",
+                    "timestamp": 1_703_980_800,
+                    "conditionId": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+                    "type": "TRADE",
+                    "size": 100.0,
+                    "usdcSize": 55.0,
+                    "transactionHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+                    "price": 0.55,
+                    "asset": "0x1111111111111111111111111111111111111111111111111111111111111111",
+                    "side": "SIDEWAYS"
+                }
+            ]));
+        });
+
+        let request = ActivityRequest::builder().user(test_user()).build();
+        let response = client.activity(&request).await?;
+
+        assert_eq!(response.len(), 1);
+        assert_eq!(response[0].side, Some(Side::Unknown("SIDEWAYS".to_owned())));
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn activity_empty_side_should_still_be_none() -> anyhow::Result<()> {
+        let server = MockServer::start();
+        let client = Client::new(&server.base_url())?;
+
+        let mock = server.mock(|when, then| {
+            when.method(GET)
+                .path("/activity")
+                .query_param("user", "0x1234567890abcdef1234567890abcdef12345678");
+            then.status(StatusCode::OK).json_body(json!([
+                {
+                    "proxyWallet": "0x1234567890abcdef1234567890abcdef12345678",
+                    "timestamp": 1_703_980_800,
+                    "conditionId": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+                    "type": "TRADE",
+                    "size": 100.0,
+                    "usdcSize": 55.0,
+                    "transactionHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+                    "price": 0.55,
+                    "asset": "0x1111111111111111111111111111111111111111111111111111111111111111",
+                    "side": ""
+                }
+            ]));
+        });
+
+        let request = ActivityRequest::builder().user(test_user()).build();
+        let response = client.activity(&request).await?;
+
+        assert_eq!(response.len(), 1);
+        assert_eq!(response[0].side, None);
+        mock.assert();
+
+        Ok(())
+    }
 }
 
 mod holders {
