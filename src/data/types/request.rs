@@ -10,13 +10,13 @@
 
 use bon::Builder;
 use serde::Serialize;
-use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as, skip_serializing_none};
+use serde_with::{formats::CommaSeparator, serde_as, skip_serializing_none, StringWithSeparator};
 
 use super::{
     ActivitySortBy, ActivityType, BoundedIntError, ClosedPositionSortBy, LeaderboardCategory,
     LeaderboardOrderBy, MarketFilter, PositionSortBy, Side, SortDirection, TimePeriod, TradeFilter,
 };
-use crate::types::{Address, B256, Decimal};
+use crate::types::{Address, Decimal, B256};
 
 /// Validates that an i32 value is within the specified bounds.
 fn validate_bound(
@@ -229,6 +229,9 @@ pub struct ActivityRequest {
     pub sort_direction: Option<SortDirection>,
     /// Filter by trade side (only applies to TRADE activities).
     pub side: Option<Side>,
+    /// Exclude deposit and withdrawal activities from results.
+    #[serde(rename = "excludeDepositsWithdrawals")]
+    pub exclude_deposits_withdrawals: Option<bool>,
 }
 
 /// Request parameters for the `/holders` endpoint.
