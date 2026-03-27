@@ -9,17 +9,17 @@ use bon::Builder;
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{
-    serde_as, DefaultOnError, DefaultOnNull, NoneAsEmptyString, TimestampMilliSeconds,
-    TimestampSeconds, TryFromInto,
+    DefaultOnError, DefaultOnNull, NoneAsEmptyString, TimestampMilliSeconds, TimestampSeconds,
+    TryFromInto, serde_as,
 };
 use sha2::{Digest as _, Sha256};
 use uuid::Uuid;
 
+use crate::Result;
 use crate::auth::ApiKey;
 use crate::clob::types::{OrderStatusType, OrderType, Side, TickSize, TradeStatusType, TraderSide};
 use crate::serde_helpers::StringFromAny;
-use crate::types::{Address, Decimal, B256, U256};
-use crate::Result;
+use crate::types::{Address, B256, Decimal, U256};
 
 #[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Builder, PartialEq)]
