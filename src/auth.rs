@@ -248,7 +248,7 @@ pub(crate) mod l2 {
             POLY_ADDRESS,
             state.address.encode_hex_with_prefix().parse()?,
         );
-        let mut key_buf = [0u8; uuid::fmt::Hyphenated::LENGTH];
+        let mut key_buf = [0_u8; uuid::fmt::Hyphenated::LENGTH];
         let key_str = state
             .credentials
             .key
@@ -342,7 +342,7 @@ pub mod builder {
 
                     let mut map = HeaderMap::new();
 
-                    let mut key_buf = [0u8; uuid::fmt::Hyphenated::LENGTH];
+                    let mut key_buf = [0_u8; uuid::fmt::Hyphenated::LENGTH];
                     let key_str = credentials.key.hyphenated().encode_lower(&mut key_buf);
                     map.insert(POLY_BUILDER_API_KEY, HeaderValue::from_str(key_str)?);
                     map.insert(
