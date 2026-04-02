@@ -249,7 +249,11 @@ pub(crate) mod l2 {
             state.address.encode_hex_with_prefix().parse()?,
         );
         let mut key_buf = [0u8; uuid::fmt::Hyphenated::LENGTH];
-        let key_str = state.credentials.key.hyphenated().encode_lower(&mut key_buf);
+        let key_str = state
+            .credentials
+            .key
+            .hyphenated()
+            .encode_lower(&mut key_buf);
         map.insert(POLY_API_KEY, HeaderValue::from_str(key_str)?);
         map.insert(
             POLY_PASSPHRASE,
