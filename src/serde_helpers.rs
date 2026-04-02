@@ -3,11 +3,14 @@
 //! When the `tracing` feature is enabled, this module also logs warnings for any
 //! unknown fields encountered during deserialization, helping detect API changes.
 
-#[cfg(any(
-    feature = "bridge",
-    feature = "clob",
-    feature = "data",
-    feature = "gamma",
+#[cfg(all(
+    any(feature = "tracing", test),
+    any(
+        feature = "bridge",
+        feature = "clob",
+        feature = "data",
+        feature = "gamma",
+    )
 ))]
 use {serde::de::DeserializeOwned, serde_json::Value};
 
@@ -122,23 +125,19 @@ pub fn deserialize_with_warnings<T: DeserializeOwned>(value: Value) -> crate::Re
         "deserializing JSON"
     );
 
-    // Clone the value so we can look up unknown field values later
-    let original = value.clone();
-
-    // Collect unknown field paths during deserialization
+    let raw_json = value.to_string();
     let mut unknown_paths: Vec<String> = Vec::new();
 
     let result: T = serde_ignored::deserialize(value, |path| {
         unknown_paths.push(path.to_string());
     })
     .inspect_err(|_| {
-        // Re-deserialize with serde_path_to_error to get the error path
-        let json_str = original.to_string();
-        let jd = &mut serde_json::Deserializer::from_str(&json_str);
+        let jd = &mut serde_json::Deserializer::from_str(&raw_json);
         let path_result: Result<T, _> = serde_path_to_error::deserialize(jd);
         if let Err(path_err) = path_result {
             let path = path_err.path().to_string();
             let inner_error = path_err.inner();
+            let original: Value = serde_json::from_str(&raw_json).unwrap_or_default();
             let value_at_path = lookup_value(&original, &path);
             let value_display = format_value(value_at_path);
 
@@ -152,8 +151,8 @@ pub fn deserialize_with_warnings<T: DeserializeOwned>(value: Value) -> crate::Re
         }
     })?;
 
-    // Log warnings for unknown fields with their values
     if !unknown_paths.is_empty() {
+        let original: Value = serde_json::from_str(&raw_json).unwrap_or_default();
         let type_name = type_name::<T>();
         for path in unknown_paths {
             let field_value = lookup_value(&original, &path);
@@ -171,8 +170,8 @@ pub fn deserialize_with_warnings<T: DeserializeOwned>(value: Value) -> crate::Re
     Ok(result)
 }
 
-/// Pass-through deserialization when tracing is disabled.
 #[cfg(all(
+    test,
     not(feature = "tracing"),
     any(
         feature = "bridge",

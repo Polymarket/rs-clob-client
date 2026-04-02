@@ -285,8 +285,14 @@ async fn request<Response: DeserializeOwned>(
         return Err(Error::status(status_code, method, path, message));
     }
 
-    let json_value = response.json::<serde_json::Value>().await?;
-    let response_data: Option<Response> = serde_helpers::deserialize_with_warnings(json_value)?;
+    #[cfg(feature = "tracing")]
+    let response_data: Option<Response> = {
+        let json_value = response.json::<serde_json::Value>().await?;
+        serde_helpers::deserialize_with_warnings(json_value)?
+    };
+
+    #[cfg(not(feature = "tracing"))]
+    let response_data: Option<Response> = response.json().await?;
 
     if let Some(response) = response_data {
         Ok(response)
