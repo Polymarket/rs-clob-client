@@ -1563,7 +1563,7 @@ impl<K: Kind> Client<Authenticated<K>> {
         let request = self
             .client()
             .request(Method::DELETE, format!("{}order", self.host()))
-            .json(&json!({ "orderId": order_id }))
+            .json(&json!({ "orderID": order_id }))
             .build()?;
         let headers = self.create_headers(&request).await?;
 
