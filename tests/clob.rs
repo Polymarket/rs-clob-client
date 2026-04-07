@@ -50,6 +50,36 @@ mod unauthenticated {
     use super::*;
 
     #[tokio::test]
+    async fn custom_http_client_should_be_used() -> anyhow::Result<()> {
+        let server = MockServer::start();
+
+        let custom = reqwest::Client::builder()
+            .tcp_nodelay(true)
+            .pool_max_idle_per_host(10)
+            .default_headers({
+                let mut h = reqwest::header::HeaderMap::new();
+                h.insert("User-Agent", "rs_clob_client".parse().unwrap());
+                h.insert("Content-Type", "application/json".parse().unwrap());
+                h
+            })
+            .build()?;
+
+        let config = Config::builder().http_client(custom).build();
+        let client = Client::new(&server.base_url(), config)?;
+
+        let mock = server.mock(|when, then| {
+            when.method(httpmock::Method::GET).path("/");
+            then.status(StatusCode::OK).body("\"OK\"");
+        });
+
+        let response = client.ok().await?;
+        assert_eq!(response, "OK");
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn ok_should_succeed() -> anyhow::Result<()> {
         let server = MockServer::start();
         let client = Client::new(&server.base_url(), Config::default())?;
