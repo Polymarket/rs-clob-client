@@ -653,8 +653,8 @@ pub struct BuilderTradeResponse {
     pub trade_type: String,
     /// Hash of the taker order.
     pub taker_order_hash: B256,
-    /// Address of the builder.
-    pub builder: Address,
+    /// Builder API key ID.
+    pub builder: ApiKey,
     /// The market condition ID.
     pub market: B256,
     pub asset_id: U256,
