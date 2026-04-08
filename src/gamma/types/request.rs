@@ -202,6 +202,7 @@ pub struct MarketsRequest {
     #[builder(default)]
     pub question_ids: Vec<B256>,
     pub include_tag: Option<bool>,
+    pub active: Option<bool>,
     pub closed: Option<bool>,
 }
 
