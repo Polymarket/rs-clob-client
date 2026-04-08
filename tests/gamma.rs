@@ -1349,6 +1349,40 @@ mod query_string {
     }
 
     #[test]
+    fn markets_request_uma_resolution_status_proposed() {
+        let request = MarketsRequest::builder()
+            .uma_resolution_status("proposed".to_owned())
+            .build();
+        let qs = request.query_params(None);
+        assert!(qs.contains("uma_resolution_status=proposed"));
+    }
+
+    #[test]
+    fn markets_request_uma_resolution_status_disputed() {
+        let request = MarketsRequest::builder()
+            .uma_resolution_status("disputed".to_owned())
+            .build();
+        let qs = request.query_params(None);
+        assert!(qs.contains("uma_resolution_status=disputed"));
+    }
+
+    #[test]
+    fn markets_request_uma_resolution_status_resolved() {
+        let request = MarketsRequest::builder()
+            .uma_resolution_status("resolved".to_owned())
+            .build();
+        let qs = request.query_params(None);
+        assert!(qs.contains("uma_resolution_status=resolved"));
+    }
+
+    #[test]
+    fn markets_request_uma_resolution_status_omitted_when_unset() {
+        let request = MarketsRequest::default();
+        let qs = request.query_params(None);
+        assert!(!qs.contains("uma_resolution_status"));
+    }
+
+    #[test]
     fn market_by_id_request_with_include_tag() {
         let request = MarketByIdRequest::builder()
             .id("42")
