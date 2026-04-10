@@ -444,9 +444,13 @@ pub struct NotificationPayload {
 #[derive(Debug, Default, Clone, Deserialize, Builder, PartialEq)]
 pub struct BalanceAllowanceResponse {
     pub balance: Decimal,
+    /// Per-spender on-chain allowances, keyed by the ERC-20 spender
+    /// (exchange contract) address. Values are `uint256` because the
+    /// typical "fully approved" state on Polymarket returns
+    /// `2^256 - 1`, which overflows any fixed-point decimal type.
     #[serde(default)]
     #[builder(default)]
-    pub allowances: HashMap<Address, String>,
+    pub allowances: HashMap<Address, U256>,
 }
 
 #[non_exhaustive]

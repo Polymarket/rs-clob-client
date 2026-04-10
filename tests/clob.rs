@@ -2261,10 +2261,50 @@ mod authenticated {
 
         let expected = BalanceAllowanceResponse::builder()
             .balance(Decimal::ZERO)
-            .allowances(HashMap::from_iter([(Address::ZERO, "1".to_owned())]))
+            .allowances(HashMap::from_iter([(Address::ZERO, U256::from(1_u64))]))
             .build();
 
         assert_eq!(response, expected);
+        mock.assert();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn balance_allowance_accepts_max_uint256_allowances() -> anyhow::Result<()> {
+        // Regression: MetaMask-logged-in Polymarket accounts see allowances
+        // equal to 2^256 - 1 after the first UI trade triggers
+        // `setApprovalForAll` + USDC `approve` on the exchange contracts.
+        // The previous `HashMap<Address, String>` type silently forced
+        // downstream consumers to re-parse these, and any caller that
+        // naively used `rust_decimal::Decimal::from_str` on the strings
+        // would drop the entries because `2^256 - 1` overflows Decimal.
+        let server = MockServer::start();
+        let client = create_authenticated(&server).await?;
+
+        let max_uint256 =
+            "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+        let spender = Address::from([0x42; 20]);
+
+        let mock = server.mock(|when, then| {
+            when.method(GET).path("/balance-allowance");
+            then.status(StatusCode::OK).json_body(json!({
+                "balance": 58_916_378,
+                "allowances": { spender.to_string(): max_uint256 }
+            }));
+        });
+
+        let request = BalanceAllowanceRequest::builder()
+            .asset_type(AssetType::Collateral)
+            .build();
+        let response = client.balance_allowance(request).await?;
+
+        assert_eq!(response.balance, dec!(58_916_378));
+        assert_eq!(
+            response.allowances.get(&spender).copied(),
+            Some(U256::from_str(max_uint256)?)
+        );
+        assert_eq!(response.allowances.get(&spender).copied(), Some(U256::MAX));
         mock.assert();
 
         Ok(())
