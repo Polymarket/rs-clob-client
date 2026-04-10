@@ -8,6 +8,7 @@ use serde::{Deserialize, Deserializer};
 use serde_with::{DefaultOnNull, DisplayFromStr, NoneAsEmptyString, serde_as};
 
 use super::{ActivityType, Side};
+use crate::serde_helpers::DecimalFromAny;
 use crate::types::{Address, B256, Decimal, U256};
 
 /// Deserializes an optional Side, treating empty strings as None.
@@ -74,24 +75,34 @@ pub struct Position {
     /// The market condition ID (unique market identifier).
     pub condition_id: B256,
     /// Number of outcome tokens held.
+    #[serde_as(as = "DecimalFromAny")]
     pub size: Decimal,
     /// Average entry price for the position.
+    #[serde_as(as = "DecimalFromAny")]
     pub avg_price: Decimal,
     /// Initial value (cost basis) of the position.
+    #[serde_as(as = "DecimalFromAny")]
     pub initial_value: Decimal,
     /// Current market value of the position.
+    #[serde_as(as = "DecimalFromAny")]
     pub current_value: Decimal,
     /// Unrealized cash profit/loss.
+    #[serde_as(as = "DecimalFromAny")]
     pub cash_pnl: Decimal,
     /// Unrealized percentage profit/loss.
+    #[serde_as(as = "DecimalFromAny")]
     pub percent_pnl: Decimal,
     /// Total amount bought (cumulative).
+    #[serde_as(as = "DecimalFromAny")]
     pub total_bought: Decimal,
     /// Realized profit/loss from closed portions.
+    #[serde_as(as = "DecimalFromAny")]
     pub realized_pnl: Decimal,
     /// Realized percentage profit/loss.
+    #[serde_as(as = "DecimalFromAny")]
     pub percent_realized_pnl: Decimal,
     /// Current market price of the outcome.
+    #[serde_as(as = "DecimalFromAny")]
     pub cur_price: Decimal,
     /// Whether the position can be redeemed (market resolved).
     pub redeemable: bool,
@@ -129,6 +140,7 @@ pub struct Position {
 ///
 /// Returned by the `/closed-positions` endpoint. Represents positions that
 /// have been fully sold or redeemed, with final profit/loss figures.
+#[serde_as]
 #[derive(Debug, Clone, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
@@ -140,12 +152,16 @@ pub struct ClosedPosition {
     /// The market condition ID (unique market identifier).
     pub condition_id: B256,
     /// Average entry price for the position.
+    #[serde_as(as = "DecimalFromAny")]
     pub avg_price: Decimal,
     /// Total amount bought (cumulative).
+    #[serde_as(as = "DecimalFromAny")]
     pub total_bought: Decimal,
     /// Realized profit/loss from the closed position.
+    #[serde_as(as = "DecimalFromAny")]
     pub realized_pnl: Decimal,
     /// Final market price when position was closed.
+    #[serde_as(as = "DecimalFromAny")]
     pub cur_price: Decimal,
     /// Unix timestamp when the position was closed.
     pub timestamp: i64,
@@ -187,8 +203,10 @@ pub struct Trade {
     /// The market condition ID (unique market identifier).
     pub condition_id: B256,
     /// Number of tokens traded.
+    #[serde_as(as = "DecimalFromAny")]
     pub size: Decimal,
     /// Execution price per token.
+    #[serde_as(as = "DecimalFromAny")]
     pub price: Decimal,
     /// Unix timestamp when the trade occurred.
     pub timestamp: i64,

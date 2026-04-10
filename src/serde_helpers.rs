@@ -80,6 +80,108 @@ impl serde_with::SerializeAs<String> for StringFromAny {
     }
 }
 
+/// A `serde_as` type that deserializes strings, integers, or floats as `Decimal`.
+///
+/// Polymarket APIs sometimes return numeric fields as JSON numbers (e.g.
+/// `0.01`) rather than strings, which the default `rust_decimal` deserializer
+/// rejects because it expects a string. Use this helper on any `Decimal` field
+/// whose JSON representation may be either a string or a number.
+///
+/// Use with `#[serde_as(as = "DecimalFromAny")]` for `Decimal` fields
+/// or `#[serde_as(as = "Option<DecimalFromAny>")]` for `Option<Decimal>`.
+#[cfg(any(
+    feature = "bridge",
+    feature = "clob",
+    feature = "data",
+    feature = "gamma"
+))]
+pub struct DecimalFromAny;
+
+#[cfg(any(
+    feature = "bridge",
+    feature = "clob",
+    feature = "data",
+    feature = "gamma"
+))]
+impl<'de> serde_with::DeserializeAs<'de, rust_decimal::Decimal> for DecimalFromAny {
+    fn deserialize_as<D>(deserializer: D) -> std::result::Result<rust_decimal::Decimal, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use std::fmt;
+        use std::str::FromStr as _;
+
+        use serde::de::{self, Visitor};
+
+        struct DecimalAnyVisitor;
+
+        impl Visitor<'_> for DecimalAnyVisitor {
+            type Value = rust_decimal::Decimal;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("string, integer, or float convertible to Decimal")
+            }
+
+            fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                rust_decimal::Decimal::from_str(v).map_err(de::Error::custom)
+            }
+
+            fn visit_string<E>(self, v: String) -> std::result::Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                self.visit_str(&v)
+            }
+
+            fn visit_i64<E>(self, v: i64) -> std::result::Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(rust_decimal::Decimal::from(v))
+            }
+
+            fn visit_u64<E>(self, v: u64) -> std::result::Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(rust_decimal::Decimal::from(v))
+            }
+
+            fn visit_f64<E>(self, v: f64) -> std::result::Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                // Round-trip through string to avoid the binary-float
+                // precision trap (e.g. 0.1 → 0.1000000000000000055...).
+                rust_decimal::Decimal::from_str(&v.to_string()).map_err(de::Error::custom)
+            }
+        }
+
+        deserializer.deserialize_any(DecimalAnyVisitor)
+    }
+}
+
+#[cfg(any(
+    feature = "bridge",
+    feature = "clob",
+    feature = "data",
+    feature = "gamma"
+))]
+impl serde_with::SerializeAs<rust_decimal::Decimal> for DecimalFromAny {
+    fn serialize_as<S>(
+        source: &rust_decimal::Decimal,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        <rust_decimal::Decimal as serde::Serialize>::serialize(source, serializer)
+    }
+}
+
 /// Deserialize JSON with unknown field warnings.
 ///
 /// This function deserializes JSON to a target type while detecting and logging

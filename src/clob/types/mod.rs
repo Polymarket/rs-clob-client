@@ -417,7 +417,14 @@ impl<'de> Deserialize<'de> for TickSize {
     where
         D: Deserializer<'de>,
     {
-        let dec = <Decimal as Deserialize>::deserialize(deserializer)?;
+        // The Polymarket API returns `minimum_tick_size` as a JSON number
+        // (e.g. `0.01`), which `Decimal`'s default deserializer rejects
+        // because it expects a string. Delegate to the shared flexible
+        // Decimal deserializer so we handle both representations.
+        use serde_with::DeserializeAs;
+        let dec = <crate::serde_helpers::DecimalFromAny as DeserializeAs<Decimal>>::deserialize_as(
+            deserializer,
+        )?;
         TickSize::try_from(dec).map_err(de::Error::custom)
     }
 }
