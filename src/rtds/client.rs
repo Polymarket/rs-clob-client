@@ -343,3 +343,149 @@ impl Client<Authenticated<Normal>> {
         })
     }
 }
+
+#[cfg(test)]
+mod teardown_tests {
+    //! RTDS client teardown regression tests for issue #325. These cover
+    //! the `reconnect_handle` plumbing in `Client::new`,
+    //! `Client::authenticate`, and `Client::deauthenticate` — each must
+    //! forward the `AbortOnDrop` into the new `ClientInner` so the
+    //! spawned task is still tied to the live client, and each must let
+    //! the wrapper run its `Drop` (aborting the task) when the last
+    //! client clone goes away.
+
+    use std::sync::Weak;
+    use std::time::Duration;
+
+    use super::{Client, SubscriptionManager};
+    use crate::auth::{Credentials, Uuid};
+    use crate::types::Address;
+    use crate::ws::config::Config;
+
+    /// Resolves immediately and refuses TCP connections.
+    const UNROUTABLE_ENDPOINT: &str = "ws://127.0.0.1:1";
+
+    /// Dummy credentials for `authenticate` / `deauthenticate` round-trips.
+    /// Only the struct shape matters — the test never hits the network.
+    fn dummy_credentials() -> Credentials {
+        Credentials::new(
+            Uuid::nil(),
+            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=".to_owned(),
+            "passphrase".to_owned(),
+        )
+    }
+
+    /// Dummy EOA used for the authenticated client state.
+    fn dummy_address() -> Address {
+        "0x0000000000000000000000000000000000000001"
+            .parse()
+            .expect("valid zero-ish address")
+    }
+
+    /// Poll the weak reference until the strong count drops to zero, with
+    /// a generous timeout so a busy CI runner doesn't flake.
+    async fn wait_for_drop(weak: &Weak<SubscriptionManager>) {
+        let start = std::time::Instant::now();
+        while weak.strong_count() != 0 && start.elapsed() < Duration::from_secs(2) {
+            tokio::task::yield_now().await;
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    }
+
+    #[tokio::test]
+    async fn unauthenticated_client_drop_releases_subscription_manager() {
+        let client = Client::new(UNROUTABLE_ENDPOINT, Config::default())
+            .expect("Client::new should not fail for a well-formed endpoint string");
+
+        let weak = std::sync::Arc::downgrade(&client.inner_subscriptions_for_test());
+
+        drop(client);
+        wait_for_drop(&weak).await;
+
+        assert!(
+            weak.upgrade().is_none(),
+            "Unauthenticated RTDS Client leaked SubscriptionManager on drop: \
+             strong_count={} (issue #325 regression)",
+            weak.strong_count(),
+        );
+    }
+
+    #[tokio::test]
+    async fn authenticate_then_drop_releases_subscription_manager() {
+        let client = Client::new(UNROUTABLE_ENDPOINT, Config::default())
+            .expect("Client::new");
+
+        let weak = std::sync::Arc::downgrade(&client.inner_subscriptions_for_test());
+
+        let authenticated = client
+            .authenticate(dummy_address(), dummy_credentials())
+            .expect("authenticate should succeed when no extra clones exist");
+
+        // `authenticate` moved the reconnect handle + subscription manager
+        // into a new `ClientInner`, so the weak ref should still upgrade.
+        assert!(
+            weak.upgrade().is_some(),
+            "authenticate prematurely dropped the SubscriptionManager"
+        );
+
+        drop(authenticated);
+        wait_for_drop(&weak).await;
+
+        assert!(
+            weak.upgrade().is_none(),
+            "Authenticated RTDS Client leaked SubscriptionManager on drop: \
+             strong_count={} (issue #325 regression)",
+            weak.strong_count(),
+        );
+    }
+
+    #[tokio::test]
+    async fn deauthenticate_preserves_reconnect_handle_then_drop_cleans_up() {
+        let client = Client::new(UNROUTABLE_ENDPOINT, Config::default())
+            .expect("Client::new");
+
+        let weak = std::sync::Arc::downgrade(&client.inner_subscriptions_for_test());
+
+        let authenticated = client
+            .authenticate(dummy_address(), dummy_credentials())
+            .expect("authenticate");
+
+        // Round-trip through deauthenticate; the handle must be forwarded
+        // into the new `ClientInner` so the task stays alive.
+        let unauth = authenticated
+            .deauthenticate()
+            .expect("deauthenticate should succeed when no extra clones exist");
+
+        // After the round-trip the manager is still reachable — nothing has
+        // dropped yet.
+        assert!(
+            weak.upgrade().is_some(),
+            "Round-tripping through authenticate/deauthenticate prematurely \
+             dropped the SubscriptionManager"
+        );
+
+        drop(unauth);
+        wait_for_drop(&weak).await;
+
+        assert!(
+            weak.upgrade().is_none(),
+            "RTDS Client leaked SubscriptionManager after deauthenticate+drop: \
+             strong_count={} (issue #325 regression)",
+            weak.strong_count(),
+        );
+    }
+}
+
+// Test-only accessor: expose the inner Arc<SubscriptionManager> so the
+// teardown tests can take a `Weak` without widening the public API. The
+// field is module-private, so the accessor lives in the same file.
+#[cfg(test)]
+#[expect(
+    clippy::multiple_inherent_impl,
+    reason = "Test-only accessor kept isolated from the main public impl"
+)]
+impl<S: State> Client<S> {
+    fn inner_subscriptions_for_test(&self) -> Arc<SubscriptionManager> {
+        Arc::clone(&self.inner.subscriptions)
+    }
+}

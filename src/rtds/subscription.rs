@@ -333,3 +333,62 @@ impl SubscriptionManager {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod reconnect_handler_tests {
+    //! RTDS-side regression tests for issue #325. Mirrors the
+    //! `clob::ws::subscription` test so the same reference-cycle
+    //! invariant is enforced on both code paths.
+
+    use std::sync::{Arc, Weak};
+    use std::time::Duration;
+
+    use super::{SimpleParser, SubscriptionManager};
+    use crate::ws::ConnectionManager;
+    use crate::ws::config::Config;
+    use crate::ws::task::AbortOnDrop;
+
+    /// Resolves immediately and refuses TCP connections, so the underlying
+    /// connection task does not block on DNS or a slow handshake.
+    const UNROUTABLE_ENDPOINT: &str = "ws://127.0.0.1:1";
+
+    #[tokio::test]
+    async fn aborting_reconnect_handle_releases_rtds_subscription_manager() {
+        let connection = ConnectionManager::new(
+            UNROUTABLE_ENDPOINT.to_owned(),
+            Config::default(),
+            SimpleParser,
+        )
+        .expect("ConnectionManager::new");
+
+        let subscriptions = Arc::new(SubscriptionManager::new(connection));
+        let reconnect_handle = AbortOnDrop::new(subscriptions.start_reconnection_handler());
+
+        // The spawned reconnect task clones the `Arc`, so with the owner
+        // clone we must observe at least 2 strong refs before drop.
+        assert!(
+            Arc::strong_count(&subscriptions) >= 2,
+            "reconnection task should have cloned an Arc<SubscriptionManager>"
+        );
+
+        let weak: Weak<SubscriptionManager> = Arc::downgrade(&subscriptions);
+        drop(subscriptions);
+        drop(reconnect_handle);
+
+        // Poll briefly: the task future is only dropped once the runtime
+        // processes the abort, which may take a handful of scheduler ticks
+        // on a loaded runner.
+        let start = std::time::Instant::now();
+        while weak.strong_count() != 0 && start.elapsed() < Duration::from_secs(2) {
+            tokio::task::yield_now().await;
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+
+        assert!(
+            weak.upgrade().is_none(),
+            "RTDS SubscriptionManager leaked after reconnect handle aborted: \
+             strong_count={} (issue #325 regression)",
+            weak.strong_count(),
+        );
+    }
+}
