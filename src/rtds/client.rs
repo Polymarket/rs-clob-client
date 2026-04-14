@@ -412,8 +412,7 @@ mod teardown_tests {
 
     #[tokio::test]
     async fn authenticate_then_drop_releases_subscription_manager() {
-        let client = Client::new(UNROUTABLE_ENDPOINT, Config::default())
-            .expect("Client::new");
+        let client = Client::new(UNROUTABLE_ENDPOINT, Config::default()).expect("Client::new");
 
         let weak = std::sync::Arc::downgrade(&client.inner_subscriptions_for_test());
 
@@ -441,8 +440,7 @@ mod teardown_tests {
 
     #[tokio::test]
     async fn deauthenticate_preserves_reconnect_handle_then_drop_cleans_up() {
-        let client = Client::new(UNROUTABLE_ENDPOINT, Config::default())
-            .expect("Client::new");
+        let client = Client::new(UNROUTABLE_ENDPOINT, Config::default()).expect("Client::new");
 
         let weak = std::sync::Arc::downgrade(&client.inner_subscriptions_for_test());
 
