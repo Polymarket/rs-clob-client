@@ -105,7 +105,17 @@ impl SubscriptionManager {
     }
 
     /// Start the reconnection handler that re-subscribes on connection recovery.
-    pub fn start_reconnection_handler(self: &Arc<Self>) {
+    ///
+    /// Returns the [`tokio::task::JoinHandle`] for the spawned handler so the
+    /// caller can abort it when the owning client is dropped. The handler
+    /// holds a strong `Arc<Self>` clone and also owns a clone of the
+    /// underlying [`ConnectionManager`]; without external cancellation, the
+    /// `watch::Sender` it waits on can never close, so the task (and every
+    /// `Arc` it transitively keeps alive) leaks for the lifetime of the
+    /// process. Callers MUST retain the returned handle and `abort()` it in
+    /// their `Drop` impl to break this cycle — see
+    /// [`crate::clob::ws::client`] for the canonical pattern.
+    pub fn start_reconnection_handler(self: &Arc<Self>) -> tokio::task::JoinHandle<()> {
         let this = Arc::clone(self);
 
         tokio::spawn(async move {
@@ -140,7 +150,7 @@ impl SubscriptionManager {
                     }
                 }
             }
-        });
+        })
     }
 
     /// Re-send subscription requests for all tracked assets and markets.
@@ -561,5 +571,68 @@ impl SubscriptionManager {
         });
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod reconnect_handler_tests {
+    //! Regression tests for issue #325: the reconnection handler task used
+    //! to hold a strong `Arc<SubscriptionManager>` that was only released
+    //! when the connection's watch `Sender` closed — but the task itself
+    //! kept that `Sender` alive (via a cloned `ConnectionManager` inside
+    //! the manager), creating a refcount cycle that leaked the entire
+    //! channel whenever a `WsClient` was dropped.
+
+    use std::sync::{Arc, Weak};
+    use std::time::Duration;
+
+    use super::{InterestTracker, SubscriptionManager};
+    use crate::ws::ConnectionManager;
+    use crate::ws::config::Config;
+    use crate::ws::task::AbortOnDrop;
+
+    /// Endpoint that resolves immediately and refuses connections, so the
+    /// underlying connection task never blocks on DNS or a slow TCP handshake.
+    const UNROUTABLE_ENDPOINT: &str = "ws://127.0.0.1:1";
+
+    #[tokio::test]
+    async fn aborting_reconnect_handle_releases_subscription_manager() {
+        let interest = Arc::new(InterestTracker::new());
+        let connection = ConnectionManager::new(
+            UNROUTABLE_ENDPOINT.to_owned(),
+            Config::default(),
+            Arc::clone(&interest),
+        )
+        .expect("ConnectionManager::new");
+
+        let subscriptions = Arc::new(SubscriptionManager::new(connection, interest));
+        let reconnect_handle = AbortOnDrop::new(subscriptions.start_reconnection_handler());
+
+        // The spawned task holds an extra strong clone; with the owner clone
+        // we should observe at least 2 strong refs.
+        assert!(
+            Arc::strong_count(&subscriptions) >= 2,
+            "reconnection task should have cloned an Arc<SubscriptionManager>"
+        );
+
+        let weak: Weak<SubscriptionManager> = Arc::downgrade(&subscriptions);
+        drop(subscriptions);
+        drop(reconnect_handle);
+
+        // Abort is observed on the next scheduler tick. Poll briefly rather
+        // than sleeping a hardcoded amount — on a loaded CI runner the task
+        // may need a few yields before its future is actually dropped.
+        let start = std::time::Instant::now();
+        while weak.strong_count() != 0 && start.elapsed() < Duration::from_secs(2) {
+            tokio::task::yield_now().await;
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+
+        assert!(
+            weak.upgrade().is_none(),
+            "SubscriptionManager leaked after reconnect handle aborted: \
+             strong_count={} (issue #325 regression)",
+            weak.strong_count(),
+        );
     }
 }
