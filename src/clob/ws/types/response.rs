@@ -76,10 +76,10 @@ pub struct BookUpdate {
     /// Unix timestamp in milliseconds
     #[serde_as(as = "DisplayFromStr")]
     pub timestamp: i64,
-    /// Current bid levels (price descending)
+    /// Current bid levels (price ascending)
     #[serde(default)]
     pub bids: Vec<OrderBookLevel>,
-    /// Current ask levels (price ascending)
+    /// Current ask levels (price descending)
     #[serde(default)]
     pub asks: Vec<OrderBookLevel>,
     /// Hash for orderbook validation
