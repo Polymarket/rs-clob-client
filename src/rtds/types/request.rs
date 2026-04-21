@@ -71,9 +71,18 @@ impl Subscription {
     /// Create a subscription for Binance crypto prices.
     #[must_use]
     pub fn crypto_prices(symbols: Option<Vec<String>>) -> Self {
-        // Server expects filters as a JSON array, e.g. ["btcusdt","ethusdt"]
-        let filters =
-            symbols.map(|s| serde_json::to_string(&s).unwrap_or_else(|_| "[]".to_owned()));
+        // Server expects filters as a comma-separated plain string,
+        // e.g. `"btcusdt,ethusdt"`. The published RTDS schema at
+        // https://docs.polymarket.com/market-data/websocket/rtds is
+        // explicit about this: `"filters": "solusdt,btcusdt,ethusdt"`.
+        // The prior implementation serialized the Vec via
+        // `serde_json::to_string` which produced `["btcusdt","ethusdt"]`
+        // on the wire. The server silently rejects that shape with
+        // `{"message":"Invalid request body"}` while leaving the
+        // WebSocket connection open, so callers see a live stream
+        // that never forwards any ticks — no visible error anywhere.
+        // See #270 for the original bug report.
+        let filters = symbols.map(|s| s.join(","));
         Self {
             topic: "crypto_prices".to_owned(),
             msg_type: "update".to_owned(),
@@ -183,8 +192,14 @@ mod tests {
         let json = serde_json::to_string(&request).unwrap();
         assert!(json.contains("\"action\":\"subscribe\""));
         assert!(json.contains("\"topic\":\"crypto_prices\""));
-        // Filters should be a JSON array, not a comma-separated string
-        assert!(json.contains("\"filters\":[\"btcusdt\",\"ethusdt\"]"));
+        // Filters must be a comma-separated plain string per the RTDS
+        // schema (https://docs.polymarket.com/market-data/websocket/rtds):
+        //   "filters": "btcusdt,ethusdt"
+        // Sending a JSON array was the bug reported in #270.
+        assert!(
+            json.contains("\"filters\":\"btcusdt,ethusdt\""),
+            "Binance crypto_prices filters must be a comma-separated string, got: {json}"
+        );
     }
 
     #[test]
@@ -250,10 +265,11 @@ mod tests {
             json.contains(r#""filters":"{\"symbol\":\"btc/usd\"}""#),
             "Chainlink filters should be escaped string, got: {json}"
         );
-        // Binance should have raw JSON array filters
+        // Binance filters serialize as a comma-separated plain string
+        // per the RTDS schema (#270).
         assert!(
-            json.contains("\"filters\":[\"btcusdt\",\"ethusdt\"]"),
-            "Binance filters should be raw JSON array, got: {json}"
+            json.contains("\"filters\":\"btcusdt,ethusdt\""),
+            "Binance crypto_prices filters must be a comma-separated string, got: {json}"
         );
     }
 
