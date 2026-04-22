@@ -191,7 +191,7 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
         let post_only = Some(self.post_only.unwrap_or(false));
         let builder_code = self
             .builder_code
-            .or(self.client.inner.builder_code)
+            .or(self.client.config_builder_code())
             .unwrap_or(B256::ZERO);
 
         if !matches!(order_type, OrderType::GTD) && expiration > DateTime::<Utc>::UNIX_EPOCH {
@@ -365,7 +365,7 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
 
         let builder_code = self
             .builder_code
-            .or(self.client.inner.builder_code)
+            .or(self.client.config_builder_code())
             .unwrap_or(B256::ZERO);
 
         let order_type = self.order_type.clone().unwrap_or(OrderType::FAK);

@@ -419,10 +419,6 @@ struct ClientInner<S: State> {
     signature_type: SignatureType,
     /// The salt/seed generator for use in creating [`SignableOrder`]s
     salt_generator: fn() -> u64,
-    /// Optional CLOB V2 builder code used as the default `builder` field when constructing
-    /// orders through [`OrderBuilder`]. Mirrors [`Config::builder_code`] so it is reachable
-    /// from the order builder without cloning the full config.
-    pub(crate) builder_code: Option<B256>,
 }
 
 impl<S: State> ClientInner<S> {
@@ -512,6 +508,13 @@ impl<S: State> Client<S> {
     #[must_use]
     pub fn host(&self) -> &Url {
         &self.inner.host
+    }
+
+    /// Returns the default CLOB V2 builder code configured on this [`Client`], if any.
+    /// Used as the default value for the `builder` field when constructing orders.
+    #[must_use]
+    pub fn config_builder_code(&self) -> Option<B256> {
+        self.inner.config.builder_code
     }
 
     /// Invalidates all internal caches (tick sizes, neg risk flags, and fee rates).
