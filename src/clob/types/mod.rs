@@ -1,7 +1,7 @@
 use std::fmt;
 
 use alloy::core::sol;
-use alloy::primitives::{Signature, U256};
+use alloy::primitives::{B256, Signature, U256};
 use bon::Builder;
 use rust_decimal_macros::dec;
 use serde::ser::{Error as _, SerializeStruct as _};
@@ -436,7 +436,6 @@ sol! {
         uint256 salt;
         address maker;
         address signer;
-        address taker;
         #[serde_as(as = "DisplayFromStr")]
         uint256 tokenId;
         #[serde_as(as = "DisplayFromStr")]
@@ -446,9 +445,9 @@ sol! {
         #[serde_as(as = "DisplayFromStr")]
         uint256 expiration;
         #[serde_as(as = "DisplayFromStr")]
-        uint256 nonce;
-        #[serde_as(as = "DisplayFromStr")]
-        uint256 feeRateBps;
+        uint256 timestamp;
+        bytes32 metadata;
+        bytes32 builder;
         uint8   side;
         uint8   signatureType;
     }
@@ -492,7 +491,6 @@ struct OrderWithSignature<'order> {
     salt: &'order U256,
     maker: &'order alloy::primitives::Address,
     signer: &'order alloy::primitives::Address,
-    taker: &'order alloy::primitives::Address,
     #[serde_as(as = "DisplayFromStr")]
     #[serde(rename = "tokenId")]
     token_id: &'order U256,
@@ -505,16 +503,30 @@ struct OrderWithSignature<'order> {
     #[serde_as(as = "DisplayFromStr")]
     expiration: &'order U256,
     #[serde_as(as = "DisplayFromStr")]
-    nonce: &'order U256,
-    #[serde_as(as = "DisplayFromStr")]
-    #[serde(rename = "feeRateBps")]
-    fee_rate_bps: &'order U256,
+    timestamp: &'order U256,
+    /// Reserved for future use. Serialized as empty string when zero (CLOB API accepts "" or 0x..).
+    #[serde(serialize_with = "ser_metadata")]
+    metadata: &'order B256,
+    /// Builder code (bytes32) for integrator attribution. `0x` + 64 hex chars.
+    builder: &'order B256,
     /// Side serialized as "BUY"/"SELL" string (CLOB API requirement)
     side: Side,
     #[serde(rename = "signatureType")]
     signature_type: u8,
     /// Signature injected into the order object
     signature: String,
+}
+
+/// CLOB API expects an empty string for the `metadata` field when unset.
+fn ser_metadata<S: Serializer>(
+    value: &B256,
+    serializer: S,
+) -> std::result::Result<S::Ok, S::Error> {
+    if value.is_zero() {
+        serializer.serialize_str("")
+    } else {
+        serializer.serialize_str(&value.to_string())
+    }
 }
 
 // CLOB expects a struct that has the `signature` "folded" into the `order` key
@@ -531,13 +543,13 @@ impl Serialize for SignedOrder {
             salt: &self.order.salt,
             maker: &self.order.maker,
             signer: &self.order.signer,
-            taker: &self.order.taker,
             token_id: &self.order.tokenId,
             maker_amount: &self.order.makerAmount,
             taker_amount: &self.order.takerAmount,
             expiration: &self.order.expiration,
-            nonce: &self.order.nonce,
-            fee_rate_bps: &self.order.feeRateBps,
+            timestamp: &self.order.timestamp,
+            metadata: &self.order.metadata,
+            builder: &self.order.builder,
             side,
             signature_type: self.order.signatureType,
             signature: self.signature.to_string(),
