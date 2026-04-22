@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use alloy::primitives::U256;
+use alloy::primitives::{B256, U256};
 use chrono::{DateTime, Utc};
 use rand::RngExt as _;
 use rust_decimal::prelude::ToPrimitive as _;
@@ -44,12 +44,13 @@ pub struct OrderBuilder<OrderKind, K: AuthKind> {
     pub(crate) size: Option<Decimal>,
     pub(crate) amount: Option<Amount>,
     pub(crate) side: Option<Side>,
-    pub(crate) nonce: Option<u64>,
     pub(crate) expiration: Option<DateTime<Utc>>,
-    pub(crate) taker: Option<Address>,
     pub(crate) order_type: Option<OrderType>,
     pub(crate) post_only: Option<bool>,
     pub(crate) funder: Option<Address>,
+    /// Optional builder code (bytes32) for CLOB V2 order attribution. When absent,
+    /// the [`Client`]'s configured builder code is used (or zero if none is set).
+    pub(crate) builder_code: Option<B256>,
     pub(crate) _kind: PhantomData<OrderKind>,
 }
 
@@ -68,22 +69,18 @@ impl<OrderKind, K: AuthKind> OrderBuilder<OrderKind, K> {
         self
     }
 
-    /// Sets the nonce for this builder.
-    #[must_use]
-    pub fn nonce(mut self, nonce: u64) -> Self {
-        self.nonce = Some(nonce);
-        self
-    }
-
     #[must_use]
     pub fn expiration(mut self, expiration: DateTime<Utc>) -> Self {
         self.expiration = Some(expiration);
         self
     }
 
+    /// Sets the CLOB V2 `builder` code (bytes32) for order attribution. Pass your
+    /// registered builder code from `polymarket.com/settings?tab=builder` to credit
+    /// every resulting match to your builder profile. Defaults to zero (no attribution).
     #[must_use]
-    pub fn taker(mut self, taker: Address) -> Self {
-        self.taker = Some(taker);
+    pub fn builder_code(mut self, builder_code: B256) -> Self {
+        self.builder_code = Some(builder_code);
         self
     }
 
@@ -146,7 +143,6 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
             )));
         }
 
-        let fee_rate = self.client.fee_rate_bps(token_id).await?;
         let minimum_tick_size = self
             .client
             .tick_size(token_id)
@@ -190,11 +186,13 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
             )));
         }
 
-        let nonce = self.nonce.unwrap_or(0);
         let expiration = self.expiration.unwrap_or(DateTime::<Utc>::UNIX_EPOCH);
-        let taker = self.taker.unwrap_or(Address::ZERO);
         let order_type = self.order_type.unwrap_or(OrderType::GTC);
         let post_only = Some(self.post_only.unwrap_or(false));
+        let builder_code = self
+            .builder_code
+            .or(self.client.inner.builder_code)
+            .unwrap_or(B256::ZERO);
 
         if !matches!(order_type, OrderType::GTD) && expiration > DateTime::<Utc>::UNIX_EPOCH {
             return Err(Error::validation(
@@ -230,21 +228,24 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
         };
 
         let salt = to_ieee_754_int((self.salt_generator)());
+        let timestamp_ms = Utc::now().timestamp_millis().to_u64().ok_or_else(|| {
+            Error::validation("System clock is before UNIX epoch; cannot build order timestamp")
+        })?;
 
         let order = Order {
             salt: U256::from(salt),
             maker: self.funder.unwrap_or(self.signer),
-            taker,
             tokenId: token_id,
             makerAmount: U256::from(to_fixed_u128(maker_amount)),
             takerAmount: U256::from(to_fixed_u128(taker_amount)),
             side: side as u8,
-            feeRateBps: U256::from(fee_rate.base_fee),
-            nonce: U256::from(nonce),
             signer: self.signer,
             expiration: U256::from(expiration.timestamp().to_u64().ok_or(Error::validation(
                 format!("Unable to represent expiration {expiration} as a u64"),
             ))?),
+            timestamp: U256::from(timestamp_ms),
+            metadata: B256::ZERO,
+            builder: builder_code,
             signatureType: self.signature_type as u8,
         };
 
@@ -362,8 +363,10 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
             .amount
             .ok_or_else(|| Error::validation("Unable to build Order due to missing amount"))?;
 
-        let nonce = self.nonce.unwrap_or(0);
-        let taker = self.taker.unwrap_or(Address::ZERO);
+        let builder_code = self
+            .builder_code
+            .or(self.client.inner.builder_code)
+            .unwrap_or(B256::ZERO);
 
         let order_type = self.order_type.clone().unwrap_or(OrderType::FAK);
         let post_only = self.post_only;
@@ -383,7 +386,6 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
             .await?
             .minimum_tick_size
             .as_decimal();
-        let fee_rate = self.client.fee_rate_bps(token_id).await?;
 
         let decimals = minimum_tick_size.scale();
 
@@ -442,19 +444,22 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         };
 
         let salt = to_ieee_754_int((self.salt_generator)());
+        let timestamp_ms = Utc::now().timestamp_millis().to_u64().ok_or_else(|| {
+            Error::validation("System clock is before UNIX epoch; cannot build order timestamp")
+        })?;
 
         let order = Order {
             salt: U256::from(salt),
             maker: self.funder.unwrap_or(self.signer),
-            taker,
             tokenId: token_id,
             makerAmount: U256::from(to_fixed_u128(maker_amount)),
             takerAmount: U256::from(to_fixed_u128(taker_amount)),
             side: side as u8,
-            feeRateBps: U256::from(fee_rate.base_fee),
-            nonce: U256::from(nonce),
             signer: self.signer,
             expiration: U256::ZERO,
+            timestamp: U256::from(timestamp_ms),
+            metadata: B256::ZERO,
+            builder: builder_code,
             signatureType: self.signature_type as u8,
         };
 
