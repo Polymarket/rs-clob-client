@@ -5,8 +5,8 @@
 //! # Operations
 //!
 //! - **ID Calculation**: Compute condition IDs, collection IDs, and position IDs
-//! - **Split**: Convert USDC collateral into outcome token pairs (YES/NO)
-//! - **Merge**: Combine outcome token pairs back into USDC
+//! - **Split**: Convert pUSD collateral into outcome token pairs (YES/NO)
+//! - **Merge**: Combine outcome token pairs back into pUSD
 //! - **Redeem**: Redeem winning outcome tokens after market resolution
 //!
 //! # Example
@@ -285,7 +285,7 @@ impl<P: Provider + Clone> Client<P> {
 
     /// Splits collateral into outcome tokens.
     ///
-    /// Converts USDC collateral into matched outcome token pairs (YES/NO).
+    /// Converts pUSD collateral into matched outcome token pairs (YES/NO).
     ///
     /// # Errors
     ///
@@ -338,7 +338,7 @@ impl<P: Provider + Clone> Client<P> {
 
     /// Merges outcome tokens back into collateral.
     ///
-    /// Combines matched outcome token pairs back into USDC.
+    /// Combines matched outcome token pairs back into pUSD.
     ///
     /// # Errors
     ///
@@ -390,7 +390,7 @@ impl<P: Provider + Clone> Client<P> {
 
     /// Redeems winning outcome tokens for collateral.
     ///
-    /// After a condition is resolved, burns winning tokens to recover USDC.
+    /// After a condition is resolved, burns winning tokens to recover pUSD.
     ///
     /// # Errors
     ///

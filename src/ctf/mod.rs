@@ -4,13 +4,14 @@
 //!
 //! The Conditional Token Framework is Gnosis's smart contract system that tokenizes
 //! all Polymarket outcomes as binary ERC1155 tokens on Polygon. Each market has two
-//! outcome tokens ("YES" and "NO") backed by USDC collateral.
+//! outcome tokens ("YES" and "NO") backed by pUSD collateral (Polymarket's USDC-backed
+//! ERC-20 wrapper; see `CollateralOnramp`/`CollateralOfframp` to wrap/unwrap USDC.e).
 //!
 //! # Features
 //!
 //! - **ID Calculation**: Compute condition IDs, collection IDs, and position IDs
-//! - **Splitting**: Convert USDC collateral into outcome token pairs (YES/NO)
-//! - **Merging**: Combine outcome token pairs back into USDC
+//! - **Splitting**: Convert pUSD collateral into outcome token pairs (YES/NO)
+//! - **Merging**: Combine outcome token pairs back into pUSD
 //! - **Redemption**: Redeem winning outcome tokens after market resolution
 //!
 //! # Example
@@ -39,12 +40,12 @@
 //! let condition_id = client.condition_id(&condition_id_req).await?;
 //! println!("Condition ID: {}", condition_id.condition_id);
 //!
-//! // Split USDC into outcome tokens
+//! // Split pUSD into outcome tokens
 //! let split_req = SplitPositionRequest::builder()
 //!     .collateral_token(address!("<collateral_token_address>"))
 //!     .condition_id(condition_id.condition_id)
 //!     .partition(vec![U256::from(1), U256::from(2)])
-//!     .amount(U256::from(1_000_000)) // 1 USDC (6 decimals)
+//!     .amount(U256::from(1_000_000)) // 1 pUSD (6 decimals)
 //!     .build();
 //!
 //! let result = client.split_position(&split_req).await?;

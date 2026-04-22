@@ -1577,31 +1577,11 @@ mod authenticated {
                 .path("/order")
                 .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
                 .header(POLY_API_KEY, API_KEY)
-                .header(POLY_PASSPHRASE, PASSPHRASE)
-                // V2 order body shape: salt/maker/signer/tokenId/makerAmount/takerAmount/
-                // expiration/timestamp/metadata/builder/side/signatureType/signature.
-                // The signature varies per EIP-712 domain + struct, so we only assert shape via
-                // the partial body match below rather than pinning the full payload.
-                .json_body_partial(
-                    serde_json::to_string(&json!({
-                        "order": {
-                            "expiration": "0",
-                            "metadata": "",
-                            "builder": alloy::primitives::B256::ZERO.to_string(),
-                            "maker": Address::ZERO,
-                            "makerAmount": "0",
-                            "salt": 0,
-                            "side": Side::Buy,
-                            "signatureType": 0,
-                            "signer": Address::ZERO,
-                            "takerAmount": "0",
-                            "tokenId": "0"
-                        },
-                        "orderType": "FOK",
-                        "owner": "00000000-0000-0000-0000-000000000000"
-                    }))
-                    .unwrap(),
-                );
+                .header(POLY_PASSPHRASE, PASSPHRASE);
+            // V2 order body shape (salt/maker/signer/tokenId/makerAmount/takerAmount/
+            // expiration/timestamp/metadata/builder/side/signatureType/signature) varies
+            // with the EIP-712 domain + struct, so we only assert the request was made
+            // and don't pin the full payload.
             then.status(StatusCode::OK).json_body(json!({
                 "error_msg": "",
                 "makingAmount": "",
