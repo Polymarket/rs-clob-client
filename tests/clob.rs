@@ -1528,8 +1528,6 @@ mod authenticated {
             .price(dec!(0.512))
             .size(Decimal::ONE_HUNDRED)
             .side(Side::Buy)
-            .taker(taker)
-            .nonce(2)
             .build()
             .await?;
 
@@ -1551,11 +1549,9 @@ mod authenticated {
             ))
             .build();
 
-        assert_eq!(signed_order.order.taker, taker);
         assert_eq!(signed_order.order.maker, funder);
         assert_ne!(signed_order.order.maker, client.address());
         assert_eq!(signed_order.order.signatureType, SignatureType::Proxy as u8);
-        assert_eq!(signed_order.order.nonce, U256::from(2));
         assert_eq!(signed_order.order.salt, U256::from(1));
         assert_eq!(
             client.address(),
