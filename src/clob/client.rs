@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use alloy::dyn_abi::Eip712Domain;
-use alloy::primitives::U256;
+use alloy::primitives::{B256, U256};
 use alloy::signers::Signer;
 use alloy::sol_types::SolStruct as _;
 use async_stream::try_stream;
@@ -61,7 +61,7 @@ use crate::{
 };
 
 const ORDER_NAME: Option<Cow<'static, str>> = Some(Cow::Borrowed("Polymarket CTF Exchange"));
-const VERSION: Option<Cow<'static, str>> = Some(Cow::Borrowed("1"));
+const VERSION: Option<Cow<'static, str>> = Some(Cow::Borrowed("2"));
 
 const TERMINAL_CURSOR: &str = "LTE="; // base64("-1")
 
@@ -368,6 +368,11 @@ pub struct Config {
     /// This is primarily useful for testing.
     #[builder(into)]
     geoblock_host: Option<String>,
+    /// CLOB V2 builder code (bytes32) used to attribute every order placed through this
+    /// [`Client`] to your builder profile. Individual orders can still override this via
+    /// [`OrderBuilder::builder_code`]. When unset, orders are unattributed (`0x00..00`).
+    #[builder(into)]
+    builder_code: Option<B256>,
     #[cfg(feature = "heartbeats")]
     #[builder(default = Duration::from_secs(5))]
     /// How often the [`Client`] will automatically submit heartbeats. The default is five (5) seconds.
@@ -379,6 +384,7 @@ impl Default for Config {
         Self {
             use_server_time: false,
             geoblock_host: None,
+            builder_code: None,
             #[cfg(feature = "heartbeats")]
             heartbeat_interval: Duration::from_secs(5),
         }
@@ -413,6 +419,10 @@ struct ClientInner<S: State> {
     signature_type: SignatureType,
     /// The salt/seed generator for use in creating [`SignableOrder`]s
     salt_generator: fn() -> u64,
+    /// Optional CLOB V2 builder code used as the default `builder` field when constructing
+    /// orders through [`OrderBuilder`]. Mirrors [`Config::builder_code`] so it is reachable
+    /// from the order builder without cloning the full config.
+    pub(crate) builder_code: Option<B256>,
 }
 
 impl<S: State> ClientInner<S> {
