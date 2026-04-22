@@ -53,7 +53,7 @@ const RPC_URL: &str = "https://polygon-rpc.com";
 /// pUSD (Polymarket USD) — the ERC-20 collateral token used for all trading on Polymarket.
 /// pUSD replaced USDC.e when Polymarket introduced its own collateral wrapper; the
 /// old USDC.e address (`0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174`) is no longer what
-/// the Exchange contracts pull from. Wrap USDC.e → pUSD via the CollateralOnramp.
+/// the Exchange contracts pull from. Wrap USDC.e → pUSD via the `CollateralOnramp`.
 const PUSD_ADDRESS: Address = address!("0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB");
 const TOKEN_TO_APPROVE: Address = PUSD_ADDRESS;
 

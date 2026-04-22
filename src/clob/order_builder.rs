@@ -242,9 +242,7 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
         let timestamp_ms = match self.timestamp_ms {
             Some(t) => t,
             None => Utc::now().timestamp_millis().to_u64().ok_or_else(|| {
-                Error::validation(
-                    "System clock is before UNIX epoch; cannot build order timestamp",
-                )
+                Error::validation("System clock is before UNIX epoch; cannot build order timestamp")
             })?,
         };
 
@@ -463,9 +461,7 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         let timestamp_ms = match self.timestamp_ms {
             Some(t) => t,
             None => Utc::now().timestamp_millis().to_u64().ok_or_else(|| {
-                Error::validation(
-                    "System clock is before UNIX epoch; cannot build order timestamp",
-                )
+                Error::validation("System clock is before UNIX epoch; cannot build order timestamp")
             })?,
         };
 
