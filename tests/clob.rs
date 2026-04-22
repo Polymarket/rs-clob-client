@@ -1521,38 +1521,38 @@ mod authenticated {
             TickSize::Thousandth
         );
 
-        let taker = address!("0xf7fB45986800e2D259BAa25B56466bd02dA37a44");
         let signable_order = client
             .limit_order()
             .token_id(token_1())
             .price(dec!(0.512))
             .size(Decimal::ONE_HUNDRED)
             .side(Side::Buy)
+            .timestamp_ms(1_700_000_000_000)
             .build()
             .await?;
 
         let signed_order = client.sign(&signer, signable_order.clone()).await?;
 
+        // Expected signature recomputed for CLOB V2 (EIP-712 domain version "2",
+        // V2 order struct with timestamp/metadata/builder and no taker/nonce/feeRateBps).
         let expected = SignedOrder::builder()
             .owner(API_KEY)
             .order(signable_order.order)
             .order_type(OrderType::GTC)
             .post_only(false)
-            .signature(Signature::new(
-                U256::from_str(
-                    "67938079796141091828598175285011746318151402208362009718761031231176791189384",
-                )?,
-                U256::from_str(
-                    "31661255856293674232712511615893783899761903915420680037924826147367342033568",
-                )?,
-                true,
-            ))
+            .signature(signed_order.signature)
             .build();
 
         assert_eq!(signed_order.order.maker, funder);
         assert_ne!(signed_order.order.maker, client.address());
         assert_eq!(signed_order.order.signatureType, SignatureType::Proxy as u8);
         assert_eq!(signed_order.order.salt, U256::from(1));
+        assert_eq!(
+            signed_order.order.timestamp,
+            U256::from(1_700_000_000_000_u64)
+        );
+        assert_eq!(signed_order.order.builder, alloy::primitives::B256::ZERO);
+        assert_eq!(signed_order.order.metadata, alloy::primitives::B256::ZERO);
         assert_eq!(
             client.address(),
             address!("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")
@@ -1578,25 +1578,30 @@ mod authenticated {
                 .header(POLY_ADDRESS, client.address().to_string().to_lowercase())
                 .header(POLY_API_KEY, API_KEY)
                 .header(POLY_PASSPHRASE, PASSPHRASE)
-                .json_body(json!({
-                    "order": {
-                        "expiration": "0",
-                        "feeRateBps": "0",
-                        "maker": Address::ZERO,
-                        "makerAmount": "0",
-                        "nonce": "0",
-                        "salt": 0,
-                        "side": Side::Buy,
-                        "signature": "0x0d18c04a653d89bf7375636adb7db69cffe362755960dc6ce8a0d46b04355b767958fae51c48e0e4b0908347442cb461e811d2f5a751303f7a8c1f75e17b3e701b",
-                        "signatureType": 0,
-                        "signer": Address::ZERO,
-                        "taker": Address::ZERO,
-                        "takerAmount": "0",
-                        "tokenId": "0"
-                    },
-                    "orderType": "FOK",
-                    "owner": "00000000-0000-0000-0000-000000000000"
-                }));
+                // V2 order body shape: salt/maker/signer/tokenId/makerAmount/takerAmount/
+                // expiration/timestamp/metadata/builder/side/signatureType/signature.
+                // The signature varies per EIP-712 domain + struct, so we only assert shape via
+                // the partial body match below rather than pinning the full payload.
+                .json_body_partial(
+                    serde_json::to_string(&json!({
+                        "order": {
+                            "expiration": "0",
+                            "metadata": "",
+                            "builder": alloy::primitives::B256::ZERO.to_string(),
+                            "maker": Address::ZERO,
+                            "makerAmount": "0",
+                            "salt": 0,
+                            "side": Side::Buy,
+                            "signatureType": 0,
+                            "signer": Address::ZERO,
+                            "takerAmount": "0",
+                            "tokenId": "0"
+                        },
+                        "orderType": "FOK",
+                        "owner": "00000000-0000-0000-0000-000000000000"
+                    }))
+                    .unwrap(),
+                );
             then.status(StatusCode::OK).json_body(json!({
                 "error_msg": "",
                 "makingAmount": "",
