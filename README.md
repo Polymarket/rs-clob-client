@@ -20,6 +20,7 @@ This crate provides strongly typed request builders, authenticated endpoints, `a
   - [WebSocket Streaming](#websocket-streaming)
   - [Optional APIs](#optional-apis)
 - [Additional CLOB Capabilities](#additional-clob-capabilities)
+- [Builder Code Attribution](#builder-code-attribution)
 - [Setting Token Allowances](#token-allowances)
 - [Minimum Supported Rust Version (MSRV)](#minimum-supported-rust-version-msrv)
 - [Contributing](#contributing)
@@ -27,6 +28,7 @@ This crate provides strongly typed request builders, authenticated endpoints, `a
 
 ## Overview
 
+- **CLOB V2** — V2 order struct (`timestamp` / `metadata` / `builder`), EIP-712 domain version `"2"`, pUSD collateral
 - **Typed CLOB requests** (orders, trades, markets, balances, and more)
 - **Dual authentication flows**
     - Normal authenticated flow
@@ -474,6 +476,27 @@ Beyond basic order placement, the CLOB client supports:
 
 See [`examples/clob/authenticated.rs`](examples/clob/authenticated.rs) for comprehensive usage.
 
+## Builder Code Attribution
+
+CLOB V2 attributes matched trades to a builder profile via a `bytes32` code embedded in the signed order. Register
+a code at `polymarket.com/settings?tab=builder`, then set it on the `Config` to attach it to every order:
+
+```rust,ignore
+use std::str::FromStr as _;
+
+use alloy::primitives::B256;
+use polymarket_client_sdk::clob::{Client, Config};
+
+let builder_code = B256::from_str("0x0000000000000000000000000000000000000000000000000000000000000001")?;
+let client = Client::new(
+    "https://clob.polymarket.com",
+    Config::builder().builder_code(builder_code).build(),
+)?;
+```
+
+You can also override it per order via `.builder_code(code)` on `limit_order()` / `market_order()`. Orders without a
+builder code are unattributed.
+
 ## Token Allowances
 
 ### Do I need to set allowances?
@@ -482,17 +505,17 @@ If you are using a proxy or [Safe](https://help.safe.global/en/articles/40869-wh
 
 ### What are allowances?
 Think of allowances as permissions. Before Polymarket can move your funds to execute trades, you need to give the
-exchange contracts permission to access your USDC and conditional tokens.
+exchange contracts permission to access your pUSD and conditional tokens.
 
 ### Quick Setup
 You need to approve two types of tokens:
-1. **USDC** (for deposits and trading)
+1. **pUSD** (Polymarket's collateral token, replaces USDC.e — wrap via the `CollateralOnramp`)
 2. **Conditional Tokens** (the outcome tokens you trade)
 
 Each needs approval for the exchange contracts to work properly.
 
 ### Setting Allowances
-Use [examples/approvals.rs](examples/approvals.rs) to approve the right contracts. Run once to approve USDC. Then change
+Use [examples/approvals.rs](examples/approvals.rs) to approve the right contracts. Run once to approve pUSD. Then change
 the `TOKEN_TO_APPROVE` and run for each conditional token.
 
 **Pro tip**: You only need to set these once per wallet. After that, you can trade freely.
