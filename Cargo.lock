@@ -3592,6 +3592,7 @@ dependencies = [
  "reqwest 0.13.2",
  "rust_decimal",
  "rust_decimal_macros",
+ "rustls 0.23.35",
  "secrecy",
  "serde",
  "serde_html_form",

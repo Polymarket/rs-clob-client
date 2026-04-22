@@ -3,6 +3,7 @@
     reason = "Configuration types intentionally mirror the module name for clarity"
 )]
 
+use std::sync::Arc;
 use std::time::Duration;
 
 use backoff::{ExponentialBackoff, ExponentialBackoffBuilder};
@@ -23,6 +24,17 @@ pub struct Config {
     pub heartbeat_timeout: Duration,
     /// Reconnection strategy configuration
     pub reconnect: ReconnectConfig,
+    /// Pre-built rustls TLS config, reused across reconnects to avoid
+    /// re-parsing the system CA PEM bundle on every connection.
+    ///
+    /// When `Some`, the connection loop passes this as
+    /// `Connector::Rustls(...)` to `connect_async_tls_with_config`,
+    /// skipping the default `load_native_certs()` call that would
+    /// otherwise re-read and base64-decode every certificate in the
+    /// system trust store on each reconnect attempt.
+    ///
+    /// When `None` (the default), the existing behaviour is preserved.
+    pub tls_config: Option<Arc<rustls::ClientConfig>>,
 }
 
 impl Default for Config {
@@ -31,6 +43,7 @@ impl Default for Config {
             heartbeat_interval: DEFAULT_HEARTBEAT_INTERVAL_DURATION,
             heartbeat_timeout: DEFAULT_HEARTBEAT_TIMEOUT_DURATION,
             reconnect: ReconnectConfig::default(),
+            tls_config: None,
         }
     }
 }

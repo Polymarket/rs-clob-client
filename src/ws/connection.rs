@@ -5,6 +5,7 @@
 
 use std::fmt::Debug;
 use std::marker::PhantomData;
+use std::sync::Arc;
 use std::time::Instant;
 
 use backoff::backoff::Backoff as _;
@@ -14,7 +15,10 @@ use serde::de::DeserializeOwned;
 use tokio::net::TcpStream;
 use tokio::sync::{broadcast, mpsc, watch};
 use tokio::time::{interval, sleep, timeout};
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message};
+use tokio_tungstenite::{
+    Connector, MaybeTlsStream, WebSocketStream, connect_async_tls_with_config,
+    tungstenite::Message,
+};
 
 use super::config::Config;
 use super::error::WsError;
@@ -171,8 +175,11 @@ where
 
             _ = state_tx.send(ConnectionState::Connecting);
 
+            let connector =
+                config.tls_config.as_ref().map(|c| Connector::Rustls(Arc::clone(c)));
+
             // Attempt connection
-            match connect_async(&endpoint).await {
+            match connect_async_tls_with_config(&endpoint, None, false, connector).await {
                 Ok((ws_stream, _)) => {
                     attempt = 0;
                     backoff.reset();
