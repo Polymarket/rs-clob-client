@@ -2133,11 +2133,10 @@ impl<K: Kind> Client<Authenticated<K>> {
             size: None,
             amount: None,
             side: None,
-            nonce: None,
             expiration: None,
-            taker: None,
             order_type: None,
             post_only: Some(false),
+            builder_code: None,
             client: Client {
                 inner: Arc::clone(&self.inner),
                 #[cfg(feature = "heartbeats")]
