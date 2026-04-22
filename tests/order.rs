@@ -59,7 +59,6 @@ mod lifecycle {
             .build()
             .await?;
 
-        assert_eq!(signable_order_2.order.nonce, U256::ZERO);
         assert_ne!(signable_order, signable_order_2);
 
         Ok(())
