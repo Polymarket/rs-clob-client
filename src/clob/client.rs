@@ -2134,6 +2134,7 @@ impl<K: Kind> Client<Authenticated<K>> {
             amount: None,
             side: None,
             expiration: None,
+            timestamp_ms: None,
             order_type: None,
             post_only: Some(false),
             builder_code: None,

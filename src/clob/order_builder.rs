@@ -45,6 +45,9 @@ pub struct OrderBuilder<OrderKind, K: AuthKind> {
     pub(crate) amount: Option<Amount>,
     pub(crate) side: Option<Side>,
     pub(crate) expiration: Option<DateTime<Utc>>,
+    /// Explicit V2 `timestamp` override (UNIX millis). When unset, defaults to `Utc::now()`.
+    /// Primarily useful for deterministic tests.
+    pub(crate) timestamp_ms: Option<u64>,
     pub(crate) order_type: Option<OrderType>,
     pub(crate) post_only: Option<bool>,
     pub(crate) funder: Option<Address>,
@@ -72,6 +75,14 @@ impl<OrderKind, K: AuthKind> OrderBuilder<OrderKind, K> {
     #[must_use]
     pub fn expiration(mut self, expiration: DateTime<Utc>) -> Self {
         self.expiration = Some(expiration);
+        self
+    }
+
+    /// Overrides the CLOB V2 `timestamp` field (UNIX milliseconds). Defaults to the
+    /// current wall clock. Intended for deterministic testing; most callers should not set this.
+    #[must_use]
+    pub fn timestamp_ms(mut self, timestamp_ms: u64) -> Self {
+        self.timestamp_ms = Some(timestamp_ms);
         self
     }
 
@@ -228,9 +239,14 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
         };
 
         let salt = to_ieee_754_int((self.salt_generator)());
-        let timestamp_ms = Utc::now().timestamp_millis().to_u64().ok_or_else(|| {
-            Error::validation("System clock is before UNIX epoch; cannot build order timestamp")
-        })?;
+        let timestamp_ms = match self.timestamp_ms {
+            Some(t) => t,
+            None => Utc::now().timestamp_millis().to_u64().ok_or_else(|| {
+                Error::validation(
+                    "System clock is before UNIX epoch; cannot build order timestamp",
+                )
+            })?,
+        };
 
         let order = Order {
             salt: U256::from(salt),
@@ -444,9 +460,14 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         };
 
         let salt = to_ieee_754_int((self.salt_generator)());
-        let timestamp_ms = Utc::now().timestamp_millis().to_u64().ok_or_else(|| {
-            Error::validation("System clock is before UNIX epoch; cannot build order timestamp")
-        })?;
+        let timestamp_ms = match self.timestamp_ms {
+            Some(t) => t,
+            None => Utc::now().timestamp_millis().to_u64().ok_or_else(|| {
+                Error::validation(
+                    "System clock is before UNIX epoch; cannot build order timestamp",
+                )
+            })?,
+        };
 
         let order = Order {
             salt: U256::from(salt),
