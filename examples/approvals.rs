@@ -12,7 +12,7 @@
 //! 3. **Neg Risk Adapter** (`neg_risk_config.neg_risk_adapter`) - Token minting/splitting for neg-risk
 //!
 //! Each contract needs two approvals:
-//! - ERC-20 approval for USDC (collateral token)
+//! - ERC-20 approval for pUSD (collateral token — Polymarket migrated from USDC.e to pUSD)
 //! - ERC-1155 approval for Conditional Tokens (outcome tokens)
 //!
 //! You only need to run these approvals once per wallet.
@@ -50,8 +50,12 @@ use tracing_subscriber::util::SubscriberInitExt as _;
 
 const RPC_URL: &str = "https://polygon-rpc.com";
 
-const USDC_ADDRESS: Address = address!("0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174");
-const TOKEN_TO_APPROVE: Address = USDC_ADDRESS;
+/// pUSD (Polymarket USD) — the ERC-20 collateral token used for all trading on Polymarket.
+/// pUSD replaced USDC.e when Polymarket introduced its own collateral wrapper; the
+/// old USDC.e address (`0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174`) is no longer what
+/// the Exchange contracts pull from. Wrap USDC.e → pUSD via the CollateralOnramp.
+const PUSD_ADDRESS: Address = address!("0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB");
+const TOKEN_TO_APPROVE: Address = PUSD_ADDRESS;
 
 sol! {
     #[sol(rpc)]
@@ -128,8 +132,8 @@ async fn main() -> anyhow::Result<()> {
 
     for (name, target) in &targets {
         match check_allowance(&token, owner, *target).await {
-            Ok(allowance) => info!(contract = name, usdc_allowance = %allowance),
-            Err(e) => error!(contract = name, error = ?e, "failed to check USDC allowance"),
+            Ok(allowance) => info!(contract = name, pusd_allowance = %allowance),
+            Err(e) => error!(contract = name, error = ?e, "failed to check pUSD allowance"),
         }
 
         match check_approval_for_all(&ctf, owner, *target).await {
@@ -144,8 +148,8 @@ async fn main() -> anyhow::Result<()> {
         info!(contract = name, address = %target, "approving");
 
         match approve(&token, *target, U256::MAX).await {
-            Ok(tx_hash) => info!(contract = name, tx = %tx_hash, "USDC approved"),
-            Err(e) => error!(contract = name, error = ?e, "USDC approve failed"),
+            Ok(tx_hash) => info!(contract = name, tx = %tx_hash, "pUSD approved"),
+            Err(e) => error!(contract = name, error = ?e, "pUSD approve failed"),
         }
 
         match set_approval_for_all(&ctf, *target, true).await {
@@ -158,7 +162,7 @@ async fn main() -> anyhow::Result<()> {
 
     for (name, target) in &targets {
         match check_allowance(&token, owner, *target).await {
-            Ok(allowance) => info!(contract = name, usdc_allowance = %allowance, "verified"),
+            Ok(allowance) => info!(contract = name, pusd_allowance = %allowance, "verified"),
             Err(e) => error!(contract = name, error = ?e, "verification failed"),
         }
 
