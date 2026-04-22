@@ -1378,6 +1378,7 @@ mod authenticated {
     #[cfg(feature = "heartbeats")]
     use std::time::Duration;
 
+    use alloy::primitives::Signature;
     use alloy::signers::Signer as _;
     use alloy::signers::local::LocalSigner;
     use chrono::NaiveDate;
@@ -1532,14 +1533,24 @@ mod authenticated {
 
         let signed_order = client.sign(&signer, signable_order.clone()).await?;
 
-        // Expected signature recomputed for CLOB V2 (EIP-712 domain version "2",
-        // V2 order struct with timestamp/metadata/builder and no taker/nonce/feeRateBps).
+        // Hardcoded V2 signature regression: the order inputs above are deterministic
+        // (fixed salt via salt_generator, fixed timestamp_ms, fixed PRIVATE_KEY and
+        // funder). Any change to the V2 EIP-712 domain, struct layout, or signing path
+        // will break this check.
         let expected = SignedOrder::builder()
             .owner(API_KEY)
             .order(signable_order.order)
             .order_type(OrderType::GTC)
             .post_only(false)
-            .signature(signed_order.signature)
+            .signature(Signature::new(
+                U256::from_str(
+                    "61713950340186793790681054478527375536538033467107134337399958922414514488689",
+                )?,
+                U256::from_str(
+                    "509966528802831744305289058416940167431929444903768291578330836473242588114",
+                )?,
+                true,
+            ))
             .build();
 
         assert_eq!(signed_order.order.maker, funder);
