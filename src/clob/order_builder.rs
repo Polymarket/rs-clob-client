@@ -254,20 +254,24 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
             takerAmount: U256::from(to_fixed_u128(taker_amount)),
             side: side as u8,
             signer: self.signer,
-            expiration: U256::from(expiration.timestamp().to_u64().ok_or(Error::validation(
-                format!("Unable to represent expiration {expiration} as a u64"),
-            ))?),
             timestamp: U256::from(timestamp_ms),
             metadata: B256::ZERO,
             builder: builder_code,
             signatureType: self.signature_type as u8,
         };
 
+        let expiration_u256 = U256::from(expiration.timestamp().to_u64().ok_or_else(|| {
+            Error::validation(format!(
+                "Unable to represent expiration {expiration} as a u64"
+            ))
+        })?);
+
         #[cfg(feature = "tracing")]
         tracing::debug!(token_id = %token_id, side = ?side, price = %price, size = %size, "limit order built");
 
         Ok(SignableOrder {
             order,
+            expiration: expiration_u256,
             order_type,
             post_only,
         })
@@ -473,7 +477,6 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
             takerAmount: U256::from(to_fixed_u128(taker_amount)),
             side: side as u8,
             signer: self.signer,
-            expiration: U256::ZERO,
             timestamp: U256::from(timestamp_ms),
             metadata: B256::ZERO,
             builder: builder_code,
@@ -485,6 +488,7 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
 
         Ok(SignableOrder {
             order,
+            expiration: U256::ZERO,
             order_type,
             post_only: None,
         })

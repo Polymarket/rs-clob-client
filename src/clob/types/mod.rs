@@ -423,11 +423,15 @@ impl<'de> Deserialize<'de> for TickSize {
 }
 
 sol! {
-    /// Alloy solidity type representing an order in the context of the Polymarket exchange
+    /// Alloy solidity type representing an order as signed by CTF Exchange V2.
     ///
-    /// <!-- The CLOB expects all `uint256` types, [`U256`], excluding `salt`, to be presented as a
-    /// string so we must serialize as Display, which for U256 is lower hex-encoded string.
-    /// -->
+    /// Field order mirrors the V2 EIP-712 type struct published in
+    /// @polymarket/clob-client-v2 — changing it breaks signature verification.
+    ///
+    /// Note: `expiration` is NOT in the signed struct. It's a non-signed wire
+    /// field carried on `SignableOrder`/`SignedOrder` and sent alongside in
+    /// the POST body. Polymarket's matching engine enforces expiration at
+    /// match time; the exchange contract doesn't see it.
     #[non_exhaustive]
     #[serde_as]
     #[derive(Serialize, Debug, Default, PartialEq)]
@@ -442,14 +446,12 @@ sol! {
         uint256 makerAmount;
         #[serde_as(as = "DisplayFromStr")]
         uint256 takerAmount;
-        #[serde_as(as = "DisplayFromStr")]
-        uint256 expiration;
+        uint8   side;
+        uint8   signatureType;
         #[serde_as(as = "DisplayFromStr")]
         uint256 timestamp;
         bytes32 metadata;
         bytes32 builder;
-        uint8   side;
-        uint8   signatureType;
     }
 }
 
@@ -467,6 +469,10 @@ fn ser_salt<S: Serializer>(value: &U256, serializer: S) -> std::result::Result<S
 #[derive(Clone, Debug, Default, Serialize, Builder, PartialEq)]
 pub struct SignableOrder {
     pub order: Order,
+    /// Non-signed wire field. CTF Exchange V2 does not include expiration in
+    /// the EIP-712 type struct — the matching engine enforces it off-chain.
+    #[serde(skip)]
+    pub expiration: U256,
     pub order_type: OrderType,
     #[serde(rename = "postOnly", skip_serializing_if = "Option::is_none")]
     pub post_only: Option<bool>,
@@ -476,14 +482,18 @@ pub struct SignableOrder {
 #[derive(Debug, Builder, PartialEq)]
 pub struct SignedOrder {
     pub order: Order,
+    /// Non-signed wire field (see `SignableOrder::expiration`).
+    pub expiration: U256,
     pub signature: Signature,
     pub order_type: OrderType,
     pub owner: ApiKey,
     pub post_only: Option<bool>,
 }
 
-/// Helper struct for serializing Order with signature injected.
-/// This avoids the overhead of `serde_json::to_value()` followed by mutation.
+/// Helper struct for serializing a V2 order body. Field set and order match
+/// the V2 migration spec in Polymarket's official docs — V2 drops `taker`,
+/// `expiration`, `nonce`, and `feeRateBps` from every surface (EIP-712 struct,
+/// value to sign, and POST body).
 #[serde_as]
 #[derive(Serialize)]
 struct OrderWithSignature<'order> {
@@ -500,8 +510,10 @@ struct OrderWithSignature<'order> {
     #[serde_as(as = "DisplayFromStr")]
     #[serde(rename = "takerAmount")]
     taker_amount: &'order U256,
-    #[serde_as(as = "DisplayFromStr")]
-    expiration: &'order U256,
+    /// Side serialized as "BUY"/"SELL" string (CLOB API requirement).
+    side: Side,
+    #[serde(rename = "signatureType")]
+    signature_type: u8,
     #[serde_as(as = "DisplayFromStr")]
     timestamp: &'order U256,
     /// Reserved for future use. Serialized as empty string when zero (CLOB API accepts "" or 0x..).
@@ -509,10 +521,6 @@ struct OrderWithSignature<'order> {
     metadata: &'order B256,
     /// Builder code (bytes32) for integrator attribution. `0x` + 64 hex chars.
     builder: &'order B256,
-    /// Side serialized as "BUY"/"SELL" string (CLOB API requirement)
-    side: Side,
-    #[serde(rename = "signatureType")]
-    signature_type: u8,
     /// Signature injected into the order object
     signature: String,
 }
@@ -529,7 +537,10 @@ fn ser_metadata<S: Serializer>(
     }
 }
 
-// CLOB expects a struct that has the `signature` "folded" into the `order` key
+// CLOB expects a struct that has the `signature` "folded" into the `order` key.
+// Wire shape matches Polymarket's V2 migration doc: { order, owner, orderType,
+// postOnly? }. `deferExec` and field-level `taker`/`expiration` are dropped
+// per the spec — they were V1 fields that V2 removed from every surface.
 impl Serialize for SignedOrder {
     fn serialize<S: Serializer>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> {
         let len = if self.post_only.is_some() { 4 } else { 3 };
@@ -546,12 +557,11 @@ impl Serialize for SignedOrder {
             token_id: &self.order.tokenId,
             maker_amount: &self.order.makerAmount,
             taker_amount: &self.order.takerAmount,
-            expiration: &self.order.expiration,
+            side,
+            signature_type: self.order.signatureType,
             timestamp: &self.order.timestamp,
             metadata: &self.order.metadata,
             builder: &self.order.builder,
-            side,
-            signature_type: self.order.signatureType,
             signature: self.signature.to_string(),
         };
 
@@ -721,9 +731,10 @@ mod tests {
     }
 
     #[test]
-    fn signed_order_serialization_omits_post_only_when_none() {
+    fn signed_order_serialization_matches_v2_migration_spec() {
         let signed_order = SignedOrder {
             order: Order::default(),
+            expiration: U256::ZERO,
             signature: Signature::new(U256::ZERO, U256::ZERO, false),
             order_type: OrderType::GTC,
             owner: ApiKey::nil(),
@@ -735,6 +746,43 @@ mod tests {
             .as_object()
             .expect("SignedOrder should serialize to an object");
 
+        // V2 migration doc: top-level is { order, owner, orderType } with an
+        // optional `postOnly`. `deferExec` is not part of V2.
+        assert!(object.contains_key("order"));
+        assert!(object.contains_key("orderType"));
+        assert!(object.contains_key("owner"));
         assert!(!object.contains_key("postOnly"));
+        assert!(!object.contains_key("deferExec"));
+
+        // V2 order body drops V1-only fields: taker, expiration, nonce, feeRateBps.
+        let order_obj = object
+            .get("order")
+            .and_then(|v| v.as_object())
+            .expect("order key");
+        for dropped in ["taker", "expiration", "nonce", "feeRateBps"] {
+            assert!(
+                !order_obj.contains_key(dropped),
+                "V2 body should not contain `{dropped}`"
+            );
+        }
+        for required in [
+            "salt",
+            "maker",
+            "signer",
+            "tokenId",
+            "makerAmount",
+            "takerAmount",
+            "side",
+            "signatureType",
+            "timestamp",
+            "metadata",
+            "builder",
+            "signature",
+        ] {
+            assert!(
+                order_obj.contains_key(required),
+                "V2 body missing required field `{required}`"
+            );
+        }
     }
 }
