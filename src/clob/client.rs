@@ -1498,10 +1498,11 @@ impl<K: Kind> Client<Authenticated<K>> {
     /// - The order price/size violates market rules
     /// - The request fails
     pub async fn post_order(&self, order: SignedOrder) -> Result<PostOrderResponse> {
+        let body = self.build_post_order_body(&order).await?;
         let request = self
             .client()
             .request(Method::POST, format!("{}order", self.host()))
-            .json(&order)
+            .json(&body)
             .build()?;
         let headers = self.create_headers(&request).await?;
 
@@ -1518,14 +1519,38 @@ impl<K: Kind> Client<Authenticated<K>> {
     ///
     /// Returns an error if any order fails validation or the request fails.
     pub async fn post_orders(&self, orders: Vec<SignedOrder>) -> Result<Vec<PostOrderResponse>> {
+        let mut bodies = Vec::with_capacity(orders.len());
+        for order in &orders {
+            bodies.push(self.build_post_order_body(order).await?);
+        }
         let request = self
             .client()
             .request(Method::POST, format!("{}orders", self.host()))
-            .json(&orders)
+            .json(&bodies)
             .build()?;
         let headers = self.create_headers(&request).await?;
 
         crate::request(&self.inner.client, request, Some(headers)).await
+    }
+
+    /// Build the JSON body for a POST /order request.
+    ///
+    /// The V2 CLOB server parses `feeRateBps` off the order body even though
+    /// it's not in the V2 EIP-712 Order struct. We fetch the cached per-token
+    /// fee rate and inject it into the `order` object before sending.
+    async fn build_post_order_body(&self, order: &SignedOrder) -> Result<serde_json::Value> {
+        let fee = self.fee_rate_bps(order.order.tokenId).await?;
+        let mut body: serde_json::Value = serde_json::to_value(order)?;
+        if let Some(order_obj) = body
+            .get_mut("order")
+            .and_then(|v: &mut serde_json::Value| v.as_object_mut())
+        {
+            order_obj.insert(
+                "feeRateBps".to_string(),
+                serde_json::Value::String(fee.base_fee.to_string()),
+            );
+        }
+        Ok(body)
     }
 
     /// Attempts to return the corresponding order at the provided `order_id`
