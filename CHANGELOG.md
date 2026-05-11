@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.5](https://github.com/Polymarket/rs-clob-client/compare/v0.4.4...v0.4.5) - 2026-05-11
+
+### Fixed
+
+- *(ws)* parse RETRYING and FAILED trade statuses ([#300](https://github.com/Polymarket/rs-clob-client/pull/300))
+- Config::default() zero heartbeat_interval ([#290](https://github.com/Polymarket/rs-clob-client/pull/290))
+
+### Other
+
+- add archive notice and link to V2 client ([#348](https://github.com/Polymarket/rs-clob-client/pull/348))
+- *(cargo)* bump rust_decimal from 1.40.0 to 1.41.0 ([#314](https://github.com/Polymarket/rs-clob-client/pull/314))
+- *(cargo)* bump uuid from 1.22.0 to 1.23.0 ([#312](https://github.com/Polymarket/rs-clob-client/pull/312))
+- *(gha)* bump dtolnay/rust-toolchain from efa25f7f19611383d5b0ccf2d1c8914531636bf9 to 3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 ([#310](https://github.com/Polymarket/rs-clob-client/pull/310))
+- *(gha)* bump codecov/codecov-action from 5 to 6 ([#309](https://github.com/Polymarket/rs-clob-client/pull/309))
+- *(cargo)* bump tokio-tungstenite from 0.28.0 to 0.29.0 ([#302](https://github.com/Polymarket/rs-clob-client/pull/302))
+- *(gha)* bump ytanikin/pr-conventional-commits from 1.5.1 to 1.5.2 ([#301](https://github.com/Polymarket/rs-clob-client/pull/301))
+
 ## [0.4.4](https://github.com/Polymarket/rs-clob-client/compare/v0.4.3...v0.4.4) - 2026-03-17
 
 ### Fixed
