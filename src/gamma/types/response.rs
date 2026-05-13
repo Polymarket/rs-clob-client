@@ -334,6 +334,7 @@ pub struct Event {
     pub cumulative_markets: Option<bool>,
     pub away_team_name: Option<String>,
     pub home_team_name: Option<String>,
+    pub teams: Option<Vec<Team>>,
 }
 
 /// A prediction market.
