@@ -9,8 +9,8 @@ use bon::Builder;
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{
-    DefaultOnError, DefaultOnNull, NoneAsEmptyString, TimestampMilliSeconds, TimestampSeconds,
-    TryFromInto, serde_as,
+    DefaultOnError, DefaultOnNull, DisplayFromStr, NoneAsEmptyString, TimestampMilliSeconds,
+    TimestampSeconds, TryFromInto, serde_as,
 };
 use sha2::{Digest as _, Sha256};
 use uuid::Uuid;
@@ -378,6 +378,11 @@ pub struct TradeResponse {
     pub status: TradeStatusType,
     #[serde_as(as = "TimestampSeconds<String>")]
     pub match_time: DateTime<Utc>,
+    /// Match time with nanosecond precision (nanoseconds since epoch).
+    #[builder(default)]
+    #[serde(default)]
+    #[serde_as(deserialize_as = "DefaultOnNull<DisplayFromStr>")]
+    pub match_time_nano: u64,
     #[serde_as(as = "TimestampSeconds<String>")]
     pub last_update: DateTime<Utc>,
     pub outcome: String,
