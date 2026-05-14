@@ -358,6 +358,19 @@ impl<S: State> Client<S> {
         }))
     }
 
+    /// All market events on a single stream (`custom_feature_enabled`).
+    ///
+    /// Single broadcast receiver for all [`WsMessage`] variants.
+    pub fn subscribe_all_market(
+        &self,
+        asset_ids: Vec<U256>,
+    ) -> Result<impl Stream<Item = Result<WsMessage>> + use<S>> {
+        self.inner
+            .get_or_create_channel(ChannelType::Market)?
+            .subscriptions
+            .subscribe_market_with_options(asset_ids, true)
+    }
+
     /// Get the current connection state for a specific channel.
     ///
     /// Returns [`ConnectionState::Disconnected`] if the channel has not been
