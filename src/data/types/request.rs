@@ -229,6 +229,9 @@ pub struct ActivityRequest {
     pub sort_direction: Option<SortDirection>,
     /// Filter by trade side (only applies to TRADE activities).
     pub side: Option<Side>,
+    /// Exclude deposit and withdrawal activities from results.
+    #[serde(rename = "excludeDepositsWithdrawals")]
+    pub exclude_deposits_withdrawals: Option<bool>,
 }
 
 /// Request parameters for the `/holders` endpoint.
