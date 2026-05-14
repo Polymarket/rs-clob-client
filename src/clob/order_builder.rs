@@ -469,7 +469,7 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
     }
 }
 
-/// Removes trailing zeros, truncates to [`USDC_DECIMALS`] decimal places, and quanitizes as an
+/// Removes trailing zeros, truncates to [`USDC_DECIMALS`] decimal places, and quantizes as an
 /// integer.
 fn to_fixed_u128(d: Decimal) -> u128 {
     d.normalize()
