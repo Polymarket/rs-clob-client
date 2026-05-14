@@ -300,12 +300,7 @@ impl SubscriptionManager {
                             WsMessage::LastTradePrice(ltp) => asset_ids_set.contains(&ltp.asset_id),
                             WsMessage::TickSizeChange(tsc) => asset_ids_set.contains(&tsc.asset_id),
                             WsMessage::BestBidAsk(bba) => asset_ids_set.contains(&bba.asset_id),
-                            WsMessage::NewMarket(nm) => {
-                                nm.asset_ids.iter().any(|id| asset_ids_set.contains(id))
-                            },
-                            WsMessage::MarketResolved(mr) => {
-                                mr.asset_ids.iter().any(|id| asset_ids_set.contains(id))
-                            },
+                            WsMessage::NewMarket(_) | WsMessage::MarketResolved(_) => true,
                             _ => false,
                         };
 
