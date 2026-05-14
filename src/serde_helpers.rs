@@ -80,6 +80,108 @@ impl serde_with::SerializeAs<String> for StringFromAny {
     }
 }
 
+/// A `serde_as` type that deserializes strings, integers, or floats as `Decimal`.
+///
+/// Polymarket APIs sometimes return numeric fields as JSON numbers (e.g.
+/// `0.01`) rather than strings, which the default `rust_decimal` deserializer
+/// rejects because it expects a string. Use this helper on any `Decimal` field
+/// whose JSON representation may be either a string or a number.
+///
+/// Use with `#[serde_as(as = "DecimalFromAny")]` for `Decimal` fields
+/// or `#[serde_as(as = "Option<DecimalFromAny>")]` for `Option<Decimal>`.
+#[cfg(any(
+    feature = "bridge",
+    feature = "clob",
+    feature = "data",
+    feature = "gamma"
+))]
+pub struct DecimalFromAny;
+
+#[cfg(any(
+    feature = "bridge",
+    feature = "clob",
+    feature = "data",
+    feature = "gamma"
+))]
+impl<'de> serde_with::DeserializeAs<'de, rust_decimal::Decimal> for DecimalFromAny {
+    fn deserialize_as<D>(deserializer: D) -> std::result::Result<rust_decimal::Decimal, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use std::fmt;
+        use std::str::FromStr as _;
+
+        use serde::de::{self, Visitor};
+
+        struct DecimalAnyVisitor;
+
+        impl Visitor<'_> for DecimalAnyVisitor {
+            type Value = rust_decimal::Decimal;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("string, integer, or float convertible to Decimal")
+            }
+
+            fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                rust_decimal::Decimal::from_str(v).map_err(de::Error::custom)
+            }
+
+            fn visit_string<E>(self, v: String) -> std::result::Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                self.visit_str(&v)
+            }
+
+            fn visit_i64<E>(self, v: i64) -> std::result::Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(rust_decimal::Decimal::from(v))
+            }
+
+            fn visit_u64<E>(self, v: u64) -> std::result::Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(rust_decimal::Decimal::from(v))
+            }
+
+            fn visit_f64<E>(self, v: f64) -> std::result::Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                // Round-trip through string to avoid the binary-float
+                // precision trap (e.g. 0.1 → 0.1000000000000000055...).
+                rust_decimal::Decimal::from_str(&v.to_string()).map_err(de::Error::custom)
+            }
+        }
+
+        deserializer.deserialize_any(DecimalAnyVisitor)
+    }
+}
+
+#[cfg(any(
+    feature = "bridge",
+    feature = "clob",
+    feature = "data",
+    feature = "gamma"
+))]
+impl serde_with::SerializeAs<rust_decimal::Decimal> for DecimalFromAny {
+    fn serialize_as<S>(
+        source: &rust_decimal::Decimal,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        <rust_decimal::Decimal as serde::Serialize>::serialize(source, serializer)
+    }
+}
+
 /// Deserialize JSON with unknown field warnings.
 ///
 /// This function deserializes JSON to a target type while detecting and logging
@@ -727,5 +829,109 @@ mod tests {
         // Path "?.outer.?.inner" should skip ? markers
         let result = lookup_value(&json, "?.outer.?.inner");
         assert_eq!(result, Some(&Value::String("value".to_owned())));
+    }
+
+    // ========== DecimalFromAny tests ==========
+    #[cfg(any(
+        feature = "bridge",
+        feature = "clob",
+        feature = "data",
+        feature = "gamma"
+    ))]
+    mod decimal_from_any_tests {
+        use std::str::FromStr as _;
+
+        use rust_decimal::Decimal;
+        use serde::Deserialize;
+        use serde_with::serde_as;
+
+        use super::super::DecimalFromAny;
+
+        #[serde_as]
+        #[derive(Debug, Deserialize, PartialEq)]
+        struct Holder {
+            #[serde_as(as = "DecimalFromAny")]
+            value: Decimal,
+        }
+
+        #[serde_as]
+        #[derive(Debug, Deserialize, PartialEq)]
+        struct OptHolder {
+            #[serde_as(as = "Option<DecimalFromAny>")]
+            #[serde(default)]
+            value: Option<Decimal>,
+        }
+
+        #[test]
+        fn accepts_json_float() {
+            // Mirrors /tick-size returning {"minimum_tick_size": 0.01}
+            let holder: Holder = serde_json::from_str(r#"{"value": 0.01}"#).unwrap();
+            assert_eq!(holder.value, Decimal::from_str("0.01").unwrap());
+        }
+
+        #[test]
+        fn accepts_json_float_without_precision_loss() {
+            // 0.1 is not exactly representable in binary float; the
+            // shortest-string round-trip should yield the literal "0.1",
+            // not 0.1000000000000000055...
+            let holder: Holder = serde_json::from_str(r#"{"value": 0.1}"#).unwrap();
+            assert_eq!(holder.value, Decimal::from_str("0.1").unwrap());
+        }
+
+        #[test]
+        fn accepts_json_integer_unsigned() {
+            let holder: Holder = serde_json::from_str(r#"{"value": 42}"#).unwrap();
+            assert_eq!(holder.value, Decimal::from(42));
+        }
+
+        #[test]
+        fn accepts_json_integer_signed() {
+            let holder: Holder = serde_json::from_str(r#"{"value": -7}"#).unwrap();
+            assert_eq!(holder.value, Decimal::from(-7));
+        }
+
+        #[test]
+        fn accepts_string_decimal() {
+            // Responses that already return strings must continue to work.
+            let holder: Holder = serde_json::from_str(r#"{"value": "0.123456"}"#).unwrap();
+            assert_eq!(holder.value, Decimal::from_str("0.123456").unwrap());
+        }
+
+        #[test]
+        fn rejects_non_numeric_string() {
+            let err = serde_json::from_str::<Holder>(r#"{"value": "not-a-number"}"#);
+            err.unwrap_err();
+        }
+
+        #[test]
+        fn rejects_null_on_required_field() {
+            let err = serde_json::from_str::<Holder>(r#"{"value": null}"#);
+            err.unwrap_err();
+        }
+
+        #[test]
+        fn optional_accepts_null_and_float() {
+            let none: OptHolder = serde_json::from_str(r#"{"value": null}"#).unwrap();
+            assert_eq!(none.value, None);
+            let some: OptHolder = serde_json::from_str(r#"{"value": 0.54}"#).unwrap();
+            assert_eq!(some.value, Some(Decimal::from_str("0.54").unwrap()));
+            let missing: OptHolder = serde_json::from_str("{}").unwrap();
+            assert_eq!(missing.value, None);
+        }
+
+        #[test]
+        fn tick_size_like_response() {
+            // Exact reproduction of the /tick-size response that triggered
+            // the original bug.
+            #[serde_as]
+            #[derive(Debug, Deserialize, PartialEq)]
+            struct TickSizeResponseLike {
+                #[serde_as(as = "DecimalFromAny")]
+                minimum_tick_size: Decimal,
+            }
+            let resp: TickSizeResponseLike =
+                serde_json::from_str(r#"{"minimum_tick_size": 0.01}"#).unwrap();
+            assert_eq!(resp.minimum_tick_size, Decimal::from_str("0.01").unwrap());
+        }
     }
 }

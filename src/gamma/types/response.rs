@@ -10,7 +10,7 @@ use serde_with::NoneAsEmptyString;
 use serde_with::json::JsonString;
 use serde_with::{DisplayFromStr, StringWithSeparator, formats::CommaSeparator, serde_as};
 
-use crate::serde_helpers::StringFromAny;
+use crate::serde_helpers::{DecimalFromAny, StringFromAny};
 use crate::types::{Address, B256, Decimal, U256};
 
 /// Image optimization metadata.
@@ -245,8 +245,11 @@ pub struct Event {
     pub new: Option<bool>,
     pub featured: Option<bool>,
     pub restricted: Option<bool>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub liquidity: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub open_interest: Option<Decimal>,
     pub sort_by: Option<String>,
     pub category: Option<String>,
@@ -260,10 +263,15 @@ pub struct Event {
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
     pub comments_enabled: Option<bool>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub competitive: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume_24hr: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume_1wk: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume_1mo: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume_1yr: Option<Decimal>,
     pub featured_image: Option<String>,
     pub disqus_thread: Option<String>,
@@ -274,7 +282,9 @@ pub struct Event {
     #[serde_as(as = "Option<StringFromAny>")]
     pub turn_provider_id: Option<String>,
     pub enable_order_book: Option<bool>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub liquidity_amm: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub liquidity_clob: Option<Decimal>,
     pub neg_risk: Option<bool>,
     #[serde_as(as = "NoneAsEmptyString")]
@@ -317,7 +327,9 @@ pub struct Event {
     pub cant_estimate: Option<bool>,
     pub estimated_value: Option<String>,
     pub templates: Option<Vec<Template>>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub spreads_main_line: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub totals_main_line: Option<Decimal>,
     pub carousel_map: Option<String>,
     pub pending_deployment: Option<bool>,
@@ -353,6 +365,7 @@ pub struct Market {
     pub end_date: Option<DateTime<Utc>>,
     pub category: Option<String>,
     pub amm_type: Option<String>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub liquidity: Option<Decimal>,
     pub sponsor_name: Option<String>,
     pub sponsor_image: Option<String>,
@@ -360,6 +373,7 @@ pub struct Market {
     pub x_axis_value: Option<String>,
     pub y_axis_value: Option<String>,
     pub denomination_token: Option<U256>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub fee: Option<Decimal>,
     pub image: Option<String>,
     pub icon: Option<String>,
@@ -370,6 +384,7 @@ pub struct Market {
     pub outcomes: Option<Vec<String>>,
     #[serde_as(as = "Option<JsonString>")]
     pub outcome_prices: Option<Vec<Decimal>>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume: Option<Decimal>,
     pub active: Option<bool>,
     pub market_type: Option<String>,
@@ -400,11 +415,15 @@ pub struct Market {
     pub question_id: Option<B256>,
     pub uma_end_date: Option<String>,
     pub enable_order_book: Option<bool>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub order_price_min_tick_size: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub order_min_size: Option<Decimal>,
     pub uma_resolution_status: Option<String>,
     pub curation_order: Option<i32>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume_num: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub liquidity_num: Option<Decimal>,
     pub end_date_iso: Option<NaiveDate>,
     pub start_date_iso: Option<NaiveDate>,
@@ -412,9 +431,13 @@ pub struct Market {
     pub has_reviewed_dates: Option<bool>,
     pub ready_for_cron: Option<bool>,
     pub comments_enabled: Option<bool>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume_24hr: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume_1wk: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume_1mo: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume_1yr: Option<Decimal>,
     pub game_start_time: Option<String>,
     pub seconds_delay: Option<i32>,
@@ -427,19 +450,32 @@ pub struct Market {
     #[serde(rename = "teamBID")]
     pub team_b_id: Option<String>,
     pub uma_bond: Option<String>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub uma_reward: Option<Decimal>,
     pub fpmm_live: Option<bool>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume_24hr_amm: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume_1wk_amm: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume_1mo_amm: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume_1yr_amm: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume_24hr_clob: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume_1wk_clob: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume_1mo_clob: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume_1yr_clob: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume_amm: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume_clob: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub liquidity_amm: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub liquidity_clob: Option<Decimal>,
     pub maker_base_fee: Option<i32>,
     pub taker_base_fee: Option<i32>,
@@ -460,18 +496,30 @@ pub struct Market {
     pub ready_timestamp: Option<DateTime<Utc>>,
     pub funded_timestamp: Option<DateTime<Utc>>,
     pub accepting_orders_timestamp: Option<DateTime<Utc>>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub competitive: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub rewards_min_size: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub rewards_max_spread: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub spread: Option<Decimal>,
     pub automatically_resolved: Option<bool>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub one_day_price_change: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub one_hour_price_change: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub one_week_price_change: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub one_month_price_change: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub one_year_price_change: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub last_trade_price: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub best_bid: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub best_ask: Option<Decimal>,
     pub automatically_active: Option<bool>,
     pub clear_book_on_start: Option<bool>,
@@ -484,6 +532,7 @@ pub struct Market {
     pub game_id: Option<String>,
     pub group_item_range: Option<String>,
     pub sports_market_type: Option<String>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub line: Option<Decimal>,
     pub uma_resolution_statuses: Option<String>,
     pub pending_deployment: Option<bool>,
@@ -532,11 +581,14 @@ pub struct ClobReward {
     pub condition_id: Option<B256>,
     pub start_date: Option<NaiveDate>,
     pub end_date: Option<NaiveDate>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub rewards_amount: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub rewards_daily_rate: Option<Decimal>,
 }
 
 /// A series of related events.
+#[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
@@ -566,9 +618,13 @@ pub struct Series {
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
     pub comments_enabled: Option<bool>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub competitive: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume_24hr: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub volume: Option<Decimal>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub liquidity: Option<Decimal>,
     pub start_date: Option<DateTime<Utc>>,
     #[serde(rename = "pythTokenID")]
@@ -585,11 +641,13 @@ pub struct Series {
 }
 
 /// A comment position.
+#[serde_as]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Builder)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct CommentPosition {
     pub token_id: Option<U256>,
+    #[serde_as(as = "Option<DecimalFromAny>")]
     pub position_size: Option<Decimal>,
 }
 
