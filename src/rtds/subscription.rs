@@ -83,7 +83,15 @@ impl SubscriptionManager {
     }
 
     /// Start the reconnection handler that re-subscribes on connection recovery.
-    pub fn start_reconnection_handler(self: &Arc<Self>) {
+    ///
+    /// Returns the [`tokio::task::JoinHandle`] for the spawned handler so the
+    /// caller can abort it when the owning client is dropped. The handler
+    /// holds a strong `Arc<Self>` clone and awaits on a `watch::Sender` it
+    /// transitively keeps alive, so without external cancellation the task
+    /// (and the whole `SubscriptionManager` graph) leaks — same class of
+    /// reference cycle as `clob::ws::subscription`. Callers MUST retain the
+    /// returned handle and `abort()` it on drop.
+    pub fn start_reconnection_handler(self: &Arc<Self>) -> tokio::task::JoinHandle<()> {
         let this = Arc::clone(self);
 
         tokio::spawn(async move {
@@ -118,7 +126,7 @@ impl SubscriptionManager {
                     }
                 }
             }
-        });
+        })
     }
 
     /// Re-send subscription requests for all tracked topics.
@@ -323,5 +331,64 @@ impl SubscriptionManager {
             .retain(|_, info| self.subscribed_topics.contains_key(&info.topic_type));
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod reconnect_handler_tests {
+    //! RTDS-side regression tests for issue #325. Mirrors the
+    //! `clob::ws::subscription` test so the same reference-cycle
+    //! invariant is enforced on both code paths.
+
+    use std::sync::{Arc, Weak};
+    use std::time::Duration;
+
+    use super::{SimpleParser, SubscriptionManager};
+    use crate::ws::ConnectionManager;
+    use crate::ws::config::Config;
+    use crate::ws::task::AbortOnDrop;
+
+    /// Resolves immediately and refuses TCP connections, so the underlying
+    /// connection task does not block on DNS or a slow handshake.
+    const UNROUTABLE_ENDPOINT: &str = "ws://127.0.0.1:1";
+
+    #[tokio::test]
+    async fn aborting_reconnect_handle_releases_rtds_subscription_manager() {
+        let connection = ConnectionManager::new(
+            UNROUTABLE_ENDPOINT.to_owned(),
+            Config::default(),
+            SimpleParser,
+        )
+        .expect("ConnectionManager::new");
+
+        let subscriptions = Arc::new(SubscriptionManager::new(connection));
+        let reconnect_handle = AbortOnDrop::new(subscriptions.start_reconnection_handler());
+
+        // The spawned reconnect task clones the `Arc`, so with the owner
+        // clone we must observe at least 2 strong refs before drop.
+        assert!(
+            Arc::strong_count(&subscriptions) >= 2,
+            "reconnection task should have cloned an Arc<SubscriptionManager>"
+        );
+
+        let weak: Weak<SubscriptionManager> = Arc::downgrade(&subscriptions);
+        drop(subscriptions);
+        drop(reconnect_handle);
+
+        // Poll briefly: the task future is only dropped once the runtime
+        // processes the abort, which may take a handful of scheduler ticks
+        // on a loaded runner.
+        let start = std::time::Instant::now();
+        while weak.strong_count() != 0 && start.elapsed() < Duration::from_secs(2) {
+            tokio::task::yield_now().await;
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+
+        assert!(
+            weak.upgrade().is_none(),
+            "RTDS SubscriptionManager leaked after reconnect handle aborted: \
+             strong_count={} (issue #325 regression)",
+            weak.strong_count(),
+        );
     }
 }

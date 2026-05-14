@@ -22,6 +22,7 @@
 pub mod config;
 pub mod connection;
 pub mod error;
+pub(crate) mod task;
 pub mod traits;
 
 pub use connection::ConnectionManager;
