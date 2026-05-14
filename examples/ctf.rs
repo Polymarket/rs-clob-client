@@ -33,13 +33,25 @@ use anyhow::Result;
 use polymarket_client_sdk::ctf::Client;
 use polymarket_client_sdk::ctf::types::{
     CollectionIdRequest, ConditionIdRequest, MergePositionsRequest, PositionIdRequest,
-    RedeemPositionsRequest, SplitPositionRequest,
+    RedeemPositionsRequest, SplitPositionRequest, WalletType,
 };
 use polymarket_client_sdk::types::address;
 use polymarket_client_sdk::{POLYGON, PRIVATE_KEY_VAR};
 use tracing::{error, info};
 
 const RPC_URL: &str = "https://polygon-rpc.com";
+
+#[expect(
+    clippy::ptr_arg,
+    reason = "Only used in .find_map and doesn't compile with &str"
+)]
+fn parse_wallet_type(arg: &String) -> Option<WalletType> {
+    match arg.as_str() {
+        "eoa" | "EOA" => Some(WalletType::EOA),
+        "proxy" | "PROXY" | "Proxy" => Some(WalletType::Proxy),
+        _ => None,
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -136,12 +148,23 @@ async fn main() -> Result<()> {
             env::var(PRIVATE_KEY_VAR).expect("Need a private key for write operations");
         let signer = LocalSigner::from_str(&private_key)?.with_chain_id(Some(chain));
 
+        // For wallet types other than EOA, we need to provide the wallet type, currently
+        // only EOA and PROXY are supported. Only required for write operations.
+        let wallet_type = args.iter().find_map(parse_wallet_type);
+
         let provider = ProviderBuilder::new()
             .wallet(signer.clone())
             .connect(RPC_URL)
             .await?;
 
-        let client = Client::new(provider, chain)?;
+        let client = if let Some(wallet_type) = wallet_type {
+            // Provide the wallet type so the CTF client can properly handle calls for wallet
+            // types other than EOA (Externally Owned Account)
+            Client::new(provider, chain)?.with_wallet_type(wallet_type)
+        } else {
+            // Use default (EOA) behaviour if no wallet type is provided
+            Client::new(provider, chain)?
+        };
         let wallet_address = signer.address();
 
         info!("Using wallet: {wallet_address:?}");
