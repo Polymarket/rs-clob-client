@@ -146,6 +146,25 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
             )));
         }
 
+        let Some(size) = self.size else {
+            return Err(Error::validation(
+                "Unable to build Order due to missing size",
+            ));
+        };
+
+        if size.scale() > LOT_SIZE_SCALE {
+            return Err(Error::validation(format!(
+                "Unable to build Order: Size {size} has {} decimal places. Maximum lot size is {LOT_SIZE_SCALE}",
+                size.scale()
+            )));
+        }
+
+        if size.is_zero() || size.is_sign_negative() {
+            return Err(Error::validation(format!(
+                "Unable to build Order due to negative size {size}"
+            )));
+        }
+
         let fee_rate = self.client.fee_rate_bps(token_id).await?;
         let minimum_tick_size = self
             .client
@@ -168,25 +187,6 @@ impl<K: AuthKind> OrderBuilder<Limit, K> {
         if price < minimum_tick_size || price > Decimal::ONE - minimum_tick_size {
             return Err(Error::validation(format!(
                 "Price {price} is too small or too large for the minimum tick size {minimum_tick_size}"
-            )));
-        }
-
-        let Some(size) = self.size else {
-            return Err(Error::validation(
-                "Unable to build Order due to missing size",
-            ));
-        };
-
-        if size.scale() > LOT_SIZE_SCALE {
-            return Err(Error::validation(format!(
-                "Unable to build Order: Size {size} has {} decimal places. Maximum lot size is {LOT_SIZE_SCALE}",
-                size.scale()
-            )));
-        }
-
-        if size.is_zero() || size.is_sign_negative() {
-            return Err(Error::validation(format!(
-                "Unable to build Order due to negative size {size}"
             )));
         }
 

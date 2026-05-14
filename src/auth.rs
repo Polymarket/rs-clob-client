@@ -158,7 +158,7 @@ pub(crate) mod l1 {
     use alloy::primitives::{ChainId, U256};
     use alloy::signers::Signer;
     use alloy::sol_types::SolStruct as _;
-    use reqwest::header::HeaderMap;
+    use reqwest::header::{HeaderMap, HeaderValue};
 
     use crate::{Result, Timestamp};
 
@@ -208,9 +208,9 @@ pub(crate) mod l1 {
             POLY_ADDRESS,
             signer.address().encode_hex_with_prefix().parse()?,
         );
-        map.insert(POLY_NONCE, naive_nonce.to_string().parse()?);
+        map.insert(POLY_NONCE, HeaderValue::from(naive_nonce));
         map.insert(POLY_SIGNATURE, signature.to_string().parse()?);
-        map.insert(POLY_TIMESTAMP, timestamp.to_string().parse()?);
+        map.insert(POLY_TIMESTAMP, HeaderValue::from(timestamp));
 
         Ok(map)
     }
@@ -220,7 +220,7 @@ pub(crate) mod l1 {
 pub(crate) mod l2 {
     use alloy::hex::ToHexExt as _;
     use reqwest::Request;
-    use reqwest::header::HeaderMap;
+    use reqwest::header::{HeaderMap, HeaderValue};
     use secrecy::ExposeSecret as _;
 
     use crate::auth::state::Authenticated;
@@ -248,13 +248,19 @@ pub(crate) mod l2 {
             POLY_ADDRESS,
             state.address.encode_hex_with_prefix().parse()?,
         );
-        map.insert(POLY_API_KEY, state.credentials.key.to_string().parse()?);
+        let mut key_buf = [0_u8; uuid::fmt::Hyphenated::LENGTH];
+        let key_str = state
+            .credentials
+            .key
+            .hyphenated()
+            .encode_lower(&mut key_buf);
+        map.insert(POLY_API_KEY, HeaderValue::from_str(key_str)?);
         map.insert(
             POLY_PASSPHRASE,
             state.credentials.passphrase.expose_secret().parse()?,
         );
         map.insert(POLY_SIGNATURE, signature.parse()?);
-        map.insert(POLY_TIMESTAMP, timestamp.to_string().parse()?);
+        map.insert(POLY_TIMESTAMP, HeaderValue::from(timestamp));
 
         let extra_headers = state.kind.extra_headers(request, timestamp).await?;
 
@@ -266,7 +272,7 @@ pub(crate) mod l2 {
 
 /// Specific structs and methods used in configuring and authenticating the Builder flow
 pub mod builder {
-    use reqwest::header::HeaderMap;
+    use reqwest::header::{HeaderMap, HeaderValue};
     use reqwest::{Client, Request};
     use secrecy::ExposeSecret as _;
     use serde::{Deserialize, Serialize};
@@ -336,13 +342,15 @@ pub mod builder {
 
                     let mut map = HeaderMap::new();
 
-                    map.insert(POLY_BUILDER_API_KEY, credentials.key.to_string().parse()?);
+                    let mut key_buf = [0_u8; uuid::fmt::Hyphenated::LENGTH];
+                    let key_str = credentials.key.hyphenated().encode_lower(&mut key_buf);
+                    map.insert(POLY_BUILDER_API_KEY, HeaderValue::from_str(key_str)?);
                     map.insert(
                         POLY_BUILDER_PASSPHRASE,
                         credentials.passphrase.expose_secret().parse()?,
                     );
                     map.insert(POLY_BUILDER_SIGNATURE, signature.parse()?);
-                    map.insert(POLY_BUILDER_TIMESTAMP, timestamp.to_string().parse()?);
+                    map.insert(POLY_BUILDER_TIMESTAMP, HeaderValue::from(timestamp));
 
                     Ok(map)
                 }
