@@ -66,5 +66,7 @@
 pub mod client;
 mod error;
 pub mod types;
+pub mod safe;
 
 pub use client::Client;
+pub use safe::SafeClient;
