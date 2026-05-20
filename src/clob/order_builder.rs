@@ -22,6 +22,9 @@ pub(crate) const USDC_DECIMALS: u32 = 6;
 /// Maximum number of decimal places for `size`
 pub(crate) const LOT_SIZE_SCALE: u32 = 2;
 
+const MAKER_SCALE: u32 = 2;
+const TAKER_SCALE: u32 = 4;
+
 /// Placeholder type for compile-time checks on limit order builders
 #[non_exhaustive]
 #[derive(Debug)]
@@ -416,20 +419,23 @@ impl<K: AuthKind> OrderBuilder<Market, K> {
         let (taker_amount, maker_amount) = match (side, amount.0) {
             // Spend USDC to buy shares
             (Side::Buy, AmountInner::Usdc(_)) => {
-                let shares = (raw_amount / price).trunc_with_scale(decimals + LOT_SIZE_SCALE);
-                (shares, raw_amount)
+                let shares = (raw_amount / price).trunc_with_scale(TAKER_SCALE);
+                let usdc = raw_amount.trunc_with_scale(MAKER_SCALE);
+                (shares, usdc)
             }
 
             // Buy N shares: use cutoff `price` derived from ask depth
             (Side::Buy, AmountInner::Shares(_)) => {
-                let usdc = (raw_amount * price).trunc_with_scale(decimals + LOT_SIZE_SCALE);
-                (raw_amount, usdc)
+                let usdc = (raw_amount * price).trunc_with_scale(MAKER_SCALE);
+                let shares = raw_amount.trunc_with_scale(TAKER_SCALE);
+                (shares, usdc)
             }
 
             // Sell N shares for USDC
             (Side::Sell, AmountInner::Shares(_)) => {
-                let usdc = (raw_amount * price).trunc_with_scale(decimals + LOT_SIZE_SCALE);
-                (usdc, raw_amount)
+                let usdc = (raw_amount * price).trunc_with_scale(TAKER_SCALE);
+                let shares = raw_amount.trunc_with_scale(MAKER_SCALE);
+                (usdc, shares)
             }
 
             (Side::Sell, AmountInner::Usdc(_)) => {
