@@ -3157,7 +3157,7 @@ mod builder_authenticated {
                         "id": "1",
                         "tradeType": "limit",
                         "takerOrderHash": "0x0000000000000000000000000000000000000000000000000074616b65726f72",
-                        "builder": "0x00000000000000000000000000006275696c6431",
+                        "builder": "019b618b-4a91-7dd9-a4c9-aadfbcbd5b95",
                         "market": "0x000000000000000000000000000000000000000000000000000000006d61726b",
                         "assetId": token_1(),
                         "side": "buy",
@@ -3199,7 +3199,7 @@ mod builder_authenticated {
             .taker_order_hash(b256!(
                 "0000000000000000000000000000000000000000000000000074616b65726f72"
             ))
-            .builder(address!("00000000000000000000000000006275696c6431"))
+            .builder(Uuid::parse_str("019b618b-4a91-7dd9-a4c9-aadfbcbd5b95").unwrap())
             .market(b256!(
                 "000000000000000000000000000000000000000000000000000000006d61726b"
             ))
