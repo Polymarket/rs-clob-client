@@ -19,11 +19,15 @@ where
     match opt {
         None => Ok(None),
         Some(s) if s.is_empty() => Ok(None),
-        Some(s) => match s.to_uppercase().as_str() {
-            "BUY" => Ok(Some(Side::Buy)),
-            "SELL" => Ok(Some(Side::Sell)),
-            _ => Ok(None),
-        },
+        Some(s) => {
+            let side = match s.to_uppercase().as_str() {
+                "BUY" => Side::Buy,
+                "SELL" => Side::Sell,
+                _ => Side::Unknown(s),
+            };
+
+            Ok(Some(side))
+        }
     }
 }
 
