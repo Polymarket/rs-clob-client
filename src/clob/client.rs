@@ -368,6 +368,16 @@ pub struct Config {
     /// This is primarily useful for testing.
     #[builder(into)]
     geoblock_host: Option<String>,
+    /// A pre-configured [`reqwest::Client`] to use for HTTP requests. When provided,
+    /// the supplied client is used as-is — callers should include appropriate default
+    /// headers (e.g. `User-Agent`, `Content-Type: application/json`) on their client.
+    ///
+    /// This is useful for latency-sensitive use cases that need control over connection
+    /// pooling, TCP keep-alive, HTTP/2 window sizing, TLS, proxies, or timeouts.
+    ///
+    /// If `None` (the default), the client builds a standard [`reqwest::Client`]
+    /// internally.
+    http_client: Option<ReqwestClient>,
     #[cfg(feature = "heartbeats")]
     #[builder(default = Duration::from_secs(5))]
     /// How often the [`Client`] will automatically submit heartbeats. The default is five (5) seconds.
@@ -379,6 +389,7 @@ impl Default for Config {
         Self {
             use_server_time: false,
             geoblock_host: None,
+            http_client: None,
             #[cfg(feature = "heartbeats")]
             heartbeat_interval: Duration::from_secs(5),
         }
@@ -1194,7 +1205,10 @@ impl Client<Unauthenticated> {
         headers.insert("Connection", HeaderValue::from_static("keep-alive"));
         headers.insert("Content-Type", HeaderValue::from_static("application/json"));
 
-        let client = ReqwestClient::builder().default_headers(headers).build()?;
+        let client = match config.http_client.clone() {
+            Some(custom) => custom,
+            None => ReqwestClient::builder().default_headers(headers).build()?,
+        };
 
         let geoblock_host = Url::parse(
             config
@@ -1563,7 +1577,7 @@ impl<K: Kind> Client<Authenticated<K>> {
         let request = self
             .client()
             .request(Method::DELETE, format!("{}order", self.host()))
-            .json(&json!({ "orderId": order_id }))
+            .json(&json!({ "orderID": order_id }))
             .build()?;
         let headers = self.create_headers(&request).await?;
 
