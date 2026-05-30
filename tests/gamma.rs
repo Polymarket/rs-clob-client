@@ -1279,6 +1279,7 @@ mod query_string {
                 b256!("0x0000000000000000000000000000000000000000000000000000000000000002"),
             ])
             .include_tag(true)
+            .active(true)
             .closed(false)
             .build();
 
@@ -1323,6 +1324,7 @@ mod query_string {
             "question_ids=0x0000000000000000000000000000000000000000000000000000000000000002"
         ));
         assert!(qs.contains("include_tag=true"));
+        assert!(qs.contains("active=true"));
         assert!(qs.contains("closed=false"));
     }
 
@@ -1346,6 +1348,27 @@ mod query_string {
         assert!(!qs.contains("market_maker_address="));
         assert!(!qs.contains("sports_market_types="));
         assert!(!qs.contains("question_ids="));
+    }
+
+    #[test]
+    fn markets_request_active_true() {
+        let request = MarketsRequest::builder().active(true).build();
+        let qs = request.query_params(None);
+        assert!(qs.contains("active=true"));
+    }
+
+    #[test]
+    fn markets_request_active_false() {
+        let request = MarketsRequest::builder().active(false).build();
+        let qs = request.query_params(None);
+        assert!(qs.contains("active=false"));
+    }
+
+    #[test]
+    fn markets_request_active_omitted_when_unset() {
+        let request = MarketsRequest::default();
+        let qs = request.query_params(None);
+        assert!(!qs.contains("active"));
     }
 
     #[test]
